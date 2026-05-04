@@ -60,7 +60,7 @@ export default function AppShell() {
         {nav.view === 'all-contacts' && <AllContacts />}
         {nav.view === 'alerts' && <AlertMentions />}
         {nav.view === 'project' && <ProjectView project={activeProject} />}
-        {nav.view === 'settings' && <SettingsView user={user} />}
+        {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
     </div>
   );

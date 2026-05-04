@@ -22,6 +22,13 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
   // Must be set per-connection — not persisted in the file
   db.pragma('foreign_keys = ON');
 
+  // Migrate existing databases: add idle_timeout_seconds if missing
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN idle_timeout_seconds INTEGER NOT NULL DEFAULT 900');
+  } catch {
+    // Column already exists or table not yet created — both are fine
+  }
+
   return db;
 }
 

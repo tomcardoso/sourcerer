@@ -3,12 +3,13 @@ export const LOCAL_SCHEMA_SQL = `
   PRAGMA journal_mode = WAL;
 
   CREATE TABLE IF NOT EXISTS users (
-    id              INTEGER PRIMARY KEY,
-    first_name      TEXT    NOT NULL,
-    last_name       TEXT    NOT NULL,
-    email           TEXT    NOT NULL,
-    created_at      INTEGER NOT NULL,
-    calendar_token  TEXT    NOT NULL
+    id                    INTEGER PRIMARY KEY,
+    first_name            TEXT    NOT NULL,
+    last_name             TEXT    NOT NULL,
+    email                 TEXT    NOT NULL,
+    created_at            INTEGER NOT NULL,
+    calendar_token        TEXT    NOT NULL,
+    idle_timeout_seconds  INTEGER NOT NULL DEFAULT 900
   );
 
   CREATE TABLE IF NOT EXISTS contacts (

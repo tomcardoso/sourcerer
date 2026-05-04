@@ -36,6 +36,7 @@ export interface User {
   email: string;
   created_at: number;
   calendar_token: string;
+  idle_timeout_seconds: number;
 }
 
 export interface ContactListItem {

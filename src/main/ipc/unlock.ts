@@ -26,8 +26,16 @@ export function registerUnlockHandlers(): void {
     try {
       const salt = await fs.readFile(saltPath);
       const keyHex = await deriveKey(password, salt);
-      unlockDatabase(dbPath, keyHex);
+      const db = unlockDatabase(dbPath, keyHex);
 
+      const savedUser = db
+        .prepare('SELECT idle_timeout_seconds FROM users WHERE id = 1')
+        .get() as { idle_timeout_seconds: number } | undefined;
+      const timeoutMs =
+        (savedUser?.idle_timeout_seconds ?? 0) === 0
+          ? Number.MAX_SAFE_INTEGER
+          : (savedUser?.idle_timeout_seconds ?? 900) * 1000;
+      autoLock.setIdleThreshold(timeoutMs);
       autoLock.resetInteraction();
 
       const win = BrowserWindow.fromWebContents(event.sender);

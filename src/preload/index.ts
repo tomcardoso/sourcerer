@@ -83,6 +83,31 @@ const sourcerorApi = {
   // Options
   listStatusOptions: (): Promise<StatusOption[]> => ipcRenderer.invoke('status-options:list'),
   listPriorityOptions: (): Promise<PriorityOption[]> => ipcRenderer.invoke('priority-options:list'),
+
+  // Settings
+  updateUser: (data: { firstName: string; lastName: string; email: string }): Promise<User> =>
+    ipcRenderer.invoke('users:update', data),
+  getIdleTimeout: (): Promise<number> => ipcRenderer.invoke('settings:get-idle-timeout'),
+  setIdleTimeout: (seconds: number): Promise<void> =>
+    ipcRenderer.invoke('settings:set-idle-timeout', seconds),
+
+  createStatusOption: (label: string): Promise<StatusOption> =>
+    ipcRenderer.invoke('status-options:create', label),
+  renameStatusOption: (id: string, label: string): Promise<void> =>
+    ipcRenderer.invoke('status-options:rename', { id, label }),
+  deleteStatusOption: (id: string): Promise<void> =>
+    ipcRenderer.invoke('status-options:delete', id),
+  moveStatusOption: (id: string, direction: 'up' | 'down'): Promise<void> =>
+    ipcRenderer.invoke('status-options:move', { id, direction }),
+
+  createPriorityOption: (label: string): Promise<PriorityOption> =>
+    ipcRenderer.invoke('priority-options:create', label),
+  renamePriorityOption: (id: string, label: string): Promise<void> =>
+    ipcRenderer.invoke('priority-options:rename', { id, label }),
+  deletePriorityOption: (id: string): Promise<void> =>
+    ipcRenderer.invoke('priority-options:delete', id),
+  movePriorityOption: (id: string, direction: 'up' | 'down'): Promise<void> =>
+    ipcRenderer.invoke('priority-options:move', { id, direction }),
 };
 
 contextBridge.exposeInMainWorld('sourceror', sourcerorApi);

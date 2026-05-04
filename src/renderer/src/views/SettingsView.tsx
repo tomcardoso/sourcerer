@@ -1,31 +1,294 @@
-import type { User } from '@shared/types';
+import { useEffect, useState } from 'react';
+import type { User, StatusOption, PriorityOption } from '@shared/types';
 import './View.css';
+import './SettingsView.css';
 
 interface Props {
   user: User | null;
+  onUserUpdated: (user: User) => void;
 }
 
-export default function SettingsView({ user }: Props) {
+const TIMEOUT_OPTIONS = [
+  { label: '1 minute', seconds: 60 },
+  { label: '5 minutes', seconds: 300 },
+  { label: '15 minutes', seconds: 900 },
+  { label: '30 minutes', seconds: 1800 },
+  { label: '1 hour', seconds: 3600 },
+  { label: 'Never', seconds: 0 },
+];
+
+function OptionsSection({
+  title,
+  options,
+  onAdd,
+  onRename,
+  onDelete,
+  onMove,
+}: {
+  title: string;
+  options: (StatusOption | PriorityOption)[];
+  onAdd: (label: string) => Promise<void>;
+  onRename: (id: string, label: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onMove: (id: string, direction: 'up' | 'down') => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  function getEditValue(opt: StatusOption | PriorityOption) {
+    return editValues[opt.id] ?? opt.label;
+  }
+
+  async function handleBlur(opt: StatusOption | PriorityOption) {
+    const val = (editValues[opt.id] ?? opt.label).trim();
+    if (!val || val === opt.label) {
+      setEditValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
+      return;
+    }
+    await onRename(opt.id, val);
+    setEditValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
+  }
+
+  async function handleAddConfirm() {
+    const label = newLabel.trim();
+    if (!label) { setAdding(false); setNewLabel(''); return; }
+    await onAdd(label);
+    setNewLabel('');
+    setAdding(false);
+  }
+
+  return (
+    <div className="sv-section">
+      <div className="view-section-title">{title}</div>
+      <div className="sv-option-list">
+        {options.map((opt, i) => (
+          <div key={opt.id} className="sv-option-row">
+            <input
+              className="sv-option-input"
+              value={getEditValue(opt)}
+              onChange={(e) => setEditValues((prev) => ({ ...prev, [opt.id]: e.target.value }))}
+              onBlur={() => handleBlur(opt)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                if (e.key === 'Escape') {
+                  setEditValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+            />
+            <button
+              className="sv-move-btn"
+              disabled={i === 0}
+              onClick={() => onMove(opt.id, 'up')}
+              title="Move up"
+            >▲</button>
+            <button
+              className="sv-move-btn"
+              disabled={i === options.length - 1}
+              onClick={() => onMove(opt.id, 'down')}
+              title="Move down"
+            >▼</button>
+            <button
+              className="sv-delete-btn"
+              onClick={() => onDelete(opt.id)}
+              title="Delete"
+            >×</button>
+          </div>
+        ))}
+
+        {adding ? (
+          <div className="sv-option-row">
+            <input
+              className="sv-option-input"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              autoFocus
+              placeholder="Label…"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddConfirm();
+                if (e.key === 'Escape') { setAdding(false); setNewLabel(''); }
+              }}
+            />
+            <button className="sv-confirm-btn" onClick={handleAddConfirm}>Add</button>
+            <button className="sv-cancel-small-btn" onClick={() => { setAdding(false); setNewLabel(''); }}>Cancel</button>
+          </div>
+        ) : (
+          <button className="sv-add-btn" onClick={() => setAdding(true)}>+ Add</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function SettingsView({ user, onUserUpdated }: Props) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
+  const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
+  const [idleTimeout, setIdleTimeout] = useState<number>(900);
+
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name);
+      setLastName(user.last_name);
+      setEmail(user.email);
+    }
+    window.sourceror.listStatusOptions().then(setStatusOptions);
+    window.sourceror.listPriorityOptions().then(setPriorityOptions);
+    window.sourceror.getIdleTimeout().then(setIdleTimeout);
+  }, [user?.id]);
+
+  async function handleProfileSave() {
+    if (!firstName.trim() || !email.trim()) return;
+    setProfileSaving(true);
+    try {
+      const updated = await window.sourceror.updateUser({ firstName, lastName, email });
+      onUserUpdated(updated);
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function handleTimeoutChange(seconds: number) {
+    setIdleTimeout(seconds);
+    await window.sourceror.setIdleTimeout(seconds);
+  }
+
+  // Status option handlers
+  async function addStatus(label: string) {
+    const opt = await window.sourceror.createStatusOption(label);
+    setStatusOptions((prev) => [...prev, opt]);
+  }
+  async function renameStatus(id: string, label: string) {
+    await window.sourceror.renameStatusOption(id, label);
+    setStatusOptions((prev) => prev.map((o) => (o.id === id ? { ...o, label } : o)));
+  }
+  async function deleteStatus(id: string) {
+    await window.sourceror.deleteStatusOption(id);
+    setStatusOptions((prev) => prev.filter((o) => o.id !== id));
+  }
+  async function moveStatus(id: string, direction: 'up' | 'down') {
+    await window.sourceror.moveStatusOption(id, direction);
+    setStatusOptions(await window.sourceror.listStatusOptions());
+  }
+
+  // Priority option handlers
+  async function addPriority(label: string) {
+    const opt = await window.sourceror.createPriorityOption(label);
+    setPriorityOptions((prev) => [...prev, opt]);
+  }
+  async function renamePriority(id: string, label: string) {
+    await window.sourceror.renamePriorityOption(id, label);
+    setPriorityOptions((prev) => prev.map((o) => (o.id === id ? { ...o, label } : o)));
+  }
+  async function deletePriority(id: string) {
+    await window.sourceror.deletePriorityOption(id);
+    setPriorityOptions((prev) => prev.filter((o) => o.id !== id));
+  }
+  async function movePriority(id: string, direction: 'up' | 'down') {
+    await window.sourceror.movePriorityOption(id, direction);
+    setPriorityOptions(await window.sourceror.listPriorityOptions());
+  }
+
+  const profileDirty =
+    user &&
+    (firstName !== user.first_name || lastName !== user.last_name || email !== user.email);
+
   return (
     <div className="view">
       <div className="view-header">
         <h1 className="view-title">Settings</h1>
       </div>
-      {user && (
-        <div className="view-section">
-          <h2 className="view-section-title">Your profile</h2>
-          <dl className="view-dl">
-            <div className="view-dl-row">
-              <dt>Name</dt>
-              <dd>{user.first_name} {user.last_name}</dd>
+
+      <div className="sv-body">
+        {/* Profile */}
+        <div className="sv-section">
+          <div className="view-section-title">Profile</div>
+          <div className="sv-fields">
+            <div className="sv-field">
+              <label className="sv-label">First name</label>
+              <input
+                className="sv-input"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
+              />
             </div>
-            <div className="view-dl-row">
-              <dt>Email</dt>
-              <dd>{user.email}</dd>
+            <div className="sv-field">
+              <label className="sv-label">Last name</label>
+              <input
+                className="sv-input"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
+              />
             </div>
-          </dl>
+            <div className="sv-field sv-field--full">
+              <label className="sv-label">Email</label>
+              <input
+                className="sv-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
+              />
+            </div>
+          </div>
+          <div className="sv-profile-actions">
+            <button
+              className="sv-save-btn"
+              onClick={handleProfileSave}
+              disabled={profileSaving || !profileDirty || !firstName.trim() || !email.trim()}
+            >
+              {profileSaved ? 'Saved!' : profileSaving ? 'Saving…' : 'Save profile'}
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Status options */}
+        <OptionsSection
+          title="Source Statuses"
+          options={statusOptions}
+          onAdd={addStatus}
+          onRename={renameStatus}
+          onDelete={deleteStatus}
+          onMove={moveStatus}
+        />
+
+        {/* Priority options */}
+        <OptionsSection
+          title="Priority Levels"
+          options={priorityOptions}
+          onAdd={addPriority}
+          onRename={renamePriority}
+          onDelete={deletePriority}
+          onMove={movePriority}
+        />
+
+        {/* Security */}
+        <div className="sv-section">
+          <div className="view-section-title">Security</div>
+          <div className="sv-field">
+            <label className="sv-label">Auto-lock after</label>
+            <select
+              className="sv-select"
+              value={idleTimeout}
+              onChange={(e) => handleTimeoutChange(Number(e.target.value))}
+            >
+              {TIMEOUT_OPTIONS.map((o) => (
+                <option key={o.seconds} value={o.seconds}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -69,6 +69,21 @@ declare global {
       // Options
       listStatusOptions: () => Promise<StatusOption[]>;
       listPriorityOptions: () => Promise<PriorityOption[]>;
+
+      // Settings
+      updateUser: (data: { firstName: string; lastName: string; email: string }) => Promise<User>;
+      getIdleTimeout: () => Promise<number>;
+      setIdleTimeout: (seconds: number) => Promise<void>;
+
+      createStatusOption: (label: string) => Promise<StatusOption>;
+      renameStatusOption: (id: string, label: string) => Promise<void>;
+      deleteStatusOption: (id: string) => Promise<void>;
+      moveStatusOption: (id: string, direction: 'up' | 'down') => Promise<void>;
+
+      createPriorityOption: (label: string) => Promise<PriorityOption>;
+      renamePriorityOption: (id: string, label: string) => Promise<void>;
+      deletePriorityOption: (id: string) => Promise<void>;
+      movePriorityOption: (id: string, direction: 'up' | 'down') => Promise<void>;
     };
   }
 }
