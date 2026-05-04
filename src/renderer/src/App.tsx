@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import Setup from './screens/Setup';
+import Unlock from './screens/Unlock';
 
-type AppScreen = 'loading' | 'setup' | 'locked';
+type AppScreen = 'loading' | 'setup' | 'locked' | 'unlocked';
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
@@ -10,6 +11,13 @@ export default function App() {
     window.sourceror.checkFirstLaunch().then(({ isFirstLaunch }) => {
       setScreen(isFirstLaunch ? 'setup' : 'locked');
     });
+
+    // Main process fires this when the idle timer expires
+    const removeListener = window.sourceror.onLocked(() => {
+      setScreen('locked');
+    });
+
+    return removeListener;
   }, []);
 
   if (screen === 'loading') {
@@ -21,6 +29,7 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'center',
           color: 'var(--color-text-muted)',
+          fontSize: 14,
         }}
       >
         Loading…
@@ -32,7 +41,11 @@ export default function App() {
     return <Setup onComplete={() => setScreen('locked')} />;
   }
 
-  // Placeholder: unlock screen will be built next
+  if (screen === 'locked') {
+    return <Unlock onUnlocked={() => setScreen('unlocked')} />;
+  }
+
+  // Placeholder — main app shell is next
   return (
     <div
       style={{
@@ -45,9 +58,11 @@ export default function App() {
         color: 'var(--color-text-muted)',
       }}
     >
-      <div style={{ fontSize: 32 }}>🔒</div>
-      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>Sourceror is locked</div>
-      <div style={{ fontSize: 13 }}>Unlock screen coming soon.</div>
+      <div style={{ fontSize: 32 }}>✓</div>
+      <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: 16 }}>
+        Sourceror is unlocked
+      </div>
+      <div style={{ fontSize: 13 }}>Main app shell coming soon.</div>
     </div>
   );
 }

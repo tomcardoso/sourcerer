@@ -9,5 +9,7 @@ interface Window {
       email: string;
       password: string;
     }) => Promise<{ success: boolean; error?: string }>;
+    unlock: (password: string) => Promise<{ success: boolean; error?: string }>;
+    onLocked: (callback: () => void) => () => void;
   };
 }

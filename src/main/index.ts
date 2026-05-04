@@ -2,6 +2,9 @@ import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { registerSetupHandlers } from './ipc/setup';
+import { registerUnlockHandlers } from './ipc/unlock';
+import { autoLock } from './auto-lock';
+import { closeDatabase } from './database';
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -28,6 +31,8 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
+  autoLock.start(win);
+
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
@@ -39,6 +44,7 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   registerSetupHandlers();
+  registerUnlockHandlers();
   createWindow();
 
   app.on('activate', () => {
@@ -49,6 +55,8 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  closeDatabase();
+  autoLock.stop();
   if (process.platform !== 'darwin') {
     app.quit();
   }

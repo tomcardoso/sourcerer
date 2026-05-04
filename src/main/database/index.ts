@@ -4,14 +4,14 @@ import { seedDefaults } from './seeds';
 
 let activeDb: Database.Database | null = null;
 
-export function openDatabase(dbPath: string, keyHex: string): Database.Database {
+function openRaw(dbPath: string, keyHex: string): Database.Database {
   const db = new Database(dbPath);
 
-  // Must set cipher before key for SQLCipher4 compatibility
+  // cipher must be set before key for SQLCipher4 compatibility
   db.pragma(`cipher='sqlcipher'`);
   db.pragma(`key="x'${keyHex}'"`);
 
-  // Verify the database opened correctly by reading the schema version
+  // Verify the key is correct — wrong key throws "file is not a database"
   try {
     db.pragma('user_version');
   } catch {
@@ -22,20 +22,24 @@ export function openDatabase(dbPath: string, keyHex: string): Database.Database 
   return db;
 }
 
+/** First-launch only: open + run schema + seed defaults + set active connection. */
 export function initDatabase(dbPath: string, keyHex: string): Database.Database {
-  const db = openDatabase(dbPath, keyHex);
-
+  const db = openRaw(dbPath, keyHex);
   db.exec(LOCAL_SCHEMA_SQL);
   seedDefaults(db);
+  activeDb = db;
+  return db;
+}
 
+/** Subsequent unlocks: open existing encrypted DB + set active connection. */
+export function unlockDatabase(dbPath: string, keyHex: string): Database.Database {
+  const db = openRaw(dbPath, keyHex);
   activeDb = db;
   return db;
 }
 
 export function getDatabase(): Database.Database {
-  if (!activeDb) {
-    throw new Error('Database is not open.');
-  }
+  if (!activeDb) throw new Error('Database is not open.');
   return activeDb;
 }
 

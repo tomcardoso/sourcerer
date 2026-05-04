@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { SetupFormData, SetupResult, FirstLaunchResult } from '@shared/types';
+import type { SetupFormData, SetupResult, FirstLaunchResult, UnlockResult } from '@shared/types';
 
 const sourcerorApi = {
   checkFirstLaunch: (): Promise<FirstLaunchResult> =>
@@ -7,6 +7,15 @@ const sourcerorApi = {
 
   completeSetup: (data: SetupFormData): Promise<SetupResult> =>
     ipcRenderer.invoke('setup:complete', data),
+
+  unlock: (password: string): Promise<UnlockResult> =>
+    ipcRenderer.invoke('unlock:attempt', password),
+
+  onLocked: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('app:locked', handler);
+    return () => ipcRenderer.removeListener('app:locked', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('sourceror', sourcerorApi);

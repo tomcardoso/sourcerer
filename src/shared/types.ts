@@ -13,3 +13,8 @@ export interface SetupResult {
 export interface FirstLaunchResult {
   isFirstLaunch: boolean;
 }
+
+export interface UnlockResult {
+  success: boolean;
+  error?: string;
+}
