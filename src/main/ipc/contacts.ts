@@ -5,11 +5,17 @@ import type {
   ContactListItem,
   ContactDetail,
   CreateContactInput,
+  UpdateContactInput,
+  UpdateMembershipInput,
   ContactEmail,
   ContactPhone,
   ContactLink,
   ContactProject,
   ProjectContactRow,
+  InteractionLogEntry,
+  ScratchpadDraft,
+  StatusOption,
+  PriorityOption,
   User,
 } from '@shared/types';
 
@@ -64,7 +70,8 @@ export function registerContactHandlers(): void {
       .all(id) as ContactLink[];
     const projects = db
       .prepare(
-        `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.reporter_name
+        `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
+                pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email
          FROM project_memberships pm
          JOIN projects p ON p.id = pm.project_id
          WHERE pm.contact_id = ?
@@ -161,5 +168,139 @@ export function registerContactHandlers(): void {
          ORDER BY c.name COLLATE NOCASE ASC`,
       )
       .all(projectId) as ProjectContactRow[];
+  });
+
+  ipcMain.handle('contacts:update', (_, data: UpdateContactInput): void => {
+    const db = getDatabase();
+    const now = Math.floor(Date.now() / 1000);
+    const run = db.transaction(() => {
+      db.prepare(
+        'UPDATE contacts SET name = ?, organization = ?, notes = ?, updated_at = ? WHERE id = ?',
+      ).run(data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, data.id);
+
+      db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
+      const emails = (data.emails ?? []).map((e) => e.trim()).filter(Boolean);
+      emails.forEach((email, i) => {
+        db.prepare(
+          'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, email, i);
+      });
+
+      db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
+      const phones = (data.phones ?? []).map((p) => p.trim()).filter(Boolean);
+      phones.forEach((phone, i) => {
+        db.prepare(
+          'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, phone, i);
+      });
+
+      db.prepare("DELETE FROM contact_links WHERE contact_id = ? AND type = 'linkedin'").run(data.id);
+      const linkedinUrl = data.linkedinUrl?.trim();
+      if (linkedinUrl) {
+        db.prepare(
+          'INSERT INTO contact_links (id, contact_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, 'linkedin', linkedinUrl, 0);
+      }
+    });
+    run();
+  });
+
+  ipcMain.handle('memberships:update', (_, data: UpdateMembershipInput): void => {
+    const now = Math.floor(Date.now() / 1000);
+    getDatabase()
+      .prepare(
+        'UPDATE project_memberships SET status = ?, priority = ?, first_outreach_at = ?, updated_at = ? WHERE id = ?',
+      )
+      .run(data.status ?? null, data.priority ?? null, data.firstOutreachAt ?? null, now, data.membershipId);
+  });
+
+  ipcMain.handle('interaction-log:list', (_, membershipId: string): InteractionLogEntry[] => {
+    return getDatabase()
+      .prepare(
+        'SELECT * FROM interaction_log_entries WHERE membership_id = ? ORDER BY created_at ASC',
+      )
+      .all(membershipId) as InteractionLogEntry[];
+  });
+
+  ipcMain.handle(
+    'interaction-log:add',
+    (_, { membershipId, body }: { membershipId: string; body: string }): InteractionLogEntry => {
+      const db = getDatabase();
+      const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+      const id = uuidv4();
+      const now = Math.floor(Date.now() / 1000);
+      const reporterName = `${user.first_name} ${user.last_name}`;
+      db.prepare(
+        'INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(id, membershipId, user.email, reporterName, body.trim(), now);
+      return {
+        id,
+        membership_id: membershipId,
+        reporter_email: user.email,
+        reporter_name: reporterName,
+        body: body.trim(),
+        created_at: now,
+      };
+    },
+  );
+
+  ipcMain.handle(
+    'scratchpad:list',
+    (_, { contactId, projectId }: { contactId: string; projectId: string }): ScratchpadDraft[] => {
+      return getDatabase()
+        .prepare(
+          'SELECT * FROM message_scratchpad_drafts WHERE contact_id = ? AND project_id = ? ORDER BY created_at ASC',
+        )
+        .all(contactId, projectId) as ScratchpadDraft[];
+    },
+  );
+
+  ipcMain.handle(
+    'scratchpad:save',
+    (
+      _,
+      data: { id?: string; contactId: string; projectId: string; label: string; body: string },
+    ): ScratchpadDraft => {
+      const db = getDatabase();
+      const now = Math.floor(Date.now() / 1000);
+      if (data.id) {
+        db.prepare(
+          'UPDATE message_scratchpad_drafts SET label = ?, body = ?, updated_at = ? WHERE id = ?',
+        ).run(data.label, data.body, now, data.id);
+        return db
+          .prepare('SELECT * FROM message_scratchpad_drafts WHERE id = ?')
+          .get(data.id) as ScratchpadDraft;
+      } else {
+        const id = uuidv4();
+        db.prepare(
+          'INSERT INTO message_scratchpad_drafts (id, contact_id, project_id, label, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).run(id, data.contactId, data.projectId, data.label, data.body, now, now);
+        return {
+          id,
+          contact_id: data.contactId,
+          project_id: data.projectId,
+          label: data.label,
+          body: data.body,
+          created_at: now,
+          updated_at: now,
+        };
+      }
+    },
+  );
+
+  ipcMain.handle('scratchpad:delete', (_, id: string): void => {
+    getDatabase().prepare('DELETE FROM message_scratchpad_drafts WHERE id = ?').run(id);
+  });
+
+  ipcMain.handle('status-options:list', (): StatusOption[] => {
+    return getDatabase()
+      .prepare('SELECT * FROM status_options ORDER BY sort_order ASC')
+      .all() as StatusOption[];
+  });
+
+  ipcMain.handle('priority-options:list', (): PriorityOption[] => {
+    return getDatabase()
+      .prepare('SELECT * FROM priority_options ORDER BY sort_order ASC')
+      .all() as PriorityOption[];
   });
 }

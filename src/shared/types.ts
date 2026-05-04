@@ -70,7 +70,11 @@ export interface ContactProject {
   name: string;
   membership_id: string;
   status: string | null;
+  priority: string | null;
+  theme: string | null;
+  first_outreach_at: number | null;
   reporter_name: string;
+  reporter_email: string;
 }
 
 export interface ContactDetail {
@@ -93,6 +97,56 @@ export interface CreateContactInput {
   emails?: string[];
   phones?: string[];
   linkedinUrl?: string;
+}
+
+export interface UpdateContactInput {
+  id: string;
+  name: string;
+  organization?: string;
+  notes?: string;
+  emails?: string[];
+  phones?: string[];
+  linkedinUrl?: string;
+}
+
+export interface UpdateMembershipInput {
+  membershipId: string;
+  status?: string | null;
+  priority?: string | null;
+  firstOutreachAt?: number | null;
+}
+
+export interface InteractionLogEntry {
+  id: string;
+  membership_id: string;
+  reporter_name: string;
+  reporter_email: string;
+  body: string;
+  created_at: number;
+}
+
+export interface ScratchpadDraft {
+  id: string;
+  contact_id: string;
+  project_id: string;
+  label: string;
+  body: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface StatusOption {
+  id: string;
+  label: string;
+  sort_order: number;
+  is_default: number;
+}
+
+export interface PriorityOption {
+  id: string;
+  label: string;
+  sort_order: number;
+  is_default: number;
 }
 
 export interface ProjectContactRow {

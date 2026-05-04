@@ -9,7 +9,13 @@ import type {
   ContactListItem,
   ContactDetail,
   CreateContactInput,
+  UpdateContactInput,
+  UpdateMembershipInput,
   ProjectContactRow,
+  InteractionLogEntry,
+  ScratchpadDraft,
+  StatusOption,
+  PriorityOption,
 } from '@shared/types';
 
 const sourcerorApi = {
@@ -42,6 +48,8 @@ const sourcerorApi = {
   getContact: (id: string): Promise<ContactDetail> => ipcRenderer.invoke('contacts:get', id),
   createContact: (data: CreateContactInput): Promise<ContactListItem> =>
     ipcRenderer.invoke('contacts:create', data),
+  updateContact: (data: UpdateContactInput): Promise<void> =>
+    ipcRenderer.invoke('contacts:update', data),
   deleteContact: (id: string): Promise<void> => ipcRenderer.invoke('contacts:delete', id),
   listContactsForProject: (projectId: string): Promise<ProjectContactRow[]> =>
     ipcRenderer.invoke('contacts:list-for-project', projectId),
@@ -51,6 +59,30 @@ const sourcerorApi = {
     ipcRenderer.invoke('memberships:add', { contactId, projectId }),
   removeFromProject: (contactId: string, projectId: string): Promise<void> =>
     ipcRenderer.invoke('memberships:remove', { contactId, projectId }),
+  updateMembership: (data: UpdateMembershipInput): Promise<void> =>
+    ipcRenderer.invoke('memberships:update', data),
+
+  // Interaction log
+  listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
+    ipcRenderer.invoke('interaction-log:list', membershipId),
+  addInteractionLogEntry: (membershipId: string, body: string): Promise<InteractionLogEntry> =>
+    ipcRenderer.invoke('interaction-log:add', { membershipId, body }),
+
+  // Scratchpad
+  listScratchpad: (contactId: string, projectId: string): Promise<ScratchpadDraft[]> =>
+    ipcRenderer.invoke('scratchpad:list', { contactId, projectId }),
+  saveScratchpad: (data: {
+    id?: string;
+    contactId: string;
+    projectId: string;
+    label: string;
+    body: string;
+  }): Promise<ScratchpadDraft> => ipcRenderer.invoke('scratchpad:save', data),
+  deleteScratchpad: (id: string): Promise<void> => ipcRenderer.invoke('scratchpad:delete', id),
+
+  // Options
+  listStatusOptions: (): Promise<StatusOption[]> => ipcRenderer.invoke('status-options:list'),
+  listPriorityOptions: (): Promise<PriorityOption[]> => ipcRenderer.invoke('priority-options:list'),
 };
 
 contextBridge.exposeInMainWorld('sourceror', sourcerorApi);

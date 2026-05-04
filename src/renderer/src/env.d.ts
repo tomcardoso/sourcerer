@@ -6,7 +6,13 @@ import type {
   ContactListItem,
   ContactDetail,
   CreateContactInput,
+  UpdateContactInput,
+  UpdateMembershipInput,
   ProjectContactRow,
+  InteractionLogEntry,
+  ScratchpadDraft,
+  StatusOption,
+  PriorityOption,
 } from '@shared/types';
 
 declare global {
@@ -36,12 +42,33 @@ declare global {
       listContacts: () => Promise<ContactListItem[]>;
       getContact: (id: string) => Promise<ContactDetail>;
       createContact: (data: CreateContactInput) => Promise<ContactListItem>;
+      updateContact: (data: UpdateContactInput) => Promise<void>;
       deleteContact: (id: string) => Promise<void>;
       listContactsForProject: (projectId: string) => Promise<ProjectContactRow[]>;
 
       // Memberships
       addToProject: (contactId: string, projectId: string) => Promise<void>;
       removeFromProject: (contactId: string, projectId: string) => Promise<void>;
+      updateMembership: (data: UpdateMembershipInput) => Promise<void>;
+
+      // Interaction log
+      listInteractionLog: (membershipId: string) => Promise<InteractionLogEntry[]>;
+      addInteractionLogEntry: (membershipId: string, body: string) => Promise<InteractionLogEntry>;
+
+      // Scratchpad
+      listScratchpad: (contactId: string, projectId: string) => Promise<ScratchpadDraft[]>;
+      saveScratchpad: (data: {
+        id?: string;
+        contactId: string;
+        projectId: string;
+        label: string;
+        body: string;
+      }) => Promise<ScratchpadDraft>;
+      deleteScratchpad: (id: string) => Promise<void>;
+
+      // Options
+      listStatusOptions: () => Promise<StatusOption[]>;
+      listPriorityOptions: () => Promise<PriorityOption[]>;
     };
   }
 }
