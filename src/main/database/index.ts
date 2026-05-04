@@ -19,6 +19,9 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     throw new Error('Incorrect password or corrupted database.');
   }
 
+  // Must be set per-connection — not persisted in the file
+  db.pragma('foreign_keys = ON');
+
   return db;
 }
 

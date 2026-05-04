@@ -1,0 +1,118 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 24px;
+  width: 420px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 20px;
+}
+
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 5px;
+}
+
+.modal-required {
+  color: var(--color-danger);
+}
+
+.modal-optional {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.modal-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--color-text);
+  background: var(--color-surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.modal-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.modal-input:disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.modal-btn-cancel,
+.modal-btn-create {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.modal-btn-cancel {
+  background: #f3f4f6;
+  color: var(--color-text);
+}
+
+.modal-btn-cancel:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.modal-btn-create {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.modal-btn-create:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.modal-btn-create:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.modal-btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

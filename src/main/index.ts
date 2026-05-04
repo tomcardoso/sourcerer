@@ -3,6 +3,8 @@ import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { registerSetupHandlers } from './ipc/setup';
 import { registerUnlockHandlers } from './ipc/unlock';
+import { registerProjectHandlers } from './ipc/projects';
+import { registerAppHandlers } from './ipc/app';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 
@@ -22,9 +24,7 @@ function createWindow(): BrowserWindow {
     },
   });
 
-  win.on('ready-to-show', () => {
-    win.show();
-  });
+  win.on('ready-to-show', () => win.show());
 
   win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
@@ -45,19 +45,17 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(() => {
   registerSetupHandlers();
   registerUnlockHandlers();
+  registerProjectHandlers();
+  registerAppHandlers();
   createWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
 app.on('window-all-closed', () => {
   closeDatabase();
   autoLock.stop();
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });

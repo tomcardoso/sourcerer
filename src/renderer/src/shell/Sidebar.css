@@ -1,0 +1,255 @@
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--sidebar-border);
+}
+
+/* Header */
+.sidebar-header {
+  padding: 16px 14px 12px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar-logo {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+.sidebar-user {
+  display: block;
+  font-size: 11px;
+  color: var(--sidebar-text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nav items */
+.sidebar-nav {
+  padding: 8px 6px 4px;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  background: none;
+  color: var(--sidebar-text);
+  font-size: 13px;
+  font-family: var(--font);
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--sidebar-hover-bg);
+}
+
+.sidebar-nav-item.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+
+.sidebar-nav-icon {
+  font-size: 12px;
+  opacity: 0.7;
+  width: 14px;
+  text-align: center;
+}
+
+/* Projects section */
+.sidebar-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 6px 4px;
+}
+
+.sidebar-section-header {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-text-muted);
+  padding: 0 8px 6px;
+}
+
+.sidebar-empty {
+  font-size: 12px;
+  color: var(--sidebar-text-muted);
+  padding: 4px 8px 8px;
+  font-style: italic;
+}
+
+.sidebar-project-list {
+  list-style: none;
+  margin-bottom: 4px;
+}
+
+.sidebar-project-item {
+  margin-bottom: 1px;
+}
+
+.sidebar-project-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  color: var(--sidebar-text);
+  font-size: 13px;
+  font-family: var(--font);
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.1s;
+  gap: 4px;
+}
+
+.sidebar-project-btn:hover {
+  background: var(--sidebar-hover-bg);
+}
+
+.sidebar-project-btn.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+}
+
+.sidebar-project-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-project-delete {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--sidebar-text-muted);
+  opacity: 0;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.1s, color 0.1s;
+}
+
+.sidebar-project-btn:hover .sidebar-project-delete {
+  opacity: 1;
+}
+
+.sidebar-project-delete:hover {
+  color: #ef4444;
+}
+
+/* Rename input */
+.sidebar-rename-input {
+  width: 100%;
+  padding: 5px 8px;
+  background: #2d3448;
+  border: 1px solid #4a5568;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+}
+
+.sidebar-rename-input:focus {
+  border-color: var(--color-primary);
+}
+
+/* Delete confirmation */
+.sidebar-delete-confirm {
+  padding: 6px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 5px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.sidebar-delete-label {
+  display: block;
+  font-size: 12px;
+  color: #fca5a5;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-delete-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar-delete-yes,
+.sidebar-delete-no {
+  flex: 1;
+  padding: 4px 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.sidebar-delete-yes {
+  background: #ef4444;
+  color: #fff;
+}
+
+.sidebar-delete-yes:hover {
+  background: #dc2626;
+}
+
+.sidebar-delete-no {
+  background: #374151;
+  color: #d1d5db;
+}
+
+.sidebar-delete-no:hover {
+  background: #4b5563;
+}
+
+/* New project */
+.sidebar-new-project {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  color: var(--sidebar-text-muted);
+  font-size: 13px;
+  font-family: var(--font);
+  text-align: left;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.sidebar-new-project:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-text);
+}
+
+/* Footer */
+.sidebar-footer {
+  padding: 4px 6px 10px;
+  border-top: 1px solid var(--sidebar-border);
+  margin-top: auto;
+}
