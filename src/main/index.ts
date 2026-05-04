@@ -5,6 +5,7 @@ import { registerSetupHandlers } from './ipc/setup';
 import { registerUnlockHandlers } from './ipc/unlock';
 import { registerProjectHandlers } from './ipc/projects';
 import { registerAppHandlers } from './ipc/app';
+import { registerContactHandlers } from './ipc/contacts';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 
@@ -47,6 +48,7 @@ app.whenReady().then(() => {
   registerUnlockHandlers();
   registerProjectHandlers();
   registerAppHandlers();
+  registerContactHandlers();
   createWindow();
 
   app.on('activate', () => {
