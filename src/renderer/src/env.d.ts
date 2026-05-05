@@ -13,6 +13,9 @@ import type {
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
+  CreateSharedProjectResult,
+  SyncStatusEvent,
+  DecodePayloadResult,
 } from '@shared/types';
 
 declare global {
@@ -28,6 +31,9 @@ declare global {
       }) => Promise<{ success: boolean; error?: string }>;
       unlock: (password: string) => Promise<{ success: boolean; error?: string }>;
       onLocked: (callback: () => void) => () => void;
+      onExtensionAccessRequest: (callback: () => void) => () => void;
+      approveExtension: () => Promise<void>;
+      denyExtension: () => Promise<void>;
 
       // App data
       getUser: () => Promise<User>;
@@ -35,6 +41,17 @@ declare global {
       // Projects
       listProjects: () => Promise<Project[]>;
       createProject: (data: { name: string; description?: string }) => Promise<Project>;
+      createSharedProject: (data: {
+        name: string;
+        description?: string;
+      }) => Promise<CreateSharedProjectResult | null>;
+      joinSharedProject: (data: {
+        encodedPayload: string;
+        localPath: string;
+      }) => Promise<Project | null>;
+      getSetupPayload: (projectId: string) => Promise<string | null>;
+      relocateSharedProject: (projectId: string, newPath: string) => Promise<void>;
+      regenerateSharedProject: (projectId: string) => Promise<{ payload: string } | null>;
       renameProject: (id: string, name: string) => Promise<void>;
       deleteProject: (id: string) => Promise<void>;
 
@@ -77,6 +94,8 @@ declare global {
 
       // Settings
       updateUser: (data: { firstName: string; lastName: string; email: string }) => Promise<User>;
+      getCalendarUrl: () => Promise<string>;
+      regenerateCalendarToken: () => Promise<User>;
       getIdleTimeout: () => Promise<number>;
       setIdleTimeout: (seconds: number) => Promise<void>;
 
@@ -89,6 +108,13 @@ declare global {
       renamePriorityOption: (id: string, label: string) => Promise<void>;
       deletePriorityOption: (id: string) => Promise<void>;
       movePriorityOption: (id: string, direction: 'up' | 'down') => Promise<void>;
+
+      // Sync
+      triggerSync: (projectId: string) => Promise<SyncStatusEvent>;
+      pollAll: () => Promise<void>;
+      openFileDialog: (options?: { defaultPath?: string }) => Promise<string | null>;
+      decodePayload: (encoded: string) => Promise<DecodePayloadResult>;
+      onSyncStatus: (callback: (event: SyncStatusEvent) => void) => () => void;
     };
   }
 }

@@ -81,7 +81,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editEmails, setEditEmails] = useState<string[]>([]);
   const [editPhones, setEditPhones] = useState<string[]>([]);
   const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
-    linkedin: [], twitter: [], instagram: [], facebook: [],
+    linkedin: [], x: [], instagram: [], facebook: [],
   });
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});

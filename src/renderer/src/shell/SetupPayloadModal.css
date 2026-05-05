@@ -1,0 +1,73 @@
+.setup-payload-modal {
+  max-width: 480px;
+}
+
+.setup-payload-intro {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.setup-payload-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.setup-payload-text {
+  flex: 1;
+  min-height: 80px;
+  padding: 8px 10px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  background: var(--color-bg-secondary, #1a1a1a);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  resize: none;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.setup-payload-copy {
+  padding: 8px 14px;
+  background: var(--color-bg-secondary, #1a1a1a);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.setup-payload-copy:hover {
+  background: var(--color-hover);
+}
+
+.setup-payload-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.setup-payload-qr-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.setup-payload-qr img {
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+.setup-payload-warning {
+  font-size: 12px;
+  color: var(--color-text-muted, #888);
+  margin: 0 0 20px;
+  line-height: 1.5;
+}

@@ -4,23 +4,39 @@ import './NewProjectModal.css';
 
 interface Props {
   onCreated: (project: Project) => void;
+  onCreatedShared: (project: Project, payload: string) => void;
   onCancel: () => void;
 }
 
-export default function NewProjectModal({ onCreated, onCancel }: Props) {
+export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [isShared, setIsShared] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
-    const project = await window.sourcerer.createProject({
-      name: name.trim(),
-      description: description.trim() || undefined,
-    });
-    onCreated(project);
+
+    if (isShared) {
+      const result = await window.sourcerer.createSharedProject({
+        name: name.trim(),
+        description: description.trim() || undefined,
+      });
+      if (result) {
+        onCreatedShared(result.project, result.payload);
+      } else {
+        // User cancelled save dialog
+        setSubmitting(false);
+      }
+    } else {
+      const project = await window.sourcerer.createProject({
+        name: name.trim(),
+        description: description.trim() || undefined,
+      });
+      onCreated(project);
+    }
   }
 
   return (
@@ -58,6 +74,24 @@ export default function NewProjectModal({ onCreated, onCancel }: Props) {
               placeholder="Short slug line"
               disabled={submitting}
             />
+          </div>
+
+          <div className="modal-field modal-field-toggle">
+            <label className="modal-toggle-label">
+              <input
+                type="checkbox"
+                checked={isShared}
+                onChange={(e) => setIsShared(e.target.checked)}
+                disabled={submitting}
+              />
+              <span>Shared project</span>
+            </label>
+            {isShared && (
+              <p className="modal-toggle-hint">
+                You'll choose where to save the shared file. A setup link will be generated for
+                collaborators.
+              </p>
+            )}
           </div>
 
           <div className="modal-actions">

@@ -16,6 +16,9 @@ import type {
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
+  CreateSharedProjectResult,
+  SyncStatusEvent,
+  DecodePayloadResult,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -47,6 +50,21 @@ const sourcererApi = {
   listProjects: (): Promise<Project[]> => ipcRenderer.invoke('projects:list'),
   createProject: (data: { name: string; description?: string }): Promise<Project> =>
     ipcRenderer.invoke('projects:create', data),
+  createSharedProject: (data: {
+    name: string;
+    description?: string;
+  }): Promise<CreateSharedProjectResult | null> =>
+    ipcRenderer.invoke('projects:createShared', data),
+  joinSharedProject: (data: {
+    encodedPayload: string;
+    localPath: string;
+  }): Promise<Project | null> => ipcRenderer.invoke('projects:joinShared', data),
+  getSetupPayload: (projectId: string): Promise<string | null> =>
+    ipcRenderer.invoke('projects:getSetupPayload', projectId),
+  relocateSharedProject: (projectId: string, newPath: string): Promise<void> =>
+    ipcRenderer.invoke('projects:relocateShared', { projectId, newPath }),
+  regenerateSharedProject: (projectId: string): Promise<{ payload: string } | null> =>
+    ipcRenderer.invoke('projects:regenerateShared', projectId),
   renameProject: (id: string, name: string): Promise<void> =>
     ipcRenderer.invoke('projects:rename', { id, name }),
   deleteProject: (id: string): Promise<void> => ipcRenderer.invoke('projects:delete', id),
@@ -124,6 +142,20 @@ const sourcererApi = {
     ipcRenderer.invoke('priority-options:delete', id),
   movePriorityOption: (id: string, direction: 'up' | 'down'): Promise<void> =>
     ipcRenderer.invoke('priority-options:move', { id, direction }),
+
+  // Sync
+  triggerSync: (projectId: string): Promise<SyncStatusEvent> =>
+    ipcRenderer.invoke('sync:trigger', projectId),
+  pollAll: (): Promise<void> => ipcRenderer.invoke('sync:poll-all'),
+  openFileDialog: (options?: { defaultPath?: string }): Promise<string | null> =>
+    ipcRenderer.invoke('sync:open-file-dialog', options),
+  decodePayload: (encoded: string): Promise<DecodePayloadResult> =>
+    ipcRenderer.invoke('sync:decode-payload', encoded),
+  onSyncStatus: (callback: (event: SyncStatusEvent) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, event: SyncStatusEvent) => callback(event);
+    ipcRenderer.on('sync:status', handler);
+    return () => ipcRenderer.removeListener('sync:status', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

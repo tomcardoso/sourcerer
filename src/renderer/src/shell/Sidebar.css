@@ -225,8 +225,28 @@
   background: #4b5563;
 }
 
-/* New project */
-.sidebar-new-project {
+.sidebar-project-shared-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #60a5fa;
+  margin-right: 5px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+/* Project action buttons */
+.sidebar-project-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-new-project,
+.sidebar-join-project {
   display: flex;
   align-items: center;
   width: 100%;
@@ -242,7 +262,8 @@
   transition: color 0.1s, background 0.1s;
 }
 
-.sidebar-new-project:hover {
+.sidebar-new-project:hover,
+.sidebar-join-project:hover {
   background: var(--sidebar-hover-bg);
   color: var(--sidebar-text);
 }

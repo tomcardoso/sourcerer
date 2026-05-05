@@ -8,9 +8,12 @@ import { registerAppHandlers } from './ipc/app';
 import { registerContactHandlers } from './ipc/contacts';
 import { registerSettingsHandlers } from './ipc/settings';
 import { registerHttpHandlers } from './ipc/http';
+import { registerSyncHandlers } from './ipc/sync';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
+import { closeAllSharedDbs } from './database/shared-db';
 import { startHttpServer } from './http-server';
+import { stopPoller } from './sync/poller';
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -54,6 +57,7 @@ app.whenReady().then(() => {
   registerContactHandlers();
   registerSettingsHandlers();
   registerHttpHandlers();
+  registerSyncHandlers();
   startHttpServer();
   createWindow();
 
@@ -63,7 +67,10 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  stopPoller();
+  closeAllSharedDbs();
   closeDatabase();
   autoLock.stop();
   if (process.platform !== 'darwin') app.quit();
 });
+

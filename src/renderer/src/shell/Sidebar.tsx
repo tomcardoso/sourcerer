@@ -2,6 +2,7 @@ import { useState, useRef, type KeyboardEvent } from 'react';
 import type { Project, User } from '@shared/types';
 import type { NavTarget } from './AppShell';
 import NewProjectModal from './NewProjectModal';
+import JoinProjectModal from './JoinProjectModal';
 import './Sidebar.css';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
   nav: NavTarget;
   onNav: (nav: NavTarget) => void;
   onProjectCreated: (project: Project) => void;
+  onProjectCreatedShared: (project: Project, payload: string) => void;
+  onProjectJoined: (project: Project) => void;
   onProjectRenamed: (id: string, name: string) => void;
   onProjectDeleted: (id: string) => void;
 }
@@ -20,10 +23,13 @@ export default function Sidebar({
   nav,
   onNav,
   onProjectCreated,
+  onProjectCreatedShared,
+  onProjectJoined,
   onProjectRenamed,
   onProjectDeleted,
 }: Props) {
   const [showNewProject, setShowNewProject] = useState(false);
+  const [showJoinProject, setShowJoinProject] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -140,7 +146,12 @@ export default function Sidebar({
                     onDoubleClick={() => startRename(project)}
                     title="Double-click to rename"
                   >
-                    <span className="sidebar-project-name">{project.name}</span>
+                    <span className="sidebar-project-name">
+                      {project.is_shared === 1 && (
+                        <span className="sidebar-project-shared-dot" title="Shared project" />
+                      )}
+                      {project.name}
+                    </span>
                     <span
                       className="sidebar-project-delete"
                       role="button"
@@ -158,9 +169,14 @@ export default function Sidebar({
             ))}
           </ul>
 
-          <button className="sidebar-new-project" onClick={() => setShowNewProject(true)}>
-            + New project
-          </button>
+          <div className="sidebar-project-actions">
+            <button className="sidebar-new-project" onClick={() => setShowNewProject(true)}>
+              + New project
+            </button>
+            <button className="sidebar-join-project" onClick={() => setShowJoinProject(true)}>
+              Join project
+            </button>
+          </div>
         </div>
 
         {/* Settings at bottom */}
@@ -181,7 +197,21 @@ export default function Sidebar({
             onProjectCreated(project);
             setShowNewProject(false);
           }}
+          onCreatedShared={(project, payload) => {
+            onProjectCreatedShared(project, payload);
+            setShowNewProject(false);
+          }}
           onCancel={() => setShowNewProject(false)}
+        />
+      )}
+
+      {showJoinProject && (
+        <JoinProjectModal
+          onJoined={(project) => {
+            onProjectJoined(project);
+            setShowJoinProject(false);
+          }}
+          onCancel={() => setShowJoinProject(false)}
         />
       )}
     </>

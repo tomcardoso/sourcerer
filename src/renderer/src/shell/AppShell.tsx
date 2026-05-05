@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
+import SetupPayloadModal from './SetupPayloadModal';
 import AllContacts from '../views/AllContacts';
 import ProjectView from '../views/ProjectView';
 import AlertMentions from '../views/AlertMentions';
@@ -17,14 +18,40 @@ export default function AppShell() {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [nav, setNav] = useState<NavTarget>({ view: 'all-contacts' });
+  const [pendingPayload, setPendingPayload] = useState<{
+    project: Project;
+    payload: string;
+  } | null>(null);
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
     window.sourcerer.listProjects().then(setProjects);
   }, []);
 
+  // Listen for sync status events and refresh the affected project
+  useEffect(() => {
+    return window.sourcerer.onSyncStatus(() => {
+      // Refresh the project record so pending_writes badge updates
+      window.sourcerer.listProjects().then(setProjects);
+    });
+  }, []);
+
   function handleProjectCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
+    setNav({ view: 'project', projectId: project.id });
+  }
+
+  function handleProjectCreatedShared(project: Project, payload: string) {
+    setProjects((prev) => [...prev, project]);
+    setNav({ view: 'project', projectId: project.id });
+    setPendingPayload({ project, payload });
+  }
+
+  function handleProjectJoined(project: Project) {
+    setProjects((prev) => {
+      if (prev.find((p) => p.id === project.id)) return prev;
+      return [...prev, project];
+    });
     setNav({ view: 'project', projectId: project.id });
   }
 
@@ -53,15 +80,33 @@ export default function AppShell() {
         nav={nav}
         onNav={setNav}
         onProjectCreated={handleProjectCreated}
+        onProjectCreatedShared={handleProjectCreatedShared}
+        onProjectJoined={handleProjectJoined}
         onProjectRenamed={handleProjectRenamed}
         onProjectDeleted={handleProjectDeleted}
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && <AllContacts />}
         {nav.view === 'alerts' && <AlertMentions />}
-        {nav.view === 'project' && <ProjectView project={activeProject} userEmail={user?.email ?? null} />}
+        {nav.view === 'project' && (
+          <ProjectView
+            project={activeProject}
+            userEmail={user?.email ?? null}
+            onProjectUpdated={(updated) =>
+              setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+            }
+          />
+        )}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
+
+      {pendingPayload && (
+        <SetupPayloadModal
+          projectName={pendingPayload.project.name}
+          payload={pendingPayload.payload}
+          onDone={() => setPendingPayload(null)}
+        />
+      )}
     </div>
   );
 }

@@ -116,3 +116,34 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.modal-field-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.modal-toggle-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.modal-toggle-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.5;
+  padding-left: 24px;
+}

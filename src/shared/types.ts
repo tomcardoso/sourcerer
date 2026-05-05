@@ -168,3 +168,33 @@ export interface ProjectContactRow {
   priority: string | null;
   status: string | null;
 }
+
+export interface CreateSharedProjectResult {
+  project: Project;
+  payload: string;
+}
+
+export interface SyncStatusEvent {
+  projectId: string;
+  success: boolean;
+  lastSyncAt: number;
+  pendingWrites: number;
+  error?: string;
+}
+
+export interface DecodePayloadResult {
+  success: boolean;
+  name?: string;
+  description?: string | null;
+  originalPath?: string;
+  keyHex?: string;
+  error?: string;
+}
+
+export interface ProjectReporter {
+  id: string;
+  project_id: string;
+  name: string;
+  email: string;
+  is_self: 0 | 1;
+}
