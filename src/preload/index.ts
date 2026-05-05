@@ -21,6 +21,7 @@ import type {
   DecodePayloadResult,
   ContactAlertRss,
   ContactAlertMention,
+  Reminder,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -185,6 +186,21 @@ const sourcererApi = {
     ipcRenderer.on('mentions:updated', handler);
     return () => ipcRenderer.removeListener('mentions:updated', handler);
   },
+
+  // Reminders
+  listRemindersForContactProject: (
+    contactId: string,
+    projectId: string,
+  ): Promise<Reminder[]> =>
+    ipcRenderer.invoke('reminders:list-for-contact-project', { contactId, projectId }),
+  listAllReminders: (): Promise<Reminder[]> => ipcRenderer.invoke('reminders:list-all'),
+  createReminder: (data: {
+    contactId: string;
+    projectId: string;
+    dueDate: number;
+    note?: string;
+  }): Promise<Reminder> => ipcRenderer.invoke('reminders:create', data),
+  deleteReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:delete', id),
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

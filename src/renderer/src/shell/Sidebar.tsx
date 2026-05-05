@@ -105,6 +105,13 @@ export default function Sidebar({
               </span>
             )}
           </button>
+          <button
+            className={`sidebar-nav-item ${isActive({ view: 'reminders' }) ? 'active' : ''}`}
+            onClick={() => onNav({ view: 'reminders' })}
+          >
+            <span className="sidebar-nav-icon">◷</span>
+            Reminders
+          </button>
         </nav>
 
         {/* Projects section */}

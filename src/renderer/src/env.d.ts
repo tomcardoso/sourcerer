@@ -18,6 +18,7 @@ import type {
   DecodePayloadResult,
   ContactAlertRss,
   ContactAlertMention,
+  Reminder,
 } from '@shared/types';
 
 declare global {
@@ -131,6 +132,17 @@ declare global {
       getUnseenMentionCount: () => Promise<number>;
       pollAlertsNow: () => Promise<void>;
       onMentionsUpdated: (callback: () => void) => () => void;
+
+      // Reminders
+      listRemindersForContactProject: (contactId: string, projectId: string) => Promise<Reminder[]>;
+      listAllReminders: () => Promise<Reminder[]>;
+      createReminder: (data: {
+        contactId: string;
+        projectId: string;
+        dueDate: number;
+        note?: string;
+      }) => Promise<Reminder>;
+      deleteReminder: (id: string) => Promise<void>;
     };
   }
 }

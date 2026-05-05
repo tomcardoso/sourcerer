@@ -4,6 +4,7 @@ import type {
   ContactDetail as ContactDetailType,
   ContactProject,
   InteractionLogEntry,
+  Reminder,
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
@@ -205,6 +206,105 @@ function ScratchpadSection({
   );
 }
 
+function RemindersSection({
+  contactId,
+  projectId,
+}: {
+  contactId: string;
+  projectId: string;
+}) {
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [dueDate, setDueDate] = useState('');
+  const [note, setNote] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    setReminders([]);
+    window.sourcerer.listRemindersForContactProject(contactId, projectId).then(setReminders);
+  }, [contactId, projectId]);
+
+  async function handleAdd() {
+    if (!dueDate) return;
+    const ts = Math.floor(new Date(dueDate).getTime() / 1000);
+    const r = await window.sourcerer.createReminder({
+      contactId,
+      projectId,
+      dueDate: ts,
+      note: note.trim() || undefined,
+    });
+    setReminders((prev) => [...prev, r].sort((a, b) => a.due_date - b.due_date));
+    setDueDate('');
+    setNote('');
+    setAdding(false);
+  }
+
+  async function handleDelete(id: string) {
+    await window.sourcerer.deleteReminder(id);
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+
+  return (
+    <div className="pt-section">
+      <div className="pt-section-label">Reminders</div>
+      {reminders.length === 0 && !adding && <p className="pt-empty">No reminders set.</p>}
+      {reminders.map((r) => {
+        const overdue = r.due_date < now;
+        return (
+          <div key={r.id} className={`pt-reminder${overdue ? ' pt-reminder-overdue' : ''}`}>
+            <div className="pt-reminder-date">
+              {new Date(r.due_date * 1000).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+              {overdue && <span className="pt-reminder-overdue-label"> · overdue</span>}
+            </div>
+            {r.note && <div className="pt-reminder-note">{r.note}</div>}
+            <button
+              className="pt-reminder-delete"
+              onClick={() => handleDelete(r.id)}
+              title="Remove reminder"
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+      {adding ? (
+        <div className="pt-reminder-form">
+          <input
+            type="date"
+            className="pt-date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            autoFocus
+          />
+          <input
+            className="pt-input"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note (optional)"
+          />
+          <div className="pt-reminder-form-actions">
+            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate}>
+              Add
+            </button>
+            <button className="pt-draft-delete" onClick={() => setAdding(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="pt-new-draft-btn" onClick={() => setAdding(true)}>
+          + Add reminder
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectTab({ contact, statusOptions, priorityOptions, onMembershipUpdated }: Props) {
   const [selectedId, setSelectedId] = useState<string>(() => contact.projects[0]?.id ?? '');
 
@@ -342,6 +442,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         </div>
       </div>
 
+      <RemindersSection contactId={contact.id} projectId={membership.id} />
       <LogSection membership={membership} />
       <ScratchpadSection membership={membership} contactId={contact.id} />
     </div>

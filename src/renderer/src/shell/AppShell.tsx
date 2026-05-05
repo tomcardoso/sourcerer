@@ -5,12 +5,14 @@ import SetupPayloadModal from './SetupPayloadModal';
 import AllContacts from '../views/AllContacts';
 import ProjectView from '../views/ProjectView';
 import AlertMentions from '../views/AlertMentions';
+import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
 import './AppShell.css';
 
 export type NavTarget =
   | { view: 'all-contacts' }
   | { view: 'alerts' }
+  | { view: 'reminders' }
   | { view: 'project'; projectId: string }
   | { view: 'settings' };
 
@@ -99,6 +101,7 @@ export default function AppShell() {
         {nav.view === 'alerts' && (
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
+        {nav.view === 'reminders' && <RemindersView />}
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}

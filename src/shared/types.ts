@@ -207,6 +207,17 @@ export interface ProjectReporter {
   is_self: 0 | 1;
 }
 
+export interface Reminder {
+  id: string;
+  contact_id: string;
+  project_id: string;
+  contact_name: string;
+  project_name: string;
+  due_date: number;
+  note: string | null;
+  created_at: number;
+}
+
 export interface ContactAlertRss {
   id: string;
   contact_id: string;
