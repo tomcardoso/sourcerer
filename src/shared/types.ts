@@ -91,13 +91,19 @@ export interface ContactDetail {
   projects: ContactProject[];
 }
 
+export interface ContactLinkInput {
+  type: string;
+  url: string;
+  label?: string;
+}
+
 export interface CreateContactInput {
   name: string;
   organization?: string;
   notes?: string;
   emails?: string[];
   phones?: string[];
-  linkedinUrl?: string;
+  links?: ContactLinkInput[];
 }
 
 export interface UpdateContactInput {
@@ -107,7 +113,7 @@ export interface UpdateContactInput {
   notes?: string;
   emails?: string[];
   phones?: string[];
-  linkedinUrl?: string;
+  links?: ContactLinkInput[];
 }
 
 export interface UpdateMembershipInput {

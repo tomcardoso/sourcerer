@@ -11,36 +11,54 @@ interface Props {
   onDeleted: (id: string) => void;
 }
 
+const SOCIAL_TYPES = ['linkedin', 'twitter', 'instagram', 'facebook'] as const;
+type SocialType = (typeof SOCIAL_TYPES)[number];
+
+const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
+  linkedin:  { label: 'LinkedIn',    placeholder: 'https://linkedin.com/in/…' },
+  twitter:   { label: 'X / Twitter', placeholder: 'https://x.com/…' },
+  instagram: { label: 'Instagram',   placeholder: 'https://instagram.com/…' },
+  facebook:  { label: 'Facebook',    placeholder: 'https://facebook.com/…' },
+};
+
 function DynamicList({
   values,
   placeholder,
   onChange,
+  onBlurItem,
+  warnings,
 }: {
   values: string[];
   placeholder: string;
   onChange: (vals: string[]) => void;
+  onBlurItem?: (value: string) => void;
+  warnings?: Record<string, string>;
 }) {
   return (
     <div>
       {values.map((v, i) => (
-        <div key={i} className="ac-dynamic-row">
-          <input
-            className="ac-input"
-            value={v}
-            placeholder={placeholder}
-            onChange={(e) => {
-              const next = [...values];
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-          />
-          <button
-            className="ac-remove"
-            type="button"
-            onClick={() => onChange(values.filter((_, j) => j !== i))}
-          >
-            ×
-          </button>
+        <div key={i}>
+          <div className="ac-dynamic-row">
+            <input
+              className="ac-input"
+              value={v}
+              placeholder={placeholder}
+              onChange={(e) => {
+                const next = [...values];
+                next[i] = e.target.value;
+                onChange(next);
+              }}
+              onBlur={() => onBlurItem?.(v.trim())}
+            />
+            <button
+              className="ac-remove"
+              type="button"
+              onClick={() => onChange(values.filter((_, j) => j !== i))}
+            >×</button>
+          </div>
+          {v.trim() && warnings?.[v.trim()] && (
+            <div className="ac-collision-warn">Already on: <strong>{warnings[v.trim()]}</strong></div>
+          )}
         </div>
       ))}
       <button className="ac-add-row" type="button" onClick={() => onChange([...values, ''])}>
@@ -62,7 +80,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editNotes, setEditNotes] = useState('');
   const [editEmails, setEditEmails] = useState<string[]>([]);
   const [editPhones, setEditPhones] = useState<string[]>([]);
-  const [editLinkedin, setEditLinkedin] = useState('');
+  const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
+    linkedin: [], twitter: [], instagram: [], facebook: [],
+  });
+  const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
+  const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
 
   function startEdit() {
     setEditName(contact.name);
@@ -70,15 +92,49 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditNotes(contact.notes ?? '');
     setEditEmails(contact.emails.map((e) => e.email));
     setEditPhones(contact.phones.map((p) => p.phone));
-    const li = contact.links.find((l) => l.type === 'linkedin');
-    setEditLinkedin(li?.url ?? '');
+    const socialsByType = Object.fromEntries(
+      SOCIAL_TYPES.map((type) => [
+        type,
+        contact.links.filter((l) => l.type === type).map((l) => l.url),
+      ]),
+    ) as Record<SocialType, string[]>;
+    setEditSocials(socialsByType);
+    setEmailCollisions({});
+    setPhoneCollisions({});
     setEditing(true);
+  }
+
+  async function checkEmailBlur(value: string) {
+    if (!value) return;
+    const result = await window.sourceror.checkCollision({ emails: [value], phones: [], excludeId: contact.id });
+    setEmailCollisions((prev) => {
+      const next = { ...prev };
+      if (result.email[value]) next[value] = result.email[value]; else delete next[value];
+      return next;
+    });
+  }
+
+  async function checkPhoneBlur(value: string) {
+    if (!value) return;
+    const result = await window.sourceror.checkCollision({ emails: [], phones: [value], excludeId: contact.id });
+    setPhoneCollisions((prev) => {
+      const next = { ...prev };
+      if (result.phone[value]) next[value] = result.phone[value]; else delete next[value];
+      return next;
+    });
+  }
+
+  function setSocial(type: SocialType, values: string[]) {
+    setEditSocials((prev) => ({ ...prev, [type]: values }));
   }
 
   async function handleSave() {
     if (!editName.trim()) return;
     setSaving(true);
     try {
+      const links = SOCIAL_TYPES.flatMap((type) =>
+        editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
+      );
       await window.sourceror.updateContact({
         id: contact.id,
         name: editName,
@@ -86,7 +142,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         notes: editNotes,
         emails: editEmails,
         phones: editPhones,
-        linkedinUrl: editLinkedin,
+        links,
       });
       onRefresh();
       setEditing(false);
@@ -112,8 +168,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     onDeleted(contact.id);
   }
 
-  const linkedinLink = contact.links.find((l) => l.type === 'linkedin');
-  const otherLinks = contact.links.filter((l) => l.type !== 'linkedin');
+  // View mode: group links by type
+  const socialLinks = Object.fromEntries(
+    SOCIAL_TYPES.map((type) => [type, contact.links.filter((l) => l.type === type)]),
+  ) as Record<SocialType, typeof contact.links>;
+  const knownTypes = new Set<string>(SOCIAL_TYPES);
+  const otherLinks = contact.links.filter((l) => !knownTypes.has(l.type));
   const contactProjectIds = new Set(contact.projects.map((p) => p.id));
   const availableProjects = allProjects.filter((p) => !contactProjectIds.has(p.id));
 
@@ -131,42 +191,46 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
         <div className="ac-field">
           <label className="ac-label">Name <span className="ac-required">*</span></label>
-          <input
-            className="ac-input"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            autoFocus
-          />
+          <input className="ac-input" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
         </div>
 
         <div className="ac-field">
           <label className="ac-label">Organization</label>
-          <input
-            className="ac-input"
-            value={editOrg}
-            onChange={(e) => setEditOrg(e.target.value)}
-          />
+          <input className="ac-input" value={editOrg} onChange={(e) => setEditOrg(e.target.value)} />
         </div>
 
         <div className="ac-field">
           <label className="ac-label">Email</label>
-          <DynamicList values={editEmails} placeholder="email@example.com" onChange={setEditEmails} />
+          <DynamicList
+            values={editEmails}
+            placeholder="email@example.com"
+            onChange={setEditEmails}
+            onBlurItem={checkEmailBlur}
+            warnings={emailCollisions}
+          />
         </div>
 
         <div className="ac-field">
           <label className="ac-label">Phone</label>
-          <DynamicList values={editPhones} placeholder="+1 555 000 0000" onChange={setEditPhones} />
-        </div>
-
-        <div className="ac-field">
-          <label className="ac-label">LinkedIn URL</label>
-          <input
-            className="ac-input"
-            value={editLinkedin}
-            onChange={(e) => setEditLinkedin(e.target.value)}
-            placeholder="https://linkedin.com/in/…"
+          <DynamicList
+            values={editPhones}
+            placeholder="+1 555 000 0000"
+            onChange={setEditPhones}
+            onBlurItem={checkPhoneBlur}
+            warnings={phoneCollisions}
           />
         </div>
+
+        {SOCIAL_TYPES.map((type) => (
+          <div key={type} className="ac-field">
+            <label className="ac-label">{SOCIAL_META[type].label}</label>
+            <DynamicList
+              values={editSocials[type]}
+              placeholder={SOCIAL_META[type].placeholder}
+              onChange={(vals) => setSocial(type, vals)}
+            />
+          </div>
+        ))}
 
         <div className="ac-field">
           <label className="ac-label">Notes</label>
@@ -205,14 +269,17 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
       )}
 
-      {linkedinLink && (
-        <div className="detail-section">
-          <div className="detail-section-label">LinkedIn</div>
-          <a href={linkedinLink.url} className="detail-link"
-            onClick={(e) => e.preventDefault()}>
-            {linkedinLink.url}
-          </a>
-        </div>
+      {SOCIAL_TYPES.map((type) =>
+        socialLinks[type].length > 0 ? (
+          <div key={type} className="detail-section">
+            <div className="detail-section-label">{SOCIAL_META[type].label}</div>
+            {socialLinks[type].map((l) => (
+              <a key={l.id} href={l.url} className="detail-link" onClick={(e) => e.preventDefault()}>
+                {l.url}
+              </a>
+            ))}
+          </div>
+        ) : null,
       )}
 
       {otherLinks.length > 0 && (
@@ -275,12 +342,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <div className="detail-confirm-delete">
             <p>Delete {contact.name}? This removes them from all projects and cannot be undone.</p>
             <div className="detail-confirm-actions">
-              <button className="detail-delete-confirm-btn" onClick={handleDelete}>
-                Yes, delete
-              </button>
-              <button className="detail-cancel-btn" onClick={() => setConfirmDelete(false)}>
-                Cancel
-              </button>
+              <button className="detail-delete-confirm-btn" onClick={handleDelete}>Yes, delete</button>
+              <button className="detail-cancel-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
             </div>
           </div>
         ) : (

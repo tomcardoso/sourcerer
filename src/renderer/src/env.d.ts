@@ -45,6 +45,11 @@ declare global {
       updateContact: (data: UpdateContactInput) => Promise<void>;
       deleteContact: (id: string) => Promise<void>;
       listContactsForProject: (projectId: string) => Promise<ProjectContactRow[]>;
+      checkCollision: (data: {
+        emails: string[];
+        phones: string[];
+        excludeId?: string;
+      }) => Promise<{ email: Record<string, string>; phone: Record<string, string> }>;
 
       // Memberships
       addToProject: (contactId: string, projectId: string) => Promise<void>;

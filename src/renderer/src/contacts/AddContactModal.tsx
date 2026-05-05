@@ -7,45 +7,59 @@ interface Props {
   onCancel: () => void;
 }
 
+const SOCIAL_TYPES = ['linkedin', 'twitter', 'instagram', 'facebook'] as const;
+type SocialType = (typeof SOCIAL_TYPES)[number];
+
+const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
+  linkedin:  { label: 'LinkedIn',   placeholder: 'https://linkedin.com/in/…' },
+  twitter:   { label: 'X / Twitter', placeholder: 'https://x.com/…' },
+  instagram: { label: 'Instagram',  placeholder: 'https://instagram.com/…' },
+  facebook:  { label: 'Facebook',   placeholder: 'https://facebook.com/…' },
+};
+
 function DynamicList({
   label,
   values,
   placeholder,
   onChange,
+  onBlurItem,
+  warnings,
 }: {
   label: string;
   values: string[];
   placeholder: string;
   onChange: (values: string[]) => void;
+  onBlurItem?: (value: string) => void;
+  warnings?: Record<string, string>;
 }) {
   return (
     <div className="ac-field">
       <label className="ac-label">{label}</label>
       {values.map((val, i) => (
-        <div key={i} className="ac-dynamic-row">
-          <input
-            className="ac-input"
-            type="text"
-            value={val}
-            placeholder={placeholder}
-            onChange={(e) => onChange(values.map((v, j) => (j === i ? e.target.value : v)))}
-          />
-          {values.length > 1 && (
-            <button
-              type="button"
-              className="ac-remove"
-              onClick={() => onChange(values.filter((_, j) => j !== i))}
-            >
-              ×
-            </button>
+        <div key={i}>
+          <div className="ac-dynamic-row">
+            <input
+              className="ac-input"
+              type="text"
+              value={val}
+              placeholder={placeholder}
+              onChange={(e) => onChange(values.map((v, j) => (j === i ? e.target.value : v)))}
+              onBlur={() => onBlurItem?.(val.trim())}
+            />
+            {values.length > 1 && (
+              <button
+                type="button"
+                className="ac-remove"
+                onClick={() => onChange(values.filter((_, j) => j !== i))}
+              >×</button>
+            )}
+          </div>
+          {val.trim() && warnings?.[val.trim()] && (
+            <div className="ac-collision-warn">Already on: <strong>{warnings[val.trim()]}</strong></div>
           )}
         </div>
       ))}
-      <button
-        type="button"
-        className="ac-add-row"
-        onClick={() => onChange([...values, ''])}
-      >
+      <button type="button" className="ac-add-row" onClick={() => onChange([...values, ''])}>
         + Add {label.toLowerCase()}
       </button>
     </div>
@@ -57,14 +71,48 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [org, setOrg] = useState('');
   const [emails, setEmails] = useState<string[]>(['']);
   const [phones, setPhones] = useState<string[]>(['']);
-  const [linkedin, setLinkedin] = useState('');
+  const [socials, setSocials] = useState<Record<SocialType, string[]>>({
+    linkedin: [''], twitter: [], instagram: [], facebook: [],
+  });
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
+  const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
+
+  async function checkEmailBlur(value: string) {
+    if (!value) return;
+    const result = await window.sourceror.checkCollision({ emails: [value], phones: [] });
+    setEmailCollisions((prev) => {
+      const next = { ...prev };
+      if (result.email[value]) next[value] = result.email[value];
+      else delete next[value];
+      return next;
+    });
+  }
+
+  async function checkPhoneBlur(value: string) {
+    if (!value) return;
+    const result = await window.sourceror.checkCollision({ emails: [], phones: [value] });
+    setPhoneCollisions((prev) => {
+      const next = { ...prev };
+      if (result.phone[value]) next[value] = result.phone[value];
+      else delete next[value];
+      return next;
+    });
+  }
+
+  function setSocial(type: SocialType, values: string[]) {
+    setSocials((prev) => ({ ...prev, [type]: values }));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
+
+    const links = SOCIAL_TYPES.flatMap((type) =>
+      socials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
+    );
 
     const data: CreateContactInput = {
       name: name.trim(),
@@ -72,7 +120,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       notes: notes.trim() || undefined,
       emails: emails.filter((e) => e.trim()),
       phones: phones.filter((p) => p.trim()),
-      linkedinUrl: linkedin.trim() || undefined,
+      links,
     };
 
     const contact = await window.sourceror.createContact(data);
@@ -80,8 +128,11 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="ac-card" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="ac-card" onMouseDown={(e) => e.stopPropagation()}>
         <div className="ac-header">
           <h2 className="ac-title">Add Contact</h2>
           <button className="ac-close" onClick={onCancel}>×</button>
@@ -117,21 +168,32 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
-          <DynamicList label="Email" values={emails} placeholder="email@example.com" onChange={setEmails} />
-          <DynamicList label="Phone" values={phones} placeholder="+1 555 000 0000" onChange={setPhones} />
+          <DynamicList
+            label="Email"
+            values={emails}
+            placeholder="email@example.com"
+            onChange={setEmails}
+            onBlurItem={checkEmailBlur}
+            warnings={emailCollisions}
+          />
+          <DynamicList
+            label="Phone"
+            values={phones}
+            placeholder="+1 555 000 0000"
+            onChange={setPhones}
+            onBlurItem={checkPhoneBlur}
+            warnings={phoneCollisions}
+          />
 
-          <div className="ac-field">
-            <label htmlFor="ac-linkedin" className="ac-label">LinkedIn URL</label>
-            <input
-              id="ac-linkedin"
-              className="ac-input"
-              type="url"
-              value={linkedin}
-              onChange={(e) => setLinkedin(e.target.value)}
-              placeholder="https://linkedin.com/in/..."
-              disabled={submitting}
+          {SOCIAL_TYPES.map((type) => (
+            <DynamicList
+              key={type}
+              label={SOCIAL_META[type].label}
+              values={socials[type]}
+              placeholder={SOCIAL_META[type].placeholder}
+              onChange={(vals) => setSocial(type, vals)}
             />
-          </div>
+          ))}
 
           <div className="ac-field">
             <label htmlFor="ac-notes" className="ac-label">Notes</label>

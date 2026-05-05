@@ -17,6 +17,7 @@ import type {
   StatusOption,
   PriorityOption,
 } from '@shared/types';
+// ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
 const sourcerorApi = {
   // Auth
@@ -53,6 +54,12 @@ const sourcerorApi = {
   deleteContact: (id: string): Promise<void> => ipcRenderer.invoke('contacts:delete', id),
   listContactsForProject: (projectId: string): Promise<ProjectContactRow[]> =>
     ipcRenderer.invoke('contacts:list-for-project', projectId),
+  checkCollision: (data: {
+    emails: string[];
+    phones: string[];
+    excludeId?: string;
+  }): Promise<{ email: Record<string, string>; phone: Record<string, string> }> =>
+    ipcRenderer.invoke('contacts:check-collision', data),
 
   // Project memberships
   addToProject: (contactId: string, projectId: string): Promise<void> =>

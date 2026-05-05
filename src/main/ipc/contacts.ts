@@ -11,6 +11,7 @@ import type {
   ContactPhone,
   ContactLink,
   ContactProject,
+  ContactLinkInput,
   ProjectContactRow,
   InteractionLogEntry,
   ScratchpadDraft,
@@ -106,12 +107,12 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, phone, i);
       });
 
-      const linkedinUrl = data.linkedinUrl?.trim();
-      if (linkedinUrl) {
+      const links = (data.links ?? []).filter((l) => l.url.trim());
+      links.forEach((link, i) => {
         db.prepare(
-          'INSERT INTO contact_links (id, contact_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)',
-        ).run(uuidv4(), id, 'linkedin', linkedinUrl, 0);
-      }
+          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, link.type, link.label ?? null, link.url.trim(), i);
+      });
     });
 
     insert();
@@ -194,13 +195,13 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), data.id, phone, i);
       });
 
-      db.prepare("DELETE FROM contact_links WHERE contact_id = ? AND type = 'linkedin'").run(data.id);
-      const linkedinUrl = data.linkedinUrl?.trim();
-      if (linkedinUrl) {
+      db.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
+      const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim());
+      links.forEach((link: ContactLinkInput, i: number) => {
         db.prepare(
-          'INSERT INTO contact_links (id, contact_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, 'linkedin', linkedinUrl, 0);
-      }
+          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i);
+      });
     });
     run();
   });
@@ -303,4 +304,54 @@ export function registerContactHandlers(): void {
       .prepare('SELECT * FROM priority_options ORDER BY sort_order ASC')
       .all() as PriorityOption[];
   });
+
+  ipcMain.handle(
+    'contacts:check-collision',
+    (
+      _,
+      { emails, phones, excludeId }: { emails: string[]; phones: string[]; excludeId?: string },
+    ): { email: Record<string, string>; phone: Record<string, string> } => {
+      const db = getDatabase();
+      const result: { email: Record<string, string>; phone: Record<string, string> } = {
+        email: {},
+        phone: {},
+      };
+
+      for (const email of emails.filter(Boolean)) {
+        const row = excludeId
+          ? (db
+              .prepare(
+                `SELECT c.name FROM contact_emails ce JOIN contacts c ON c.id = ce.contact_id
+                 WHERE ce.email = ? AND ce.contact_id != ? LIMIT 1`,
+              )
+              .get(email, excludeId) as { name: string } | undefined)
+          : (db
+              .prepare(
+                `SELECT c.name FROM contact_emails ce JOIN contacts c ON c.id = ce.contact_id
+                 WHERE ce.email = ? LIMIT 1`,
+              )
+              .get(email) as { name: string } | undefined);
+        if (row) result.email[email] = row.name;
+      }
+
+      for (const phone of phones.filter(Boolean)) {
+        const row = excludeId
+          ? (db
+              .prepare(
+                `SELECT c.name FROM contact_phones cp JOIN contacts c ON c.id = cp.contact_id
+                 WHERE cp.phone = ? AND cp.contact_id != ? LIMIT 1`,
+              )
+              .get(phone, excludeId) as { name: string } | undefined)
+          : (db
+              .prepare(
+                `SELECT c.name FROM contact_phones cp JOIN contacts c ON c.id = cp.contact_id
+                 WHERE cp.phone = ? LIMIT 1`,
+              )
+              .get(phone) as { name: string } | undefined);
+        if (row) result.phone[phone] = row.name;
+      }
+
+      return result;
+    },
+  );
 }

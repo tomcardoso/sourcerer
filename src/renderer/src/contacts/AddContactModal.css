@@ -200,3 +200,10 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.ac-collision-warn {
+  font-size: 11px;
+  color: #b45309;
+  margin-top: 3px;
+  margin-bottom: 4px;
+}
