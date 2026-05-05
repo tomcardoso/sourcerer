@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3-multiple-ciphers';
+import { is } from '@electron-toolkit/utils';
 import { LOCAL_SCHEMA_SQL } from './schema';
 import { seedDefaults } from './seeds';
+import { seedDevData } from './dev-seeds';
 
 let activeDb: Database.Database | null = null;
 
@@ -39,6 +41,16 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
   seedDefaults(db);
   activeDb = db;
   return db;
+}
+
+/** Called once per unlock after the user row is guaranteed to exist. */
+export function maybeRunDevSeeds(db: Database.Database): void {
+  if (!is.dev) return;
+  const u = db.prepare('SELECT first_name, last_name, email FROM users WHERE id = 1').get() as
+    | { first_name: string; last_name: string; email: string }
+    | undefined;
+  if (!u) return;
+  seedDevData(db, u.email, `${u.first_name} ${u.last_name}`.trim());
 }
 
 /** Subsequent unlocks: open existing encrypted DB + set active connection. */

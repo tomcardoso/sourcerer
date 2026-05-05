@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import { getPaths, deriveKey } from '../utils';
-import { unlockDatabase } from '../database';
+import { unlockDatabase, maybeRunDevSeeds } from '../database';
 import { autoLock } from '../auto-lock';
 import type { UnlockResult } from '@shared/types';
 
@@ -27,6 +27,8 @@ export function registerUnlockHandlers(): void {
       const salt = await fs.readFile(saltPath);
       const keyHex = await deriveKey(password, salt);
       const db = unlockDatabase(dbPath, keyHex);
+
+      maybeRunDevSeeds(db);
 
       const savedUser = db
         .prepare('SELECT idle_timeout_seconds FROM users WHERE id = 1')
