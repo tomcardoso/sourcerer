@@ -1,4 +1,4 @@
-# Sourceror
+# Sourcerer
 ## Technical Architecture Document
 _Version 1.1 · Draft for review_
 
@@ -6,7 +6,7 @@ _Version 1.1 · Draft for review_
 
 ## 1. Overview
 
-This document specifies the technical implementation of Sourceror. It covers the five core engineering areas: encryption and key derivation, database schema, sync and conflict resolution, the browser extension API, and RSS polling. It is intended to be read alongside the PRD and is the primary reference for implementation decisions.
+This document specifies the technical implementation of Sourcerer. It covers the five core engineering areas: encryption and key derivation, database schema, sync and conflict resolution, the browser extension API, and RSS polling. It is intended to be read alongside the PRD and is the primary reference for implementation decisions.
 
 ---
 
@@ -14,19 +14,19 @@ This document specifies the technical implementation of Sourceror. It covers the
 
 ### 2.1 Local Database
 
-Sourceror's local database is a SQLite file encrypted with **SQLCipher**. The encryption key is never stored on disk — it is derived fresh from the user's master password each time the app unlocks.
+Sourcerer's local database is a SQLite file encrypted with **SQLCipher**. The encryption key is never stored on disk — it is derived fresh from the user's master password each time the app unlocks.
 
 **Key derivation:**
 
 - Algorithm: **Argon2id**
 - Parameters (minimum): `m=65536` (64 MB memory), `t=3` (iterations), `p=1` (parallelism)
-- Salt: 16 bytes of cryptographically random data, generated at first launch and stored in a small plaintext bootstrap file alongside the database (e.g., `sourceror.salt`). The salt is not secret, but must be preserved — losing it means the database cannot be unlocked even with the correct password.
+- Salt: 16 bytes of cryptographically random data, generated at first launch and stored in a small plaintext bootstrap file alongside the database (e.g., `sourcerer.salt`). The salt is not secret, but must be preserved — losing it means the database cannot be unlocked even with the correct password.
 - Output: 32-byte key, passed directly to SQLCipher as the database encryption key via `PRAGMA key`.
 
 **First launch flow:**
 
 1. User sets master password.
-2. App generates random salt, writes it to `sourceror.salt`.
+2. App generates random salt, writes it to `sourcerer.salt`.
 3. App derives key using Argon2id(password, salt).
 4. App creates and opens the SQLite database with this key via `PRAGMA key = '...'`.
 5. App writes user profile (name, email) to the database.
@@ -34,7 +34,7 @@ Sourceror's local database is a SQLite file encrypted with **SQLCipher**. The en
 **Subsequent unlock flow:**
 
 1. User enters master password.
-2. App reads salt from `sourceror.salt`.
+2. App reads salt from `sourcerer.salt`.
 3. App derives key using Argon2id(password, salt).
 4. App attempts to open the database with the derived key.
 5. If SQLCipher accepts the key, the app proceeds. If not, the password was wrong — show an error.
@@ -362,10 +362,10 @@ The server must only bind to `127.0.0.1` (loopback), never `0.0.0.0`.
 To prevent any webpage from making requests to the local server, all extension requests require a session token obtained through an explicit user-approval flow:
 
 1. On first connection attempt, the extension calls `POST /request-access`.
-2. The app displays a modal: **"The Sourceror browser extension is requesting access. Approve?"** The user must click Approve in the app.
+2. The app displays a modal: **"The Sourcerer browser extension is requesting access. Approve?"** The user must click Approve in the app.
 3. On approval, the app generates a random 32-byte session token, stores it in memory, and returns it to the extension.
 4. The extension stores the token in browser extension storage (isolated from webpage access).
-5. All subsequent requests include the token in an `X-Sourceror-Token` header. Requests without a valid token receive `401`.
+5. All subsequent requests include the token in an `X-Sourcerer-Token` header. Requests without a valid token receive `401`.
 6. The token is regenerated each time the app launches. The extension re-requests approval if its stored token is rejected.
 
 This flow ensures that no webpage JavaScript can obtain a valid token — only the extension can initiate the approval request, and the user must explicitly confirm it in the app UI.
@@ -375,7 +375,7 @@ This flow ensures that no webpage JavaScript can obtain a valid token — only t
 The local server runs while the app is open, but requests are only processed if the app is unlocked:
 
 - All endpoints except `/status` return `403 Locked` when the app is locked.
-- The extension displays: "Sourceror is locked — unlock the app and try again."
+- The extension displays: "Sourcerer is locked — unlock the app and try again."
 
 ### 5.4 API Endpoints
 
@@ -472,7 +472,7 @@ Authentication uses a persistent calendar token (distinct from the session token
 ### 5.5 Extension Behaviour
 
 - On popup open, the extension calls `GET /status` to check app state.
-- If not yet approved, it calls `POST /request-access` and shows "Waiting for approval in Sourceror…", polling `GET /access-status`.
+- If not yet approved, it calls `POST /request-access` and shows "Waiting for approval in Sourcerer…", polling `GET /access-status`.
 - If running and unlocked, calls `GET /contacts` and renders a searchable, project-filterable list.
 - On clicking Archive, captures a screenshot of the current tab and calls `POST /archive`.
 - The extension popup includes a note: "For full-page HTML archiving, use the [Internet Archive extension](https://chrome.google.com/webstore/detail/wayback-machine/)."
@@ -484,7 +484,7 @@ Authentication uses a persistent calendar token (distinct from the session token
 
 ### 6.1 Approach
 
-Rather than exporting individual .ics files, Sourceror serves a live iCalendar feed from its localhost server. The reporter subscribes to this URL once in their calendar app; from then on the calendar polls it automatically and stays current as reminders are added or changed.
+Rather than exporting individual .ics files, Sourcerer serves a live iCalendar feed from its localhost server. The reporter subscribes to this URL once in their calendar app; from then on the calendar polls it automatically and stays current as reminders are added or changed.
 
 **Subscription URL:** `http://127.0.0.1:27371/calendar/reminders.ics?token={calendar_token}`
 
@@ -492,7 +492,7 @@ The calendar token is generated once at first launch and stored in the local dat
 
 This works with Apple Calendar (Mac), Outlook (Windows), and Google Calendar (via "Other calendars → From URL"). It is calendar-app-agnostic.
 
-**Caveat:** The feed is only available while Sourceror is running. If the app is closed, the calendar cannot reach the feed and will not pick up new reminders until the app is open again. Existing reminders already in the calendar are not affected.
+**Caveat:** The feed is only available while Sourcerer is running. If the app is closed, the calendar cannot reach the feed and will not pick up new reminders until the app is open again. Existing reminders already in the calendar are not affected.
 
 ### 6.2 Feed Generation
 

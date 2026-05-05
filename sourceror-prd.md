@@ -1,4 +1,4 @@
-# Sourceror
+# Sourcerer
 ## Product Requirements Document
 _Version 1.0 · Draft for review_
 
@@ -6,7 +6,7 @@ _Version 1.0 · Draft for review_
 
 ## 1. Purpose & Background
 
-Sourceror is a desktop application for investigative journalists to manage sources and contacts across reporting projects. It replaces ad-hoc spreadsheets with a structured, encrypted, and collaboration-capable tool that runs locally on Windows and Mac.
+Sourcerer is a desktop application for investigative journalists to manage sources and contacts across reporting projects. It replaces ad-hoc spreadsheets with a structured, encrypted, and collaboration-capable tool that runs locally on Windows and Mac.
 
 The primary user is a reporter at a major newspaper managing dozens to hundreds of sources per investigation — tracking contact details, outreach history, current relationship status, and project membership — often in collaboration with one or two colleagues.
 
@@ -196,11 +196,11 @@ The Wayback Machine save will fail silently for pages behind a login (e.g., Link
 
 ### 6.5 Calendar Reminders (Live Subscription Feed)
 
-Sourceror serves a live iCalendar feed from its localhost server at `http://127.0.0.1:27371/calendar/reminders.ics`. The reporter subscribes to this URL once in their calendar app of choice; from then on the calendar stays current automatically as reminders are added or changed in Sourceror — no re-importing required.
+Sourcerer serves a live iCalendar feed from its localhost server at `http://127.0.0.1:27371/calendar/reminders.ics`. The reporter subscribes to this URL once in their calendar app of choice; from then on the calendar stays current automatically as reminders are added or changed in Sourcerer — no re-importing required.
 
 Supported calendar apps: Apple Calendar (Mac), Outlook (Windows), Google Calendar (via "Other calendars → From URL"). On first visit to the Reminders view, the app shows setup instructions for each.
 
-Each reminder includes: contact name, project name, due date, and an optional note. The feed is only available while Sourceror is running — if the app is closed, the calendar cannot fetch updates, but existing reminders are unaffected.
+Each reminder includes: contact name, project name, due date, and an optional note. The feed is only available while Sourcerer is running — if the app is closed, the calendar cannot fetch updates, but existing reminders are unaffected.
 
 The app also maintains an internal reminders list (upcoming follow-ups, sorted by date) so the reporter can review pending outreach within the app without needing to open their calendar.
 
@@ -248,9 +248,9 @@ All reporters on a shared project see all contacts in that project. Contacts ass
 
 ### 7.5 Shared File Recovery
 
-If the shared file is moved, corrupted, or deleted, Sourceror detects this on the next poll cycle (or when the user navigates to the project) and displays a recovery banner with two options:
+If the shared file is moved, corrupted, or deleted, Sourcerer detects this on the next poll cycle (or when the user navigates to the project) and displays a recovery banner with two options:
 
-**Relocate:** If the file has simply been moved, the reporter can open a file picker to point Sourceror at its new location. The app updates the stored path and resumes normal sync.
+**Relocate:** If the file has simply been moved, the reporter can open a file picker to point Sourcerer at its new location. The app updates the stored path and resumes normal sync.
 
 **Regenerate:** If the file is lost or corrupted, any collaborator can recreate it from their local data. The app creates a new encrypted shared file, exports all local project data into it, and generates a new setup link/QR code. The reporter must share this new link with all collaborators so they can re-point their instances to the new file.
 
