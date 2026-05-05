@@ -17,6 +17,7 @@
     "@electron-toolkit/utils": "^3.0.0",
     "argon2": "^0.41.1",
     "better-sqlite3-multiple-ciphers": "^12.9.0",
+    "libphonenumber-js": "^1.12.42",
     "qrcode": "^1.5.4",
     "rss-parser": "^3.13.0",
     "uuid": "^10.0.0",

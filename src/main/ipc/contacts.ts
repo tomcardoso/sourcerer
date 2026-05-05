@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
+import { normalizeEmail, normalizePhone } from '../sanitize';
 import type {
   ContactListItem,
   ContactDetail,
@@ -113,14 +114,14 @@ export function registerContactHandlers(): void {
         'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
       ).run(id, data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, now);
 
-      const emails = (data.emails ?? []).map((e) => e.trim()).filter(Boolean);
+      const emails = (data.emails ?? []).map(normalizeEmail).filter(Boolean);
       emails.forEach((email, i) => {
         db.prepare(
           'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
         ).run(uuidv4(), id, email, i);
       });
 
-      const phones = (data.phones ?? []).map((p) => p.trim()).filter(Boolean);
+      const phones = (data.phones ?? []).map(normalizePhone).filter(Boolean);
       phones.forEach((phone, i) => {
         db.prepare(
           'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
@@ -204,7 +205,7 @@ export function registerContactHandlers(): void {
       ).run(data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, data.id);
 
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
-      const emails = (data.emails ?? []).map((e) => e.trim()).filter(Boolean);
+      const emails = (data.emails ?? []).map(normalizeEmail).filter(Boolean);
       emails.forEach((email, i) => {
         db.prepare(
           'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
@@ -212,7 +213,7 @@ export function registerContactHandlers(): void {
       });
 
       db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
-      const phones = (data.phones ?? []).map((p) => p.trim()).filter(Boolean);
+      const phones = (data.phones ?? []).map(normalizePhone).filter(Boolean);
       phones.forEach((phone, i) => {
         db.prepare(
           'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
@@ -341,7 +342,8 @@ export function registerContactHandlers(): void {
         phone: {},
       };
 
-      for (const email of emails.filter(Boolean)) {
+      for (const rawEmail of emails.filter(Boolean)) {
+        const email = normalizeEmail(rawEmail);
         const row = excludeId
           ? (db
               .prepare(
@@ -355,10 +357,11 @@ export function registerContactHandlers(): void {
                  WHERE ce.email = ? LIMIT 1`,
               )
               .get(email) as { name: string } | undefined);
-        if (row) result.email[email] = row.name;
+        if (row) result.email[rawEmail] = row.name;
       }
 
-      for (const phone of phones.filter(Boolean)) {
+      for (const rawPhone of phones.filter(Boolean)) {
+        const phone = normalizePhone(rawPhone);
         const row = excludeId
           ? (db
               .prepare(
@@ -372,7 +375,7 @@ export function registerContactHandlers(): void {
                  WHERE cp.phone = ? LIMIT 1`,
               )
               .get(phone) as { name: string } | undefined);
-        if (row) result.phone[phone] = row.name;
+        if (row) result.phone[rawPhone] = row.name;
       }
 
       return result;
