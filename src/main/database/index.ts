@@ -31,6 +31,13 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     // Column already exists or table not yet created — both are fine
   }
 
+  // Migrate existing databases: add phone_country if missing
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN phone_country TEXT NOT NULL DEFAULT 'US'");
+  } catch {
+    // Column already exists or table not yet created — both are fine
+  }
+
   // Migrate link type 'twitter' → 'x' to match architecture spec
   try {
     db.exec("UPDATE contact_links SET type = 'x' WHERE type = 'twitter'");

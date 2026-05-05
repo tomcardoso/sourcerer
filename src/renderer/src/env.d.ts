@@ -97,6 +97,7 @@ declare global {
 
       // Settings
       updateUser: (data: { firstName: string; lastName: string; email: string }) => Promise<User>;
+      setPhoneCountry: (country: string) => Promise<User>;
       getCalendarUrl: () => Promise<string>;
       regenerateCalendarToken: () => Promise<User>;
       getIdleTimeout: () => Promise<number>;

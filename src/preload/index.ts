@@ -122,6 +122,8 @@ const sourcererApi = {
   // Settings
   updateUser: (data: { firstName: string; lastName: string; email: string }): Promise<User> =>
     ipcRenderer.invoke('users:update', data),
+  setPhoneCountry: (country: string): Promise<User> =>
+    ipcRenderer.invoke('settings:set-phone-country', country),
   getCalendarUrl: (): Promise<string> => ipcRenderer.invoke('settings:get-calendar-url'),
   regenerateCalendarToken: (): Promise<User> => ipcRenderer.invoke('settings:regenerate-calendar-token'),
   getIdleTimeout: (): Promise<number> => ipcRenderer.invoke('settings:get-idle-timeout'),

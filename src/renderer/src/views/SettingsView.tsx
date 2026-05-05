@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import type { User, StatusOption, PriorityOption } from '@shared/types';
 import './View.css';
 import './SettingsView.css';
@@ -142,13 +143,26 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
+  const [phoneCountry, setPhoneCountry] = useState<string>('US');
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
+
+  const countryOptions = useMemo(() => {
+    const names = new Intl.DisplayNames([navigator.language], { type: 'region' });
+    return getCountries()
+      .map((code) => ({
+        code,
+        name: names.of(code) ?? code,
+        calling: getCountryCallingCode(code),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
 
   useEffect(() => {
     if (user) {
       setFirstName(user.first_name);
       setLastName(user.last_name);
       setEmail(user.email);
+      setPhoneCountry(user.phone_country ?? 'US');
     }
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
@@ -177,6 +191,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   async function handleTimeoutChange(seconds: number) {
     setIdleTimeout(seconds);
     await window.sourcerer.setIdleTimeout(seconds);
+  }
+
+  async function handlePhoneCountryChange(country: string) {
+    setPhoneCountry(country);
+    const updated = await window.sourcerer.setPhoneCountry(country);
+    onUserUpdated(updated);
   }
 
   // Status option handlers
@@ -302,6 +322,28 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             >
               {TIMEOUT_OPTIONS.map((o) => (
                 <option key={o.seconds} value={o.seconds}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Phone formatting */}
+        <div className="sv-section">
+          <div className="view-section-title">Phone Numbers</div>
+          <p className="sv-hint">
+            Numbers entered without a country code (e.g. 07911 123456) will be interpreted as belonging to this country and stored in E.164 format.
+          </p>
+          <div className="sv-field">
+            <label className="sv-label">Default country</label>
+            <select
+              className="sv-select"
+              value={phoneCountry}
+              onChange={(e) => handlePhoneCountryChange(e.target.value)}
+            >
+              {countryOptions.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name} (+{c.calling})
+                </option>
               ))}
             </select>
           </div>

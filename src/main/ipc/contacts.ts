@@ -108,6 +108,7 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const id = uuidv4();
     const now = Math.floor(Date.now() / 1000);
+    const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
 
     const insert = db.transaction(() => {
       db.prepare(
@@ -121,7 +122,7 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, email, i);
       });
 
-      const phones = (data.phones ?? []).map(normalizePhone).filter(Boolean);
+      const phones = (data.phones ?? []).map((p) => normalizePhone(p, phone_country)).filter(Boolean);
       phones.forEach((phone, i) => {
         db.prepare(
           'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
@@ -199,6 +200,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:update', (_, data: UpdateContactInput): void => {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
+    const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
     const run = db.transaction(() => {
       db.prepare(
         'UPDATE contacts SET name = ?, organization = ?, notes = ?, updated_at = ? WHERE id = ?',
@@ -213,7 +215,7 @@ export function registerContactHandlers(): void {
       });
 
       db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
-      const phones = (data.phones ?? []).map(normalizePhone).filter(Boolean);
+      const phones = (data.phones ?? []).map((p) => normalizePhone(p, phone_country)).filter(Boolean);
       phones.forEach((phone, i) => {
         db.prepare(
           'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
@@ -337,6 +339,7 @@ export function registerContactHandlers(): void {
       { emails, phones, excludeId }: { emails: string[]; phones: string[]; excludeId?: string },
     ): { email: Record<string, string>; phone: Record<string, string> } => {
       const db = getDatabase();
+      const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
       const result: { email: Record<string, string>; phone: Record<string, string> } = {
         email: {},
         phone: {},
@@ -361,7 +364,7 @@ export function registerContactHandlers(): void {
       }
 
       for (const rawPhone of phones.filter(Boolean)) {
-        const phone = normalizePhone(rawPhone);
+        const phone = normalizePhone(rawPhone, phone_country);
         const row = excludeId
           ? (db
               .prepare(

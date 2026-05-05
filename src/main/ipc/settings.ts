@@ -128,6 +128,12 @@ export function registerSettingsHandlers(): void {
     },
   );
 
+  ipcMain.handle('settings:set-phone-country', (_, country: string): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET phone_country = ? WHERE id = 1').run(country);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
   ipcMain.handle('settings:get-calendar-url', (): string => {
     const db = getDatabase();
     const { calendar_token } = db.prepare('SELECT calendar_token FROM users WHERE id = 1').get() as { calendar_token: string };

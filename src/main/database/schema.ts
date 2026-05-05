@@ -9,7 +9,8 @@ export const LOCAL_SCHEMA_SQL = `
     email                 TEXT    NOT NULL,
     created_at            INTEGER NOT NULL,
     calendar_token        TEXT    NOT NULL,
-    idle_timeout_seconds  INTEGER NOT NULL DEFAULT 900
+    idle_timeout_seconds  INTEGER NOT NULL DEFAULT 900,
+    phone_country         TEXT    NOT NULL DEFAULT 'US'
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
