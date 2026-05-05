@@ -290,3 +290,7 @@
   justify-content: center;
   line-height: 1;
 }
+
+.sidebar-overdue-badge {
+  background: #d97706;
+}

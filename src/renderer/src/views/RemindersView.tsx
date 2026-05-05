@@ -13,7 +13,11 @@ function relDays(ts: number): number {
   return Math.ceil((ts - now) / 86400);
 }
 
-export default function RemindersView() {
+interface Props {
+  onCountChange?: (overdue: number) => void;
+}
+
+export default function RemindersView({ onCountChange }: Props) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [calendarUrl, setCalendarUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -21,7 +25,9 @@ export default function RemindersView() {
   const refresh = useCallback(async () => {
     const data = await window.sourcerer.listAllReminders();
     setReminders(data);
-  }, []);
+    const now = Math.floor(Date.now() / 1000);
+    onCountChange?.(data.filter((r) => r.due_date < now).length);
+  }, [onCountChange]);
 
   useEffect(() => {
     refresh();
@@ -30,7 +36,12 @@ export default function RemindersView() {
 
   async function handleDelete(id: string) {
     await window.sourcerer.deleteReminder(id);
-    setReminders((prev) => prev.filter((r) => r.id !== id));
+    setReminders((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      const now = Math.floor(Date.now() / 1000);
+      onCountChange?.(next.filter((r) => r.due_date < now).length);
+      return next;
+    });
   }
 
   async function handleCopy() {

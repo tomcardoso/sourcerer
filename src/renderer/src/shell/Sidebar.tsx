@@ -11,6 +11,7 @@ interface Props {
   nav: NavTarget;
   onNav: (nav: NavTarget) => void;
   unseenMentions: number;
+  overdueReminders: number;
   onProjectCreated: (project: Project) => void;
   onProjectCreatedShared: (project: Project, payload: string) => void;
   onProjectJoined: (project: Project) => void;
@@ -24,6 +25,7 @@ export default function Sidebar({
   nav,
   onNav,
   unseenMentions,
+  overdueReminders,
   onProjectCreated,
   onProjectCreatedShared,
   onProjectJoined,
@@ -111,6 +113,11 @@ export default function Sidebar({
           >
             <span className="sidebar-nav-icon">◷</span>
             Reminders
+            {overdueReminders > 0 && (
+              <span className="sidebar-unseen-badge sidebar-overdue-badge">
+                {overdueReminders > 99 ? '99+' : overdueReminders}
+              </span>
+            )}
           </button>
         </nav>
 

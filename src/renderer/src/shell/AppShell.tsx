@@ -25,12 +25,20 @@ export default function AppShell() {
     payload: string;
   } | null>(null);
   const [unseenMentions, setUnseenMentions] = useState(0);
+  const [overdueReminders, setOverdueReminders] = useState(0);
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
     window.sourcerer.listProjects().then(setProjects);
     window.sourcerer.getUnseenMentionCount().then(setUnseenMentions);
+    refreshOverdue();
   }, []);
+
+  async function refreshOverdue() {
+    const now = Math.floor(Date.now() / 1000);
+    const all = await window.sourcerer.listAllReminders();
+    setOverdueReminders(all.filter((r) => r.due_date < now).length);
+  }
 
   // Refresh unseen count when new mentions arrive
   useEffect(() => {
@@ -90,6 +98,7 @@ export default function AppShell() {
         nav={nav}
         onNav={setNav}
         unseenMentions={unseenMentions}
+        overdueReminders={overdueReminders}
         onProjectCreated={handleProjectCreated}
         onProjectCreatedShared={handleProjectCreatedShared}
         onProjectJoined={handleProjectJoined}
@@ -101,7 +110,7 @@ export default function AppShell() {
         {nav.view === 'alerts' && (
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
-        {nav.view === 'reminders' && <RemindersView />}
+        {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} />}
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}

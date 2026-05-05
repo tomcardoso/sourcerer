@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project, ProjectContactRow, StatusOption, PriorityOption } from '@shared/types';
 import ContactDetail from '../contacts/ContactDetail';
+import SetupPayloadModal from '../shell/SetupPayloadModal';
 import ColumnHeader, {
   TextFilter,
   ToggleFilter,
@@ -88,6 +89,7 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
@@ -171,10 +173,7 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
     const projects = await window.sourcerer.listProjects();
     const updated = projects.find((p) => p.id === project.id);
     if (updated) onProjectUpdated(updated);
-    alert(
-      'Shared file regenerated. Share the new setup link with your collaborators.\n\nSetup link:\n' +
-        result.payload,
-    );
+    setRegenPayload({ projectName: project.name, payload: result.payload });
   }
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
@@ -312,6 +311,7 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
   const sd = (key: SortKey) => (sort.key === key ? sort.dir : null);
 
   return (
+    <>
     <div className="view">
       <div className="view-header">
         <div>
@@ -652,5 +652,14 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
         )}
       </div>
     </div>
+
+    {regenPayload && (
+      <SetupPayloadModal
+        projectName={regenPayload.projectName}
+        payload={regenPayload.payload}
+        onDone={() => setRegenPayload(null)}
+      />
+    )}
+  </>
   );
 }
