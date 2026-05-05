@@ -24,7 +24,14 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
     const rows = getDatabase()
       .prepare(
-        `SELECT c.id, c.name, c.organization, pm.project_id, p.name AS project_name
+        `SELECT c.id, c.name, c.organization, c.notes,
+                pm.project_id, p.name AS project_name,
+                EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
+                EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+                (SELECT MAX(ile.created_at)
+                 FROM interaction_log_entries ile
+                 JOIN project_memberships pm2 ON pm2.id = ile.membership_id
+                 WHERE pm2.contact_id = c.id) AS date_last_contacted
          FROM contacts c
          LEFT JOIN project_memberships pm ON pm.contact_id = c.id
          LEFT JOIN projects p ON p.id = pm.project_id
@@ -34,6 +41,10 @@ export function registerContactHandlers(): void {
       id: string;
       name: string;
       organization: string | null;
+      notes: string | null;
+      has_email: 0 | 1;
+      has_phone: 0 | 1;
+      date_last_contacted: number | null;
       project_id: string | null;
       project_name: string | null;
     }>;
@@ -41,7 +52,16 @@ export function registerContactHandlers(): void {
     const map = new Map<string, ContactListItem>();
     for (const row of rows) {
       if (!map.has(row.id)) {
-        map.set(row.id, { id: row.id, name: row.name, organization: row.organization, projects: [] });
+        map.set(row.id, {
+          id: row.id,
+          name: row.name,
+          organization: row.organization,
+          notes: row.notes,
+          has_email: row.has_email,
+          has_phone: row.has_phone,
+          date_last_contacted: row.date_last_contacted,
+          projects: [],
+        });
       }
       if (row.project_id) {
         map.get(row.id)!.projects.push({ id: row.project_id, name: row.project_name! });
@@ -161,9 +181,12 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list-for-project', (_, projectId: string): ProjectContactRow[] => {
     return getDatabase()
       .prepare(
-        `SELECT c.id, c.name, c.organization,
+        `SELECT c.id, c.name, c.organization, c.notes,
                 pm.id AS membership_id, pm.reporter_name, pm.reporter_email,
-                pm.theme, pm.priority, pm.status
+                pm.theme, pm.priority, pm.status,
+                EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
+                EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+                (SELECT MAX(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm
          JOIN contacts c ON c.id = pm.contact_id
          WHERE pm.project_id = ?

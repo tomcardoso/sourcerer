@@ -43,6 +43,10 @@ export interface ContactListItem {
   id: string;
   name: string;
   organization: string | null;
+  notes: string | null;
+  has_email: 0 | 1;
+  has_phone: 0 | 1;
+  date_last_contacted: number | null;
   projects: Array<{ id: string; name: string }>;
 }
 
@@ -161,6 +165,10 @@ export interface ProjectContactRow {
   id: string;
   name: string;
   organization: string | null;
+  notes: string | null;
+  has_email: 0 | 1;
+  has_phone: 0 | 1;
+  date_last_contacted: number | null;
   membership_id: string;
   reporter_name: string;
   reporter_email: string;
@@ -197,4 +205,24 @@ export interface ProjectReporter {
   name: string;
   email: string;
   is_self: 0 | 1;
+}
+
+export interface ContactAlertRss {
+  id: string;
+  contact_id: string;
+  rss_url: string;
+  last_polled_at: number | null;
+  is_invalid: 0 | 1;
+}
+
+export interface ContactAlertMention {
+  id: string;
+  contact_id: string;
+  contact_name: string;
+  headline: string;
+  source_url: string;
+  published_at: number | null;
+  fetched_at: number;
+  guid: string;
+  seen: 0 | 1;
 }
