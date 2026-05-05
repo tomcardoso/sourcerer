@@ -17,7 +17,7 @@ function createWindow(): BrowserWindow {
     show: false,
     resizable: false,
     center: true,
-    title: 'Sourceror',
+    title: 'Sourcerer',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

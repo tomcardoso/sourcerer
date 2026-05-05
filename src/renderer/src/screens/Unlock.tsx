@@ -23,7 +23,7 @@ export default function Unlock({ onUnlocked }: Props) {
     setSubmitting(true);
     setError(null);
 
-    const result = await window.sourceror.unlock(password);
+    const result = await window.sourcerer.unlock(password);
 
     if (result.success) {
       onUnlocked();
@@ -40,7 +40,7 @@ export default function Unlock({ onUnlocked }: Props) {
     <div className="unlock-root">
       <div className="unlock-card">
         <div className="unlock-icon">🔒</div>
-        <h1 className="unlock-title">Sourceror is locked</h1>
+        <h1 className="unlock-title">Sourcerer is locked</h1>
         <p className="unlock-subtitle">Enter your master password to continue.</p>
 
         <form onSubmit={handleSubmit} noValidate>

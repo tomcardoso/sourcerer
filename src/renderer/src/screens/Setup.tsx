@@ -61,7 +61,7 @@ export default function Setup({ onComplete }: Props) {
     setSubmitting(true);
     setError(null);
 
-    const result = await window.sourceror.completeSetup({
+    const result = await window.sourcerer.completeSetup({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       email: form.email.trim().toLowerCase(),
@@ -79,7 +79,7 @@ export default function Setup({ onComplete }: Props) {
   return (
     <div className="setup-root">
       <div className="setup-card">
-        <h1 className="setup-title">Welcome to Sourceror</h1>
+        <h1 className="setup-title">Welcome to Sourcerer</h1>
         <p className="setup-subtitle">
           Set up your profile and master password to get started.
         </p>

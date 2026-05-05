@@ -15,7 +15,7 @@ export default function ProjectView({ project }: Props) {
 
   const refresh = useCallback(() => {
     if (!project) return;
-    window.sourceror.listContactsForProject(project.id).then(setRows);
+    window.sourcerer.listContactsForProject(project.id).then(setRows);
   }, [project]);
 
   useEffect(() => {

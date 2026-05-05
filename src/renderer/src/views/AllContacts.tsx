@@ -12,7 +12,7 @@ export default function AllContacts() {
   const [showAdd, setShowAdd] = useState(false);
 
   const refresh = useCallback(() => {
-    window.sourceror.listContacts().then(setContacts);
+    window.sourcerer.listContacts().then(setContacts);
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);

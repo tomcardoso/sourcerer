@@ -19,8 +19,8 @@ export default function AppShell() {
   const [nav, setNav] = useState<NavTarget>({ view: 'all-contacts' });
 
   useEffect(() => {
-    window.sourceror.getUser().then(setUser);
-    window.sourceror.listProjects().then(setProjects);
+    window.sourcerer.getUser().then(setUser);
+    window.sourcerer.listProjects().then(setProjects);
   }, []);
 
   function handleProjectCreated(project: Project) {

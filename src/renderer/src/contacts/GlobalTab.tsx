@@ -106,7 +106,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
-    const result = await window.sourceror.checkCollision({ emails: [value], phones: [], excludeId: contact.id });
+    const result = await window.sourcerer.checkCollision({ emails: [value], phones: [], excludeId: contact.id });
     setEmailCollisions((prev) => {
       const next = { ...prev };
       if (result.email[value]) next[value] = result.email[value]; else delete next[value];
@@ -116,7 +116,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function checkPhoneBlur(value: string) {
     if (!value) return;
-    const result = await window.sourceror.checkCollision({ emails: [], phones: [value], excludeId: contact.id });
+    const result = await window.sourcerer.checkCollision({ emails: [], phones: [value], excludeId: contact.id });
     setPhoneCollisions((prev) => {
       const next = { ...prev };
       if (result.phone[value]) next[value] = result.phone[value]; else delete next[value];
@@ -135,7 +135,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       const links = SOCIAL_TYPES.flatMap((type) =>
         editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
       );
-      await window.sourceror.updateContact({
+      await window.sourcerer.updateContact({
         id: contact.id,
         name: editName,
         organization: editOrg,
@@ -153,18 +153,18 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function handleAddToProject() {
     if (!addingToProject) return;
-    await window.sourceror.addToProject(contact.id, addingToProject);
+    await window.sourcerer.addToProject(contact.id, addingToProject);
     setAddingToProject('');
     onMembershipChanged();
   }
 
   async function handleRemoveFromProject(projectId: string) {
-    await window.sourceror.removeFromProject(contact.id, projectId);
+    await window.sourcerer.removeFromProject(contact.id, projectId);
     onMembershipChanged();
   }
 
   async function handleDelete() {
-    await window.sourceror.deleteContact(contact.id);
+    await window.sourcerer.deleteContact(contact.id);
     onDeleted(contact.id);
   }
 

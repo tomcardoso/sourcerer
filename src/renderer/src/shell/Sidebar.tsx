@@ -38,7 +38,7 @@ export default function Sidebar({
   async function commitRename(id: string) {
     const name = renameValue.trim();
     if (name && name !== projects.find((p) => p.id === id)?.name) {
-      await window.sourceror.renameProject(id, name);
+      await window.sourcerer.renameProject(id, name);
       onProjectRenamed(id, name);
     }
     setRenamingId(null);
@@ -50,7 +50,7 @@ export default function Sidebar({
   }
 
   async function confirmDelete(id: string) {
-    await window.sourceror.deleteProject(id);
+    await window.sourcerer.deleteProject(id);
     onProjectDeleted(id);
     setDeletingId(null);
   }
@@ -68,7 +68,7 @@ export default function Sidebar({
       <aside className="sidebar">
         {/* App header */}
         <div className="sidebar-header">
-          <span className="sidebar-logo">Sourceror</span>
+          <span className="sidebar-logo">Sourcerer</span>
           {user && (
             <span className="sidebar-user">
               {user.first_name} {user.last_name}

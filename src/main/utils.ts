@@ -5,8 +5,8 @@ import argon2 from 'argon2';
 export function getPaths(): { dbPath: string; saltPath: string } {
   const userData = app.getPath('userData');
   return {
-    dbPath: path.join(userData, 'sourceror.db'),
-    saltPath: path.join(userData, 'sourceror.salt'),
+    dbPath: path.join(userData, 'sourcerer.db'),
+    saltPath: path.join(userData, 'sourcerer.salt'),
   };
 }
 

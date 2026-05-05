@@ -21,16 +21,16 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   const [activeTab, setActiveTab] = useState<Tab>('global');
 
   const reload = useCallback(() => {
-    window.sourceror.getContact(contactId).then(setContact);
+    window.sourcerer.getContact(contactId).then(setContact);
   }, [contactId]);
 
   useEffect(() => {
     setContact(null);
     setActiveTab('global');
     reload();
-    window.sourceror.listProjects().then(setAllProjects);
-    window.sourceror.listStatusOptions().then(setStatusOptions);
-    window.sourceror.listPriorityOptions().then(setPriorityOptions);
+    window.sourcerer.listProjects().then(setAllProjects);
+    window.sourcerer.listStatusOptions().then(setStatusOptions);
+    window.sourcerer.listPriorityOptions().then(setPriorityOptions);
   }, [contactId, reload]);
 
   const hasProjects = (contact?.projects.length ?? 0) > 0;

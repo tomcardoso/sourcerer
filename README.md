@@ -1,4 +1,4 @@
-# Sourceror
+# Sourcerer
 
 Local-first, encrypted source and contact tracker for investigative journalists. Built with Electron, React, TypeScript, and SQLCipher.
 
@@ -42,7 +42,7 @@ npm run package     # compile + create distributable
 
 All data is stored locally in Electron's `userData` directory:
 
-- `sourceror.db` — SQLCipher-encrypted SQLite database
-- `sourceror.salt` — Argon2id salt (not secret, must not be deleted)
+- `sourcerer.db` — SQLCipher-encrypted SQLite database
+- `sourcerer.salt` — Argon2id salt (not secret, must not be deleted)
 
 The master password is never stored. Losing it means losing access to the database.

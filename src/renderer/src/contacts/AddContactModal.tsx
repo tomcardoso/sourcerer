@@ -81,7 +81,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
-    const result = await window.sourceror.checkCollision({ emails: [value], phones: [] });
+    const result = await window.sourcerer.checkCollision({ emails: [value], phones: [] });
     setEmailCollisions((prev) => {
       const next = { ...prev };
       if (result.email[value]) next[value] = result.email[value];
@@ -92,7 +92,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
   async function checkPhoneBlur(value: string) {
     if (!value) return;
-    const result = await window.sourceror.checkCollision({ emails: [], phones: [value] });
+    const result = await window.sourcerer.checkCollision({ emails: [], phones: [value] });
     setPhoneCollisions((prev) => {
       const next = { ...prev };
       if (result.phone[value]) next[value] = result.phone[value];
@@ -123,7 +123,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       links,
     };
 
-    const contact = await window.sourceror.createContact(data);
+    const contact = await window.sourcerer.createContact(data);
     onCreated(contact);
   }
 

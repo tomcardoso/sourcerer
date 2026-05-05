@@ -17,7 +17,7 @@ import type {
 
 declare global {
   interface Window {
-    sourceror: {
+    sourcerer: {
       // Auth
       checkFirstLaunch: () => Promise<{ isFirstLaunch: boolean }>;
       completeSetup: (data: {

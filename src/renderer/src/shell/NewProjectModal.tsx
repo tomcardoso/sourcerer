@@ -16,7 +16,7 @@ export default function NewProjectModal({ onCreated, onCancel }: Props) {
     e.preventDefault();
     if (!name.trim()) return;
     setSubmitting(true);
-    const project = await window.sourceror.createProject({
+    const project = await window.sourcerer.createProject({
       name: name.trim(),
       description: description.trim() || undefined,
     });

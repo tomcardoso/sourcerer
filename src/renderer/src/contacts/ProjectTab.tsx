@@ -40,7 +40,7 @@ function LogSection({ membership }: { membership: ContactProject }) {
   useEffect(() => {
     setEntries([]);
     setText('');
-    window.sourceror.listInteractionLog(membership.membership_id).then(setEntries);
+    window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ function LogSection({ membership }: { membership: ContactProject }) {
     if (!body) return;
     setSubmitting(true);
     try {
-      const entry = await window.sourceror.addInteractionLogEntry(membership.membership_id, body);
+      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body);
       setEntries((prev) => [...prev, entry]);
       setText('');
     } finally {
@@ -115,7 +115,7 @@ function ScratchpadSection({
   useEffect(() => {
     setDrafts([]);
     setDraftEdits({});
-    window.sourceror.listScratchpad(contactId, membership.id).then(setDrafts);
+    window.sourcerer.listScratchpad(contactId, membership.id).then(setDrafts);
   }, [membership.id, contactId]);
 
   function getEdit(draft: ScratchpadDraft) {
@@ -132,7 +132,7 @@ function ScratchpadSection({
 
   async function handleSave(draft: ScratchpadDraft) {
     const edit = getEdit(draft);
-    const saved = await window.sourceror.saveScratchpad({
+    const saved = await window.sourcerer.saveScratchpad({
       id: draft.id,
       contactId,
       projectId: membership.id,
@@ -148,7 +148,7 @@ function ScratchpadSection({
   }
 
   async function handleNewDraft() {
-    const draft = await window.sourceror.saveScratchpad({
+    const draft = await window.sourcerer.saveScratchpad({
       contactId,
       projectId: membership.id,
       label: 'Draft',
@@ -158,7 +158,7 @@ function ScratchpadSection({
   }
 
   async function handleDelete(id: string) {
-    await window.sourceror.deleteScratchpad(id);
+    await window.sourcerer.deleteScratchpad(id);
     setDrafts((prev) => prev.filter((d) => d.id !== id));
   }
 
@@ -226,7 +226,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   async function handleStatusChange(value: string) {
     setLocalStatus(value);
-    await window.sourceror.updateMembership({
+    await window.sourcerer.updateMembership({
       membershipId: membership.membership_id,
       status: value || null,
       priority: localPriority || null,
@@ -237,7 +237,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   async function handlePriorityChange(value: string) {
     setLocalPriority(value);
-    await window.sourceror.updateMembership({
+    await window.sourcerer.updateMembership({
       membershipId: membership.membership_id,
       status: localStatus || null,
       priority: value || null,
@@ -248,7 +248,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   async function handleDateBlur(value: string) {
     setLocalDate(value);
-    await window.sourceror.updateMembership({
+    await window.sourcerer.updateMembership({
       membershipId: membership.membership_id,
       status: localStatus || null,
       priority: localPriority || null,

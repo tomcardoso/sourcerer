@@ -138,16 +138,16 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setLastName(user.last_name);
       setEmail(user.email);
     }
-    window.sourceror.listStatusOptions().then(setStatusOptions);
-    window.sourceror.listPriorityOptions().then(setPriorityOptions);
-    window.sourceror.getIdleTimeout().then(setIdleTimeout);
+    window.sourcerer.listStatusOptions().then(setStatusOptions);
+    window.sourcerer.listPriorityOptions().then(setPriorityOptions);
+    window.sourcerer.getIdleTimeout().then(setIdleTimeout);
   }, [user?.id]);
 
   async function handleProfileSave() {
     if (!firstName.trim() || !email.trim()) return;
     setProfileSaving(true);
     try {
-      const updated = await window.sourceror.updateUser({ firstName, lastName, email });
+      const updated = await window.sourcerer.updateUser({ firstName, lastName, email });
       onUserUpdated(updated);
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2000);
@@ -158,43 +158,43 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   async function handleTimeoutChange(seconds: number) {
     setIdleTimeout(seconds);
-    await window.sourceror.setIdleTimeout(seconds);
+    await window.sourcerer.setIdleTimeout(seconds);
   }
 
   // Status option handlers
   async function addStatus(label: string) {
-    const opt = await window.sourceror.createStatusOption(label);
+    const opt = await window.sourcerer.createStatusOption(label);
     setStatusOptions((prev) => [...prev, opt]);
   }
   async function renameStatus(id: string, label: string) {
-    await window.sourceror.renameStatusOption(id, label);
+    await window.sourcerer.renameStatusOption(id, label);
     setStatusOptions((prev) => prev.map((o) => (o.id === id ? { ...o, label } : o)));
   }
   async function deleteStatus(id: string) {
-    await window.sourceror.deleteStatusOption(id);
+    await window.sourcerer.deleteStatusOption(id);
     setStatusOptions((prev) => prev.filter((o) => o.id !== id));
   }
   async function moveStatus(id: string, direction: 'up' | 'down') {
-    await window.sourceror.moveStatusOption(id, direction);
-    setStatusOptions(await window.sourceror.listStatusOptions());
+    await window.sourcerer.moveStatusOption(id, direction);
+    setStatusOptions(await window.sourcerer.listStatusOptions());
   }
 
   // Priority option handlers
   async function addPriority(label: string) {
-    const opt = await window.sourceror.createPriorityOption(label);
+    const opt = await window.sourcerer.createPriorityOption(label);
     setPriorityOptions((prev) => [...prev, opt]);
   }
   async function renamePriority(id: string, label: string) {
-    await window.sourceror.renamePriorityOption(id, label);
+    await window.sourcerer.renamePriorityOption(id, label);
     setPriorityOptions((prev) => prev.map((o) => (o.id === id ? { ...o, label } : o)));
   }
   async function deletePriority(id: string) {
-    await window.sourceror.deletePriorityOption(id);
+    await window.sourcerer.deletePriorityOption(id);
     setPriorityOptions((prev) => prev.filter((o) => o.id !== id));
   }
   async function movePriority(id: string, direction: 'up' | 'down') {
-    await window.sourceror.movePriorityOption(id, direction);
-    setPriorityOptions(await window.sourceror.listPriorityOptions());
+    await window.sourcerer.movePriorityOption(id, direction);
+    setPriorityOptions(await window.sourcerer.listPriorityOptions());
   }
 
   const profileDirty =

@@ -19,7 +19,7 @@ import type {
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
-const sourcerorApi = {
+const sourcererApi = {
   // Auth
   checkFirstLaunch: (): Promise<FirstLaunchResult> =>
     ipcRenderer.invoke('setup:check-first-launch'),
@@ -117,4 +117,4 @@ const sourcerorApi = {
     ipcRenderer.invoke('priority-options:move', { id, direction }),
 };
 
-contextBridge.exposeInMainWorld('sourceror', sourcerorApi);
+contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

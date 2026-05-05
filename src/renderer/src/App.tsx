@@ -9,11 +9,11 @@ export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
 
   useEffect(() => {
-    window.sourceror.checkFirstLaunch().then(({ isFirstLaunch }) => {
+    window.sourcerer.checkFirstLaunch().then(({ isFirstLaunch }) => {
       setScreen(isFirstLaunch ? 'setup' : 'locked');
     });
 
-    const removeListener = window.sourceror.onLocked(() => setScreen('locked'));
+    const removeListener = window.sourcerer.onLocked(() => setScreen('locked'));
     return removeListener;
   }, []);
 
