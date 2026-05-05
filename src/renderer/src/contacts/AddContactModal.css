@@ -207,3 +207,10 @@
   margin-top: 3px;
   margin-bottom: 4px;
 }
+
+.ac-field-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}

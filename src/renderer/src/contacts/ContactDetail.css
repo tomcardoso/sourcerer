@@ -647,3 +647,23 @@
 .pt-new-draft-btn:hover {
   text-decoration: underline;
 }
+
+.detail-rss-invalid {
+  color: #f59e0b;
+  margin-left: 4px;
+}
+
+.detail-rss-url {
+  display: block;
+  font-size: 11px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.detail-rss-polled {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}

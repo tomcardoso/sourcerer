@@ -2,6 +2,7 @@ import { BrowserWindow } from 'electron';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { openSharedDb, closeSharedDb } from '../database/shared-db';
 import { syncProject } from './engine';
+import { pollAllRss } from './rss-poller';
 
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -39,6 +40,8 @@ export function pollAll(): void {
     if (!project.shared_db_path || !project.shared_db_key) continue;
     syncOne(project.id, project.shared_db_path, project.shared_db_key);
   }
+
+  pollAllRss().catch(() => {});
 }
 
 export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): SyncStatusEvent {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { ContactDetail as ContactDetailType, Project } from '@shared/types';
+import { useEffect, useState } from 'react';
+import type { ContactDetail as ContactDetailType, ContactAlertRss, Project } from '@shared/types';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -73,6 +73,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingToProject, setAddingToProject] = useState('');
+  const [alertRss, setAlertRss] = useState<ContactAlertRss | null>(null);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -83,8 +84,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [], x: [], instagram: [], facebook: [],
   });
+  const [editRssUrl, setEditRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    window.sourcerer.getAlertRss(contact.id).then(setAlertRss);
+  }, [contact.id]);
 
   function startEdit() {
     setEditName(contact.name);
@@ -99,6 +105,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       ]),
     ) as Record<SocialType, string[]>;
     setEditSocials(socialsByType);
+    setEditRssUrl(alertRss?.rss_url ?? '');
     setEmailCollisions({});
     setPhoneCollisions({});
     setEditing(true);
@@ -144,6 +151,16 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         phones: editPhones,
         links,
       });
+      // Persist RSS URL change
+      const trimmedRss = editRssUrl.trim();
+      if (trimmedRss && trimmedRss !== alertRss?.rss_url) {
+        await window.sourcerer.setAlertRss(contact.id, trimmedRss);
+        const updated = await window.sourcerer.getAlertRss(contact.id);
+        setAlertRss(updated);
+      } else if (!trimmedRss && alertRss) {
+        await window.sourcerer.clearAlertRss(contact.id);
+        setAlertRss(null);
+      }
       onRefresh();
       setEditing(false);
     } finally {
@@ -241,6 +258,18 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             rows={4}
           />
         </div>
+
+        <div className="ac-field">
+          <label className="ac-label">Alert RSS URL</label>
+          <input
+            className="ac-input"
+            type="url"
+            value={editRssUrl}
+            onChange={(e) => setEditRssUrl(e.target.value)}
+            placeholder="https://news.google.com/rss/search?q=…"
+          />
+          <p className="ac-field-hint">Paste a Google Alerts or any RSS feed URL to track mentions of this contact.</p>
+        </div>
       </div>
     );
   }
@@ -295,6 +324,32 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="detail-section">
           <div className="detail-section-label">Notes</div>
           <p className="detail-notes">{contact.notes}</p>
+        </div>
+      )}
+
+      {alertRss && (
+        <div className="detail-section">
+          <div className="detail-section-label">
+            Alert RSS
+            {alertRss.is_invalid === 1 && (
+              <span className="detail-rss-invalid" title="Feed could not be fetched"> ⚠</span>
+            )}
+          </div>
+          <a
+            href={alertRss.rss_url}
+            className="detail-link detail-rss-url"
+            onClick={(e) => e.preventDefault()}
+            title={alertRss.rss_url}
+          >
+            {alertRss.rss_url.length > 60
+              ? alertRss.rss_url.slice(0, 60) + '…'
+              : alertRss.rss_url}
+          </a>
+          {alertRss.last_polled_at && (
+            <span className="detail-rss-polled">
+              Last polled {new Date(alertRss.last_polled_at * 1000).toLocaleDateString()}
+            </span>
+          )}
         </div>
       )}
 

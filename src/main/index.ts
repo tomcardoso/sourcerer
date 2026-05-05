@@ -10,6 +10,7 @@ import { registerSettingsHandlers } from './ipc/settings';
 import { registerHttpHandlers } from './ipc/http';
 import { registerSyncHandlers } from './ipc/sync';
 import { registerExportHandlers } from './ipc/export';
+import { registerAlertHandlers } from './ipc/alerts';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -60,6 +61,7 @@ app.whenReady().then(() => {
   registerHttpHandlers();
   registerSyncHandlers();
   registerExportHandlers();
+  registerAlertHandlers();
   startHttpServer();
   createWindow();
 

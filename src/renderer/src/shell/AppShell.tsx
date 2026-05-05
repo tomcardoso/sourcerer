@@ -22,16 +22,24 @@ export default function AppShell() {
     project: Project;
     payload: string;
   } | null>(null);
+  const [unseenMentions, setUnseenMentions] = useState(0);
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
     window.sourcerer.listProjects().then(setProjects);
+    window.sourcerer.getUnseenMentionCount().then(setUnseenMentions);
+  }, []);
+
+  // Refresh unseen count when new mentions arrive
+  useEffect(() => {
+    return window.sourcerer.onMentionsUpdated(() => {
+      window.sourcerer.getUnseenMentionCount().then(setUnseenMentions);
+    });
   }, []);
 
   // Listen for sync status events and refresh the affected project
   useEffect(() => {
     return window.sourcerer.onSyncStatus(() => {
-      // Refresh the project record so pending_writes badge updates
       window.sourcerer.listProjects().then(setProjects);
     });
   }, []);
@@ -79,6 +87,7 @@ export default function AppShell() {
         projects={projects}
         nav={nav}
         onNav={setNav}
+        unseenMentions={unseenMentions}
         onProjectCreated={handleProjectCreated}
         onProjectCreatedShared={handleProjectCreatedShared}
         onProjectJoined={handleProjectJoined}
@@ -87,7 +96,9 @@ export default function AppShell() {
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && <AllContacts />}
-        {nav.view === 'alerts' && <AlertMentions />}
+        {nav.view === 'alerts' && (
+          <AlertMentions onUnseenCountChange={setUnseenMentions} />
+        )}
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}

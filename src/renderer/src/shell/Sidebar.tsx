@@ -10,6 +10,7 @@ interface Props {
   projects: Project[];
   nav: NavTarget;
   onNav: (nav: NavTarget) => void;
+  unseenMentions: number;
   onProjectCreated: (project: Project) => void;
   onProjectCreatedShared: (project: Project, payload: string) => void;
   onProjectJoined: (project: Project) => void;
@@ -22,6 +23,7 @@ export default function Sidebar({
   projects,
   nav,
   onNav,
+  unseenMentions,
   onProjectCreated,
   onProjectCreatedShared,
   onProjectJoined,
@@ -97,6 +99,11 @@ export default function Sidebar({
           >
             <span className="sidebar-nav-icon">◉</span>
             Alert Mentions
+            {unseenMentions > 0 && (
+              <span className="sidebar-unseen-badge">
+                {unseenMentions > 99 ? '99+' : unseenMentions}
+              </span>
+            )}
           </button>
         </nav>
 

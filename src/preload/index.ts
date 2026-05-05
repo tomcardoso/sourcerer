@@ -19,6 +19,8 @@ import type {
   CreateSharedProjectResult,
   SyncStatusEvent,
   DecodePayloadResult,
+  ContactAlertRss,
+  ContactAlertMention,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -159,6 +161,29 @@ const sourcererApi = {
     const handler = (_: Electron.IpcRendererEvent, event: SyncStatusEvent) => callback(event);
     ipcRenderer.on('sync:status', handler);
     return () => ipcRenderer.removeListener('sync:status', handler);
+  },
+
+  // Alerts / RSS mentions
+  getAlertRss: (contactId: string): Promise<ContactAlertRss | null> =>
+    ipcRenderer.invoke('alerts:get-rss', contactId),
+  setAlertRss: (contactId: string, rssUrl: string): Promise<void> =>
+    ipcRenderer.invoke('alerts:set-rss', { contactId, rssUrl }),
+  clearAlertRss: (contactId: string): Promise<void> =>
+    ipcRenderer.invoke('alerts:clear-rss', contactId),
+  listMentions: (): Promise<ContactAlertMention[]> =>
+    ipcRenderer.invoke('alerts:list-mentions'),
+  markMentionSeen: (id: string): Promise<void> =>
+    ipcRenderer.invoke('alerts:mark-seen', id),
+  markAllMentionsSeen: (): Promise<void> =>
+    ipcRenderer.invoke('alerts:mark-all-seen'),
+  getUnseenMentionCount: (): Promise<number> =>
+    ipcRenderer.invoke('alerts:unseen-count'),
+  pollAlertsNow: (): Promise<void> =>
+    ipcRenderer.invoke('alerts:poll-now'),
+  onMentionsUpdated: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('mentions:updated', handler);
+    return () => ipcRenderer.removeListener('mentions:updated', handler);
   },
 };
 

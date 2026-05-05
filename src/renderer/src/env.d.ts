@@ -16,6 +16,8 @@ import type {
   CreateSharedProjectResult,
   SyncStatusEvent,
   DecodePayloadResult,
+  ContactAlertRss,
+  ContactAlertMention,
 } from '@shared/types';
 
 declare global {
@@ -118,6 +120,17 @@ declare global {
       openFileDialog: (options?: { defaultPath?: string }) => Promise<string | null>;
       decodePayload: (encoded: string) => Promise<DecodePayloadResult>;
       onSyncStatus: (callback: (event: SyncStatusEvent) => void) => () => void;
+
+      // Alerts / RSS mentions
+      getAlertRss: (contactId: string) => Promise<ContactAlertRss | null>;
+      setAlertRss: (contactId: string, rssUrl: string) => Promise<void>;
+      clearAlertRss: (contactId: string) => Promise<void>;
+      listMentions: () => Promise<ContactAlertMention[]>;
+      markMentionSeen: (id: string) => Promise<void>;
+      markAllMentionsSeen: () => Promise<void>;
+      getUnseenMentionCount: () => Promise<number>;
+      pollAlertsNow: () => Promise<void>;
+      onMentionsUpdated: (callback: () => void) => () => void;
     };
   }
 }
