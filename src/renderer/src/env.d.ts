@@ -109,6 +109,9 @@ declare global {
       deletePriorityOption: (id: string) => Promise<void>;
       movePriorityOption: (id: string, direction: 'up' | 'down') => Promise<void>;
 
+      // Export
+      exportProject: (projectId: string, mode: 'full' | 'sanitized') => Promise<{ success: boolean; error?: string }>;
+
       // Sync
       triggerSync: (projectId: string) => Promise<SyncStatusEvent>;
       pollAll: () => Promise<void>;

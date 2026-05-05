@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project, ProjectContactRow } from '@shared/types';
 import ContactDetail from '../contacts/ContactDetail';
 import './View.css';
@@ -18,6 +18,9 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [fileUnreachable, setFileUnreachable] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
     if (!project) return;
@@ -71,6 +74,14 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
     await window.sourcerer.relocateSharedProject(project.id, path);
     setFileUnreachable(false);
     handleSyncNow();
+  }
+
+  async function handleExport(mode: 'full' | 'sanitized') {
+    if (!project) return;
+    setShowExportMenu(false);
+    setExporting(true);
+    await window.sourcerer.exportProject(project.id, mode);
+    setExporting(false);
   }
 
   async function handleRegenerate() {
@@ -145,6 +156,28 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
           <span className="project-contact-count">
             {rows.length} contact{rows.length !== 1 ? 's' : ''}
           </span>
+          <div className="export-menu-wrap" ref={exportMenuRef}>
+            <button
+              className="export-btn"
+              onClick={() => setShowExportMenu((v) => !v)}
+              disabled={exporting || rows.length === 0}
+              title="Export contacts"
+            >
+              {exporting ? 'Exporting…' : '↓ Export'}
+            </button>
+            {showExportMenu && (
+              <div className="export-menu">
+                <button className="export-menu-item" onClick={() => handleExport('full')}>
+                  <span className="export-menu-label">Full export</span>
+                  <span className="export-menu-desc">All fields including notes and interaction log</span>
+                </button>
+                <button className="export-menu-item" onClick={() => handleExport('sanitized')}>
+                  <span className="export-menu-label">Sanitized export</span>
+                  <span className="export-menu-desc">Omits notes and interaction log</span>
+                </button>
+              </div>
+            )}
+          </div>
           {project.is_shared === 1 && (
             <button
               className="sync-now-btn"

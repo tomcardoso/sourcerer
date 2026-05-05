@@ -9,6 +9,7 @@ import { registerContactHandlers } from './ipc/contacts';
 import { registerSettingsHandlers } from './ipc/settings';
 import { registerHttpHandlers } from './ipc/http';
 import { registerSyncHandlers } from './ipc/sync';
+import { registerExportHandlers } from './ipc/export';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -58,6 +59,7 @@ app.whenReady().then(() => {
   registerSettingsHandlers();
   registerHttpHandlers();
   registerSyncHandlers();
+  registerExportHandlers();
   startHttpServer();
   createWindow();
 

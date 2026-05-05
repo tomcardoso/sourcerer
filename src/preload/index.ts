@@ -143,6 +143,10 @@ const sourcererApi = {
   movePriorityOption: (id: string, direction: 'up' | 'down'): Promise<void> =>
     ipcRenderer.invoke('priority-options:move', { id, direction }),
 
+  // Export
+  exportProject: (projectId: string, mode: 'full' | 'sanitized'): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('export:project', { projectId, mode }),
+
   // Sync
   triggerSync: (projectId: string): Promise<SyncStatusEvent> =>
     ipcRenderer.invoke('sync:trigger', projectId),
