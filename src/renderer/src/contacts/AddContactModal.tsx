@@ -7,12 +7,12 @@ interface Props {
   onCancel: () => void;
 }
 
-const SOCIAL_TYPES = ['linkedin', 'twitter', 'instagram', 'facebook'] as const;
+const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
 
 const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
   linkedin:  { label: 'LinkedIn',   placeholder: 'https://linkedin.com/in/…' },
-  twitter:   { label: 'X / Twitter', placeholder: 'https://x.com/…' },
+  x:         { label: 'X / Twitter', placeholder: 'https://x.com/…' },
   instagram: { label: 'Instagram',  placeholder: 'https://instagram.com/…' },
   facebook:  { label: 'Facebook',   placeholder: 'https://facebook.com/…' },
 };
@@ -72,7 +72,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [emails, setEmails] = useState<string[]>(['']);
   const [phones, setPhones] = useState<string[]>(['']);
   const [socials, setSocials] = useState<Record<SocialType, string[]>>({
-    linkedin: [''], twitter: [], instagram: [], facebook: [],
+    linkedin: [''], x: [], instagram: [], facebook: [],
   });
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);

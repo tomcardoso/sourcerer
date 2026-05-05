@@ -4,6 +4,8 @@ import { getDatabase } from '../database';
 import { autoLock } from '../auto-lock';
 import type { User, StatusOption, PriorityOption } from '@shared/types';
 
+const PORT = 27371;
+
 function reorder(
   table: 'status_options' | 'priority_options',
   id: string,
@@ -76,7 +78,13 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('status-options:delete', (_, id: string): void => {
-    getDatabase().prepare('DELETE FROM status_options WHERE id = ?').run(id);
+    const db = getDatabase();
+    const row = db.prepare('SELECT label FROM status_options WHERE id = ?').get(id) as { label: string } | undefined;
+    if (row) {
+      const { n } = db.prepare('SELECT COUNT(*) AS n FROM project_memberships WHERE status = ?').get(row.label) as { n: number };
+      if (n > 0) throw new Error('in-use');
+    }
+    db.prepare('DELETE FROM status_options WHERE id = ?').run(id);
   });
 
   ipcMain.handle(
@@ -104,7 +112,13 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('priority-options:delete', (_, id: string): void => {
-    getDatabase().prepare('DELETE FROM priority_options WHERE id = ?').run(id);
+    const db = getDatabase();
+    const row = db.prepare('SELECT label FROM priority_options WHERE id = ?').get(id) as { label: string } | undefined;
+    if (row) {
+      const { n } = db.prepare('SELECT COUNT(*) AS n FROM project_memberships WHERE priority = ?').get(row.label) as { n: number };
+      if (n > 0) throw new Error('in-use');
+    }
+    db.prepare('DELETE FROM priority_options WHERE id = ?').run(id);
   });
 
   ipcMain.handle(
@@ -113,4 +127,17 @@ export function registerSettingsHandlers(): void {
       reorder('priority_options', id, direction);
     },
   );
+
+  ipcMain.handle('settings:get-calendar-url', (): string => {
+    const db = getDatabase();
+    const { calendar_token } = db.prepare('SELECT calendar_token FROM users WHERE id = 1').get() as { calendar_token: string };
+    return `http://127.0.0.1:${PORT}/calendar/reminders.ics?token=${calendar_token}`;
+  });
+
+  ipcMain.handle('settings:regenerate-calendar-token', (): User => {
+    const db = getDatabase();
+    const token = uuidv4();
+    db.prepare('UPDATE users SET calendar_token = ? WHERE id = 1').run(token);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
 }

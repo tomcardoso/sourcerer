@@ -210,3 +210,56 @@
 .sv-cancel-small-btn:hover {
   background: #e5e7eb;
 }
+
+.sv-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.sv-error {
+  font-size: 12px;
+  color: #dc2626;
+  margin-bottom: 8px;
+}
+
+.sv-calendar-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sv-calendar-url {
+  flex: 1;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.sv-copy-btn {
+  height: 34px;
+  padding: 0 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font);
+  color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sv-copy-btn:hover {
+  background: var(--color-bg);
+}
+
+.sv-regen-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  flex-wrap: wrap;
+}

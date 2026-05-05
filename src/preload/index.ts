@@ -32,6 +32,13 @@ const sourcererApi = {
     ipcRenderer.on('app:locked', handler);
     return () => ipcRenderer.removeListener('app:locked', handler);
   },
+  onExtensionAccessRequest: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('extension:access-request', handler);
+    return () => ipcRenderer.removeListener('extension:access-request', handler);
+  },
+  approveExtension: (): Promise<void> => ipcRenderer.invoke('http:approve-extension'),
+  denyExtension: (): Promise<void> => ipcRenderer.invoke('http:deny-extension'),
 
   // App data
   getUser: (): Promise<User> => ipcRenderer.invoke('app:get-user'),
@@ -94,6 +101,8 @@ const sourcererApi = {
   // Settings
   updateUser: (data: { firstName: string; lastName: string; email: string }): Promise<User> =>
     ipcRenderer.invoke('users:update', data),
+  getCalendarUrl: (): Promise<string> => ipcRenderer.invoke('settings:get-calendar-url'),
+  regenerateCalendarToken: (): Promise<User> => ipcRenderer.invoke('settings:regenerate-calendar-token'),
   getIdleTimeout: (): Promise<number> => ipcRenderer.invoke('settings:get-idle-timeout'),
   setIdleTimeout: (seconds: number): Promise<void> =>
     ipcRenderer.invoke('settings:set-idle-timeout', seconds),

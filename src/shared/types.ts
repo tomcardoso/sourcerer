@@ -120,6 +120,7 @@ export interface UpdateMembershipInput {
   membershipId: string;
   status?: string | null;
   priority?: string | null;
+  theme?: string | null;
   firstOutreachAt?: number | null;
 }
 
@@ -162,6 +163,7 @@ export interface ProjectContactRow {
   organization: string | null;
   membership_id: string;
   reporter_name: string;
+  reporter_email: string;
   theme: string | null;
   priority: string | null;
   status: string | null;

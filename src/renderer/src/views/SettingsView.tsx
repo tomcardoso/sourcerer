@@ -34,6 +34,7 @@ function OptionsSection({
 }) {
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
   function getEditValue(opt: StatusOption | PriorityOption) {
@@ -62,6 +63,9 @@ function OptionsSection({
     <div className="sv-section">
       <div className="view-section-title">{title}</div>
       <div className="sv-option-list">
+        {deleteError && (
+          <div className="sv-error">{deleteError}</div>
+        )}
         {options.map((opt, i) => (
           <div key={opt.id} className="sv-option-row">
             <input
@@ -91,7 +95,14 @@ function OptionsSection({
             >▼</button>
             <button
               className="sv-delete-btn"
-              onClick={() => onDelete(opt.id)}
+              onClick={async () => {
+                try {
+                  setDeleteError(null);
+                  await onDelete(opt.id);
+                } catch {
+                  setDeleteError(`"${opt.label}" is in use and cannot be deleted.`);
+                }
+              }}
               title="Delete"
             >×</button>
           </div>
@@ -131,6 +142,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
+  const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -154,6 +166,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     } finally {
       setProfileSaving(false);
     }
+  }
+
+  async function handleRegenerateToken() {
+    const updated = await window.sourcerer.regenerateCalendarToken();
+    onUserUpdated(updated);
+    setCalendarRegenConfirm(false);
   }
 
   async function handleTimeoutChange(seconds: number) {
@@ -287,6 +305,40 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Calendar */}
+        <div className="sv-section">
+          <div className="view-section-title">Calendar Subscription</div>
+          <p className="sv-hint">
+            Subscribe to this URL in Apple Calendar, Outlook, or Google Calendar to see your reminders.
+          </p>
+          <div className="sv-calendar-url-row">
+            <input
+              className="sv-input sv-calendar-url"
+              readOnly
+              value={user ? `http://127.0.0.1:27371/calendar/reminders.ics?token=${user.calendar_token}` : ''}
+            />
+            <button
+              className="sv-copy-btn"
+              onClick={() => {
+                if (user) navigator.clipboard.writeText(`http://127.0.0.1:27371/calendar/reminders.ics?token=${user.calendar_token}`);
+              }}
+            >
+              Copy
+            </button>
+          </div>
+          {calendarRegenConfirm ? (
+            <div className="sv-regen-confirm">
+              <span>This invalidates your existing calendar subscription. Continue?</span>
+              <button className="sv-delete-btn" onClick={handleRegenerateToken}>Yes, regenerate</button>
+              <button className="sv-cancel-small-btn" onClick={() => setCalendarRegenConfirm(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button className="sv-add-btn" onClick={() => setCalendarRegenConfirm(true)}>
+              Regenerate token
+            </button>
+          )}
         </div>
       </div>
     </div>

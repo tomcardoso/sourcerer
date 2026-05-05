@@ -162,7 +162,8 @@ export function registerContactHandlers(): void {
     return getDatabase()
       .prepare(
         `SELECT c.id, c.name, c.organization,
-                pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status
+                pm.id AS membership_id, pm.reporter_name, pm.reporter_email,
+                pm.theme, pm.priority, pm.status
          FROM project_memberships pm
          JOIN contacts c ON c.id = pm.contact_id
          WHERE pm.project_id = ?
@@ -210,9 +211,9 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     getDatabase()
       .prepare(
-        'UPDATE project_memberships SET status = ?, priority = ?, first_outreach_at = ?, updated_at = ? WHERE id = ?',
+        'UPDATE project_memberships SET status = ?, priority = ?, theme = ?, first_outreach_at = ?, updated_at = ? WHERE id = ?',
       )
-      .run(data.status ?? null, data.priority ?? null, data.firstOutreachAt ?? null, now, data.membershipId);
+      .run(data.status ?? null, data.priority ?? null, data.theme ?? null, data.firstOutreachAt ?? null, now, data.membershipId);
   });
 
   ipcMain.handle('interaction-log:list', (_, membershipId: string): InteractionLogEntry[] => {

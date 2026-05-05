@@ -425,7 +425,8 @@
 }
 
 .pt-select,
-.pt-date {
+.pt-date,
+.pt-input {
   height: 30px;
   padding: 0 8px;
   border: 1px solid var(--color-border);
@@ -439,7 +440,8 @@
 }
 
 .pt-select:focus,
-.pt-date:focus {
+.pt-date:focus,
+.pt-input:focus {
   border-color: var(--color-primary);
 }
 

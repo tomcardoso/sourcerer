@@ -3,3 +3,7 @@
   color: var(--color-text-muted);
   align-self: center;
 }
+
+.contacts-table tbody tr.row-mine {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}

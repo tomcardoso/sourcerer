@@ -213,47 +213,54 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   // Per-membership local overrides (optimistic updates for dropdowns/date)
   const [localStatus, setLocalStatus] = useState<string>(membership?.status ?? '');
   const [localPriority, setLocalPriority] = useState<string>(membership?.priority ?? '');
+  const [localTheme, setLocalTheme] = useState<string>(membership?.theme ?? '');
   const [localDate, setLocalDate] = useState<string>(formatDate(membership?.first_outreach_at ?? null));
 
   useEffect(() => {
     if (!membership) return;
     setLocalStatus(membership.status ?? '');
     setLocalPriority(membership.priority ?? '');
+    setLocalTheme(membership.theme ?? '');
     setLocalDate(formatDate(membership.first_outreach_at));
   }, [membership?.membership_id]);
 
   if (!membership) return null;
 
+  function membershipUpdate(overrides: { status?: string; priority?: string; theme?: string; date?: string }) {
+    const status = (overrides.status ?? localStatus) || null;
+    const priority = (overrides.priority ?? localPriority) || null;
+    const theme = (overrides.theme ?? localTheme) || null;
+    const date = overrides.date ?? localDate;
+    return window.sourcerer.updateMembership({
+      membershipId: membership.membership_id,
+      status,
+      priority,
+      theme,
+      firstOutreachAt: date ? Math.floor(new Date(date).getTime() / 1000) : null,
+    });
+  }
+
   async function handleStatusChange(value: string) {
     setLocalStatus(value);
-    await window.sourcerer.updateMembership({
-      membershipId: membership.membership_id,
-      status: value || null,
-      priority: localPriority || null,
-      firstOutreachAt: localDate ? Math.floor(new Date(localDate).getTime() / 1000) : null,
-    });
+    await membershipUpdate({ status: value });
     onMembershipUpdated();
   }
 
   async function handlePriorityChange(value: string) {
     setLocalPriority(value);
-    await window.sourcerer.updateMembership({
-      membershipId: membership.membership_id,
-      status: localStatus || null,
-      priority: value || null,
-      firstOutreachAt: localDate ? Math.floor(new Date(localDate).getTime() / 1000) : null,
-    });
+    await membershipUpdate({ priority: value });
+    onMembershipUpdated();
+  }
+
+  async function handleThemeBlur(value: string) {
+    setLocalTheme(value);
+    await membershipUpdate({ theme: value });
     onMembershipUpdated();
   }
 
   async function handleDateBlur(value: string) {
     setLocalDate(value);
-    await window.sourcerer.updateMembership({
-      membershipId: membership.membership_id,
-      status: localStatus || null,
-      priority: localPriority || null,
-      firstOutreachAt: value ? Math.floor(new Date(value).getTime() / 1000) : null,
-    });
+    await membershipUpdate({ date: value });
     onMembershipUpdated();
   }
 
@@ -305,6 +312,17 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
               <option key={p.id} value={p.label}>{p.label}</option>
             ))}
           </select>
+        </div>
+
+        <div className="pt-field">
+          <label className="pt-label">Theme</label>
+          <input
+            className="pt-input"
+            value={localTheme}
+            onChange={(e) => setLocalTheme(e.target.value)}
+            onBlur={(e) => handleThemeBlur(e.target.value)}
+            placeholder="e.g. accounting issues, police investigation…"
+          />
         </div>
 
         <div className="pt-field">

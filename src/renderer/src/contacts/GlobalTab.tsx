@@ -11,12 +11,12 @@ interface Props {
   onDeleted: (id: string) => void;
 }
 
-const SOCIAL_TYPES = ['linkedin', 'twitter', 'instagram', 'facebook'] as const;
+const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
 
 const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
   linkedin:  { label: 'LinkedIn',    placeholder: 'https://linkedin.com/in/…' },
-  twitter:   { label: 'X / Twitter', placeholder: 'https://x.com/…' },
+  x:         { label: 'X / Twitter', placeholder: 'https://x.com/…' },
   instagram: { label: 'Instagram',   placeholder: 'https://instagram.com/…' },
   facebook:  { label: 'Facebook',    placeholder: 'https://facebook.com/…' },
 };
@@ -95,7 +95,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     const socialsByType = Object.fromEntries(
       SOCIAL_TYPES.map((type) => [
         type,
-        contact.links.filter((l) => l.type === type).map((l) => l.url),
+        contact.links.filter((l) => l.type === type || (type === 'x' && l.type === 'twitter')).map((l) => l.url),
       ]),
     ) as Record<SocialType, string[]>;
     setEditSocials(socialsByType);

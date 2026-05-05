@@ -7,8 +7,10 @@ import { registerProjectHandlers } from './ipc/projects';
 import { registerAppHandlers } from './ipc/app';
 import { registerContactHandlers } from './ipc/contacts';
 import { registerSettingsHandlers } from './ipc/settings';
+import { registerHttpHandlers } from './ipc/http';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
+import { startHttpServer } from './http-server';
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -51,6 +53,8 @@ app.whenReady().then(() => {
   registerAppHandlers();
   registerContactHandlers();
   registerSettingsHandlers();
+  registerHttpHandlers();
+  startHttpServer();
   createWindow();
 
   app.on('activate', () => {
