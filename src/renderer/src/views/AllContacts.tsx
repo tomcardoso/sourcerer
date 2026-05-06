@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ContactListItem } from '@shared/types';
+import type { ContactListItem, ImportResult, Project } from '@shared/types';
 import AddContactModal from '../contacts/AddContactModal';
 import ContactDetail from '../contacts/ContactDetail';
 import ColumnHeader, { TextFilter, ToggleFilter, PresetFilter } from './ColumnHeader';
+import ImportResultModal from './ImportResultModal';
 import './View.css';
 import './AllContacts.css';
 
@@ -49,13 +50,20 @@ function isFilterActive(f: Filters): boolean {
   );
 }
 
-export default function AllContacts() {
+interface Props {
+  projects: Project[];
+}
+
+export default function AllContacts({ projects }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importProjectId, setImportProjectId] = useState<string>('');
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const refresh = useCallback(() => {
     window.sourcerer.listContacts().then(setContacts);
@@ -138,6 +146,21 @@ export default function AllContacts() {
     });
   }
 
+  async function handleImport() {
+    setImporting(true);
+    try {
+      const result = await window.sourcerer.importCsv({
+        projectId: importProjectId || undefined,
+      });
+      if (!result.cancelled) {
+        setImportResult(result);
+        refresh();
+      }
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function handleCreated(contact: ContactListItem) {
     setContacts((prev) =>
       [...prev, contact].sort((a, b) => a.name.localeCompare(b.name)),
@@ -179,6 +202,31 @@ export default function AllContacts() {
               Clear filters
             </button>
           )}
+          <div className="ac-import-row">
+            {projects.length > 0 && (
+              <select
+                className="ac-import-project-select"
+                value={importProjectId}
+                onChange={(e) => setImportProjectId(e.target.value)}
+                title="Optionally add imported contacts to a project"
+              >
+                <option value="">Contacts only</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
+            <button className="btn-secondary" onClick={handleImport} disabled={importing}>
+              {importing ? 'Importing…' : 'Import CSV…'}
+            </button>
+            <button
+              className="btn-link"
+              onClick={() => window.sourcerer.downloadSampleCsv()}
+              title="Download a blank CSV template"
+            >
+              ↓ template
+            </button>
+          </div>
           <button className="btn-primary" onClick={() => setShowAdd(true)}>
             + Add Contact
           </button>
@@ -376,6 +424,10 @@ export default function AllContacts() {
 
       {showAdd && (
         <AddContactModal onCreated={handleCreated} onCancel={() => setShowAdd(false)} />
+      )}
+
+      {importResult && (
+        <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
       )}
     </div>
   );

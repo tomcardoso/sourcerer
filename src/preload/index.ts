@@ -22,6 +22,7 @@ import type {
   ContactAlertRss,
   ContactAlertMention,
   Reminder,
+  ImportResult,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -209,6 +210,11 @@ const sourcererApi = {
     note?: string;
   }): Promise<Reminder> => ipcRenderer.invoke('reminders:create', data),
   deleteReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:delete', id),
+
+  // CSV import
+  importCsv: (data: { projectId?: string }): Promise<ImportResult> =>
+    ipcRenderer.invoke('import:csv', data),
+  downloadSampleCsv: (): Promise<void> => ipcRenderer.invoke('import:download-sample-csv'),
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

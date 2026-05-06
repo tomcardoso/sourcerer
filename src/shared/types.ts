@@ -225,6 +225,12 @@ export interface Reminder {
   created_at: number;
 }
 
+export interface ImportResult {
+  imported: number;
+  skipped: Array<{ name: string; reason: 'name' | 'email' }>;
+  cancelled: boolean;
+}
+
 export interface ContactAlertRss {
   id: string;
   contact_id: string;

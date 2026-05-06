@@ -106,7 +106,7 @@ export default function AppShell() {
         onProjectDeleted={handleProjectDeleted}
       />
       <main className="app-content">
-        {nav.view === 'all-contacts' && <AllContacts />}
+        {nav.view === 'all-contacts' && <AllContacts projects={projects} />}
         {nav.view === 'alerts' && (
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}

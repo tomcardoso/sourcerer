@@ -117,6 +117,65 @@
   background: var(--color-primary-hover);
 }
 
+.btn-secondary {
+  height: 32px;
+  padding: 0 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-link {
+  height: 32px;
+  padding: 0 8px;
+  background: none;
+  color: var(--color-text-muted);
+  border: none;
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btn-link:hover {
+  color: var(--color-text);
+}
+
+.ac-import-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ac-import-project-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--color-text);
+  background: var(--color-surface);
+  cursor: pointer;
+  max-width: 160px;
+}
+
 /* Compact boolean cells (email, phone, notes) */
 .contact-bool-cell {
   text-align: center;

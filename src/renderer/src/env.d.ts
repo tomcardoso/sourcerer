@@ -19,6 +19,7 @@ import type {
   ContactAlertRss,
   ContactAlertMention,
   Reminder,
+  ImportResult,
 } from '@shared/types';
 
 declare global {
@@ -147,6 +148,10 @@ declare global {
         note?: string;
       }) => Promise<Reminder>;
       deleteReminder: (id: string) => Promise<void>;
+
+      // CSV import
+      importCsv: (data: { projectId?: string }) => Promise<ImportResult>;
+      downloadSampleCsv: () => Promise<void>;
     };
   }
 }
