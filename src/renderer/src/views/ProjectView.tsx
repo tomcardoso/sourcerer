@@ -21,6 +21,7 @@ interface Props {
 type SortKey =
   | 'name'
   | 'organization'
+  | 'theme'
   | 'status'
   | 'priority'
   | 'reporter'
@@ -31,6 +32,7 @@ type DatePreset = 'never' | 'contacted' | 'not_30' | 'not_90';
 interface Filters {
   name: string;
   organization: string;
+  theme: string;
   notes: string;
   hasEmail: boolean | null;
   hasPhone: boolean | null;
@@ -43,6 +45,7 @@ interface Filters {
 const DEFAULT_FILTERS: Filters = {
   name: '',
   organization: '',
+  theme: '',
   notes: '',
   hasEmail: null,
   hasPhone: null,
@@ -66,6 +69,7 @@ function isFilterActive(f: Filters): boolean {
   return (
     f.name !== '' ||
     f.organization !== '' ||
+    f.theme !== '' ||
     f.notes !== '' ||
     f.hasEmail !== null ||
     f.hasPhone !== null ||
@@ -213,6 +217,10 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
     const q = filters.organization.toLowerCase();
     displayed = displayed.filter((r) => (r.organization ?? '').toLowerCase().includes(q));
   }
+  if (filters.theme) {
+    const q = filters.theme.toLowerCase();
+    displayed = displayed.filter((r) => (r.theme ?? '').toLowerCase().includes(q));
+  }
   if (filters.notes) {
     const q = filters.notes.toLowerCase();
     displayed = displayed.filter((r) => (r.notes ?? '').toLowerCase().includes(q));
@@ -256,6 +264,8 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
         cmp = (a.organization ?? '').localeCompare(b.organization ?? '', undefined, {
           sensitivity: 'base',
         });
+      } else if (sort.key === 'theme') {
+        cmp = (a.theme ?? '').localeCompare(b.theme ?? '', undefined, { sensitivity: 'base' });
       } else if (sort.key === 'status') {
         const si = (s: string | null) => statusOrderMap.get(s ?? '') ?? 9999;
         cmp = si(a.status) - si(b.status);
@@ -452,7 +462,22 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
                     />
                   </th>
                   <th>
-                    <span className="col-label">Theme</span>
+                    <ColumnHeader
+                      label="Theme"
+                      sortDir={sd('theme')}
+                      onSort={() => handleSort('theme')}
+                      filterable
+                      filterActive={!!filters.theme}
+                      filterOpen={openFilter === 'theme'}
+                      onFilterToggle={() => toggleFilter('theme')}
+                      filterContent={
+                        <TextFilter
+                          value={filters.theme}
+                          onChange={(v) => setFilter('theme', v)}
+                          placeholder="Theme contains…"
+                        />
+                      }
+                    />
                   </th>
                   <th>
                     <ColumnHeader
@@ -495,7 +520,7 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
                       label="Reporter"
                       sortDir={sd('reporter')}
                       onSort={() => handleSort('reporter')}
-                      filterable={reporterOptions.length > 1}
+                      filterable={reporterOptions.length > 0}
                       filterActive={filters.reporter.length > 0}
                       filterOpen={openFilter === 'reporter'}
                       onFilterToggle={() => toggleFilter('reporter')}

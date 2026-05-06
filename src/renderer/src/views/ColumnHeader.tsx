@@ -32,7 +32,10 @@ export default function ColumnHeader({
     e.stopPropagation();
     if (!filterOpen && filterBtnRef.current) {
       const rect = filterBtnRef.current.getBoundingClientRect();
-      setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+      const DROPDOWN_WIDTH = 200;
+      const margin = 8;
+      const left = Math.max(0, Math.min(rect.left, window.innerWidth - DROPDOWN_WIDTH - margin));
+      setDropdownPos({ top: rect.bottom + 4, left });
     }
     onFilterToggle?.();
   }
