@@ -19,6 +19,7 @@ interface Filters {
   hasEmail: boolean | null;
   hasPhone: boolean | null;
   dateLastContacted: DatePreset | null;
+  project: string | null; // project ID, or '__none__' for contacts with no project
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -28,6 +29,7 @@ const DEFAULT_FILTERS: Filters = {
   hasEmail: null,
   hasPhone: null,
   dateLastContacted: null,
+  project: null,
 };
 
 function fmtDate(ts: number | null): string {
@@ -47,7 +49,8 @@ function isFilterActive(f: Filters): boolean {
     f.notes !== '' ||
     f.hasEmail !== null ||
     f.hasPhone !== null ||
-    f.dateLastContacted !== null
+    f.dateLastContacted !== null ||
+    f.project !== null
   );
 }
 
@@ -125,6 +128,12 @@ export default function AllContacts({ projects, user }: Props) {
     displayed = displayed.filter(
       (c) => c.date_last_contacted === null || c.date_last_contacted < now - 90 * 86400,
     );
+  }
+
+  if (filters.project === '__none__') {
+    displayed = displayed.filter((c) => c.projects.length === 0);
+  } else if (filters.project !== null) {
+    displayed = displayed.filter((c) => c.projects.some((p) => p.id === filters.project));
   }
 
   if (sort.key) {
@@ -330,7 +339,24 @@ export default function AllContacts({ projects, user }: Props) {
                     />
                   </th>
                   <th>
-                    <span className="col-label">Projects</span>
+                    <ColumnHeader
+                      label="Projects"
+                      filterable
+                      filterActive={filters.project !== null}
+                      filterOpen={openFilter === 'project'}
+                      onFilterToggle={() => toggleFilter('project')}
+                      filterContent={
+                        <PresetFilter
+                          value={filters.project}
+                          onChange={(v) => setFilter('project', v)}
+                          options={[
+                            { value: null, label: 'All projects' },
+                            { value: '__none__', label: 'No project' },
+                            ...projects.map((p) => ({ value: p.id, label: p.name })),
+                          ]}
+                        />
+                      }
+                    />
                   </th>
                 </tr>
               </thead>
