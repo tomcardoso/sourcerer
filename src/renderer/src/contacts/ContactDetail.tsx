@@ -59,6 +59,15 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
             <div className="detail-loading">Loading…</div>
           )}
         </div>
+        {contact && (
+          <button
+            className="detail-vcard-btn"
+            onClick={() => window.sourcerer.exportVCardContact(contact.id)}
+            title="Export as vCard (.vcf)"
+          >
+            ↓ vCard
+          </button>
+        )}
         <button className="detail-close" onClick={onClose}>×</button>
       </div>
 

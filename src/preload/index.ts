@@ -215,6 +215,12 @@ const sourcererApi = {
   }): Promise<Reminder> => ipcRenderer.invoke('reminders:create', data),
   deleteReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:delete', id),
 
+  // vCard export
+  exportVCardContact: (contactId: string): Promise<void> =>
+    ipcRenderer.invoke('export:vcard-contact', contactId),
+  exportVCardProject: (projectId: string): Promise<void> =>
+    ipcRenderer.invoke('export:vcard-project', projectId),
+
   // CSV import
   importCsv: (data: { projectId?: string }): Promise<ImportResult> =>
     ipcRenderer.invoke('import:csv', data),

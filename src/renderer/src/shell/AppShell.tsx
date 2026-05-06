@@ -34,6 +34,17 @@ export default function AppShell() {
     refreshOverdue();
   }, []);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
+        e.preventDefault();
+        document.body.classList.toggle('redacted');
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   async function refreshOverdue() {
     const now = Math.floor(Date.now() / 1000);
     const all = await window.sourcerer.listAllReminders();

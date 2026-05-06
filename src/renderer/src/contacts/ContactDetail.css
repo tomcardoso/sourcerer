@@ -45,6 +45,23 @@
   white-space: nowrap;
 }
 
+.detail-vcard-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 3px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.detail-vcard-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
 .detail-close {
   background: none;
   border: none;

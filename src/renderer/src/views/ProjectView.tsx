@@ -418,6 +418,16 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
                   <span className="export-menu-label">Sanitized export</span>
                   <span className="export-menu-desc">Omits notes and interaction log</span>
                 </button>
+                <button
+                  className="export-menu-item"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    window.sourcerer.exportVCardProject(project.id);
+                  }}
+                >
+                  <span className="export-menu-label">Export as vCard</span>
+                  <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
+                </button>
               </div>
             )}
           </div>

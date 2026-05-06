@@ -151,6 +151,10 @@ declare global {
       }) => Promise<Reminder>;
       deleteReminder: (id: string) => Promise<void>;
 
+      // vCard export
+      exportVCardContact: (contactId: string) => Promise<void>;
+      exportVCardProject: (projectId: string) => Promise<void>;
+
       // CSV import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;
       downloadSampleCsv: () => Promise<void>;

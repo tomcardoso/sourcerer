@@ -1,4 +1,5 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
+import { promises as fs } from 'fs';
 import { utils, writeFile } from 'xlsx';
 import { getDatabase } from '../database';
 
@@ -185,4 +186,78 @@ export function registerExportHandlers(): void {
       }
     },
   );
+
+  ipcMain.handle('export:vcard-contact', async (_event, contactId: string): Promise<void> => {
+    const db = getDatabase();
+    const card = buildVCard(db, contactId);
+    if (!card) return;
+
+    const contact = db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string } | undefined;
+    const safeName = (contact?.name ?? 'contact').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export contact as vCard',
+      defaultPath: `${safeName}.vcf`,
+      filters: [{ name: 'vCard', extensions: ['vcf'] }],
+    });
+    if (canceled || !filePath) return;
+    await fs.writeFile(filePath, card, 'utf-8');
+  });
+
+  ipcMain.handle('export:vcard-project', async (_event, projectId: string): Promise<void> => {
+    const db = getDatabase();
+    const project = db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId) as { name: string } | undefined;
+    const contactIds = (
+      db.prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?').all(projectId) as { contact_id: string }[]
+    ).map((r) => r.contact_id);
+
+    const cards = contactIds.map((id) => buildVCard(db, id)).filter(Boolean).join('\r\n');
+    if (!cards) return;
+
+    const safeName = (project?.name ?? 'project').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export project contacts as vCard',
+      defaultPath: `${safeName}-contacts.vcf`,
+      filters: [{ name: 'vCard', extensions: ['vcf'] }],
+    });
+    if (canceled || !filePath) return;
+    await fs.writeFile(filePath, cards, 'utf-8');
+  });
+}
+
+function escapeVCard(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
+}
+
+function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, contactId: string): string | null {
+  const contact = db
+    .prepare('SELECT name, organization FROM contacts WHERE id = ?')
+    .get(contactId) as { name: string; organization: string | null } | undefined;
+  if (!contact) return null;
+
+  const emails = (
+    db.prepare('SELECT email FROM contact_emails WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { email: string }[]
+  ).map((r) => r.email);
+
+  const phones = (
+    db.prepare('SELECT phone FROM contact_phones WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { phone: string }[]
+  ).map((r) => r.phone);
+
+  const links = (
+    db.prepare('SELECT type, url FROM contact_links WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { type: string; url: string }[]
+  );
+
+  const lines: string[] = ['BEGIN:VCARD', 'VERSION:3.0'];
+  lines.push(`FN:${escapeVCard(contact.name)}`);
+  lines.push(`N:${escapeVCard(contact.name)};;;;`);
+  if (contact.organization) lines.push(`ORG:${escapeVCard(contact.organization)}`);
+  emails.forEach((e) => lines.push(`EMAIL;TYPE=INTERNET:${e}`));
+  phones.forEach((p) => lines.push(`TEL:${p}`));
+  links.forEach((l) => {
+    const typeLabel = l.type.charAt(0).toUpperCase() + l.type.slice(1);
+    lines.push(`URL;TYPE=${typeLabel}:${l.url}`);
+  });
+  lines.push('END:VCARD');
+
+  return lines.join('\r\n');
 }
