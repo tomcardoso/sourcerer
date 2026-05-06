@@ -17,24 +17,128 @@
   color: var(--color-text);
 }
 
+/* ── Filter bar ────────────────────────────────────────────── */
+
+.reminders-filter-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 20px 0;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 10px;
+}
+
+.reminders-filter-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: transparent;
+  font-size: 12px;
+  font-family: var(--font);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.reminders-filter-pill:hover:not(:disabled) {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.reminders-filter-pill:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.reminders-filter-pill-active {
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-color: var(--color-text);
+}
+
+.reminders-filter-pill-active:hover:not(:disabled) {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+.reminders-filter-count {
+  font-size: 10px;
+  opacity: 0.7;
+  min-width: 12px;
+  text-align: center;
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+
 .reminders-body {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 4px 0;
 }
+
+.reminders-filter-empty {
+  padding: 24px 20px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* ── Collapsible section headers ───────────────────────────── */
 
 .reminders-group {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-.reminders-group-label {
+.reminders-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 20px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+}
+
+.reminders-group-header:hover .reminders-group-title {
+  color: var(--color-text);
+}
+
+.reminders-chevron {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s;
+  display: inline-block;
+  width: 12px;
+}
+
+.reminders-chevron-open {
+  transform: rotate(90deg);
+}
+
+.reminders-group-title {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
-  padding: 10px 20px 4px;
+  transition: color 0.1s;
 }
+
+.reminders-group-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+/* ── Reminder rows ─────────────────────────────────────────── */
 
 .reminders-item {
   display: flex;
@@ -57,6 +161,14 @@
   background: #fee2e2;
 }
 
+.reminders-item-overdue-outreach {
+  background: #fffbeb;
+}
+
+.reminders-item-overdue-outreach:hover {
+  background: #fef3c7;
+}
+
 .reminders-item-main {
   flex: 1;
   min-width: 0;
@@ -69,6 +181,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reminders-item-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.reminders-item-badge-outreach {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
 }
 
 .reminders-item-meta {
@@ -90,6 +222,11 @@
   white-space: nowrap;
 }
 
+.reminders-item-auto-hint {
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .reminders-item-right {
   text-align: right;
   flex-shrink: 0;
@@ -109,6 +246,11 @@
 
 .reminders-item-days-overdue {
   color: var(--color-danger);
+  font-weight: 600;
+}
+
+.reminders-item-days-outreach {
+  color: #d97706;
   font-weight: 600;
 }
 

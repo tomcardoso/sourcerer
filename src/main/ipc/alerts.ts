@@ -29,7 +29,6 @@ export function registerAlertHandlers(): void {
           `INSERT INTO contact_alert_rss (id, contact_id, rss_url) VALUES (?, ?, ?)`,
         ).run(uuidv4(), contactId, rssUrl);
       }
-      // Poll immediately in background
       pollContactRss(contactId).catch(() => {});
     },
   );
@@ -47,6 +46,7 @@ export function registerAlertHandlers(): void {
                 m.headline, m.source_url, m.published_at, m.fetched_at, m.guid, m.seen
          FROM contact_alert_mentions m
          JOIN contacts c ON c.id = m.contact_id
+         WHERE m.dismissed = 0
          ORDER BY COALESCE(m.published_at, m.fetched_at) DESC`,
       )
       .all() as ContactAlertMention[];
@@ -54,17 +54,25 @@ export function registerAlertHandlers(): void {
 
   ipcMain.handle('alerts:mark-seen', (_, id: string): void => {
     getDatabase()
-      .prepare(`UPDATE contact_alert_mentions SET seen = 1 WHERE id = ?`)
+      .prepare(`UPDATE contact_alert_mentions SET seen = 1 WHERE id = ? AND dismissed = 0`)
       .run(id);
   });
 
   ipcMain.handle('alerts:mark-all-seen', (): void => {
-    getDatabase().prepare(`UPDATE contact_alert_mentions SET seen = 1`).run();
+    getDatabase()
+      .prepare(`UPDATE contact_alert_mentions SET seen = 1 WHERE dismissed = 0`)
+      .run();
+  });
+
+  ipcMain.handle('alerts:clear-all-mentions', (): void => {
+    getDatabase()
+      .prepare(`UPDATE contact_alert_mentions SET dismissed = 1`)
+      .run();
   });
 
   ipcMain.handle('alerts:unseen-count', (): number => {
     const row = getDatabase()
-      .prepare(`SELECT COUNT(*) AS n FROM contact_alert_mentions WHERE seen = 0`)
+      .prepare(`SELECT COUNT(*) AS n FROM contact_alert_mentions WHERE seen = 0 AND dismissed = 0`)
       .get() as { n: number };
     return row.n;
   });

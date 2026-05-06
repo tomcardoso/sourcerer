@@ -23,6 +23,7 @@ import type {
   ContactAlertMention,
   Reminder,
   ImportResult,
+  AuditLogEntry,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -73,6 +74,7 @@ const sourcererApi = {
     ipcRenderer.invoke('projects:regenerateShared', projectId),
   renameProject: (id: string, name: string): Promise<void> =>
     ipcRenderer.invoke('projects:rename', { id, name }),
+  unshareProject: (id: string): Promise<Project> => ipcRenderer.invoke('projects:unshare', id),
   deleteProject: (id: string): Promise<void> => ipcRenderer.invoke('projects:delete', id),
 
   // Contacts
@@ -133,10 +135,16 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-staleness-threshold', days),
   setOutreachRemindersEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-outreach-reminders-enabled', enabled),
+  setAlertNotificationsEnabled: (enabled: boolean): Promise<User> =>
+    ipcRenderer.invoke('settings:set-alert-notifications-enabled', enabled),
+  setReminderNotificationsEnabled: (enabled: boolean): Promise<User> =>
+    ipcRenderer.invoke('settings:set-reminder-notifications-enabled', enabled),
   setPriorityInterval: (id: string, days: number | null): Promise<void> =>
     ipcRenderer.invoke('priority-options:set-interval', { id, days }),
   getCalendarUrl: (): Promise<string> => ipcRenderer.invoke('settings:get-calendar-url'),
   regenerateCalendarToken: (): Promise<User> => ipcRenderer.invoke('settings:regenerate-calendar-token'),
+  changePassword: (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('settings:change-password', { currentPassword, newPassword }),
   getIdleTimeout: (): Promise<number> => ipcRenderer.invoke('settings:get-idle-timeout'),
   setIdleTimeout: (seconds: number): Promise<void> =>
     ipcRenderer.invoke('settings:set-idle-timeout', seconds),
@@ -190,6 +198,8 @@ const sourcererApi = {
     ipcRenderer.invoke('alerts:mark-seen', id),
   markAllMentionsSeen: (): Promise<void> =>
     ipcRenderer.invoke('alerts:mark-all-seen'),
+  clearAllMentions: (): Promise<void> =>
+    ipcRenderer.invoke('alerts:clear-all-mentions'),
   getUnseenMentionCount: (): Promise<number> =>
     ipcRenderer.invoke('alerts:unseen-count'),
   pollAlertsNow: (): Promise<void> =>
@@ -225,6 +235,12 @@ const sourcererApi = {
   importCsv: (data: { projectId?: string }): Promise<ImportResult> =>
     ipcRenderer.invoke('import:csv', data),
   downloadSampleCsv: (): Promise<void> => ipcRenderer.invoke('import:download-sample-csv'),
+
+  // Audit log
+  listAuditLog: (): Promise<AuditLogEntry[]> => ipcRenderer.invoke('audit:list'),
+
+  // Panic wipe
+  panicWipe: (): Promise<void> => ipcRenderer.invoke('settings:panic-wipe'),
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

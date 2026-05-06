@@ -1,12 +1,15 @@
 import { Notification } from 'electron';
+import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
 
 // Tracks which membership IDs have already triggered a notification this session.
 // Cleared on unlock so every session gets a fresh check.
 const notifiedThisSession = new Set<string>();
 
-interface OverdueRow {
+interface OutreachRow {
   membership_id: string;
+  contact_id: string;
+  project_id: string;
   contact_name: string;
   project_name: string;
   interval_days: number;
@@ -28,6 +31,8 @@ export function checkOutreachReminders(): void {
     .prepare(
       `SELECT
          pm.id                                                              AS membership_id,
+         pm.contact_id                                                      AS contact_id,
+         pm.project_id                                                      AS project_id,
          c.name                                                             AS contact_name,
          p.name                                                             AS project_name,
          COALESCE(pm.outreach_interval_days, po.outreach_interval_days)    AS interval_days,
@@ -41,16 +46,33 @@ export function checkOutreachReminders(): void {
          AND COALESCE(pm.outreach_interval_days, po.outreach_interval_days) IS NOT NULL
        GROUP BY pm.id`,
     )
-    .all() as OverdueRow[];
+    .all() as OutreachRow[];
 
   for (const row of rows) {
-    if (notifiedThisSession.has(row.membership_id)) continue;
-
-    const thresholdSecs = now - row.interval_days * 86400;
     const lastContacted = row.last_contacted ?? 0;
+    // due_date is when the next outreach is due: last contact + interval
+    const dueDate = lastContacted + row.interval_days * 86400;
+    const isOverdue = dueDate < now;
 
-    if (lastContacted >= thresholdSecs) continue;
+    // Upsert the auto-outreach reminder with the correct due_date.
+    // A single reminder per membership tracks the next outreach deadline,
+    // appearing in Upcoming before it's due and Overdue after.
+    const existing = db
+      .prepare('SELECT id, due_date FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1')
+      .get(row.membership_id) as { id: string; due_date: number } | undefined;
 
+    if (!existing) {
+      db.prepare(
+        `INSERT INTO reminders
+           (id, contact_id, project_id, membership_id, due_date, note, is_auto_outreach, created_at)
+         VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`,
+      ).run(uuidv4(), row.contact_id, row.project_id, row.membership_id, dueDate, now);
+    } else if (existing.due_date !== dueDate) {
+      db.prepare('UPDATE reminders SET due_date = ? WHERE id = ?').run(dueDate, existing.id);
+    }
+
+    // OS notification: only when overdue, once per session.
+    if (!isOverdue || notifiedThisSession.has(row.membership_id)) continue;
     notifiedThisSession.add(row.membership_id);
 
     const daysSince =

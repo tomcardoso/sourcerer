@@ -9,14 +9,15 @@ interface Props {
 }
 
 export default function SetupPayloadModal({ projectName, payload, onDone }: Props) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    QRCode.toDataURL(payload, { width: 200, margin: 2 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(null));
+    // Use SVG output — no Canvas/native-addon dependency
+    QRCode.toString(payload, { type: 'svg', width: 200, margin: 2 })
+      .then((svg) => setQrSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`))
+      .catch(() => setQrSrc(null));
   }, [payload]);
 
   function handleCopy() {
@@ -48,10 +49,10 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
           </button>
         </div>
 
-        {qrDataUrl && (
+        {qrSrc && (
           <div className="setup-payload-qr">
             <p className="setup-payload-qr-label">Or scan this QR code:</p>
-            <img src={qrDataUrl} alt="Setup QR code" width={200} height={200} />
+            <img src={qrSrc} alt="Setup QR code" width={200} height={200} />
           </div>
         )}
 

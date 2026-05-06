@@ -1,7 +1,12 @@
 import { ipcMain } from 'electron';
+import { promises as fs } from 'fs';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase } from '../database';
+import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
+import { appendAuditLog } from './audit';
 import type { User, StatusOption, PriorityOption } from '@shared/types';
 
 const PORT = 27371;
@@ -155,11 +160,65 @@ export function registerSettingsHandlers(): void {
     },
   );
 
+  ipcMain.handle('settings:set-alert-notifications-enabled', (_, enabled: boolean): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET alert_notifications_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
+  ipcMain.handle('settings:set-reminder-notifications-enabled', (_, enabled: boolean): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET reminder_notifications_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
   ipcMain.handle('settings:set-phone-country', (_, country: string): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET phone_country = ? WHERE id = 1').run(country);
     return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
   });
+
+  ipcMain.handle(
+    'settings:change-password',
+    async (_, { currentPassword, newPassword }: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; error?: string }> => {
+      const { dbPath, saltPath } = getPaths();
+      try {
+        // Verify the current password against the existing salt
+        const salt = await fs.readFile(saltPath);
+        const currentKeyHex = await deriveKey(currentPassword, salt);
+
+        const testDb = new Database(dbPath);
+        testDb.pragma(`cipher='sqlcipher'`);
+        testDb.pragma(`key="x'${currentKeyHex}'"`);
+        try {
+          // pragma('user_version') doesn't force a page decrypt; an actual
+          // table read is required to reliably detect a wrong key.
+          testDb.prepare('SELECT id FROM users WHERE id = 1').get();
+        } catch {
+          testDb.close();
+          return { success: false, error: 'Current password is incorrect.' };
+        }
+        testDb.close();
+
+        // Derive new key with a fresh salt
+        const newSalt = crypto.randomBytes(16);
+        const newKeyHex = await deriveKey(newPassword, newSalt);
+
+        // Rekey the active database connection in-place
+        getDatabase().pragma(`rekey="x'${newKeyHex}'"`);
+
+        // Persist the new salt so future unlocks use it
+        await fs.writeFile(saltPath, newSalt);
+
+        const actor = (getDatabase().prepare('SELECT email FROM users WHERE id = 1').get() as { email: string } | undefined)?.email ?? null;
+        appendAuditLog('password_changed', actor);
+
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
+      }
+    },
+  );
 
   ipcMain.handle('settings:get-calendar-url', (): string => {
     const db = getDatabase();

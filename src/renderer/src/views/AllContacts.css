@@ -194,6 +194,153 @@
   color: #d97706;
 }
 
+/* Checkbox column */
+.col-check {
+  width: 36px;
+  text-align: center;
+  padding-left: 12px !important;
+}
+
+.contact-check-cell {
+  width: 36px;
+  text-align: center;
+  padding-left: 12px !important;
+  cursor: default;
+}
+
+.contacts-table tbody tr.checked {
+  background: #f0f7ff;
+}
+
+.contacts-table tbody tr.checked:hover {
+  background: #e6f2ff;
+}
+
+/* Bulk action bar */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.bulk-bar-count {
+  font-weight: 600;
+  color: #1e40af;
+  margin-right: 4px;
+}
+
+.bulk-bar-clear {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+.bulk-bar-clear:hover {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.bulk-bar-btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.bulk-project-wrap {
+  position: relative;
+}
+
+.bulk-project-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.bulk-project-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-family: var(--font);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.bulk-project-item:hover {
+  background: #f3f4f6;
+}
+
+.bulk-delete-btn {
+  height: 28px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid #fca5a5;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font);
+  color: #dc2626;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.bulk-delete-btn:hover {
+  background: #fef2f2;
+}
+
+.bulk-delete-confirm-text {
+  margin-left: auto;
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.bulk-delete-confirm-btn {
+  height: 28px;
+  padding: 0 10px;
+  background: #dc2626;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-family: var(--font);
+  color: #fff;
+  cursor: pointer;
+}
+
+.bulk-delete-confirm-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.bulk-delete-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Clear filters button */
 .clear-filters-btn {
   height: 32px;

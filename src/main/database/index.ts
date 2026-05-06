@@ -24,6 +24,11 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
   // Must be set per-connection — not persisted in the file
   db.pragma('foreign_keys = ON');
 
+  // Migrate existing databases: add shared_pending_writes to projects if missing
+  try {
+    db.exec('ALTER TABLE projects ADD COLUMN shared_pending_writes INTEGER NOT NULL DEFAULT 0');
+  } catch {}
+
   // Migrate existing databases: add idle_timeout_seconds if missing
   try {
     db.exec('ALTER TABLE users ADD COLUMN idle_timeout_seconds INTEGER NOT NULL DEFAULT 900');
@@ -33,7 +38,7 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
 
   // Migrate existing databases: add phone_country if missing
   try {
-    db.exec("ALTER TABLE users ADD COLUMN phone_country TEXT NOT NULL DEFAULT 'US'");
+    db.exec("ALTER TABLE users ADD COLUMN phone_country TEXT NOT NULL DEFAULT 'CA'");
   } catch {
     // Column already exists or table not yet created — both are fine
   }
@@ -70,6 +75,40 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
   } catch {
     // Table not yet created on first launch — fine
   }
+
+  // Migrate existing databases: add notification toggle columns if missing
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN alert_notifications_enabled INTEGER NOT NULL DEFAULT 1');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN reminder_notifications_enabled INTEGER NOT NULL DEFAULT 1');
+  } catch {}
+
+  // Migrate existing databases: add dismissed column to contact_alert_mentions if missing
+  try {
+    db.exec('ALTER TABLE contact_alert_mentions ADD COLUMN dismissed INTEGER NOT NULL DEFAULT 0');
+  } catch {}
+
+  // Migrate existing databases: add auto-outreach columns to reminders if missing
+  try {
+    db.exec('ALTER TABLE reminders ADD COLUMN membership_id TEXT');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE reminders ADD COLUMN is_auto_outreach INTEGER NOT NULL DEFAULT 0');
+  } catch {}
+
+  // Migrate existing databases: add audit_log table if missing
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+      id TEXT PRIMARY KEY, event_type TEXT NOT NULL,
+      actor TEXT, occurred_at INTEGER NOT NULL, details TEXT
+    )`);
+  } catch {}
+
+  // Enforce unique (contact_id, project_id) on existing databases
+  try {
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_memberships_contact_project ON project_memberships(contact_id, project_id)');
+  } catch {}
 
   // Set default outreach intervals for built-in priority levels where not yet configured
   try {

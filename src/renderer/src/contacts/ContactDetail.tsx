@@ -105,7 +105,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               contact={contact}
               statusOptions={statusOptions}
               priorityOptions={priorityOptions}
-              onMembershipUpdated={onUpdated}
+              onMembershipUpdated={handleMembershipChanged}
             />
           )}
         </>

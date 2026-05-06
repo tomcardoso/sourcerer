@@ -10,10 +10,12 @@ export const LOCAL_SCHEMA_SQL = `
     created_at                 INTEGER NOT NULL,
     calendar_token             TEXT    NOT NULL,
     idle_timeout_seconds       INTEGER NOT NULL DEFAULT 900,
-    phone_country              TEXT    NOT NULL DEFAULT 'US',
+    phone_country              TEXT    NOT NULL DEFAULT 'CA',
     outreach_reminders_enabled INTEGER NOT NULL DEFAULT 1,
-    staleness_enabled           INTEGER NOT NULL DEFAULT 1,
-    staleness_threshold_days    INTEGER NOT NULL DEFAULT 90
+    staleness_enabled                 INTEGER NOT NULL DEFAULT 1,
+    staleness_threshold_days          INTEGER NOT NULL DEFAULT 90,
+    alert_notifications_enabled       INTEGER NOT NULL DEFAULT 1,
+    reminder_notifications_enabled    INTEGER NOT NULL DEFAULT 1
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
@@ -81,6 +83,7 @@ export const LOCAL_SCHEMA_SQL = `
     fetched_at  INTEGER NOT NULL,
     guid        TEXT    NOT NULL,
     seen        INTEGER NOT NULL DEFAULT 0,
+    dismissed   INTEGER NOT NULL DEFAULT 0,
     synced_at   INTEGER
   );
 
@@ -117,7 +120,8 @@ export const LOCAL_SCHEMA_SQL = `
     outreach_reminders_disabled INTEGER NOT NULL DEFAULT 0,
     created_at                  INTEGER NOT NULL,
     updated_at                  INTEGER NOT NULL,
-    synced_at                   INTEGER
+    synced_at                   INTEGER,
+    UNIQUE(contact_id, project_id)
   );
 
   CREATE TABLE IF NOT EXISTS interview_dates (
@@ -164,11 +168,21 @@ export const LOCAL_SCHEMA_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS reminders (
-    id         TEXT    PRIMARY KEY,
-    contact_id TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-    project_id TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    due_date   INTEGER NOT NULL,
-    note       TEXT,
-    created_at INTEGER NOT NULL
+    id               TEXT    PRIMARY KEY,
+    contact_id       TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    project_id       TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    membership_id    TEXT,
+    due_date         INTEGER NOT NULL,
+    note             TEXT,
+    is_auto_outreach INTEGER NOT NULL DEFAULT 0,
+    created_at       INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id          TEXT    PRIMARY KEY,
+    event_type  TEXT    NOT NULL,
+    actor       TEXT,
+    occurred_at INTEGER NOT NULL,
+    details     TEXT
   );
 `;

@@ -20,6 +20,7 @@ import type {
   ContactAlertMention,
   Reminder,
   ImportResult,
+  AuditLogEntry,
 } from '@shared/types';
 
 declare global {
@@ -136,6 +137,7 @@ declare global {
       listMentions: () => Promise<ContactAlertMention[]>;
       markMentionSeen: (id: string) => Promise<void>;
       markAllMentionsSeen: () => Promise<void>;
+      clearAllMentions: () => Promise<void>;
       getUnseenMentionCount: () => Promise<number>;
       pollAlertsNow: () => Promise<void>;
       onMentionsUpdated: (callback: () => void) => () => void;
@@ -158,6 +160,12 @@ declare global {
       // CSV import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;
       downloadSampleCsv: () => Promise<void>;
+
+      // Audit log
+      listAuditLog: () => Promise<AuditLogEntry[]>;
+
+      // Panic wipe
+      panicWipe: () => Promise<void>;
     };
   }
 }

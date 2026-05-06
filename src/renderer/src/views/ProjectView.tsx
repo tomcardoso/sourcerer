@@ -27,6 +27,7 @@ type SortKey =
   | 'status'
   | 'priority'
   | 'reporter'
+  | 'date_first_contacted'
   | 'date_last_contacted';
 type SortDir = 'asc' | 'desc';
 type DatePreset = 'never' | 'contacted' | 'not_30' | 'not_90';
@@ -87,6 +88,12 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmUnshare, setConfirmUnshare] = useState(false);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const [bulkWorking, setBulkWorking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [fileUnreachable, setFileUnreachable] = useState(false);
@@ -99,6 +106,25 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
   const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowExportMenu(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showExportMenu]);
 
   const refresh = useCallback(() => {
     if (!project) return;
@@ -107,6 +133,9 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
 
   useEffect(() => {
     setSelectedId(null);
+    setCheckedIds(new Set());
+    setConfirmDelete(false);
+    setConfirmRemove(false);
     setRows([]);
     setSort({ key: null, dir: 'asc' });
     setFilters(DEFAULT_FILTERS);
@@ -175,15 +204,22 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     setRegenPayload({ projectName: result.project.name, payload: result.payload });
   }
 
+  async function handleUnshare() {
+    if (!project) return;
+    try {
+      const updated = await window.sourcerer.unshareProject(project.id);
+      setConfirmUnshare(false);
+      onProjectUpdated(updated);
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Failed to unshare project.');
+      setConfirmUnshare(false);
+    }
+  }
+
   async function handleRegenerate() {
     if (!project) return;
-    const confirmed = window.confirm(
-      'This will recreate the shared file from your local data. ' +
-        'Any changes made by collaborators that were not yet synced before the file was lost may not be included.\n\n' +
-        'Continue?',
-    );
-    if (!confirmed) return;
     const result = await window.sourcerer.regenerateSharedProject(project.id);
+    setConfirmRegen(false);
     if (!result) return;
     setFileUnreachable(false);
     const projects = await window.sourcerer.listProjects();
@@ -196,6 +232,62 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     setShowImportModal(false);
     setImportResult(result);
     refresh();
+  }
+
+  // Bulk selection handlers (allChecked/someChecked are computed after displayed is built below)
+  const checkedCount = checkedIds.size;
+
+  function toggleCheck(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setConfirmDelete(false);
+    setConfirmRemove(false);
+  }
+
+  function toggleAll() {
+    if (someChecked || allChecked) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(displayed.map((r) => r.id)));
+    }
+    setConfirmDelete(false);
+    setConfirmRemove(false);
+  }
+
+  async function handleBulkRemove() {
+    if (!project) return;
+    setBulkWorking(true);
+    try {
+      await Promise.all(
+        [...checkedIds].map((id) => window.sourcerer.removeFromProject(id, project.id)),
+      );
+      const removed = checkedIds;
+      setRows((prev) => prev.filter((r) => !removed.has(r.id)));
+      if (selectedId && removed.has(selectedId)) setSelectedId(null);
+      setCheckedIds(new Set());
+      setConfirmRemove(false);
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  async function handleBulkDelete() {
+    setBulkWorking(true);
+    try {
+      await Promise.all([...checkedIds].map((id) => window.sourcerer.deleteContact(id)));
+      const deleted = checkedIds;
+      setRows((prev) => prev.filter((r) => !deleted.has(r.id)));
+      if (selectedId && deleted.has(selectedId)) setSelectedId(null);
+      setCheckedIds(new Set());
+      setConfirmDelete(false);
+    } finally {
+      setBulkWorking(false);
+    }
   }
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
@@ -292,6 +384,11 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
         cmp = pi(a.priority) - pi(b.priority);
       } else if (sort.key === 'reporter') {
         cmp = a.reporter_name.localeCompare(b.reporter_name, undefined, { sensitivity: 'base' });
+      } else if (sort.key === 'date_first_contacted') {
+        if (a.date_first_contacted === null && b.date_first_contacted === null) cmp = 0;
+        else if (a.date_first_contacted === null) cmp = 1;
+        else if (b.date_first_contacted === null) cmp = -1;
+        else cmp = a.date_first_contacted - b.date_first_contacted;
       } else if (sort.key === 'date_last_contacted') {
         if (a.date_last_contacted === null && b.date_last_contacted === null) cmp = 0;
         else if (a.date_last_contacted === null) cmp = 1;
@@ -301,6 +398,13 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
       return cmp * dir;
     });
   }
+
+  const allChecked = displayed.length > 0 && displayed.every((r) => checkedIds.has(r.id));
+  const someChecked = !allChecked && displayed.some((r) => checkedIds.has(r.id));
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someChecked;
+  }, [someChecked]);
 
   // Build unique reporter options from loaded rows
   const reporterOptions = [
@@ -331,6 +435,7 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
 
   function handleDeleted(id: string) {
     setRows((prev) => prev.filter((r) => r.id !== id));
+    setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     setSelectedId(null);
   }
 
@@ -389,6 +494,18 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
               Share project…
             </button>
           )}
+          {project.is_shared === 1 && !confirmUnshare && (
+            <button className="btn-secondary" onClick={() => setConfirmUnshare(true)}>
+              Unshare…
+            </button>
+          )}
+          {confirmUnshare && (
+            <span className="inline-confirm">
+              Stop syncing this shared project?
+              <button className="inline-confirm-yes" onClick={handleUnshare}>Yes, unshare</button>
+              <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
+            </span>
+          )}
           <button className="btn-secondary" onClick={() => setShowImportModal(true)}>
             Import CSV…
           </button>
@@ -446,15 +563,96 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
             <button className="recovery-btn" onClick={handleRelocate}>
               Relocate file…
             </button>
-            <button className="recovery-btn recovery-btn-danger" onClick={handleRegenerate}>
-              Regenerate from local data…
-            </button>
+            {!confirmRegen ? (
+              <button className="recovery-btn recovery-btn-danger" onClick={() => setConfirmRegen(true)}>
+                Regenerate from local data…
+              </button>
+            ) : (
+              <span className="inline-confirm">
+                Overwrites shared file with your local data. Continue?
+                <button className="inline-confirm-yes" onClick={handleRegenerate}>Yes, regenerate</button>
+                <button className="inline-confirm-no" onClick={() => setConfirmRegen(false)}>Cancel</button>
+              </span>
+            )}
           </div>
         </div>
       )}
 
       {syncError && !fileUnreachable && (
         <div className="sync-error-banner">Sync error: {syncError}</div>
+      )}
+
+      {checkedCount > 0 && (
+        <div className="bulk-bar">
+          <span className="bulk-bar-count">{checkedCount} selected</span>
+          <button
+            className="bulk-bar-clear"
+            onClick={() => { setCheckedIds(new Set()); setConfirmDelete(false); setConfirmRemove(false); }}
+            title="Clear selection"
+          >
+            ×
+          </button>
+
+          {confirmRemove ? (
+            <>
+              <span className="bulk-delete-confirm-text">
+                Remove {checkedCount} contact{checkedCount !== 1 ? 's' : ''} from this project?
+              </span>
+              <button
+                className="bulk-delete-confirm-btn"
+                onClick={handleBulkRemove}
+                disabled={bulkWorking}
+              >
+                {bulkWorking ? 'Removing…' : 'Confirm remove'}
+              </button>
+              <button
+                className="btn-secondary bulk-bar-btn"
+                onClick={() => setConfirmRemove(false)}
+                disabled={bulkWorking}
+              >
+                Cancel
+              </button>
+            </>
+          ) : confirmDelete ? (
+            <>
+              <span className="bulk-delete-confirm-text">
+                Permanently delete {checkedCount} contact{checkedCount !== 1 ? 's' : ''}?
+              </span>
+              <button
+                className="bulk-delete-confirm-btn"
+                onClick={handleBulkDelete}
+                disabled={bulkWorking}
+              >
+                {bulkWorking ? 'Deleting…' : 'Confirm delete'}
+              </button>
+              <button
+                className="btn-secondary bulk-bar-btn"
+                onClick={() => setConfirmDelete(false)}
+                disabled={bulkWorking}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="bulk-delete-btn"
+                style={{ marginLeft: 'auto' }}
+                onClick={() => setConfirmRemove(true)}
+                disabled={bulkWorking}
+              >
+                Remove from project
+              </button>
+              <button
+                className="bulk-delete-btn"
+                onClick={() => setConfirmDelete(true)}
+                disabled={bulkWorking}
+              >
+                Delete from Sourcerer
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       <div className="contacts-body">
@@ -473,6 +671,14 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
             <table className="contacts-table">
               <thead>
                 <tr>
+                  <th className="col-check">
+                    <input
+                      type="checkbox"
+                      ref={selectAllRef}
+                      checked={allChecked}
+                      onChange={toggleAll}
+                    />
+                  </th>
                   <th>
                     <ColumnHeader
                       label="Name"
@@ -626,6 +832,13 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
                   </th>
                   <th>
                     <ColumnHeader
+                      label="First Contacted"
+                      sortDir={sd('date_first_contacted')}
+                      onSort={() => handleSort('date_first_contacted')}
+                    />
+                  </th>
+                  <th>
+                    <ColumnHeader
                       label="Last Contacted"
                       sortDir={sd('date_last_contacted')}
                       onSort={() => handleSort('date_last_contacted')}
@@ -660,12 +873,20 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
                       key={r.id}
                       className={[
                         selectedId === r.id ? 'selected' : '',
+                        checkedIds.has(r.id) ? 'checked' : '',
                         isMe ? 'row-mine' : '',
                       ]
                         .filter(Boolean)
                         .join(' ')}
                       onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
                     >
+                      <td className="contact-check-cell" onClick={(e) => toggleCheck(r.id, e)}>
+                        <input
+                          type="checkbox"
+                          checked={checkedIds.has(r.id)}
+                          onChange={() => {}}
+                        />
+                      </td>
                       <td className="contact-name-cell">{r.name}</td>
                       <td className="contact-org-cell">{r.organization ?? '—'}</td>
                       <td className="contact-org-cell">
@@ -695,6 +916,13 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
                           <span className="contact-cell-muted">—</span>
                         )}
                       </td>
+                      <td className="contact-date-cell">
+                        {r.date_first_contacted === null ? (
+                          <span className="contact-cell-muted">—</span>
+                        ) : (
+                          fmtDate(r.date_first_contacted)
+                        )}
+                      </td>
                       <td className={`contact-date-cell${isStale(r.date_last_contacted) ? ' contact-date-stale' : ''}`}>
                         {r.date_last_contacted === null ? (
                           <span className="contact-cell-muted">Never</span>
@@ -710,7 +938,7 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
           )}
         </div>
 
-        {selectedId && (
+        {selectedId && checkedIds.size <= 1 && (
           <ContactDetail
             contactId={selectedId}
             onClose={() => setSelectedId(null)}

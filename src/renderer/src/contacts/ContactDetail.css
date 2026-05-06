@@ -471,6 +471,12 @@
   color: var(--color-text-muted);
 }
 
+.pt-outreach-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .pt-outreach-disable {
   display: flex;
   align-items: center;
@@ -480,6 +486,12 @@
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.pt-outreach-interval {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 .pt-reporter {
@@ -720,6 +732,24 @@
 .pt-reminder-overdue {
   border-color: #fca5a5;
   background: #fff5f5;
+}
+
+.pt-reminder-auto {
+  border-color: var(--color-warning, #f59e0b);
+  background: var(--color-surface);
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pt-reminder-auto-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-warning, #f59e0b);
+}
+
+.pt-reminder-auto-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .pt-reminder-date {

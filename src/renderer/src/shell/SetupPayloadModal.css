@@ -4,7 +4,7 @@
 
 .setup-payload-intro {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   margin: 0 0 16px;
   line-height: 1.5;
 }
@@ -22,8 +22,8 @@
   padding: 8px 10px;
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 11px;
-  background: var(--color-bg-secondary, #1a1a1a);
-  color: var(--color-text-primary);
+  background: var(--color-bg);
+  color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: 6px;
   resize: none;
@@ -33,17 +33,18 @@
 
 .setup-payload-copy {
   padding: 8px 14px;
-  background: var(--color-bg-secondary, #1a1a1a);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  color: var(--color-text-primary);
+  color: var(--color-text);
   font-size: 13px;
+  font-family: var(--font);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .setup-payload-copy:hover {
-  background: var(--color-hover);
+  background: var(--color-bg);
 }
 
 .setup-payload-qr {
@@ -56,7 +57,7 @@
 
 .setup-payload-qr-label {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -67,7 +68,7 @@
 
 .setup-payload-warning {
   font-size: 12px;
-  color: var(--color-text-muted, #888);
+  color: var(--color-text-muted);
   margin: 0 0 20px;
   line-height: 1.5;
 }

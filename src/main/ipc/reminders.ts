@@ -3,20 +3,23 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import type { Reminder } from '@shared/types';
 
+const SELECT_COLS = `
+  r.id, r.contact_id, r.project_id, r.membership_id,
+  c.name AS contact_name, p.name AS project_name,
+  r.due_date, r.note, r.is_auto_outreach, r.created_at`;
+
 export function registerReminderHandlers(): void {
   ipcMain.handle(
     'reminders:list-for-contact-project',
     (_, { contactId, projectId }: { contactId: string; projectId: string }): Reminder[] => {
       return getDatabase()
         .prepare(
-          `SELECT r.id, r.contact_id, r.project_id,
-                  c.name AS contact_name, p.name AS project_name,
-                  r.due_date, r.note, r.created_at
+          `SELECT ${SELECT_COLS}
            FROM reminders r
            JOIN contacts c ON c.id = r.contact_id
            JOIN projects p ON p.id = r.project_id
            WHERE r.contact_id = ? AND r.project_id = ?
-           ORDER BY r.due_date ASC`,
+           ORDER BY r.is_auto_outreach DESC, r.due_date ASC`,
         )
         .all(contactId, projectId) as Reminder[];
     },
@@ -25,9 +28,7 @@ export function registerReminderHandlers(): void {
   ipcMain.handle('reminders:list-all', (): Reminder[] => {
     return getDatabase()
       .prepare(
-        `SELECT r.id, r.contact_id, r.project_id,
-                c.name AS contact_name, p.name AS project_name,
-                r.due_date, r.note, r.created_at
+        `SELECT ${SELECT_COLS}
          FROM reminders r
          JOIN contacts c ON c.id = r.contact_id
          JOIN projects p ON p.id = r.project_id
@@ -56,9 +57,7 @@ export function registerReminderHandlers(): void {
       ).run(id, contactId, projectId, dueDate, note ?? null, now);
       return db
         .prepare(
-          `SELECT r.id, r.contact_id, r.project_id,
-                  c.name AS contact_name, p.name AS project_name,
-                  r.due_date, r.note, r.created_at
+          `SELECT ${SELECT_COLS}
            FROM reminders r
            JOIN contacts c ON c.id = r.contact_id
            JOIN projects p ON p.id = r.project_id

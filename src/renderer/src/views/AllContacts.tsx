@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ContactListItem, ImportResult, Project, User } from '@shared/types';
 import AddContactModal from '../contacts/AddContactModal';
 import ContactDetail from '../contacts/ContactDetail';
@@ -8,7 +8,7 @@ import ImportResultModal from './ImportResultModal';
 import './View.css';
 import './AllContacts.css';
 
-type SortKey = 'name' | 'organization' | 'date_last_contacted';
+type SortKey = 'name' | 'organization' | 'date_first_contacted' | 'date_last_contacted';
 type SortDir = 'asc' | 'desc';
 type DatePreset = 'never' | 'contacted' | 'not_30' | 'not_90';
 
@@ -61,13 +61,19 @@ interface Props {
 
 export default function AllContacts({ projects, user }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
+  const [bulkWorking, setBulkWorking] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const bulkProjectMenuRef = useRef<HTMLDivElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(() => {
     window.sourcerer.listContacts().then(setContacts);
@@ -76,6 +82,24 @@ export default function AllContacts({ projects, user }: Props) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!bulkProjectMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (bulkProjectMenuRef.current && !bulkProjectMenuRef.current.contains(e.target as Node)) {
+        setBulkProjectMenuOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setBulkProjectMenuOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [bulkProjectMenuOpen]);
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -146,6 +170,11 @@ export default function AllContacts({ projects, user }: Props) {
         cmp = (a.organization ?? '').localeCompare(b.organization ?? '', undefined, {
           sensitivity: 'base',
         });
+      } else if (sort.key === 'date_first_contacted') {
+        if (a.date_first_contacted === null && b.date_first_contacted === null) cmp = 0;
+        else if (a.date_first_contacted === null) cmp = 1;
+        else if (b.date_first_contacted === null) cmp = -1;
+        else cmp = a.date_first_contacted - b.date_first_contacted;
       } else if (sort.key === 'date_last_contacted') {
         if (a.date_last_contacted === null && b.date_last_contacted === null) cmp = 0;
         else if (a.date_last_contacted === null) cmp = 1;
@@ -154,6 +183,61 @@ export default function AllContacts({ projects, user }: Props) {
       }
       return cmp * dir;
     });
+  }
+
+  // Bulk selection derived state
+  const checkedCount = checkedIds.size;
+  const allChecked = displayed.length > 0 && displayed.every((c) => checkedIds.has(c.id));
+  const someChecked = !allChecked && displayed.some((c) => checkedIds.has(c.id));
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someChecked;
+  }, [someChecked]);
+
+  function toggleCheck(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setConfirmDelete(false);
+  }
+
+  function toggleAll() {
+    if (someChecked || allChecked) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(displayed.map((c) => c.id)));
+    }
+    setConfirmDelete(false);
+  }
+
+  async function handleBulkDelete() {
+    setBulkWorking(true);
+    try {
+      await Promise.all([...checkedIds].map((id) => window.sourcerer.deleteContact(id)));
+      const deleted = checkedIds;
+      setContacts((prev) => prev.filter((c) => !deleted.has(c.id)));
+      if (detailId && deleted.has(detailId)) setDetailId(null);
+      setCheckedIds(new Set());
+      setConfirmDelete(false);
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  async function handleBulkAddToProject(projectId: string) {
+    setBulkWorking(true);
+    setBulkProjectMenuOpen(false);
+    try {
+      await Promise.all([...checkedIds].map((id) => window.sourcerer.addToProject(id, projectId)));
+      refresh();
+      setCheckedIds(new Set());
+    } finally {
+      setBulkWorking(false);
+    }
   }
 
   function handleImportComplete(result: ImportResult) {
@@ -167,12 +251,13 @@ export default function AllContacts({ projects, user }: Props) {
       [...prev, contact].sort((a, b) => a.name.localeCompare(b.name)),
     );
     setShowAdd(false);
-    setSelectedId(contact.id);
+    setDetailId(contact.id);
   }
 
   function handleDeleted(id: string) {
     setContacts((prev) => prev.filter((c) => c.id !== id));
-    setSelectedId(null);
+    setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    setDetailId(null);
   }
 
   const sd = (key: SortKey) => (sort.key === key ? sort.dir : null);
@@ -219,6 +304,74 @@ export default function AllContacts({ projects, user }: Props) {
         </div>
       </div>
 
+      {checkedCount > 0 && (
+        <div className="bulk-bar">
+          <span className="bulk-bar-count">{checkedCount} selected</span>
+          <button
+            className="bulk-bar-clear"
+            onClick={() => { setCheckedIds(new Set()); setConfirmDelete(false); }}
+            title="Clear selection"
+          >
+            ×
+          </button>
+
+          {projects.length > 0 && (
+            <div className="bulk-project-wrap" ref={bulkProjectMenuRef}>
+              <button
+                className="btn-secondary bulk-bar-btn"
+                onClick={() => setBulkProjectMenuOpen((v) => !v)}
+                disabled={bulkWorking}
+              >
+                Add to project…
+              </button>
+              {bulkProjectMenuOpen && (
+                <div className="bulk-project-menu">
+                  {projects.map((p) => (
+                    <button
+                      key={p.id}
+                      className="bulk-project-item"
+                      onClick={() => handleBulkAddToProject(p.id)}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {confirmDelete ? (
+            <>
+              <span className="bulk-delete-confirm-text">
+                Delete {checkedCount} contact{checkedCount !== 1 ? 's' : ''}?
+              </span>
+              <button
+                className="bulk-delete-confirm-btn"
+                onClick={handleBulkDelete}
+                disabled={bulkWorking}
+              >
+                {bulkWorking ? 'Deleting…' : 'Confirm delete'}
+              </button>
+              <button
+                className="btn-secondary bulk-bar-btn"
+                onClick={() => setConfirmDelete(false)}
+                disabled={bulkWorking}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              className="bulk-delete-btn"
+              onClick={() => setConfirmDelete(true)}
+              disabled={bulkWorking}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="contacts-body">
         <div className="contacts-table-area">
           {contacts.length === 0 ? (
@@ -233,6 +386,14 @@ export default function AllContacts({ projects, user }: Props) {
             <table className="contacts-table">
               <thead>
                 <tr>
+                  <th className="col-check">
+                    <input
+                      type="checkbox"
+                      ref={selectAllRef}
+                      checked={allChecked}
+                      onChange={toggleAll}
+                    />
+                  </th>
                   <th>
                     <ColumnHeader
                       label="Name"
@@ -314,6 +475,13 @@ export default function AllContacts({ projects, user }: Props) {
                   </th>
                   <th>
                     <ColumnHeader
+                      label="First Contacted"
+                      sortDir={sd('date_first_contacted')}
+                      onSort={() => handleSort('date_first_contacted')}
+                    />
+                  </th>
+                  <th>
+                    <ColumnHeader
                       label="Last Contacted"
                       sortDir={sd('date_last_contacted')}
                       onSort={() => handleSort('date_last_contacted')}
@@ -364,9 +532,19 @@ export default function AllContacts({ projects, user }: Props) {
                 {displayed.map((c) => (
                   <tr
                     key={c.id}
-                    className={selectedId === c.id ? 'selected' : ''}
-                    onClick={() => setSelectedId(c.id === selectedId ? null : c.id)}
+                    className={[
+                      detailId === c.id ? 'selected' : '',
+                      checkedIds.has(c.id) ? 'checked' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => setDetailId(c.id === detailId ? null : c.id)}
                   >
+                    <td className="contact-check-cell" onClick={(e) => toggleCheck(c.id, e)}>
+                      <input
+                        type="checkbox"
+                        checked={checkedIds.has(c.id)}
+                        onChange={() => {}}
+                      />
+                    </td>
                     <td className="contact-name-cell">{c.name}</td>
                     <td className="contact-org-cell">{c.organization ?? '—'}</td>
                     <td className="contact-bool-cell">
@@ -388,6 +566,13 @@ export default function AllContacts({ projects, user }: Props) {
                         <span className="contact-notes-icon">✎</span>
                       ) : (
                         <span className="contact-cell-muted">—</span>
+                      )}
+                    </td>
+                    <td className="contact-date-cell">
+                      {c.date_first_contacted === null ? (
+                        <span className="contact-cell-muted">—</span>
+                      ) : (
+                        fmtDate(c.date_first_contacted)
                       )}
                     </td>
                     <td className={`contact-date-cell${isStale(c.date_last_contacted) ? ' contact-date-stale' : ''}`}>
@@ -415,10 +600,10 @@ export default function AllContacts({ projects, user }: Props) {
           )}
         </div>
 
-        {selectedId && (
+        {detailId && checkedIds.size <= 1 && (
           <ContactDetail
-            contactId={selectedId}
-            onClose={() => setSelectedId(null)}
+            contactId={detailId}
+            onClose={() => setDetailId(null)}
             onDeleted={handleDeleted}
             onUpdated={refresh}
           />

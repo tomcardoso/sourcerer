@@ -41,6 +41,8 @@ export interface User {
   outreach_reminders_enabled: 0 | 1;
   staleness_enabled: 0 | 1;
   staleness_threshold_days: number;
+  alert_notifications_enabled: 0 | 1;
+  reminder_notifications_enabled: 0 | 1;
 }
 
 export interface ContactListItem {
@@ -50,6 +52,7 @@ export interface ContactListItem {
   notes: string | null;
   has_email: 0 | 1;
   has_phone: 0 | 1;
+  date_first_contacted: number | null;
   date_last_contacted: number | null;
   projects: Array<{ id: string; name: string }>;
 }
@@ -176,6 +179,7 @@ export interface ProjectContactRow {
   notes: string | null;
   has_email: 0 | 1;
   has_phone: 0 | 1;
+  date_first_contacted: number | null;
   date_last_contacted: number | null;
   membership_id: string;
   reporter_name: string;
@@ -219,11 +223,21 @@ export interface Reminder {
   id: string;
   contact_id: string;
   project_id: string;
+  membership_id: string | null;
   contact_name: string;
   project_name: string;
   due_date: number;
   note: string | null;
+  is_auto_outreach: 0 | 1;
   created_at: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  event_type: 'unlock' | 'password_changed' | 'panic_wipe';
+  actor: string | null;
+  occurred_at: number;
+  details: string | null;
 }
 
 export interface ImportResult {

@@ -29,6 +29,10 @@ export function registerContactHandlers(): void {
                 pm.project_id, p.name AS project_name,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+                (SELECT MIN(ile.created_at)
+                 FROM interaction_log_entries ile
+                 JOIN project_memberships pm2 ON pm2.id = ile.membership_id
+                 WHERE pm2.contact_id = c.id) AS date_first_contacted,
                 (SELECT MAX(ile.created_at)
                  FROM interaction_log_entries ile
                  JOIN project_memberships pm2 ON pm2.id = ile.membership_id
@@ -45,6 +49,7 @@ export function registerContactHandlers(): void {
       notes: string | null;
       has_email: 0 | 1;
       has_phone: 0 | 1;
+      date_first_contacted: number | null;
       date_last_contacted: number | null;
       project_id: string | null;
       project_name: string | null;
@@ -60,6 +65,7 @@ export function registerContactHandlers(): void {
           notes: row.notes,
           has_email: row.has_email,
           has_phone: row.has_phone,
+          date_first_contacted: row.date_first_contacted,
           date_last_contacted: row.date_last_contacted,
           projects: [],
         });
@@ -160,7 +166,7 @@ export function registerContactHandlers(): void {
         .get() as { label: string } | undefined;
 
       db.prepare(
-        `INSERT INTO project_memberships
+        `INSERT OR IGNORE INTO project_memberships
          (id, contact_id, project_id, reporter_email, reporter_name, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
@@ -193,6 +199,7 @@ export function registerContactHandlers(): void {
                 pm.theme, pm.priority, pm.status,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+                (SELECT MIN(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_first_contacted,
                 (SELECT MAX(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm
          JOIN contacts c ON c.id = pm.contact_id
@@ -280,6 +287,8 @@ export function registerContactHandlers(): void {
       db.prepare(
         'INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       ).run(id, membershipId, user.email, reporterName, body.trim(), now);
+      // Clear any auto-outreach calendar reminder — source is no longer overdue.
+      db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1').run(membershipId);
       return {
         id,
         membership_id: membershipId,

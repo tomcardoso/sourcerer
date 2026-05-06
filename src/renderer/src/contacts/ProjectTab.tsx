@@ -32,7 +32,7 @@ function formatTimestamp(ts: number): string {
   });
 }
 
-function LogSection({ membership }: { membership: ContactProject }) {
+function LogSection({ membership, onEntryAdded }: { membership: ContactProject; onEntryAdded?: () => void }) {
   const [entries, setEntries] = useState<InteractionLogEntry[]>([]);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +56,7 @@ function LogSection({ membership }: { membership: ContactProject }) {
       const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body);
       setEntries((prev) => [...prev, entry]);
       setText('');
+      onEntryAdded?.();
     } finally {
       setSubmitting(false);
     }
@@ -251,6 +252,14 @@ function RemindersSection({
       {reminders.length === 0 && !adding && <p className="pt-empty">No reminders set.</p>}
       {reminders.map((r) => {
         const overdue = r.due_date < now;
+        if (r.is_auto_outreach === 1) {
+          return (
+            <div key={r.id} className="pt-reminder pt-reminder-auto">
+              <div className="pt-reminder-auto-label">Outreach overdue</div>
+              <div className="pt-reminder-auto-hint">Log an interaction to clear this.</div>
+            </div>
+          );
+        }
         return (
           <div key={r.id} className={`pt-reminder${overdue ? ' pt-reminder-overdue' : ''}`}>
             <div className="pt-reminder-date">
@@ -460,19 +469,33 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
         <div className="pt-field">
           <label className="pt-label">Outreach reminder</label>
-          <label className="pt-outreach-disable">
-            <input
-              type="checkbox"
-              checked={localOutreachDisabled}
-              onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
-            />
-            Disable for this source
-          </label>
+          <div className="pt-outreach-wrap">
+            <label className="pt-outreach-disable">
+              <input
+                type="checkbox"
+                checked={localOutreachDisabled}
+                onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
+              />
+              Disable for this source
+            </label>
+            <span className="pt-outreach-interval">
+              {(() => {
+                if (!localPriority) return 'No priority set';
+                const opt = priorityOptions.find((p) => p.label === localPriority);
+                if (!opt) return null;
+                const days = opt.outreach_interval_days;
+                if (!days) return `${localPriority} · no interval configured`;
+                if (days === 7) return `${localPriority} · weekly`;
+                if (days % 7 === 0) return `${localPriority} · every ${days / 7} weeks`;
+                return `${localPriority} · every ${days} days`;
+              })()}
+            </span>
+          </div>
         </div>
       </div>
 
       <RemindersSection contactId={contact.id} projectId={membership.id} />
-      <LogSection membership={membership} />
+      <LogSection membership={membership} onEntryAdded={onMembershipUpdated} />
       <ScratchpadSection membership={membership} contactId={contact.id} />
     </div>
   );

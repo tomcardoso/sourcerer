@@ -222,3 +222,42 @@
   background: var(--color-hover);
   color: var(--color-text-primary);
 }
+
+.inline-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.inline-confirm-yes {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--color-danger);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.inline-confirm-yes:hover {
+  opacity: 0.85;
+}
+
+.inline-confirm-no {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.inline-confirm-no:hover {
+  background: var(--color-surface);
+}

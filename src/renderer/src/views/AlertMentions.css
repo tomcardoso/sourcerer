@@ -2,10 +2,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.alerts-mark-read-btn,
-.alerts-poll-btn {
+.alerts-action-btn {
   height: 32px;
   padding: 0 12px;
   background: transparent;
@@ -19,22 +20,127 @@
   transition: background 0.1s, color 0.1s;
 }
 
-.alerts-mark-read-btn:hover,
-.alerts-poll-btn:hover:not(:disabled) {
+.alerts-action-btn:hover:not(:disabled) {
   background: #f5f5f5;
   color: var(--color-text);
 }
 
-.alerts-poll-btn:disabled {
+.alerts-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+/* Clear all inline confirm */
+
+.alerts-clear-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alerts-clear-confirm-text {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.alerts-clear-confirm-yes {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--color-danger);
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.alerts-clear-confirm-yes:hover {
+  opacity: 0.85;
+}
+
+.alerts-clear-confirm-no {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.alerts-clear-confirm-no:hover {
+  background: var(--color-surface);
+}
+
+/* Body */
+
 .alerts-body {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 4px 0;
 }
+
+/* Collapsible section headers */
+
+.alerts-section {
+  margin-bottom: 2px;
+}
+
+.alerts-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 20px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+}
+
+.alerts-section-header:hover .alerts-section-title {
+  color: var(--color-text);
+}
+
+.alerts-chevron {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.15s;
+  display: inline-block;
+  width: 12px;
+}
+
+.alerts-chevron-open {
+  transform: rotate(90deg);
+}
+
+.alerts-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  transition: color 0.1s;
+}
+
+.alerts-section-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+/* Contact sub-groups */
 
 .alerts-contact-group {
   margin-bottom: 4px;
@@ -46,14 +152,16 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
-  padding: 10px 20px 4px;
+  padding: 6px 20px 4px 32px;
 }
+
+/* Mention rows */
 
 .alerts-item {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 9px 20px;
+  padding: 9px 20px 9px 32px;
   border-bottom: 1px solid #f3f4f6;
   transition: background 0.1s;
 }

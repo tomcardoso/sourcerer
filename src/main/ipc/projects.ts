@@ -305,6 +305,15 @@ export function registerProjectHandlers(): void {
     },
   );
 
+  ipcMain.handle('projects:unshare', (_, id: string): Project => {
+    closeSharedDb(id);
+    const db = getDatabase();
+    db.prepare(
+      'UPDATE projects SET is_shared = 0, shared_db_path = NULL, shared_db_key = NULL, shared_pending_writes = 0 WHERE id = ?',
+    ).run(id);
+    return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
+  });
+
   ipcMain.handle('projects:delete', (_, id: string): void => {
     closeSharedDb(id);
     getDatabase().prepare('DELETE FROM projects WHERE id = ?').run(id);

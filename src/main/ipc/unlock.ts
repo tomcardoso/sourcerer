@@ -5,6 +5,8 @@ import { unlockDatabase, maybeRunDevSeeds } from '../database';
 import { autoLock } from '../auto-lock';
 import { startPoller } from '../sync/poller';
 import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
+import { checkReminders, clearReminderNotificationCache } from '../sync/reminder-checker';
+import { appendAuditLog } from './audit';
 import type { UnlockResult } from '@shared/types';
 
 const APP_WIDTH = 1100;
@@ -33,8 +35,10 @@ export function registerUnlockHandlers(): void {
       maybeRunDevSeeds(db);
 
       const savedUser = db
-        .prepare('SELECT idle_timeout_seconds FROM users WHERE id = 1')
-        .get() as { idle_timeout_seconds: number } | undefined;
+        .prepare('SELECT idle_timeout_seconds, email FROM users WHERE id = 1')
+        .get() as { idle_timeout_seconds: number; email: string } | undefined;
+
+      appendAuditLog('unlock', savedUser?.email ?? null);
       const timeoutMs =
         (savedUser?.idle_timeout_seconds ?? 0) === 0
           ? Number.MAX_SAFE_INTEGER
@@ -52,7 +56,9 @@ export function registerUnlockHandlers(): void {
 
       startPoller();
       clearOutreachNotificationCache();
+      clearReminderNotificationCache();
       checkOutreachReminders();
+      checkReminders();
       return { success: true };
     } catch {
       return { success: false, error: 'Incorrect password.' };

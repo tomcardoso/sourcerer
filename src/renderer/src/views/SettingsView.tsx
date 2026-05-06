@@ -1,12 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
-import type { User, StatusOption, PriorityOption } from '@shared/types';
+import type { User, StatusOption, PriorityOption, AuditLogEntry } from '@shared/types';
 import './View.css';
 import './SettingsView.css';
 
 interface Props {
   user: User | null;
   onUserUpdated: (user: User) => void;
+}
+
+const AUDIT_LABELS: Record<string, string> = {
+  unlock: 'Unlocked',
+  password_changed: 'Password changed',
+  panic_wipe: 'Data wiped',
+};
+
+function fmtAuditDate(ts: number): string {
+  const d = new Date(ts * 1000);
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 }
 
 const INTERVAL_PRESETS = [
@@ -28,6 +42,7 @@ const TIMEOUT_OPTIONS = [
 
 function OptionsSection({
   title,
+  description,
   options,
   onAdd,
   onRename,
@@ -37,6 +52,7 @@ function OptionsSection({
   onSetInterval,
 }: {
   title: string;
+  description?: string;
   options: (StatusOption | PriorityOption)[];
   onAdd: (label: string) => Promise<void>;
   onRename: (id: string, label: string) => Promise<void>;
@@ -75,6 +91,7 @@ function OptionsSection({
   return (
     <div className="sv-section">
       <div className="view-section-title">{title}</div>
+      {description && <p className="sv-hint">{description}</p>}
       <div className="sv-option-list">
         {deleteError && (
           <div className="sv-error">{deleteError}</div>
@@ -172,12 +189,27 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
-  const [phoneCountry, setPhoneCountry] = useState<string>('US');
+  const [phoneCountry, setPhoneCountry] = useState<string>('CA');
   const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
+  const [alertNotificationsEnabled, setAlertNotificationsEnabled] = useState<boolean>(true);
+  const [reminderNotificationsEnabled, setReminderNotificationsEnabled] = useState<boolean>(true);
   const [stalenessEnabled, setStalenessEnabled] = useState<boolean>(true);
   const [stalenessThreshold, setStalenessThreshold] = useState<number>(90);
   const [stalenessThresholdInput, setStalenessThresholdInput] = useState<string>('90');
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordResult, setPasswordResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
+
+  const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
+  const [panicWipeInput, setPanicWipeInput] = useState('');
+  const [panicWiping, setPanicWiping] = useState(false);
 
   const countryOptions = useMemo(() => {
     const names = new Intl.DisplayNames([navigator.language], { type: 'region' });
@@ -195,8 +227,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setFirstName(user.first_name);
       setLastName(user.last_name);
       setEmail(user.email);
-      setPhoneCountry(user.phone_country ?? 'US');
+      setPhoneCountry(user.phone_country ?? 'CA');
       setOutreachRemindersEnabled(user.outreach_reminders_enabled !== 0);
+      setAlertNotificationsEnabled(user.alert_notifications_enabled !== 0);
+      setReminderNotificationsEnabled(user.reminder_notifications_enabled !== 0);
       setStalenessEnabled(user.staleness_enabled !== 0);
       setStalenessThreshold(user.staleness_threshold_days ?? 90);
       setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
@@ -217,6 +251,47 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     } finally {
       setProfileSaving(false);
     }
+  }
+
+  async function handleChangePassword() {
+    if (newPassword.length < 12) {
+      setPasswordResult({ ok: false, msg: 'New password must be at least 12 characters.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordResult({ ok: false, msg: 'New passwords do not match.' });
+      return;
+    }
+    setPasswordSaving(true);
+    setPasswordResult(null);
+    try {
+      const result = await window.sourcerer.changePassword(currentPassword, newPassword);
+      if (result.success) {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordResult({ ok: true, msg: 'Password updated successfully.' });
+      } else {
+        setPasswordResult({ ok: false, msg: result.error ?? 'Failed to change password.' });
+      }
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
+  async function handleAuditLogOpen() {
+    const nextOpen = !auditLogOpen;
+    setAuditLogOpen(nextOpen);
+    if (nextOpen) {
+      const entries = await window.sourcerer.listAuditLog();
+      setAuditLog(entries);
+    }
+  }
+
+  async function handlePanicWipe() {
+    if (panicWipeInput !== 'WIPE') return;
+    setPanicWiping(true);
+    await window.sourcerer.panicWipe();
   }
 
   async function handleRegenerateToken() {
@@ -245,6 +320,18 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     } else {
       setStalenessThresholdInput(String(stalenessThreshold));
     }
+  }
+
+  async function handleAlertNotificationsToggle(enabled: boolean) {
+    setAlertNotificationsEnabled(enabled);
+    const updated = await window.sourcerer.setAlertNotificationsEnabled(enabled);
+    onUserUpdated(updated);
+  }
+
+  async function handleReminderNotificationsToggle(enabled: boolean) {
+    setReminderNotificationsEnabled(enabled);
+    const updated = await window.sourcerer.setReminderNotificationsEnabled(enabled);
+    onUserUpdated(updated);
   }
 
   async function handleOutreachToggle(enabled: boolean) {
@@ -355,6 +442,64 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           </div>
         </div>
 
+        {/* Security */}
+        <div className="sv-section">
+          <div className="view-section-title">Security</div>
+          <p className="sv-hint">
+            Change your Sourcerer password. You'll need to enter your current password to confirm the change.
+          </p>
+          <div className="sv-fields">
+            <div className="sv-field sv-field--full">
+              <label className="sv-label">Current password</label>
+              <input
+                className="sv-input"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => { setCurrentPassword(e.target.value); setPasswordResult(null); }}
+                autoComplete="current-password"
+              />
+            </div>
+            <div className="sv-field">
+              <label className="sv-label">New password</label>
+              <input
+                className="sv-input"
+                type="password"
+                value={newPassword}
+                onChange={(e) => { setNewPassword(e.target.value); setPasswordResult(null); }}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="sv-field">
+              <label className="sv-label">Confirm new password</label>
+              <input
+                className="sv-input"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setPasswordResult(null); }}
+                autoComplete="new-password"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword(); }}
+              />
+            </div>
+          </div>
+          <p className="sv-hint sv-hint--small">
+            Minimum 12 characters. Tip: a passphrase like "coral fence orbit lamp" is easier to remember and just as strong.
+          </p>
+          {passwordResult && (
+            <p className={passwordResult.ok ? 'sv-success' : 'sv-error-inline'}>
+              {passwordResult.msg}
+            </p>
+          )}
+          <div className="sv-profile-actions">
+            <button
+              className="sv-save-btn"
+              onClick={handleChangePassword}
+              disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
+            >
+              {passwordSaving ? 'Updating…' : 'Update password'}
+            </button>
+          </div>
+        </div>
+
         {/* Status options */}
         <OptionsSection
           title="Source Statuses"
@@ -368,6 +513,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         {/* Priority options */}
         <OptionsSection
           title="Priority Levels"
+          description="Assign a priority level to each source within a project to signal how urgently you need to maintain the relationship. The reminder interval sets how often you want to be nudged to reach out to sources at that priority — leave it blank to suppress reminders for that level."
           options={priorityOptions}
           onAdd={addPriority}
           onRename={renamePriority}
@@ -422,6 +568,30 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               type="checkbox"
               checked={outreachRemindersEnabled}
               onChange={(e) => handleOutreachToggle(e.target.checked)}
+            />
+          </div>
+        </div>
+
+        {/* Notifications */}
+        <div className="sv-section">
+          <div className="view-section-title">Notifications</div>
+          <p className="sv-hint">
+            Control which events trigger OS-level notifications.
+          </p>
+          <div className="sv-field">
+            <label className="sv-label">Alert mentions</label>
+            <input
+              type="checkbox"
+              checked={alertNotificationsEnabled}
+              onChange={(e) => handleAlertNotificationsToggle(e.target.checked)}
+            />
+          </div>
+          <div className="sv-field">
+            <label className="sv-label">Reminders</label>
+            <input
+              type="checkbox"
+              checked={reminderNotificationsEnabled}
+              onChange={(e) => handleReminderNotificationsToggle(e.target.checked)}
             />
           </div>
         </div>
@@ -498,6 +668,78 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             </button>
           )}
         </div>
+
+        {/* Audit Log */}
+        <div className="sv-section">
+          <button className="sv-audit-toggle" onClick={handleAuditLogOpen}>
+            <span className="sv-audit-toggle-label">Audit log</span>
+            <span className={`sv-audit-chevron${auditLogOpen ? ' sv-audit-chevron-open' : ''}`}>›</span>
+          </button>
+          {auditLogOpen && (
+            <div className="sv-audit-body">
+              {auditLog.length === 0 ? (
+                <div className="sv-audit-empty">No events recorded yet.</div>
+              ) : (
+                auditLog.map((e) => (
+                  <div key={e.id} className="sv-audit-row">
+                    <span className="sv-audit-event">{AUDIT_LABELS[e.event_type] ?? e.event_type}</span>
+                    <span className="sv-audit-actor">{e.actor ?? '—'}</span>
+                    <span className="sv-audit-date">{fmtAuditDate(e.occurred_at)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Danger Zone */}
+        <div className="sv-section sv-danger-zone">
+          <div className="view-section-title sv-danger-title">Danger Zone</div>
+          {!panicWipeConfirm ? (
+            <div className="sv-field">
+              <div>
+                <div className="sv-label">Wipe all data</div>
+                <div className="sv-hint sv-hint--inline">
+                  Permanently deletes the database and encryption key. This cannot be undone.
+                </div>
+              </div>
+              <button className="sv-wipe-btn" onClick={() => { setPanicWipeConfirm(true); setPanicWipeInput(''); }}>
+                Wipe all data…
+              </button>
+            </div>
+          ) : (
+            <div className="sv-wipe-confirm">
+              <p className="sv-wipe-warning">
+                All contacts, projects, and interaction history will be permanently destroyed and cannot be recovered.
+                Type <strong>WIPE</strong> to confirm.
+              </p>
+              <div className="sv-wipe-row">
+                <input
+                  className="sv-input sv-wipe-input"
+                  placeholder="Type WIPE"
+                  value={panicWipeInput}
+                  onChange={(e) => setPanicWipeInput(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  className="sv-wipe-confirm-btn"
+                  disabled={panicWipeInput !== 'WIPE' || panicWiping}
+                  onClick={handlePanicWipe}
+                >
+                  {panicWiping ? 'Wiping…' : 'Destroy all data'}
+                </button>
+                <button
+                  className="sv-cancel-small-btn"
+                  onClick={() => { setPanicWipeConfirm(false); setPanicWipeInput(''); }}
+                  disabled={panicWiping}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
