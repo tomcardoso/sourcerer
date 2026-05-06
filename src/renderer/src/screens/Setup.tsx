@@ -147,6 +147,11 @@ export default function Setup({ onComplete }: Props) {
               disabled={submitting}
             />
             <span className="setup-hint">Minimum 12 characters. This encrypts your database.</span>
+            <span className="setup-hint setup-passphrase-tip">
+              Tip: a passphrase — four random words like "coral fence orbit lamp" — is easier to
+              remember than a complex string and just as strong. Consider using{' '}
+              <strong>diceware</strong> to generate one.
+            </span>
           </div>
 
           <div className="setup-field">

@@ -71,6 +71,18 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     // Table not yet created on first launch — fine
   }
 
+  // Set default outreach intervals for built-in priority levels where not yet configured
+  try {
+    const defaults: Array<[string, number]> = [
+      ['Critical', 7], ['High', 14], ['Medium', 28], ['Low', 56],
+    ];
+    for (const [label, days] of defaults) {
+      db.prepare(
+        'UPDATE priority_options SET outreach_interval_days = ? WHERE label = ? AND outreach_interval_days IS NULL',
+      ).run(days, label);
+    }
+  } catch {}
+
   return db;
 }
 

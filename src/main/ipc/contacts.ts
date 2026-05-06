@@ -94,7 +94,9 @@ export function registerContactHandlers(): void {
       .prepare(
         `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
                 pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
-                pm.outreach_interval_days, pm.outreach_reminders_disabled
+                pm.outreach_reminders_disabled,
+                (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
+                 WHERE ile.membership_id = pm.id) AS first_log_at
          FROM project_memberships pm
          JOIN projects p ON p.id = pm.project_id
          WHERE pm.contact_id = ?
@@ -238,21 +240,19 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     const db = getDatabase();
     const current = db
-      .prepare('SELECT outreach_interval_days, outreach_reminders_disabled FROM project_memberships WHERE id = ?')
-      .get(data.membershipId) as { outreach_interval_days: number | null; outreach_reminders_disabled: 0 | 1 } | undefined;
+      .prepare('SELECT outreach_reminders_disabled FROM project_memberships WHERE id = ?')
+      .get(data.membershipId) as { outreach_reminders_disabled: 0 | 1 } | undefined;
 
     db.prepare(
       `UPDATE project_memberships
-       SET status = ?, priority = ?, theme = ?, first_outreach_at = ?,
-           outreach_interval_days = ?, outreach_reminders_disabled = ?,
+       SET status = ?, priority = ?, theme = ?,
+           outreach_reminders_disabled = ?,
            updated_at = ?
        WHERE id = ?`,
     ).run(
       data.status ?? null,
       data.priority ?? null,
       data.theme ?? null,
-      data.firstOutreachAt ?? null,
-      data.outreachIntervalDays !== undefined ? (data.outreachIntervalDays ?? null) : (current?.outreach_interval_days ?? null),
       data.outreachRemindersDisabled !== undefined ? data.outreachRemindersDisabled : (current?.outreach_reminders_disabled ?? 0),
       now,
       data.membershipId,

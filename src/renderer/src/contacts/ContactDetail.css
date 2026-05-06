@@ -466,32 +466,9 @@
   grid-column: 1 / -1;
 }
 
-.pt-outreach-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pt-outreach-interval {
-  flex: 1;
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
+.pt-readonly-date {
   font-size: 13px;
-  font-family: var(--font);
-  color: var(--color-text);
-  background: var(--color-surface);
-  outline: none;
-}
-
-.pt-outreach-interval:focus {
-  border-color: var(--color-primary);
-}
-
-.pt-outreach-interval:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  color: var(--color-text-muted);
 }
 
 .pt-outreach-disable {

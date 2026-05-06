@@ -89,6 +89,15 @@
   line-height: 1.4;
 }
 
+.setup-passphrase-tip {
+  margin-top: 6px;
+  display: block;
+  padding: 8px 10px;
+  background: var(--color-bg);
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
+}
+
 .setup-checkbox-label {
   display: flex;
   align-items: flex-start;

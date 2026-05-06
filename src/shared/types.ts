@@ -82,9 +82,9 @@ export interface ContactProject {
   priority: string | null;
   theme: string | null;
   first_outreach_at: number | null;
+  first_log_at: number | null;
   reporter_name: string;
   reporter_email: string;
-  outreach_interval_days: number | null;
   outreach_reminders_disabled: 0 | 1;
 }
 
@@ -131,8 +131,6 @@ export interface UpdateMembershipInput {
   status?: string | null;
   priority?: string | null;
   theme?: string | null;
-  firstOutreachAt?: number | null;
-  outreachIntervalDays?: number | null;
   outreachRemindersDisabled?: 0 | 1;
 }
 

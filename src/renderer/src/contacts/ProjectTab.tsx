@@ -310,14 +310,10 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   const membership = contact.projects.find((p) => p.id === selectedId) ?? contact.projects[0];
 
-  // Per-membership local overrides (optimistic updates for dropdowns/date)
+  // Per-membership local overrides (optimistic updates for dropdowns)
   const [localStatus, setLocalStatus] = useState<string>(membership?.status ?? '');
   const [localPriority, setLocalPriority] = useState<string>(membership?.priority ?? '');
   const [localTheme, setLocalTheme] = useState<string>(membership?.theme ?? '');
-  const [localDate, setLocalDate] = useState<string>(formatDate(membership?.first_outreach_at ?? null));
-  const [localOutreachInterval, setLocalOutreachInterval] = useState<string>(
-    membership?.outreach_interval_days != null ? String(membership.outreach_interval_days) : '',
-  );
   const [localOutreachDisabled, setLocalOutreachDisabled] = useState<boolean>(
     membership?.outreach_reminders_disabled === 1,
   );
@@ -327,10 +323,6 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalStatus(membership.status ?? '');
     setLocalPriority(membership.priority ?? '');
     setLocalTheme(membership.theme ?? '');
-    setLocalDate(formatDate(membership.first_outreach_at));
-    setLocalOutreachInterval(
-      membership.outreach_interval_days != null ? String(membership.outreach_interval_days) : '',
-    );
     setLocalOutreachDisabled(membership.outreach_reminders_disabled === 1);
   }, [membership?.membership_id]);
 
@@ -340,24 +332,17 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     status?: string;
     priority?: string;
     theme?: string;
-    date?: string;
-    outreachInterval?: string;
     outreachDisabled?: boolean;
   }) {
     const status = (overrides.status ?? localStatus) || null;
     const priority = (overrides.priority ?? localPriority) || null;
     const theme = (overrides.theme ?? localTheme) || null;
-    const date = overrides.date ?? localDate;
-    const intervalStr = overrides.outreachInterval !== undefined ? overrides.outreachInterval : localOutreachInterval;
     const disabled = overrides.outreachDisabled !== undefined ? overrides.outreachDisabled : localOutreachDisabled;
-    const intervalDays = intervalStr.trim() !== '' ? Math.max(1, parseInt(intervalStr, 10)) : null;
     return window.sourcerer.updateMembership({
       membershipId: membership.membership_id,
       status,
       priority,
       theme,
-      firstOutreachAt: date ? Math.floor(new Date(date).getTime() / 1000) : null,
-      outreachIntervalDays: intervalDays,
       outreachRemindersDisabled: disabled ? 1 : 0,
     });
   }
@@ -378,17 +363,6 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalTheme(value);
     await membershipUpdate({ theme: value });
     onMembershipUpdated();
-  }
-
-  async function handleDateBlur(value: string) {
-    setLocalDate(value);
-    await membershipUpdate({ date: value });
-    onMembershipUpdated();
-  }
-
-  async function handleOutreachIntervalBlur(value: string) {
-    setLocalOutreachInterval(value);
-    await membershipUpdate({ outreachInterval: value });
   }
 
   async function handleOutreachDisabledChange(disabled: boolean) {
@@ -463,38 +437,26 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         </div>
 
         <div className="pt-field">
-          <label className="pt-label">First Outreach</label>
-          <input
-            type="date"
-            className="pt-date"
-            value={localDate}
-            onChange={(e) => setLocalDate(e.target.value)}
-            onBlur={(e) => handleDateBlur(e.target.value)}
-          />
+          <label className="pt-label">First outreach</label>
+          <span className="pt-readonly-date">
+            {membership.first_log_at
+              ? new Date(membership.first_log_at * 1000).toLocaleDateString(undefined, {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                })
+              : '—'}
+          </span>
         </div>
 
-        <div className="pt-field pt-field--full">
+        <div className="pt-field">
           <label className="pt-label">Outreach reminder</label>
-          <div className="pt-outreach-row">
+          <label className="pt-outreach-disable">
             <input
-              type="number"
-              className="pt-outreach-interval"
-              min={1}
-              placeholder="days (from priority)"
-              value={localOutreachInterval}
-              onChange={(e) => setLocalOutreachInterval(e.target.value)}
-              onBlur={(e) => handleOutreachIntervalBlur(e.target.value)}
-              disabled={localOutreachDisabled}
+              type="checkbox"
+              checked={localOutreachDisabled}
+              onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
             />
-            <label className="pt-outreach-disable">
-              <input
-                type="checkbox"
-                checked={localOutreachDisabled}
-                onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
-              />
-              Disable
-            </label>
-          </div>
+            Disable for this source
+          </label>
         </div>
       </div>
 

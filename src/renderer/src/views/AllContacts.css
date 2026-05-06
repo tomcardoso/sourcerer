@@ -157,24 +157,6 @@
   color: var(--color-text);
 }
 
-.ac-import-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ac-import-project-select {
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
-  font-size: 13px;
-  font-family: var(--font);
-  color: var(--color-text);
-  background: var(--color-surface);
-  cursor: pointer;
-  max-width: 160px;
-}
 
 /* Compact boolean cells (email, phone, notes) */
 .contact-bool-cell {

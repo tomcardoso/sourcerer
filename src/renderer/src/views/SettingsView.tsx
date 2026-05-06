@@ -9,6 +9,14 @@ interface Props {
   onUserUpdated: (user: User) => void;
 }
 
+const INTERVAL_PRESETS = [
+  { label: 'Weekly', days: 7 },
+  { label: 'Every 2 weeks', days: 14 },
+  { label: 'Every 4 weeks', days: 28 },
+  { label: 'Every 8 weeks', days: 56 },
+  { label: 'No reminders', days: null as number | null },
+];
+
 const TIMEOUT_OPTIONS = [
   { label: '1 minute', seconds: 60 },
   { label: '5 minutes', seconds: 300 },
@@ -41,7 +49,6 @@ function OptionsSection({
   const [newLabel, setNewLabel] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
-  const [intervalValues, setIntervalValues] = useState<Record<string, string>>({});
 
   function getEditValue(opt: StatusOption | PriorityOption) {
     return editValues[opt.id] ?? opt.label;
@@ -88,26 +95,21 @@ function OptionsSection({
               }}
             />
             {showInterval && onSetInterval && (
-              <input
-                type="number"
-                className="sv-interval-input"
-                min={1}
-                placeholder="days"
-                title="Outreach interval (days)"
-                value={
-                  intervalValues[opt.id] !== undefined
-                    ? intervalValues[opt.id]
-                    : ((opt as PriorityOption).outreach_interval_days ?? '')
-                }
-                onChange={(e) =>
-                  setIntervalValues((prev) => ({ ...prev, [opt.id]: e.target.value }))
-                }
-                onBlur={(e) => {
-                  const val = e.target.value.trim();
-                  setIntervalValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
-                  onSetInterval(opt.id, val === '' ? null : Math.max(1, parseInt(val, 10)));
+              <select
+                className="sv-interval-select"
+                title="Outreach reminder frequency"
+                value={String((opt as PriorityOption).outreach_interval_days ?? '')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onSetInterval(opt.id, val === '' ? null : Number(val));
                 }}
-              />
+              >
+                {INTERVAL_PRESETS.map((p) => (
+                  <option key={p.days ?? 'none'} value={p.days ?? ''}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
             )}
             <button
               className="sv-move-btn"
@@ -412,7 +414,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         <div className="sv-section">
           <div className="view-section-title">Outreach Reminders</div>
           <p className="sv-hint">
-            Get a native notification when a source hasn't been contacted within their priority's interval. Set intervals above (in days) per priority level, or override per-source in the contact's project tab.
+            Get a native notification when a source hasn't been contacted within their priority's reminder interval. Configure intervals per priority level above. Reminders can be disabled per-source in the contact's project tab.
           </p>
           <div className="sv-field">
             <label className="sv-label">Enable outreach reminders</label>

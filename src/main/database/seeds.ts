@@ -16,12 +16,21 @@ const DEFAULT_STATUSES = [
 
 const DEFAULT_PRIORITIES = ['Critical', 'High', 'Medium', 'Low', 'Monitor-only'];
 
+// Default outreach reminder interval per priority (days). Monitor-only has no interval.
+const PRIORITY_INTERVALS: Record<string, number | null> = {
+  Critical: 7,
+  High: 14,
+  Medium: 28,
+  Low: 56,
+  'Monitor-only': null,
+};
+
 export function seedDefaults(db: Database.Database): void {
   const insertStatus = db.prepare(
     'INSERT OR IGNORE INTO status_options (id, label, sort_order, is_default) VALUES (?, ?, ?, 1)',
   );
   const insertPriority = db.prepare(
-    'INSERT OR IGNORE INTO priority_options (id, label, sort_order, is_default) VALUES (?, ?, ?, 1)',
+    'INSERT OR IGNORE INTO priority_options (id, label, sort_order, is_default, outreach_interval_days) VALUES (?, ?, ?, 1, ?)',
   );
 
   for (let i = 0; i < DEFAULT_STATUSES.length; i++) {
@@ -29,6 +38,7 @@ export function seedDefaults(db: Database.Database): void {
   }
 
   for (let i = 0; i < DEFAULT_PRIORITIES.length; i++) {
-    insertPriority.run(uuidv4(), DEFAULT_PRIORITIES[i], i);
+    const label = DEFAULT_PRIORITIES[i];
+    insertPriority.run(uuidv4(), label, i, PRIORITY_INTERVALS[label] ?? null);
   }
 }

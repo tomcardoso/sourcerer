@@ -114,10 +114,9 @@
   border-color: var(--color-primary);
 }
 
-.sv-interval-input {
-  width: 64px;
+.sv-interval-select {
   height: 32px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 1px solid var(--color-border);
   border-radius: 5px;
   font-size: 12px;
@@ -126,9 +125,10 @@
   background: var(--color-bg);
   outline: none;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
-.sv-interval-input:focus {
+.sv-interval-select:focus {
   border-color: var(--color-primary);
   color: var(--color-text);
 }

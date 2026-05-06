@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult, User } from '@shared/types';
+import ImportCsvModal from './ImportCsvModal';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
@@ -95,7 +96,7 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -191,18 +192,10 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     setRegenPayload({ projectName: project.name, payload: result.payload });
   }
 
-  async function handleImport() {
-    if (!project) return;
-    setImporting(true);
-    try {
-      const result = await window.sourcerer.importCsv({ projectId: project.id });
-      if (!result.cancelled) {
-        setImportResult(result);
-        refresh();
-      }
-    } finally {
-      setImporting(false);
-    }
+  function handleImportComplete(result: ImportResult) {
+    setShowImportModal(false);
+    setImportResult(result);
+    refresh();
   }
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
@@ -396,8 +389,8 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
               Share project…
             </button>
           )}
-          <button className="btn-secondary" onClick={handleImport} disabled={importing}>
-            {importing ? 'Importing…' : '↑ Import CSV'}
+          <button className="btn-secondary" onClick={() => setShowImportModal(true)}>
+            Import CSV…
           </button>
           <div className="export-menu-wrap" ref={exportMenuRef}>
             <button
@@ -733,6 +726,15 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
         projectName={regenPayload.projectName}
         payload={regenPayload.payload}
         onDone={() => setRegenPayload(null)}
+      />
+    )}
+
+    {showImportModal && project && (
+      <ImportCsvModal
+        projects={[]}
+        preselectedProjectId={project.id}
+        onComplete={handleImportComplete}
+        onClose={() => setShowImportModal(false)}
       />
     )}
 

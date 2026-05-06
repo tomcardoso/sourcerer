@@ -58,7 +58,8 @@ export function registerExportHandlers(): void {
       const memberships = db
         .prepare(
           `SELECT pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status,
-                  pm.first_outreach_at,
+                  (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
+                   WHERE ile.membership_id = pm.id) AS first_log_at,
                   c.id AS contact_id, c.name, c.organization, c.notes
            FROM project_memberships pm
            JOIN contacts c ON c.id = pm.contact_id
@@ -71,7 +72,7 @@ export function registerExportHandlers(): void {
         theme: string | null;
         priority: string | null;
         status: string | null;
-        first_outreach_at: number | null;
+        first_log_at: number | null;
         contact_id: string;
         name: string;
         organization: string | null;
@@ -162,8 +163,8 @@ export function registerExportHandlers(): void {
           Theme: m.theme ?? '',
           Priority: m.priority ?? '',
           Status: m.status ?? '',
-          'First outreach': m.first_outreach_at
-            ? new Date(m.first_outreach_at * 1000).toLocaleDateString()
+          'First outreach': m.first_log_at
+            ? new Date(m.first_log_at * 1000).toLocaleDateString()
             : '',
           'Interview dates': interviewDates,
           'Interaction log': interactionLog,
