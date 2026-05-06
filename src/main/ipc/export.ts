@@ -187,7 +187,8 @@ export function registerExportHandlers(): void {
     },
   );
 
-  ipcMain.handle('export:vcard-contact', async (_event, contactId: string): Promise<void> => {
+  ipcMain.handle('export:vcard-contact', async (event, contactId: string): Promise<void> => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     const db = getDatabase();
     const card = buildVCard(db, contactId);
     if (!card) return;
@@ -195,7 +196,7 @@ export function registerExportHandlers(): void {
     const contact = db.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string } | undefined;
     const safeName = (contact?.name ?? 'contact').replace(/[^a-z0-9]/gi, '-').toLowerCase();
 
-    const { canceled, filePath } = await dialog.showSaveDialog({
+    const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
       title: 'Export contact as vCard',
       defaultPath: `${safeName}.vcf`,
       filters: [{ name: 'vCard', extensions: ['vcf'] }],
@@ -204,7 +205,8 @@ export function registerExportHandlers(): void {
     await fs.writeFile(filePath, card, 'utf-8');
   });
 
-  ipcMain.handle('export:vcard-project', async (_event, projectId: string): Promise<void> => {
+  ipcMain.handle('export:vcard-project', async (event, projectId: string): Promise<void> => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     const db = getDatabase();
     const project = db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId) as { name: string } | undefined;
     const contactIds = (
@@ -215,7 +217,7 @@ export function registerExportHandlers(): void {
     if (!cards) return;
 
     const safeName = (project?.name ?? 'project').replace(/[^a-z0-9]/gi, '-').toLowerCase();
-    const { canceled, filePath } = await dialog.showSaveDialog({
+    const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
       title: 'Export project contacts as vCard',
       defaultPath: `${safeName}-contacts.vcf`,
       filters: [{ name: 'vCard', extensions: ['vcf'] }],
