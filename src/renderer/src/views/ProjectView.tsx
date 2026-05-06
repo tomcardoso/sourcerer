@@ -163,6 +163,14 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
     setExporting(false);
   }
 
+  async function handleConvertToShared() {
+    if (!project) return;
+    const result = await window.sourcerer.convertProjectToShared(project.id);
+    if (!result) return;
+    onProjectUpdated(result.project);
+    setRegenPayload({ projectName: result.project.name, payload: result.payload });
+  }
+
   async function handleRegenerate() {
     if (!project) return;
     const confirmed = window.confirm(
@@ -357,6 +365,11 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
               }}
             >
               Clear filters
+            </button>
+          )}
+          {project.is_shared === 0 && (
+            <button className="share-project-btn" onClick={handleConvertToShared}>
+              Share project…
             </button>
           )}
           <div className="export-menu-wrap" ref={exportMenuRef}>

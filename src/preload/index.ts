@@ -66,6 +66,8 @@ const sourcererApi = {
     ipcRenderer.invoke('projects:getSetupPayload', projectId),
   relocateSharedProject: (projectId: string, newPath: string): Promise<void> =>
     ipcRenderer.invoke('projects:relocateShared', { projectId, newPath }),
+  convertProjectToShared: (projectId: string): Promise<{ project: Project; payload: string } | null> =>
+    ipcRenderer.invoke('projects:convertToShared', projectId),
   regenerateSharedProject: (projectId: string): Promise<{ payload: string } | null> =>
     ipcRenderer.invoke('projects:regenerateShared', projectId),
   renameProject: (id: string, name: string): Promise<void> =>

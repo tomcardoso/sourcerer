@@ -205,3 +205,20 @@
   color: #fca5a5;
   line-height: 1.4;
 }
+
+.share-project-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.1s, color 0.1s;
+}
+
+.share-project-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text-primary);
+}

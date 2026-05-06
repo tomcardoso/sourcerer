@@ -54,6 +54,7 @@ declare global {
       }) => Promise<Project | null>;
       getSetupPayload: (projectId: string) => Promise<string | null>;
       relocateSharedProject: (projectId: string, newPath: string) => Promise<void>;
+      convertProjectToShared: (projectId: string) => Promise<{ project: Project; payload: string } | null>;
       regenerateSharedProject: (projectId: string) => Promise<{ payload: string } | null>;
       renameProject: (id: string, name: string) => Promise<void>;
       deleteProject: (id: string) => Promise<void>;

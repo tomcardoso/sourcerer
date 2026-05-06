@@ -184,6 +184,67 @@ export function registerProjectHandlers(): void {
   );
 
   ipcMain.handle(
+    'projects:convertToShared',
+    async (
+      event,
+      projectId: string,
+    ): Promise<{ project: Project; payload: string } | null> => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const db = getDatabase();
+
+      const project = db
+        .prepare('SELECT * FROM projects WHERE id = ?')
+        .get(projectId) as Project | undefined;
+      if (!project || project.is_shared === 1) return null;
+
+      const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+        title: 'Save shared project file',
+        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-sourcerer.db`,
+        filters: [{ name: 'Sourcerer Shared Project', extensions: ['db'] }],
+      });
+      if (saveResult.canceled || !saveResult.filePath) return null;
+
+      const filePath = saveResult.filePath;
+      const keyBytes = randomBytes(32);
+      const keyHex = keyBytes.toString('hex');
+      const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+
+      // Create shared DB and write project metadata
+      const sharedDb = createSharedDb(filePath, keyHex, projectId);
+      sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
+        project.name,
+        project.description,
+      );
+
+      // Add self as a reporter (local projects don't have this row yet)
+      db.prepare(
+        'INSERT OR IGNORE INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
+      ).run(
+        uuidv4(),
+        projectId,
+        `${user.first_name} ${user.last_name}`.trim(),
+        user.email,
+      );
+
+      // Upgrade local project record to shared
+      db.prepare(
+        'UPDATE projects SET is_shared = 1, shared_db_path = ?, shared_db_key = ? WHERE id = ?',
+      ).run(filePath, keyBytes, projectId);
+
+      // Push all existing local data to the shared file
+      try {
+        syncProject(db, sharedDb, projectId);
+      } catch {
+        // Non-fatal — data will sync on next poll
+      }
+
+      const updated = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId) as Project;
+      const payload = encodePayload(project.name, project.description, filePath, keyBytes);
+      return { project: updated, payload };
+    },
+  );
+
+  ipcMain.handle(
     'projects:regenerateShared',
     async (
       event,
