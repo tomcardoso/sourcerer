@@ -448,6 +448,17 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         </div>
 
         <div className="pt-field">
+          <label className="pt-label">Last contacted</label>
+          <span className="pt-readonly-date">
+            {membership.date_last_contacted
+              ? new Date(membership.date_last_contacted * 1000).toLocaleDateString(undefined, {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                })
+              : '—'}
+          </span>
+        </div>
+
+        <div className="pt-field">
           <label className="pt-label">Outreach reminder</label>
           <label className="pt-outreach-disable">
             <input

@@ -96,7 +96,9 @@ export function registerContactHandlers(): void {
                 pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
                 pm.outreach_reminders_disabled,
                 (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
-                 WHERE ile.membership_id = pm.id) AS first_log_at
+                 WHERE ile.membership_id = pm.id) AS first_log_at,
+                (SELECT MAX(ile.created_at) FROM interaction_log_entries ile
+                 WHERE ile.membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm
          JOIN projects p ON p.id = pm.project_id
          WHERE pm.contact_id = ?

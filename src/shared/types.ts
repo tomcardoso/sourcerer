@@ -83,6 +83,7 @@ export interface ContactProject {
   theme: string | null;
   first_outreach_at: number | null;
   first_log_at: number | null;
+  date_last_contacted: number | null;
   reporter_name: string;
   reporter_email: string;
   outreach_reminders_disabled: 0 | 1;
