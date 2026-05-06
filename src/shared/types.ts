@@ -39,6 +39,8 @@ export interface User {
   idle_timeout_seconds: number;
   phone_country: string;
   outreach_reminders_enabled: 0 | 1;
+  staleness_enabled: 0 | 1;
+  staleness_threshold_days: number;
 }
 
 export interface ContactListItem {

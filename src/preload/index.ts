@@ -127,6 +127,10 @@ const sourcererApi = {
     ipcRenderer.invoke('users:update', data),
   setPhoneCountry: (country: string): Promise<User> =>
     ipcRenderer.invoke('settings:set-phone-country', country),
+  setStalenessEnabled: (enabled: boolean): Promise<User> =>
+    ipcRenderer.invoke('settings:set-staleness-enabled', enabled),
+  setStalenessThreshold: (days: number): Promise<User> =>
+    ipcRenderer.invoke('settings:set-staleness-threshold', days),
   setOutreachRemindersEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-outreach-reminders-enabled', enabled),
   setPriorityInterval: (id: string, days: number | null): Promise<void> =>

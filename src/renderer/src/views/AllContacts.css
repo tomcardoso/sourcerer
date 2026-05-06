@@ -204,6 +204,14 @@
   white-space: nowrap;
 }
 
+.contact-date-stale {
+  color: #d97706;
+}
+
+.contact-date-stale .contact-cell-muted {
+  color: #d97706;
+}
+
 /* Clear filters button */
 .clear-filters-btn {
   height: 32px;

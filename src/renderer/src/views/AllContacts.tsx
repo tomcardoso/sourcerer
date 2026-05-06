@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ContactListItem, ImportResult, Project } from '@shared/types';
+import type { ContactListItem, ImportResult, Project, User } from '@shared/types';
 import AddContactModal from '../contacts/AddContactModal';
 import ContactDetail from '../contacts/ContactDetail';
 import ColumnHeader, { TextFilter, ToggleFilter, PresetFilter } from './ColumnHeader';
@@ -52,9 +52,10 @@ function isFilterActive(f: Filters): boolean {
 
 interface Props {
   projects: Project[];
+  user: User | null;
 }
 
-export default function AllContacts({ projects }: Props) {
+export default function AllContacts({ projects, user }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -176,6 +177,13 @@ export default function AllContacts({ projects }: Props) {
 
   const sd = (key: SortKey) => (sort.key === key ? sort.dir : null);
   const anyFilter = isFilterActive(filters);
+
+  const stalenessEnabled = user?.staleness_enabled !== 0;
+  const stalenessThresholdSecs = (user?.staleness_threshold_days ?? 90) * 86400;
+  function isStale(dateLastContacted: number | null): boolean {
+    if (!stalenessEnabled) return false;
+    return dateLastContacted === null || dateLastContacted < now - stalenessThresholdSecs;
+  }
 
   return (
     <div className="view">
@@ -387,7 +395,7 @@ export default function AllContacts({ projects }: Props) {
                         <span className="contact-cell-muted">—</span>
                       )}
                     </td>
-                    <td className="contact-date-cell">
+                    <td className={`contact-date-cell${isStale(c.date_last_contacted) ? ' contact-date-stale' : ''}`}>
                       {c.date_last_contacted === null ? (
                         <span className="contact-cell-muted">Never</span>
                       ) : (

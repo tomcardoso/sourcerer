@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult } from '@shared/types';
+import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult, User } from '@shared/types';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
@@ -15,7 +15,7 @@ import './ProjectView.css';
 
 interface Props {
   project: Project | null;
-  userEmail: string | null;
+  user: User | null;
   onProjectUpdated: (project: Project) => void;
 }
 
@@ -81,7 +81,7 @@ function isFilterActive(f: Filters): boolean {
   );
 }
 
-export default function ProjectView({ project, userEmail, onProjectUpdated }: Props) {
+export default function ProjectView({ project, user, onProjectUpdated }: Props) {
   const [rows, setRows] = useState<ProjectContactRow[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
@@ -344,6 +344,13 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
   const isPendingWrites = project.is_shared === 1 && project.shared_pending_writes === 1;
   const anyFilter = isFilterActive(filters);
   const sd = (key: SortKey) => (sort.key === key ? sort.dir : null);
+
+  const stalenessEnabled = user?.staleness_enabled !== 0;
+  const stalenessThresholdSecs = (user?.staleness_threshold_days ?? 90) * 86400;
+  function isStale(dateLastContacted: number | null): boolean {
+    if (!stalenessEnabled) return false;
+    return dateLastContacted === null || dateLastContacted < now - stalenessThresholdSecs;
+  }
 
   return (
     <>
@@ -644,7 +651,7 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
               </thead>
               <tbody>
                 {displayed.map((r) => {
-                  const isMe = userEmail && r.reporter_email === userEmail;
+                  const isMe = user?.email && r.reporter_email === user.email;
                   return (
                     <tr
                       key={r.id}
@@ -685,7 +692,7 @@ export default function ProjectView({ project, userEmail, onProjectUpdated }: Pr
                           <span className="contact-cell-muted">—</span>
                         )}
                       </td>
-                      <td className="contact-date-cell">
+                      <td className={`contact-date-cell${isStale(r.date_last_contacted) ? ' contact-date-stale' : ''}`}>
                         {r.date_last_contacted === null ? (
                           <span className="contact-cell-muted">Never</span>
                         ) : (

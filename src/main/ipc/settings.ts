@@ -128,6 +128,18 @@ export function registerSettingsHandlers(): void {
     },
   );
 
+  ipcMain.handle('settings:set-staleness-enabled', (_, enabled: boolean): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET staleness_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
+  ipcMain.handle('settings:set-staleness-threshold', (_, days: number): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET staleness_threshold_days = ? WHERE id = 1').run(Math.max(1, days));
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
   ipcMain.handle('settings:set-outreach-reminders-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET outreach_reminders_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);

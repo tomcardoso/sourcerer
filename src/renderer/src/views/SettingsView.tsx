@@ -172,6 +172,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('US');
   const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
+  const [stalenessEnabled, setStalenessEnabled] = useState<boolean>(true);
+  const [stalenessThreshold, setStalenessThreshold] = useState<number>(90);
+  const [stalenessThresholdInput, setStalenessThresholdInput] = useState<string>('90');
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
 
   const countryOptions = useMemo(() => {
@@ -192,6 +195,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setEmail(user.email);
       setPhoneCountry(user.phone_country ?? 'US');
       setOutreachRemindersEnabled(user.outreach_reminders_enabled !== 0);
+      setStalenessEnabled(user.staleness_enabled !== 0);
+      setStalenessThreshold(user.staleness_threshold_days ?? 90);
+      setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
     }
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
@@ -220,6 +226,23 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   async function handleTimeoutChange(seconds: number) {
     setIdleTimeout(seconds);
     await window.sourcerer.setIdleTimeout(seconds);
+  }
+
+  async function handleStalenessToggle(enabled: boolean) {
+    setStalenessEnabled(enabled);
+    const updated = await window.sourcerer.setStalenessEnabled(enabled);
+    onUserUpdated(updated);
+  }
+
+  async function handleStalenessThresholdBlur() {
+    const days = parseInt(stalenessThresholdInput, 10);
+    if (!isNaN(days) && days > 0 && days !== stalenessThreshold) {
+      setStalenessThreshold(days);
+      const updated = await window.sourcerer.setStalenessThreshold(days);
+      onUserUpdated(updated);
+    } else {
+      setStalenessThresholdInput(String(stalenessThreshold));
+    }
   }
 
   async function handleOutreachToggle(enabled: boolean) {
@@ -351,6 +374,39 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           showInterval
           onSetInterval={handlePriorityInterval}
         />
+
+        {/* Staleness */}
+        <div className="sv-section">
+          <div className="view-section-title">Source Staleness</div>
+          <p className="sv-hint">
+            Contacts with no interaction or outreach logged within the threshold will show a subtle amber indicator in the contacts table.
+          </p>
+          <div className="sv-field">
+            <label className="sv-label">Enable staleness indicator</label>
+            <input
+              type="checkbox"
+              checked={stalenessEnabled}
+              onChange={(e) => handleStalenessToggle(e.target.checked)}
+            />
+          </div>
+          {stalenessEnabled && (
+            <div className="sv-field sv-staleness-threshold">
+              <label className="sv-label">Stale after</label>
+              <div className="sv-inline-field">
+                <input
+                  type="number"
+                  className="sv-input sv-threshold-input"
+                  min={1}
+                  value={stalenessThresholdInput}
+                  onChange={(e) => setStalenessThresholdInput(e.target.value)}
+                  onBlur={handleStalenessThresholdBlur}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                />
+                <span className="sv-inline-label">days without contact</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Outreach reminders */}
         <div className="sv-section">

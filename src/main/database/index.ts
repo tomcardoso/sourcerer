@@ -56,6 +56,14 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     db.exec('ALTER TABLE project_memberships ADD COLUMN outreach_reminders_disabled INTEGER NOT NULL DEFAULT 0');
   } catch {}
 
+  // Migrate existing databases: add staleness columns if missing
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN staleness_enabled INTEGER NOT NULL DEFAULT 1');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN staleness_threshold_days INTEGER NOT NULL DEFAULT 90');
+  } catch {}
+
   // Migrate link type 'twitter' → 'x' to match architecture spec
   try {
     db.exec("UPDATE contact_links SET type = 'x' WHERE type = 'twitter'");

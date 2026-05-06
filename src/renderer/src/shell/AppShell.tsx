@@ -106,7 +106,7 @@ export default function AppShell() {
         onProjectDeleted={handleProjectDeleted}
       />
       <main className="app-content">
-        {nav.view === 'all-contacts' && <AllContacts projects={projects} />}
+        {nav.view === 'all-contacts' && <AllContacts projects={projects} user={user} />}
         {nav.view === 'alerts' && (
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
@@ -114,7 +114,7 @@ export default function AppShell() {
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}
-            userEmail={user?.email ?? null}
+            user={user}
             onProjectUpdated={(updated) =>
               setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
             }

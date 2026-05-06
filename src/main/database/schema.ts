@@ -11,7 +11,9 @@ export const LOCAL_SCHEMA_SQL = `
     calendar_token             TEXT    NOT NULL,
     idle_timeout_seconds       INTEGER NOT NULL DEFAULT 900,
     phone_country              TEXT    NOT NULL DEFAULT 'US',
-    outreach_reminders_enabled INTEGER NOT NULL DEFAULT 1
+    outreach_reminders_enabled INTEGER NOT NULL DEFAULT 1,
+    staleness_enabled           INTEGER NOT NULL DEFAULT 1,
+    staleness_threshold_days    INTEGER NOT NULL DEFAULT 90
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
