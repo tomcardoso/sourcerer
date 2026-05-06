@@ -3,14 +3,15 @@ export const LOCAL_SCHEMA_SQL = `
   PRAGMA journal_mode = WAL;
 
   CREATE TABLE IF NOT EXISTS users (
-    id                    INTEGER PRIMARY KEY,
-    first_name            TEXT    NOT NULL,
-    last_name             TEXT    NOT NULL,
-    email                 TEXT    NOT NULL,
-    created_at            INTEGER NOT NULL,
-    calendar_token        TEXT    NOT NULL,
-    idle_timeout_seconds  INTEGER NOT NULL DEFAULT 900,
-    phone_country         TEXT    NOT NULL DEFAULT 'US'
+    id                         INTEGER PRIMARY KEY,
+    first_name                 TEXT    NOT NULL,
+    last_name                  TEXT    NOT NULL,
+    email                      TEXT    NOT NULL,
+    created_at                 INTEGER NOT NULL,
+    calendar_token             TEXT    NOT NULL,
+    idle_timeout_seconds       INTEGER NOT NULL DEFAULT 900,
+    phone_country              TEXT    NOT NULL DEFAULT 'US',
+    outreach_reminders_enabled INTEGER NOT NULL DEFAULT 1
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
@@ -101,18 +102,20 @@ export const LOCAL_SCHEMA_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS project_memberships (
-    id              TEXT    PRIMARY KEY,
-    contact_id      TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-    project_id      TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    reporter_email  TEXT    NOT NULL,
-    reporter_name   TEXT    NOT NULL,
-    theme           TEXT,
-    priority        TEXT,
-    status          TEXT,
-    first_outreach_at INTEGER,
-    created_at      INTEGER NOT NULL,
-    updated_at      INTEGER NOT NULL,
-    synced_at       INTEGER
+    id                          TEXT    PRIMARY KEY,
+    contact_id                  TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    project_id                  TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    reporter_email              TEXT    NOT NULL,
+    reporter_name               TEXT    NOT NULL,
+    theme                       TEXT,
+    priority                    TEXT,
+    status                      TEXT,
+    first_outreach_at           INTEGER,
+    outreach_interval_days      INTEGER,
+    outreach_reminders_disabled INTEGER NOT NULL DEFAULT 0,
+    created_at                  INTEGER NOT NULL,
+    updated_at                  INTEGER NOT NULL,
+    synced_at                   INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS interview_dates (
@@ -151,10 +154,11 @@ export const LOCAL_SCHEMA_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS priority_options (
-    id         TEXT    PRIMARY KEY,
-    label      TEXT    NOT NULL UNIQUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_default INTEGER NOT NULL DEFAULT 0
+    id                     TEXT    PRIMARY KEY,
+    label                  TEXT    NOT NULL UNIQUE,
+    sort_order             INTEGER NOT NULL DEFAULT 0,
+    is_default             INTEGER NOT NULL DEFAULT 0,
+    outreach_interval_days INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS reminders (

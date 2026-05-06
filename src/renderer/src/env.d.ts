@@ -99,6 +99,8 @@ declare global {
       // Settings
       updateUser: (data: { firstName: string; lastName: string; email: string }) => Promise<User>;
       setPhoneCountry: (country: string) => Promise<User>;
+      setOutreachRemindersEnabled: (enabled: boolean) => Promise<User>;
+      setPriorityInterval: (id: string, days: number | null) => Promise<void>;
       getCalendarUrl: () => Promise<string>;
       regenerateCalendarToken: () => Promise<User>;
       getIdleTimeout: () => Promise<number>;

@@ -3,6 +3,7 @@ import { getDatabase, isDatabaseOpen } from '../database';
 import { openSharedDb, closeSharedDb } from '../database/shared-db';
 import { syncProject } from './engine';
 import { pollAllRss } from './rss-poller';
+import { checkOutreachReminders } from './outreach-checker';
 
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -42,6 +43,7 @@ export function pollAll(): void {
   }
 
   pollAllRss().catch(() => {});
+  checkOutreachReminders();
 }
 
 export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): SyncStatusEvent {

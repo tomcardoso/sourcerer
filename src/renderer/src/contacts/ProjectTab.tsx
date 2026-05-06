@@ -315,6 +315,12 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   const [localPriority, setLocalPriority] = useState<string>(membership?.priority ?? '');
   const [localTheme, setLocalTheme] = useState<string>(membership?.theme ?? '');
   const [localDate, setLocalDate] = useState<string>(formatDate(membership?.first_outreach_at ?? null));
+  const [localOutreachInterval, setLocalOutreachInterval] = useState<string>(
+    membership?.outreach_interval_days != null ? String(membership.outreach_interval_days) : '',
+  );
+  const [localOutreachDisabled, setLocalOutreachDisabled] = useState<boolean>(
+    membership?.outreach_reminders_disabled === 1,
+  );
 
   useEffect(() => {
     if (!membership) return;
@@ -322,21 +328,37 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalPriority(membership.priority ?? '');
     setLocalTheme(membership.theme ?? '');
     setLocalDate(formatDate(membership.first_outreach_at));
+    setLocalOutreachInterval(
+      membership.outreach_interval_days != null ? String(membership.outreach_interval_days) : '',
+    );
+    setLocalOutreachDisabled(membership.outreach_reminders_disabled === 1);
   }, [membership?.membership_id]);
 
   if (!membership) return null;
 
-  function membershipUpdate(overrides: { status?: string; priority?: string; theme?: string; date?: string }) {
+  function membershipUpdate(overrides: {
+    status?: string;
+    priority?: string;
+    theme?: string;
+    date?: string;
+    outreachInterval?: string;
+    outreachDisabled?: boolean;
+  }) {
     const status = (overrides.status ?? localStatus) || null;
     const priority = (overrides.priority ?? localPriority) || null;
     const theme = (overrides.theme ?? localTheme) || null;
     const date = overrides.date ?? localDate;
+    const intervalStr = overrides.outreachInterval !== undefined ? overrides.outreachInterval : localOutreachInterval;
+    const disabled = overrides.outreachDisabled !== undefined ? overrides.outreachDisabled : localOutreachDisabled;
+    const intervalDays = intervalStr.trim() !== '' ? Math.max(1, parseInt(intervalStr, 10)) : null;
     return window.sourcerer.updateMembership({
       membershipId: membership.membership_id,
       status,
       priority,
       theme,
       firstOutreachAt: date ? Math.floor(new Date(date).getTime() / 1000) : null,
+      outreachIntervalDays: intervalDays,
+      outreachRemindersDisabled: disabled ? 1 : 0,
     });
   }
 
@@ -362,6 +384,16 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalDate(value);
     await membershipUpdate({ date: value });
     onMembershipUpdated();
+  }
+
+  async function handleOutreachIntervalBlur(value: string) {
+    setLocalOutreachInterval(value);
+    await membershipUpdate({ outreachInterval: value });
+  }
+
+  async function handleOutreachDisabledChange(disabled: boolean) {
+    setLocalOutreachDisabled(disabled);
+    await membershipUpdate({ outreachDisabled: disabled });
   }
 
   return (
@@ -439,6 +471,30 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
             onChange={(e) => setLocalDate(e.target.value)}
             onBlur={(e) => handleDateBlur(e.target.value)}
           />
+        </div>
+
+        <div className="pt-field pt-field--full">
+          <label className="pt-label">Outreach reminder</label>
+          <div className="pt-outreach-row">
+            <input
+              type="number"
+              className="pt-outreach-interval"
+              min={1}
+              placeholder="days (from priority)"
+              value={localOutreachInterval}
+              onChange={(e) => setLocalOutreachInterval(e.target.value)}
+              onBlur={(e) => handleOutreachIntervalBlur(e.target.value)}
+              disabled={localOutreachDisabled}
+            />
+            <label className="pt-outreach-disable">
+              <input
+                type="checkbox"
+                checked={localOutreachDisabled}
+                onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
+              />
+              Disable
+            </label>
+          </div>
         </div>
       </div>
 

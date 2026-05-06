@@ -38,6 +38,24 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     // Column already exists or table not yet created — both are fine
   }
 
+  // Migrate existing databases: add outreach_reminders_enabled if missing
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN outreach_reminders_enabled INTEGER NOT NULL DEFAULT 1');
+  } catch {}
+
+  // Migrate existing databases: add outreach_interval_days to priority_options if missing
+  try {
+    db.exec('ALTER TABLE priority_options ADD COLUMN outreach_interval_days INTEGER');
+  } catch {}
+
+  // Migrate existing databases: add outreach columns to project_memberships if missing
+  try {
+    db.exec('ALTER TABLE project_memberships ADD COLUMN outreach_interval_days INTEGER');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE project_memberships ADD COLUMN outreach_reminders_disabled INTEGER NOT NULL DEFAULT 0');
+  } catch {}
+
   // Migrate link type 'twitter' → 'x' to match architecture spec
   try {
     db.exec("UPDATE contact_links SET type = 'x' WHERE type = 'twitter'");

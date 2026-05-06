@@ -128,6 +128,21 @@ export function registerSettingsHandlers(): void {
     },
   );
 
+  ipcMain.handle('settings:set-outreach-reminders-enabled', (_, enabled: boolean): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET outreach_reminders_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
+  ipcMain.handle(
+    'priority-options:set-interval',
+    (_, { id, days }: { id: string; days: number | null }): void => {
+      getDatabase()
+        .prepare('UPDATE priority_options SET outreach_interval_days = ? WHERE id = ?')
+        .run(days ?? null, id);
+    },
+  );
+
   ipcMain.handle('settings:set-phone-country', (_, country: string): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET phone_country = ? WHERE id = 1').run(country);

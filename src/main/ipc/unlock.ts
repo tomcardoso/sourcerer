@@ -4,6 +4,7 @@ import { getPaths, deriveKey } from '../utils';
 import { unlockDatabase, maybeRunDevSeeds } from '../database';
 import { autoLock } from '../auto-lock';
 import { startPoller } from '../sync/poller';
+import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
 import type { UnlockResult } from '@shared/types';
 
 const APP_WIDTH = 1100;
@@ -50,6 +51,8 @@ export function registerUnlockHandlers(): void {
       }
 
       startPoller();
+      clearOutreachNotificationCache();
+      checkOutreachReminders();
       return { success: true };
     } catch {
       return { success: false, error: 'Incorrect password.' };

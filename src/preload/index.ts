@@ -126,6 +126,10 @@ const sourcererApi = {
     ipcRenderer.invoke('users:update', data),
   setPhoneCountry: (country: string): Promise<User> =>
     ipcRenderer.invoke('settings:set-phone-country', country),
+  setOutreachRemindersEnabled: (enabled: boolean): Promise<User> =>
+    ipcRenderer.invoke('settings:set-outreach-reminders-enabled', enabled),
+  setPriorityInterval: (id: string, days: number | null): Promise<void> =>
+    ipcRenderer.invoke('priority-options:set-interval', { id, days }),
   getCalendarUrl: (): Promise<string> => ipcRenderer.invoke('settings:get-calendar-url'),
   regenerateCalendarToken: (): Promise<User> => ipcRenderer.invoke('settings:regenerate-calendar-token'),
   getIdleTimeout: (): Promise<number> => ipcRenderer.invoke('settings:get-idle-timeout'),

@@ -38,6 +38,7 @@ export interface User {
   calendar_token: string;
   idle_timeout_seconds: number;
   phone_country: string;
+  outreach_reminders_enabled: 0 | 1;
 }
 
 export interface ContactListItem {
@@ -81,6 +82,8 @@ export interface ContactProject {
   first_outreach_at: number | null;
   reporter_name: string;
   reporter_email: string;
+  outreach_interval_days: number | null;
+  outreach_reminders_disabled: 0 | 1;
 }
 
 export interface ContactDetail {
@@ -127,6 +130,8 @@ export interface UpdateMembershipInput {
   priority?: string | null;
   theme?: string | null;
   firstOutreachAt?: number | null;
+  outreachIntervalDays?: number | null;
+  outreachRemindersDisabled?: 0 | 1;
 }
 
 export interface InteractionLogEntry {
@@ -160,6 +165,7 @@ export interface PriorityOption {
   label: string;
   sort_order: number;
   is_default: number;
+  outreach_interval_days: number | null;
 }
 
 export interface ProjectContactRow {

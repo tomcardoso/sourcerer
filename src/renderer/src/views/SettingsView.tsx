@@ -25,6 +25,8 @@ function OptionsSection({
   onRename,
   onDelete,
   onMove,
+  showInterval,
+  onSetInterval,
 }: {
   title: string;
   options: (StatusOption | PriorityOption)[];
@@ -32,11 +34,14 @@ function OptionsSection({
   onRename: (id: string, label: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onMove: (id: string, direction: 'up' | 'down') => Promise<void>;
+  showInterval?: boolean;
+  onSetInterval?: (id: string, days: number | null) => Promise<void>;
 }) {
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [intervalValues, setIntervalValues] = useState<Record<string, string>>({});
 
   function getEditValue(opt: StatusOption | PriorityOption) {
     return editValues[opt.id] ?? opt.label;
@@ -82,6 +87,28 @@ function OptionsSection({
                 }
               }}
             />
+            {showInterval && onSetInterval && (
+              <input
+                type="number"
+                className="sv-interval-input"
+                min={1}
+                placeholder="days"
+                title="Outreach interval (days)"
+                value={
+                  intervalValues[opt.id] !== undefined
+                    ? intervalValues[opt.id]
+                    : ((opt as PriorityOption).outreach_interval_days ?? '')
+                }
+                onChange={(e) =>
+                  setIntervalValues((prev) => ({ ...prev, [opt.id]: e.target.value }))
+                }
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  setIntervalValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
+                  onSetInterval(opt.id, val === '' ? null : Math.max(1, parseInt(val, 10)));
+                }}
+              />
+            )}
             <button
               className="sv-move-btn"
               disabled={i === 0}
@@ -144,6 +171,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('US');
+  const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
 
   const countryOptions = useMemo(() => {
@@ -163,6 +191,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setLastName(user.last_name);
       setEmail(user.email);
       setPhoneCountry(user.phone_country ?? 'US');
+      setOutreachRemindersEnabled(user.outreach_reminders_enabled !== 0);
     }
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
@@ -191,6 +220,17 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   async function handleTimeoutChange(seconds: number) {
     setIdleTimeout(seconds);
     await window.sourcerer.setIdleTimeout(seconds);
+  }
+
+  async function handleOutreachToggle(enabled: boolean) {
+    setOutreachRemindersEnabled(enabled);
+    const updated = await window.sourcerer.setOutreachRemindersEnabled(enabled);
+    onUserUpdated(updated);
+  }
+
+  async function handlePriorityInterval(id: string, days: number | null) {
+    await window.sourcerer.setPriorityInterval(id, days);
+    setPriorityOptions(await window.sourcerer.listPriorityOptions());
   }
 
   async function handlePhoneCountryChange(country: string) {
@@ -308,7 +348,25 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           onRename={renamePriority}
           onDelete={deletePriority}
           onMove={movePriority}
+          showInterval
+          onSetInterval={handlePriorityInterval}
         />
+
+        {/* Outreach reminders */}
+        <div className="sv-section">
+          <div className="view-section-title">Outreach Reminders</div>
+          <p className="sv-hint">
+            Get a native notification when a source hasn't been contacted within their priority's interval. Set intervals above (in days) per priority level, or override per-source in the contact's project tab.
+          </p>
+          <div className="sv-field">
+            <label className="sv-label">Enable outreach reminders</label>
+            <input
+              type="checkbox"
+              checked={outreachRemindersEnabled}
+              onChange={(e) => handleOutreachToggle(e.target.checked)}
+            />
+          </div>
+        </div>
 
         {/* Security */}
         <div className="sv-section">
