@@ -139,7 +139,7 @@ export function findDuplicatePairs(contacts: DedupContact[]): DuplicatePair[] {
       const a = unpaired[i];
       const b = unpaired[j];
       if (pairedIds.has(a.id) || pairedIds.has(b.id)) continue;
-      if (jaroWinkler(a.name, b.name) >= 0.88) {
+      if (jaroWinkler(a.name, b.name) >= 0.95) {
         pairs.push({ a, b, reason: 'name' });
         pairedIds.add(a.id);
         pairedIds.add(b.id);
