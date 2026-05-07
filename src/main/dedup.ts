@@ -1,0 +1,314 @@
+import { v4 as uuidv4 } from 'uuid';
+import type Database from 'better-sqlite3-multiple-ciphers';
+import type { DedupContact, DuplicatePair } from '@shared/types';
+
+export function loadDedupContacts(db: Database.Database): DedupContact[] {
+  const contacts = db
+    .prepare(
+      `SELECT c.id, c.name, c.organization, c.notes,
+              (SELECT COUNT(*) FROM project_memberships pm WHERE pm.contact_id = c.id) AS project_count
+       FROM contacts c
+       ORDER BY c.name ASC`,
+    )
+    .all() as Array<{
+    id: string;
+    name: string;
+    organization: string | null;
+    notes: string | null;
+    project_count: number;
+  }>;
+
+  const emailRows = db
+    .prepare('SELECT contact_id, email FROM contact_emails')
+    .all() as Array<{ contact_id: string; email: string }>;
+
+  const phoneRows = db
+    .prepare('SELECT contact_id, phone FROM contact_phones')
+    .all() as Array<{ contact_id: string; phone: string }>;
+
+  const emailsByContact = new Map<string, string[]>();
+  for (const row of emailRows) {
+    const arr = emailsByContact.get(row.contact_id) ?? [];
+    arr.push(row.email);
+    emailsByContact.set(row.contact_id, arr);
+  }
+
+  const phonesByContact = new Map<string, string[]>();
+  for (const row of phoneRows) {
+    const arr = phonesByContact.get(row.contact_id) ?? [];
+    arr.push(row.phone);
+    phonesByContact.set(row.contact_id, arr);
+  }
+
+  return contacts.map((c) => ({
+    id: c.id,
+    name: c.name,
+    organization: c.organization,
+    notes: c.notes,
+    emails: emailsByContact.get(c.id) ?? [],
+    phones: phonesByContact.get(c.id) ?? [],
+    projectCount: c.project_count,
+  }));
+}
+
+function jaroWinkler(a: string, b: string): number {
+  const s1 = a.toLowerCase();
+  const s2 = b.toLowerCase();
+  if (s1 === s2) return 1;
+
+  const matchDist = Math.max(Math.floor(Math.max(s1.length, s2.length) / 2) - 1, 0);
+  const s1Matches = new Array<boolean>(s1.length).fill(false);
+  const s2Matches = new Array<boolean>(s2.length).fill(false);
+  let matches = 0;
+  let transpositions = 0;
+
+  for (let i = 0; i < s1.length; i++) {
+    const start = Math.max(0, i - matchDist);
+    const end = Math.min(i + matchDist + 1, s2.length);
+    for (let j = start; j < end; j++) {
+      if (s2Matches[j] || s1[i] !== s2[j]) continue;
+      s1Matches[i] = true;
+      s2Matches[j] = true;
+      matches++;
+      break;
+    }
+  }
+
+  if (matches === 0) return 0;
+
+  let k = 0;
+  for (let i = 0; i < s1.length; i++) {
+    if (!s1Matches[i]) continue;
+    while (!s2Matches[k]) k++;
+    if (s1[i] !== s2[k]) transpositions++;
+    k++;
+  }
+
+  const jaro =
+    (matches / s1.length + matches / s2.length + (matches - transpositions / 2) / matches) / 3;
+
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, s1.length, s2.length); i++) {
+    if (s1[i] === s2[i]) prefix++;
+    else break;
+  }
+
+  return jaro + prefix * 0.1 * (1 - jaro);
+}
+
+export function findDuplicatePairs(contacts: DedupContact[]): DuplicatePair[] {
+  const pairs: DuplicatePair[] = [];
+  const pairedIds = new Set<string>();
+
+  // Pass 1: exact email signals
+  const emailIndex = new Map<string, string>();
+  for (const c of contacts) {
+    for (const email of c.emails) {
+      const existing = emailIndex.get(email);
+      if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
+        const a = contacts.find((x) => x.id === existing)!;
+        pairs.push({ a, b: c, reason: 'email' });
+        pairedIds.add(existing);
+        pairedIds.add(c.id);
+      } else if (!existing) {
+        emailIndex.set(email, c.id);
+      }
+    }
+  }
+
+  // Pass 1b: exact phone signals
+  const phoneIndex = new Map<string, string>();
+  for (const c of contacts) {
+    for (const phone of c.phones) {
+      const existing = phoneIndex.get(phone);
+      if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
+        const a = contacts.find((x) => x.id === existing)!;
+        pairs.push({ a, b: c, reason: 'phone' });
+        pairedIds.add(existing);
+        pairedIds.add(c.id);
+      } else if (!existing) {
+        phoneIndex.set(phone, c.id);
+      }
+    }
+  }
+
+  // Pass 2: fuzzy name matching over unpaired contacts
+  const unpaired = contacts.filter((c) => !pairedIds.has(c.id));
+  for (let i = 0; i < unpaired.length; i++) {
+    for (let j = i + 1; j < unpaired.length; j++) {
+      const a = unpaired[i];
+      const b = unpaired[j];
+      if (pairedIds.has(a.id) || pairedIds.has(b.id)) continue;
+      if (jaroWinkler(a.name, b.name) >= 0.88) {
+        pairs.push({ a, b, reason: 'name' });
+        pairedIds.add(a.id);
+        pairedIds.add(b.id);
+      }
+    }
+  }
+
+  return pairs;
+}
+
+export function mergeContacts(
+  db: Database.Database,
+  winnerId: string,
+  loserId: string,
+  strategy: 'keep' | 'merge',
+): void {
+  const doMerge = db.transaction(() => {
+    if (strategy === 'merge') {
+      const winner = db
+        .prepare('SELECT name, organization, notes FROM contacts WHERE id = ?')
+        .get(winnerId) as { name: string; organization: string | null; notes: string | null };
+      const loser = db
+        .prepare('SELECT name, organization, notes FROM contacts WHERE id = ?')
+        .get(loserId) as { name: string; organization: string | null; notes: string | null };
+
+      const name = loser.name.length > winner.name.length ? loser.name : winner.name;
+      const organization = !winner.organization
+        ? loser.organization
+        : !loser.organization
+          ? winner.organization
+          : loser.organization.length > winner.organization.length
+            ? loser.organization
+            : winner.organization;
+      const notes = !winner.notes
+        ? loser.notes
+        : !loser.notes
+          ? winner.notes
+          : loser.notes.length > winner.notes.length
+            ? loser.notes
+            : winner.notes;
+
+      db.prepare('UPDATE contacts SET name = ?, organization = ?, notes = ? WHERE id = ?').run(
+        name,
+        organization,
+        notes,
+        winnerId,
+      );
+
+      // Copy unique emails from loser to winner
+      const winnerEmails = new Set<string>(
+        (
+          db
+            .prepare('SELECT email FROM contact_emails WHERE contact_id = ?')
+            .all(winnerId) as Array<{ email: string }>
+        ).map((r) => r.email),
+      );
+      const loserEmails = db
+        .prepare('SELECT email FROM contact_emails WHERE contact_id = ?')
+        .all(loserId) as Array<{ email: string }>;
+      const maxEmailOrder = (
+        db
+          .prepare('SELECT MAX(sort_order) AS m FROM contact_emails WHERE contact_id = ?')
+          .get(winnerId) as { m: number | null }
+      ).m ?? -1;
+      let emailOffset = maxEmailOrder + 1;
+      for (const row of loserEmails) {
+        if (!winnerEmails.has(row.email)) {
+          db.prepare(
+            'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.email, emailOffset++);
+        }
+      }
+
+      // Copy unique phones from loser to winner (including label)
+      const winnerPhones = new Set<string>(
+        (
+          db
+            .prepare('SELECT phone FROM contact_phones WHERE contact_id = ?')
+            .all(winnerId) as Array<{ phone: string }>
+        ).map((r) => r.phone),
+      );
+      const loserPhones = db
+        .prepare('SELECT phone, label FROM contact_phones WHERE contact_id = ?')
+        .all(loserId) as Array<{ phone: string; label: string | null }>;
+      const maxPhoneOrder = (
+        db
+          .prepare('SELECT MAX(sort_order) AS m FROM contact_phones WHERE contact_id = ?')
+          .get(winnerId) as { m: number | null }
+      ).m ?? -1;
+      let phoneOffset = maxPhoneOrder + 1;
+      for (const row of loserPhones) {
+        if (!winnerPhones.has(row.phone)) {
+          db.prepare(
+            'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.phone, row.label, phoneOffset++);
+        }
+      }
+
+      // Copy unique links from loser to winner
+      const winnerUrls = new Set<string>(
+        (
+          db
+            .prepare('SELECT url FROM contact_links WHERE contact_id = ?')
+            .all(winnerId) as Array<{ url: string }>
+        ).map((r) => r.url),
+      );
+      const loserLinks = db
+        .prepare('SELECT type, label, url FROM contact_links WHERE contact_id = ?')
+        .all(loserId) as Array<{ type: string; label: string | null; url: string }>;
+      const maxLinkOrder = (
+        db
+          .prepare('SELECT MAX(sort_order) AS m FROM contact_links WHERE contact_id = ?')
+          .get(winnerId) as { m: number | null }
+      ).m ?? -1;
+      let linkOffset = maxLinkOrder + 1;
+      for (const row of loserLinks) {
+        if (!winnerUrls.has(row.url)) {
+          db.prepare(
+            'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.type, row.label, row.url, linkOffset++);
+        }
+      }
+    }
+
+    // Reassign project memberships
+    const loserMemberships = db
+      .prepare('SELECT id, project_id FROM project_memberships WHERE contact_id = ?')
+      .all(loserId) as Array<{ id: string; project_id: string }>;
+
+    for (const membership of loserMemberships) {
+      const winnerMembership = db
+        .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ?')
+        .get(winnerId, membership.project_id) as { id: string } | undefined;
+
+      if (winnerMembership) {
+        // Move loser's interaction logs to winner's membership, then delete loser's membership
+        db.prepare(
+          'UPDATE interaction_log_entries SET membership_id = ? WHERE membership_id = ?',
+        ).run(winnerMembership.id, membership.id);
+        db.prepare('DELETE FROM project_memberships WHERE id = ?').run(membership.id);
+      } else {
+        db.prepare('UPDATE project_memberships SET contact_id = ? WHERE id = ?').run(
+          winnerId,
+          membership.id,
+        );
+      }
+    }
+
+    // Reassign scratchpad drafts and reminders
+    db.prepare('UPDATE message_scratchpad_drafts SET contact_id = ? WHERE contact_id = ?').run(
+      winnerId,
+      loserId,
+    );
+    db.prepare('UPDATE reminders SET contact_id = ? WHERE contact_id = ?').run(winnerId, loserId);
+
+    // Keep winner's alert RSS; copy loser's only if winner has none
+    const winnerRss = db
+      .prepare('SELECT id FROM contact_alert_rss WHERE contact_id = ?')
+      .get(winnerId);
+    if (!winnerRss) {
+      db.prepare('UPDATE contact_alert_rss SET contact_id = ? WHERE contact_id = ?').run(
+        winnerId,
+        loserId,
+      );
+    }
+
+    // Delete loser — cascades remaining child rows
+    db.prepare('DELETE FROM contacts WHERE id = ?').run(loserId);
+  });
+
+  doMerge();
+}
