@@ -70,7 +70,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
   const [emails, setEmails] = useState<string[]>(['']);
-  const [phones, setPhones] = useState<string[]>(['']);
+  const [phones, setPhones] = useState<Array<{ phone: string; label: string }>>([{ phone: '', label: '' }]);
   const [socials, setSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [''], x: [], instagram: [], facebook: [],
   });
@@ -119,7 +119,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       organization: org.trim() || undefined,
       notes: notes.trim() || undefined,
       emails: emails.filter((e) => e.trim()),
-      phones: phones.filter((p) => p.trim()),
+      phones: phones.filter((p) => p.phone.trim()).map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
       links,
     };
 
@@ -176,14 +176,51 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             onBlurItem={checkEmailBlur}
             warnings={emailCollisions}
           />
-          <DynamicList
-            label="Phone"
-            values={phones}
-            placeholder="+1 555 000 0000"
-            onChange={setPhones}
-            onBlurItem={checkPhoneBlur}
-            warnings={phoneCollisions}
-          />
+          <div className="ac-field">
+            <label className="ac-label">Phone</label>
+            {phones.map((entry, i) => (
+              <div key={i}>
+                <div className="ac-phone-row">
+                  <input
+                    className="ac-input"
+                    type="text"
+                    value={entry.phone}
+                    placeholder="+1 555 000 0000"
+                    onChange={(e) => setPhones(phones.map((p, j) => j === i ? { ...p, phone: e.target.value } : p))}
+                    onBlur={() => checkPhoneBlur(entry.phone.trim())}
+                    disabled={submitting}
+                  />
+                  <input
+                    className="ac-input"
+                    type="text"
+                    value={entry.label}
+                    placeholder="label…"
+                    onChange={(e) => setPhones(phones.map((p, j) => j === i ? { ...p, label: e.target.value } : p))}
+                    disabled={submitting}
+                  />
+                  {phones.length > 1 && (
+                    <button
+                      type="button"
+                      className="ac-remove"
+                      onClick={() => setPhones(phones.filter((_, j) => j !== i))}
+                    >×</button>
+                  )}
+                </div>
+                {entry.phone.trim() && phoneCollisions[entry.phone.trim()] && (
+                  <div className="ac-collision-warn">
+                    Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
+                  </div>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="ac-add-row"
+              onClick={() => setPhones([...phones, { phone: '', label: '' }])}
+            >
+              + Add phone
+            </button>
+          </div>
 
           {SOCIAL_TYPES.map((type) => (
             <DynamicList

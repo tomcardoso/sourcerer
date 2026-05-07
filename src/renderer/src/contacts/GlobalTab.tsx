@@ -80,7 +80,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editOrg, setEditOrg] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editEmails, setEditEmails] = useState<string[]>([]);
-  const [editPhones, setEditPhones] = useState<string[]>([]);
+  const [editPhones, setEditPhones] = useState<Array<{ phone: string; label: string }>>([]);
   const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [], x: [], instagram: [], facebook: [],
   });
@@ -97,7 +97,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditOrg(contact.organization ?? '');
     setEditNotes(contact.notes ?? '');
     setEditEmails(contact.emails.map((e) => e.email));
-    setEditPhones(contact.phones.map((p) => p.phone));
+    setEditPhones(contact.phones.map((p) => ({ phone: p.phone, label: p.label ?? '' })));
     const socialsByType = Object.fromEntries(
       SOCIAL_TYPES.map((type) => [
         type,
@@ -148,7 +148,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         organization: editOrg,
         notes: editNotes,
         emails: editEmails,
-        phones: editPhones,
+        phones: editPhones.map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
         links,
       });
       // Persist RSS URL change
@@ -229,13 +229,50 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
         <div className="ac-field">
           <label className="ac-label">Phone</label>
-          <DynamicList
-            values={editPhones}
-            placeholder="+1 555 000 0000"
-            onChange={setEditPhones}
-            onBlurItem={checkPhoneBlur}
-            warnings={phoneCollisions}
-          />
+          {editPhones.map((entry, i) => (
+            <div key={i}>
+              <div className="ac-phone-row">
+                <input
+                  className="ac-input"
+                  value={entry.phone}
+                  placeholder="+1 555 000 0000"
+                  onChange={(e) => {
+                    const next = [...editPhones];
+                    next[i] = { ...next[i], phone: e.target.value };
+                    setEditPhones(next);
+                  }}
+                  onBlur={() => checkPhoneBlur(entry.phone.trim())}
+                />
+                <input
+                  className="ac-input"
+                  value={entry.label}
+                  placeholder="label…"
+                  onChange={(e) => {
+                    const next = [...editPhones];
+                    next[i] = { ...next[i], label: e.target.value };
+                    setEditPhones(next);
+                  }}
+                />
+                <button
+                  className="ac-remove"
+                  type="button"
+                  onClick={() => setEditPhones(editPhones.filter((_, j) => j !== i))}
+                >×</button>
+              </div>
+              {entry.phone.trim() && phoneCollisions[entry.phone.trim()] && (
+                <div className="ac-collision-warn">
+                  Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
+                </div>
+              )}
+            </div>
+          ))}
+          <button
+            className="ac-add-row"
+            type="button"
+            onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
+          >
+            + Add
+          </button>
         </div>
 
         {SOCIAL_TYPES.map((type) => (

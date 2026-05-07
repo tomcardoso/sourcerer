@@ -214,3 +214,15 @@
   margin-top: 4px;
   line-height: 1.4;
 }
+
+.ac-phone-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ac-phone-row .ac-input {
+  width: 100%;
+}
