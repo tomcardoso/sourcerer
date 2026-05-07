@@ -236,6 +236,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   className="ac-input"
                   value={entry.phone}
                   placeholder="+1 555 000 0000"
+                  disabled={saving}
                   onChange={(e) => {
                     const next = [...editPhones];
                     next[i] = { ...next[i], phone: e.target.value };
@@ -247,6 +248,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   className="ac-input"
                   value={entry.label}
                   placeholder="label…"
+                  disabled={saving}
                   onChange={(e) => {
                     const next = [...editPhones];
                     next[i] = { ...next[i], label: e.target.value };
