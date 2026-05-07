@@ -91,7 +91,7 @@ export function registerContactHandlers(): void {
       .prepare('SELECT id, email, sort_order FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactEmail[];
     const phones = db
-      .prepare('SELECT id, phone, sort_order FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
+      .prepare('SELECT id, phone, label, sort_order FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactPhone[];
     const links = db
       .prepare('SELECT id, type, label, url, sort_order FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
@@ -133,11 +133,14 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, email, i);
       });
 
-      const phones = (data.phones ?? []).map((p) => normalizePhone(p, phone_country)).filter(Boolean);
-      phones.forEach((phone, i) => {
+      const phones = (data.phones ?? [])
+        .filter((p) => p.phone.trim())
+        .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
+        .filter((p) => p.phone);
+      phones.forEach((p, i) => {
         db.prepare(
-          'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
-        ).run(uuidv4(), id, phone, i);
+          'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, p.phone, p.label, i);
       });
 
       const links = (data.links ?? []).filter((l) => l.url.trim());
@@ -149,7 +152,17 @@ export function registerContactHandlers(): void {
     });
 
     insert();
-    return { id, name: data.name.trim(), organization: data.organization?.trim() || null, projects: [] };
+    return {
+      id,
+      name: data.name.trim(),
+      organization: data.organization?.trim() || null,
+      notes: data.notes?.trim() || null,
+      has_email: (data.emails?.length ?? 0) > 0 ? 1 : 0,
+      has_phone: (data.phones?.length ?? 0) > 0 ? 1 : 0,
+      date_first_contacted: null,
+      date_last_contacted: null,
+      projects: [],
+    };
   });
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
@@ -227,11 +240,14 @@ export function registerContactHandlers(): void {
       });
 
       db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
-      const phones = (data.phones ?? []).map((p) => normalizePhone(p, phone_country)).filter(Boolean);
-      phones.forEach((phone, i) => {
+      const phones = (data.phones ?? [])
+        .filter((p) => p.phone.trim())
+        .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
+        .filter((p) => p.phone);
+      phones.forEach((p, i) => {
         db.prepare(
-          'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, phone, i);
+          'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, p.phone, p.label, i);
       });
 
       db.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
