@@ -122,6 +122,11 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     }
   } catch {}
 
+  // Migrate existing databases: add label to contact_phones if missing
+  try {
+    db.prepare('ALTER TABLE contact_phones ADD COLUMN label TEXT').run();
+  } catch {}
+
   return db;
 }
 

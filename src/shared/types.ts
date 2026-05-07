@@ -66,6 +66,7 @@ export interface ContactEmail {
 export interface ContactPhone {
   id: string;
   phone: string;
+  label: string | null;
   sort_order: number;
 }
 
@@ -116,7 +117,7 @@ export interface CreateContactInput {
   organization?: string;
   notes?: string;
   emails?: string[];
-  phones?: string[];
+  phones?: Array<{ phone: string; label?: string }>;
   links?: ContactLinkInput[];
 }
 
@@ -126,7 +127,7 @@ export interface UpdateContactInput {
   organization?: string;
   notes?: string;
   emails?: string[];
-  phones?: string[];
+  phones?: Array<{ phone: string; label?: string }>;
   links?: ContactLinkInput[];
 }
 
