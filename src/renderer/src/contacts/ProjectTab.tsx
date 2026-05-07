@@ -210,9 +210,11 @@ function ScratchpadSection({
 function RemindersSection({
   contactId,
   projectId,
+  refreshToken,
 }: {
   contactId: string;
   projectId: string;
+  refreshToken: number;
 }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [dueDate, setDueDate] = useState('');
@@ -222,7 +224,7 @@ function RemindersSection({
   useEffect(() => {
     setReminders([]);
     window.sourcerer.listRemindersForContactProject(contactId, projectId).then(setReminders);
-  }, [contactId, projectId]);
+  }, [contactId, projectId, refreshToken]);
 
   async function handleAdd() {
     if (!dueDate) return;
@@ -316,6 +318,7 @@ function RemindersSection({
 
 export default function ProjectTab({ contact, statusOptions, priorityOptions, onMembershipUpdated }: Props) {
   const [selectedId, setSelectedId] = useState<string>(() => contact.projects[0]?.id ?? '');
+  const [reminderRefresh, setReminderRefresh] = useState(0);
 
   const membership = contact.projects.find((p) => p.id === selectedId) ?? contact.projects[0];
 
@@ -494,8 +497,8 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         </div>
       </div>
 
-      <RemindersSection contactId={contact.id} projectId={membership.id} />
-      <LogSection membership={membership} onEntryAdded={onMembershipUpdated} />
+      <RemindersSection contactId={contact.id} projectId={membership.id} refreshToken={reminderRefresh} />
+      <LogSection membership={membership} onEntryAdded={() => { onMembershipUpdated(); setReminderRefresh((t) => t + 1); }} />
       <ScratchpadSection membership={membership} contactId={contact.id} />
     </div>
   );
