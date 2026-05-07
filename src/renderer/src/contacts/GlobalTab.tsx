@@ -332,7 +332,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="detail-section">
           <div className="detail-section-label">Phone</div>
           {contact.phones.map((p) => (
-            <span key={p.id} className="detail-value">{p.phone}</span>
+            <span key={p.id} className="detail-value">
+              {p.phone}
+              {p.label && <span className="detail-phone-label">· {p.label}</span>}
+            </span>
           ))}
         </div>
       )}
