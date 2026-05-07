@@ -121,6 +121,8 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
 
+    let phones: { phone: string; label: string | null }[] = [];
+
     const insert = db.transaction(() => {
       db.prepare(
         'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -133,7 +135,7 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, email, i);
       });
 
-      const phones = (data.phones ?? [])
+      phones = (data.phones ?? [])
         .filter((p) => p.phone.trim())
         .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
         .filter((p) => p.phone);
@@ -158,7 +160,7 @@ export function registerContactHandlers(): void {
       organization: data.organization?.trim() || null,
       notes: data.notes?.trim() || null,
       has_email: (data.emails?.length ?? 0) > 0 ? 1 : 0,
-      has_phone: (data.phones?.length ?? 0) > 0 ? 1 : 0,
+      has_phone: phones.length > 0 ? 1 : 0,
       date_first_contacted: null,
       date_last_contacted: null,
       projects: [],
