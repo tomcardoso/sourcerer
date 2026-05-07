@@ -54,20 +54,34 @@ Display label inline after the phone number in muted text: `+1 555 000 0000 · c
 
 New file: `src/main/dedup.ts`
 
-Pure function: `findDuplicatePairs(contacts: ContactListItem[]): DuplicatePair[]`
+The detection module is called from the main process and queries the DB directly via a dedicated function to build a `DedupContact[]` array — a lightweight type with the fields needed for both detection and merge UI display:
+
+```typescript
+interface DedupContact {
+  id: string;
+  name: string;
+  organization: string | null;
+  notes: string | null;
+  emails: string[];
+  phones: string[];
+  projectCount: number;
+}
+```
+
+Pure function: `findDuplicatePairs(contacts: DedupContact[]): DuplicatePair[]`
 
 **Pass 1 — Exact signals (O(n)):**
 Build inverted indexes: `email → contactId[]` and `phone → contactId[]`. Any pair sharing at least one email or phone is a strong duplicate (`reason: 'email' | 'phone'`).
 
 **Pass 2 — Fuzzy name (O(n²) over remaining contacts):**
-Over contacts with no exact overlap with anyone, run pairwise Jaro-Winkler name comparison. Pairs scoring ≥ 0.88 are flagged (`reason: 'name'`). Threshold catches "Jon Smith / John Smith" without false-positives like "Jane Smith / John Smith".
+Over contacts with no exact overlap with anyone, run pairwise Jaro-Winkler name comparison. Pairs scoring ≥ 0.88 are flagged (`reason: 'name'`). Threshold catches "Jon Smith / John Smith" without false-positives like "Jane Smith / John Smith". Use a lightweight JS Jaro-Winkler implementation (e.g. `talisman` or a small inline implementation — no heavy dependency needed).
 
 **Output:** `DuplicatePair[]` sorted exact-first then fuzzy. Greedy deduplication ensures each contact appears in at most one pair.
 
 ```typescript
 export interface DuplicatePair {
-  a: ContactListItem;
-  b: ContactListItem;
+  a: DedupContact;
+  b: DedupContact;
   reason: 'email' | 'phone' | 'name';
 }
 ```
