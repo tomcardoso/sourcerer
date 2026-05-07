@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ContactListItem, ImportResult, Project, User } from '@shared/types';
+import type { ContactListItem, DuplicatePair, ImportResult, Project, User } from '@shared/types';
 import AddContactModal from '../contacts/AddContactModal';
+import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
 import ColumnHeader, { TextFilter, ToggleFilter, PresetFilter } from './ColumnHeader';
 import ImportCsvModal from './ImportCsvModal';
@@ -72,6 +73,9 @@ export default function AllContacts({ projects, user }: Props) {
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [dupCount, setDupCount] = useState(0);
+  const [showDedup, setShowDedup] = useState(false);
+  const [dupPairs, setDupPairs] = useState<DuplicatePair[]>([]);
   const bulkProjectMenuRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +86,19 @@ export default function AllContacts({ projects, user }: Props) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    window.sourcerer.getDuplicatePairs().then((pairs) => {
+      setDupPairs(pairs);
+      setDupCount(pairs.length);
+    });
+  }, []);
+
+  useEffect(() => {
+    return window.sourcerer.onDuplicatePairsUpdated((count) => {
+      setDupCount(count);
+    });
+  }, []);
 
   useEffect(() => {
     if (!bulkProjectMenuOpen) return;
@@ -284,6 +301,18 @@ export default function AllContacts({ projects, user }: Props) {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {dupCount > 0 && (
+            <button
+              className="dedup-badge"
+              onClick={async () => {
+                const pairs = await window.sourcerer.getDuplicatePairs();
+                setDupPairs(pairs);
+                setShowDedup(true);
+              }}
+            >
+              {dupCount} possible duplicate{dupCount !== 1 ? 's' : ''}
+            </button>
+          )}
           {anyFilter && (
             <button
               className="clear-filters-btn"
@@ -624,6 +653,16 @@ export default function AllContacts({ projects, user }: Props) {
 
       {importResult && (
         <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
+      )}
+
+      {showDedup && (
+        <DedupModal
+          pairs={dupPairs}
+          onClose={() => {
+            setShowDedup(false);
+            refresh();
+          }}
+        />
       )}
     </div>
   );
