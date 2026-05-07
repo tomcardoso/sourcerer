@@ -83,6 +83,11 @@
   padding: 8px;
 }
 
+/* Spacing between stacked filter controls */
+.col-filter-dropdown > * + * {
+  margin-top: 8px;
+}
+
 /* Text filter */
 .col-filter-text {
   display: flex;
