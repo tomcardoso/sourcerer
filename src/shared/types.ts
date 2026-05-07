@@ -266,3 +266,19 @@ export interface ContactAlertMention {
   guid: string;
   seen: 0 | 1;
 }
+
+export interface DedupContact {
+  id: string;
+  name: string;
+  organization: string | null;
+  notes: string | null;
+  emails: string[];
+  phones: string[];
+  projectCount: number;
+}
+
+export interface DuplicatePair {
+  a: DedupContact;
+  b: DedupContact;
+  reason: 'email' | 'phone' | 'name';
+}
