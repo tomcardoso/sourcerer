@@ -3,13 +3,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_STATUSES = [
   'Not yet contacted',
-  'Outreach attempted — no response',
+  'Outreach attempted, no response',
   'Declined',
-  'Declined — door left open',
+  'Declined, door left open',
   'Referred to communications',
-  'Agreed — not yet scheduled',
-  'Interviewed — off record',
-  'Interviewed — on record',
+  'Agreed, not yet scheduled',
+  'Interviewed off-record',
+  'Interviewed on-record',
   'Ghosted',
   'Do not contact',
 ];
@@ -21,7 +21,7 @@ const PRIORITY_INTERVALS: Record<string, number | null> = {
   Critical: 7,
   High: 14,
   Medium: 28,
-  Low: 56,
+  Low: 60,
   'Monitor-only': null,
 };
 

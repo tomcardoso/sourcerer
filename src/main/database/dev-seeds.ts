@@ -50,11 +50,11 @@ function contactStatus(n: number): string {
   const r = n % 10;
   if (r === 0 || r === 5) return 'Not yet contacted';
   if (r === 1) return 'Ghosted';
-  if (r === 6) return 'Outreach attempted — no response';
-  if (r === 2) return 'Declined — door left open';
-  if (r === 7) return 'Agreed — not yet scheduled';
-  if (r === 3) return 'Interviewed — off record';
-  if (r === 8) return 'Interviewed — on record';
+  if (r === 6) return 'Outreach attempted, no response';
+  if (r === 2) return 'Declined, door left open';
+  if (r === 7) return 'Agreed, not yet scheduled';
+  if (r === 3) return 'Interviewed off-record';
+  if (r === 8) return 'Interviewed on-record';
   if (r === 4) return 'Referred to communications';
   return 'Declined';
 }
@@ -458,7 +458,7 @@ export function seedDevData(db: Database.Database, reporterEmail: string, report
     // ── Memberships: existing 9 contacts ────────────────────────────────────
     // Elena → P1
     insertMembership.run(mid(1), cid(1), PROJ.p1, reporterEmail, reporterName,
-      'Critical', 'Interviewed — on record', 'Financial transfers / shell companies',
+      'Critical', 'Interviewed on-record', 'Financial transfers / shell companies',
       secs(41), null, 0, secs(44), secs(5));
     // Marcus → P1
     insertMembership.run(mid(2), cid(2), PROJ.p1, reporterEmail, reporterName,
@@ -466,27 +466,27 @@ export function seedDevData(db: Database.Database, reporterEmail: string, report
       secs(38), null, 0, secs(40), secs(12));
     // Dr. Nair → P1
     insertMembership.run(mid(3), cid(3), PROJ.p1, reporterEmail, reporterName,
-      'Medium', 'Agreed — not yet scheduled', 'Expert comment',
+      'Medium', 'Agreed, not yet scheduled', 'Expert comment',
       secs(36), null, 0, secs(38), secs(8));
     // James Holroyd → P1
     insertMembership.run(mid(4), cid(4), PROJ.p1, reporterEmail, reporterName,
-      'High', 'Outreach attempted — no response', 'Revolving door / lobbying',
+      'High', 'Outreach attempted, no response', 'Revolving door / lobbying',
       secs(33), null, 0, secs(35), secs(18));
     // Sandra → P2
     insertMembership.run(mid(5), cid(5), PROJ.p2, reporterEmail, reporterName,
-      'Critical', 'Interviewed — off record', 'Budget analysis',
+      'Critical', 'Interviewed off-record', 'Budget analysis',
       secs(16), null, 0, secs(18), secs(3));
     // Tom Fisk → P2
     insertMembership.run(mid(6), cid(6), PROJ.p2, reporterEmail, reporterName,
-      'High', 'Outreach attempted — no response', 'Contract irregularities',
+      'High', 'Outreach attempted, no response', 'Contract irregularities',
       null, null, 0, secs(17), secs(17));
     // Claudette → P2
     insertMembership.run(mid(7), cid(7), PROJ.p2, reporterEmail, reporterName,
-      'High', 'Interviewed — off record', 'Political connections',
+      'High', 'Interviewed off-record', 'Political connections',
       secs(13), null, 0, secs(15), secs(6));
     // Ray → P1
     insertMembership.run(mid(8), cid(8), PROJ.p1, reporterEmail, reporterName,
-      'Medium', 'Agreed — not yet scheduled', 'Financial analysis',
+      'Medium', 'Agreed, not yet scheduled', 'Financial analysis',
       secs(40), null, 0, secs(43), secs(9));
     // Ray → P2
     insertMembership.run(mid(9), cid(8), PROJ.p2, reporterEmail, reporterName,
@@ -537,7 +537,7 @@ export function seedDevData(db: Database.Database, reporterEmail: string, report
     insertMembership.run(
       mid(mNum), cid(168), PROJ.p2,
       reporterEmail, reporterName,
-      'Medium', 'Agreed — not yet scheduled', 'Legal context',
+      'Medium', 'Agreed, not yet scheduled', 'Legal context',
       secs(12), null, 0, secs(15), secs(10),
     );
     insertLog.run(`dev-log-bulk-${mNum}`, mid(mNum), reporterEmail, reporterName,
