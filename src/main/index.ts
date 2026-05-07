@@ -14,6 +14,7 @@ import { registerAlertHandlers } from './ipc/alerts';
 import { registerReminderHandlers } from './ipc/reminders';
 import { registerImportHandlers } from './ipc/import';
 import { registerAuditHandlers } from './ipc/audit';
+import { registerBackupHandlers } from './ipc/backup';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -68,6 +69,7 @@ app.whenReady().then(() => {
   registerReminderHandlers();
   registerImportHandlers();
   registerAuditHandlers();
+  registerBackupHandlers();
   startHttpServer();
   createWindow();
 

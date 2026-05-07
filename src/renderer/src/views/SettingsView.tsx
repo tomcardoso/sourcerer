@@ -207,6 +207,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
 
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
   const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
   const [panicWipeInput, setPanicWipeInput] = useState('');
   const [panicWiping, setPanicWiping] = useState(false);
@@ -286,6 +288,14 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       const entries = await window.sourcerer.listAuditLog();
       setAuditLog(entries);
     }
+  }
+
+  async function handleExportBackup() {
+    setBackingUp(true);
+    setBackupError(null);
+    const result = await window.sourcerer.exportBackup();
+    setBackingUp(false);
+    if (!result.success && result.error) setBackupError(result.error);
   }
 
   async function handlePanicWipe() {
@@ -690,6 +700,23 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               )}
             </div>
           )}
+        </div>
+
+        {/* Backup */}
+        <div className="sv-section">
+          <div className="view-section-title">Backup</div>
+          <div className="sv-field">
+            <div>
+              <div className="sv-label">Export encrypted backup</div>
+              <div className="sv-hint sv-hint--inline">
+                Saves your encrypted database and key file as a <code>.sourcerer-backup</code> file. Keep this somewhere safe — anyone with your master password can restore it.
+              </div>
+              {backupError && <div className="sv-error-inline">{backupError}</div>}
+            </div>
+            <button className="sv-add-btn" onClick={handleExportBackup} disabled={backingUp}>
+              {backingUp ? 'Exporting…' : 'Export backup…'}
+            </button>
+          </div>
         </div>
 
         {/* Danger Zone */}

@@ -171,6 +171,8 @@ const sourcererApi = {
   // Export
   exportProject: (projectId: string, mode: 'full' | 'sanitized'): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('export:project', { projectId, mode }),
+  exportBackup: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('backup:export'),
 
   // Sync
   triggerSync: (projectId: string): Promise<SyncStatusEvent> =>
