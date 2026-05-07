@@ -21,6 +21,7 @@ import type {
   Reminder,
   ImportResult,
   AuditLogEntry,
+  DuplicatePair,
 } from '@shared/types';
 
 declare global {
@@ -166,6 +167,15 @@ declare global {
 
       // Panic wipe
       panicWipe: () => Promise<void>;
+
+      // Dedup
+      getDuplicatePairs: () => Promise<DuplicatePair[]>;
+      mergeContacts: (data: {
+        winnerId: string;
+        loserId: string;
+        strategy: 'keep' | 'merge';
+      }) => Promise<void>;
+      onDuplicatePairsUpdated: (callback: (count: number) => void) => () => void;
     };
   }
 }

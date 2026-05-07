@@ -24,6 +24,7 @@ import type {
   Reminder,
   ImportResult,
   AuditLogEntry,
+  DuplicatePair,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -241,6 +242,20 @@ const sourcererApi = {
 
   // Panic wipe
   panicWipe: (): Promise<void> => ipcRenderer.invoke('settings:panic-wipe'),
+
+  // Dedup
+  getDuplicatePairs: (): Promise<DuplicatePair[]> =>
+    ipcRenderer.invoke('contacts:get-duplicates'),
+  mergeContacts: (data: {
+    winnerId: string;
+    loserId: string;
+    strategy: 'keep' | 'merge';
+  }): Promise<void> => ipcRenderer.invoke('contacts:merge', data),
+  onDuplicatePairsUpdated: (callback: (count: number) => void): (() => void) => {
+    const handler = (_: unknown, count: number) => callback(count);
+    ipcRenderer.on('contacts:duplicates-updated', handler);
+    return () => ipcRenderer.removeListener('contacts:duplicates-updated', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

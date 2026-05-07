@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import { normalizeEmail, normalizePhone } from '../sanitize';
@@ -20,6 +20,24 @@ import type {
   PriorityOption,
   User,
 } from '@shared/types';
+import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb } from '../dedup';
+import type { DuplicatePair } from '@shared/types';
+
+let cachedPairs: DuplicatePair[] = [];
+
+function runDedupScan(): void {
+  try {
+    const db = getDatabase();
+    const contacts = loadDedupContacts(db);
+    cachedPairs = findDuplicatePairs(contacts);
+    const count = cachedPairs.length;
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('contacts:duplicates-updated', count);
+    }
+  } catch {
+    // DB not open yet — scan will run on next contact change
+  }
+}
 
 export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
@@ -154,6 +172,7 @@ export function registerContactHandlers(): void {
     });
 
     insert();
+    setImmediate(runDedupScan);
     return {
       id,
       name: data.name.trim(),
@@ -169,6 +188,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
     getDatabase().prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    setImmediate(runDedupScan);
   });
 
   ipcMain.handle(
@@ -261,6 +281,7 @@ export function registerContactHandlers(): void {
       });
     });
     run();
+    setImmediate(runDedupScan);
   });
 
   ipcMain.handle('memberships:update', (_, data: UpdateMembershipInput): void => {
@@ -428,6 +449,21 @@ export function registerContactHandlers(): void {
       }
 
       return result;
+    },
+  );
+
+  ipcMain.handle('contacts:get-duplicates', (): DuplicatePair[] => {
+    const db = getDatabase();
+    const contacts = loadDedupContacts(db);
+    cachedPairs = findDuplicatePairs(contacts);
+    return cachedPairs;
+  });
+
+  ipcMain.handle(
+    'contacts:merge',
+    (_, { winnerId, loserId, strategy }: { winnerId: string; loserId: string; strategy: 'keep' | 'merge' }): void => {
+      mergeContactsDb(getDatabase(), winnerId, loserId, strategy);
+      setImmediate(runDedupScan);
     },
   );
 }
