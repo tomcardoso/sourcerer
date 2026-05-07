@@ -9,7 +9,7 @@ export function normalizePhone(raw: string, defaultCountry: string = 'US'): stri
   const trimmed = raw.trim();
   if (!trimmed) return trimmed;
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry as CountryCode);
-  if (parsed?.isValid()) return parsed.format('E.164');
+  if (parsed?.isValid()) return parsed.formatInternational();
   // Fall back: return trimmed as-is if still unparseable
   return trimmed;
 }
