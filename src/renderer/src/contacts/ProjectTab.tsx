@@ -369,6 +369,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalPriority(value);
     await membershipUpdate({ priority: value });
     onMembershipUpdated();
+    setReminderRefresh((t) => t + 1);
   }
 
   async function handleThemeBlur(value: string) {
@@ -380,6 +381,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   async function handleOutreachDisabledChange(disabled: boolean) {
     setLocalOutreachDisabled(disabled);
     await membershipUpdate({ outreachDisabled: disabled });
+    setReminderRefresh((t) => t + 1);
   }
 
   return (
