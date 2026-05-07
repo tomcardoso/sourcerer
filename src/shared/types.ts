@@ -52,6 +52,8 @@ export interface ContactListItem {
   notes: string | null;
   has_email: 0 | 1;
   has_phone: 0 | 1;
+  emails_raw: string | null;
+  phones_raw: string | null;
   date_first_contacted: number | null;
   date_last_contacted: number | null;
   projects: Array<{ id: string; name: string }>;
@@ -180,6 +182,8 @@ export interface ProjectContactRow {
   notes: string | null;
   has_email: 0 | 1;
   has_phone: 0 | 1;
+  emails_raw: string | null;
+  phones_raw: string | null;
   date_first_contacted: number | null;
   date_last_contacted: number | null;
   membership_id: string;

@@ -47,6 +47,8 @@ export function registerContactHandlers(): void {
                 pm.project_id, p.name AS project_name,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+                (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
+                (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
                 (SELECT MIN(ile.created_at)
                  FROM interaction_log_entries ile
                  JOIN project_memberships pm2 ON pm2.id = ile.membership_id
@@ -67,6 +69,8 @@ export function registerContactHandlers(): void {
       notes: string | null;
       has_email: 0 | 1;
       has_phone: 0 | 1;
+      emails_raw: string | null;
+      phones_raw: string | null;
       date_first_contacted: number | null;
       date_last_contacted: number | null;
       project_id: string | null;
@@ -83,6 +87,8 @@ export function registerContactHandlers(): void {
           notes: row.notes,
           has_email: row.has_email,
           has_phone: row.has_phone,
+          emails_raw: row.emails_raw,
+          phones_raw: row.phones_raw,
           date_first_contacted: row.date_first_contacted,
           date_last_contacted: row.date_last_contacted,
           projects: [],
@@ -234,6 +240,8 @@ export function registerContactHandlers(): void {
                 pm.theme, pm.priority, pm.status,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+                (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
+                (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
                 (SELECT MIN(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_first_contacted,
                 (SELECT MAX(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm

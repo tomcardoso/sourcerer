@@ -17,6 +17,8 @@ interface Filters {
   name: string;
   organization: string;
   notes: string;
+  email: string;
+  phone: string;
   hasEmail: boolean | null;
   hasPhone: boolean | null;
   dateLastContacted: DatePreset | null;
@@ -27,6 +29,8 @@ const DEFAULT_FILTERS: Filters = {
   name: '',
   organization: '',
   notes: '',
+  email: '',
+  phone: '',
   hasEmail: null,
   hasPhone: null,
   dateLastContacted: null,
@@ -48,6 +52,8 @@ function isFilterActive(f: Filters): boolean {
     f.name !== '' ||
     f.organization !== '' ||
     f.notes !== '' ||
+    f.email !== '' ||
+    f.phone !== '' ||
     f.hasEmail !== null ||
     f.hasPhone !== null ||
     f.dateLastContacted !== null ||
@@ -150,6 +156,14 @@ export default function AllContacts({ projects, user }: Props) {
   if (filters.notes) {
     const q = filters.notes.toLowerCase();
     displayed = displayed.filter((c) => (c.notes ?? '').toLowerCase().includes(q));
+  }
+  if (filters.email) {
+    const q = filters.email.toLowerCase();
+    displayed = displayed.filter((c) => (c.emails_raw ?? '').toLowerCase().includes(q));
+  }
+  if (filters.phone) {
+    const q = filters.phone.toLowerCase();
+    displayed = displayed.filter((c) => (c.phones_raw ?? '').toLowerCase().includes(q));
   }
   if (filters.hasEmail !== null) {
     displayed = displayed.filter((c) => (filters.hasEmail ? c.has_email === 1 : c.has_email === 0));
@@ -458,15 +472,22 @@ export default function AllContacts({ projects, user }: Props) {
                     <ColumnHeader
                       label="Email"
                       filterable
-                      filterActive={filters.hasEmail !== null}
+                      filterActive={!!filters.email || filters.hasEmail !== null}
                       filterOpen={openFilter === 'email'}
                       onFilterToggle={() => toggleFilter('email')}
                       filterContent={
-                        <ToggleFilter
-                          value={filters.hasEmail}
-                          onChange={(v) => setFilter('hasEmail', v)}
-                          yesLabel="Has email"
-                        />
+                        <>
+                          <TextFilter
+                            value={filters.email}
+                            onChange={(v) => setFilter('email', v)}
+                            placeholder="Search email…"
+                          />
+                          <ToggleFilter
+                            value={filters.hasEmail}
+                            onChange={(v) => setFilter('hasEmail', v)}
+                            yesLabel="Has email"
+                          />
+                        </>
                       }
                     />
                   </th>
@@ -474,15 +495,22 @@ export default function AllContacts({ projects, user }: Props) {
                     <ColumnHeader
                       label="Phone"
                       filterable
-                      filterActive={filters.hasPhone !== null}
+                      filterActive={!!filters.phone || filters.hasPhone !== null}
                       filterOpen={openFilter === 'phone'}
                       onFilterToggle={() => toggleFilter('phone')}
                       filterContent={
-                        <ToggleFilter
-                          value={filters.hasPhone}
-                          onChange={(v) => setFilter('hasPhone', v)}
-                          yesLabel="Has phone"
-                        />
+                        <>
+                          <TextFilter
+                            value={filters.phone}
+                            onChange={(v) => setFilter('phone', v)}
+                            placeholder="Search phone…"
+                          />
+                          <ToggleFilter
+                            value={filters.hasPhone}
+                            onChange={(v) => setFilter('hasPhone', v)}
+                            yesLabel="Has phone"
+                          />
+                        </>
                       }
                     />
                   </th>
