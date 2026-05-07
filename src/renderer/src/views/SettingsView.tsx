@@ -767,6 +767,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           )}
         </div>
 
+        <div className="sv-credit">
+          Sourcerer is open source.{' '}
+          <a href="https://github.com/tomcardoso/sourcerer" target="_blank" rel="noreferrer">
+            github.com/tomcardoso/sourcerer
+          </a>
+        </div>
+
       </div>
     </div>
   );

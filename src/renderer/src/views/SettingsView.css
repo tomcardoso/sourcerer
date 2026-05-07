@@ -473,3 +473,19 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.sv-credit {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.sv-credit a {
+  color: var(--color-muted);
+  text-decoration: underline;
+}
+
+.sv-credit a:hover {
+  color: var(--color-text);
+}
