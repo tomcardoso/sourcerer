@@ -81,6 +81,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!viewingScreenshot) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setViewingScreenshot(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [viewingScreenshot]);
+
   // Edit form state
   const [editName, setEditName] = useState('');
   const [editOrg, setEditOrg] = useState('');
