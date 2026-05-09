@@ -68,7 +68,6 @@ async function pollAccessStatus() {
 }
 
 async function captureFullPage(tabId, onProgress) {
-  // Get page dimensions and save scroll position
   const [{ result: metrics }] = await chrome.scripting.executeScript({
     target: { tabId },
     func: () => ({
@@ -76,12 +75,18 @@ async function captureFullPage(tabId, onProgress) {
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       origScrollY: window.scrollY,
+      dpr: window.devicePixelRatio || 1,
     }),
   });
 
-  const { totalHeight, viewportWidth, viewportHeight, origScrollY } = metrics;
+  const { totalHeight, viewportWidth, viewportHeight, origScrollY, dpr } = metrics;
   const totalSteps = Math.ceil(totalHeight / viewportHeight);
-  const canvas = new OffscreenCanvas(viewportWidth, totalHeight);
+
+  // Canvas must be sized in physical pixels to match what captureVisibleTab returns
+  const canvas = new OffscreenCanvas(
+    Math.round(viewportWidth * dpr),
+    Math.round(totalHeight * dpr),
+  );
   const ctx = canvas.getContext('2d');
 
   let step = 0;
@@ -89,29 +94,30 @@ async function captureFullPage(tabId, onProgress) {
     step++;
     onProgress(`Capturing… (${step}/${totalSteps})`);
 
-    // Scroll — for the last strip, snap to the bottom so the page doesn't clip
     const actualY = Math.min(y, totalHeight - viewportHeight);
     await chrome.scripting.executeScript({
       target: { tabId },
-      func: (scrollY) => window.scrollTo(0, scrollY),
+      // 'instant' bypasses CSS scroll-behavior: smooth so the scroll lands before we capture
+      func: (scrollY) => window.scrollTo({ top: scrollY, behavior: 'instant' }),
       args: [actualY],
     });
-    await new Promise(r => setTimeout(r, 180));
+    await new Promise(r => setTimeout(r, 200));
 
     const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
     const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
 
-    // srcY compensates when the last strip overlaps the previous one
-    const srcY = y - actualY;
-    const height = Math.min(viewportHeight, totalHeight - y);
-    ctx.drawImage(bitmap, 0, srcY, viewportWidth, height, 0, y, viewportWidth, height);
+    // All coordinates in physical pixels
+    const srcY  = Math.round((y - actualY) * dpr);
+    const dstY  = Math.round(y * dpr);
+    const w     = Math.round(viewportWidth * dpr);
+    const h     = Math.round(Math.min(viewportHeight, totalHeight - y) * dpr);
+    ctx.drawImage(bitmap, 0, srcY, w, h, 0, dstY, w, h);
     bitmap.close();
   }
 
-  // Restore original scroll position
   await chrome.scripting.executeScript({
     target: { tabId },
-    func: (y) => window.scrollTo(0, y),
+    func: (y) => window.scrollTo({ top: y, behavior: 'instant' }),
     args: [origScrollY],
   });
 
