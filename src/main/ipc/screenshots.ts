@@ -105,21 +105,27 @@ export function registerScreenshotHandlers(): void {
 
   ipcMain.handle(
     'screenshots:save',
-    async (_e, screenshotId: string): Promise<{ success: boolean; error?: string }> => {
+    async (e, screenshotId: string): Promise<{ success: boolean; error?: string }> => {
       try {
         const db = getDatabase();
         const row = db
-          .prepare('SELECT file_path, iv, captured_at FROM contact_screenshots WHERE id = ?')
-          .get(screenshotId) as { file_path: string; iv: string; captured_at: number } | undefined;
+          .prepare(`SELECT cs.file_path, cs.iv, cs.captured_at, c.name AS contact_name
+                    FROM contact_screenshots cs
+                    JOIN contacts c ON c.id = cs.contact_id
+                    WHERE cs.id = ?`)
+          .get(screenshotId) as { file_path: string; iv: string; captured_at: number; contact_name: string } | undefined;
         if (!row) return { success: false, error: 'Not found.' };
 
         const encrypted = await fs.readFile(path.join(screenshotsDir(), row.file_path));
         const decrypted = decryptBuffer(encrypted, getKeyHex(), row.iv);
         const ext = detectMimeType(decrypted) === 'image/png' ? 'png' : 'jpg';
         const dateStr = new Date(row.captured_at * 1000).toISOString().split('T')[0];
+        const safeName = row.contact_name.replace(/[^a-zA-Z0-9 \-]/g, '').trim().replace(/\s+/g, '-');
 
-        const { canceled, filePath: savePath } = await dialog.showSaveDialog({
-          defaultPath: `screenshot-${dateStr}.${ext}`,
+        const { BrowserWindow } = await import('electron');
+        const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
+        const { canceled, filePath: savePath } = await dialog.showSaveDialog(win!, {
+          defaultPath: `${safeName}-${dateStr}.${ext}`,
           filters: [{ name: 'Images', extensions: [ext] }],
         });
         if (canceled || !savePath) return { success: false };
