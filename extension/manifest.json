@@ -3,7 +3,7 @@
   "name": "Sourcerer",
   "version": "1.0.0",
   "description": "Save a screenshot of the current tab to Sourcerer.",
-  "permissions": ["tabs", "storage", "activeTab"],
+  "permissions": ["tabs", "storage", "activeTab", "scripting"],
   "host_permissions": ["http://127.0.0.1:27371/*"],
   "action": {
     "default_popup": "popup.html",

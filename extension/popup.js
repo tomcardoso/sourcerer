@@ -67,12 +67,62 @@ async function pollAccessStatus() {
   });
 }
 
+async function captureFullPage(tabId, onProgress) {
+  // Get page dimensions and save scroll position
+  const [{ result: metrics }] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => ({
+      totalHeight: Math.min(document.documentElement.scrollHeight, 15000),
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      origScrollY: window.scrollY,
+    }),
+  });
+
+  const { totalHeight, viewportWidth, viewportHeight, origScrollY } = metrics;
+  const totalSteps = Math.ceil(totalHeight / viewportHeight);
+  const canvas = new OffscreenCanvas(viewportWidth, totalHeight);
+  const ctx = canvas.getContext('2d');
+
+  let step = 0;
+  for (let y = 0; y < totalHeight; y += viewportHeight) {
+    step++;
+    onProgress(`Capturing… (${step}/${totalSteps})`);
+
+    // Scroll — for the last strip, snap to the bottom so the page doesn't clip
+    const actualY = Math.min(y, totalHeight - viewportHeight);
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (scrollY) => window.scrollTo(0, scrollY),
+      args: [actualY],
+    });
+    await new Promise(r => setTimeout(r, 180));
+
+    const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
+    const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
+
+    // srcY compensates when the last strip overlaps the previous one
+    const srcY = y - actualY;
+    const height = Math.min(viewportHeight, totalHeight - y);
+    ctx.drawImage(bitmap, 0, srcY, viewportWidth, height, 0, y, viewportWidth, height);
+    bitmap.close();
+  }
+
+  // Restore original scroll position
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (y) => window.scrollTo(0, y),
+    args: [origScrollY],
+  });
+
+  return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
+}
+
 async function captureAndSend(token) {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const tabUrl = tab?.url ?? null;
 
-  const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 85 });
-  const blob = await fetch(dataUrl).then(r => r.blob());
+  const blob = await captureFullPage(tab.id, (msg) => setStatus(msg, ''));
 
   const headers = { 'Content-Type': 'image/jpeg', 'X-Sourcerer-Token': token };
   if (tabUrl) headers['X-Tab-Url'] = tabUrl;
