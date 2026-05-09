@@ -79,6 +79,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [screenshots, setScreenshots] = useState<ContactScreenshot[]>([]);
   const [screenshotImages, setScreenshotImages] = useState<Record<string, string>>({});
   const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
+  const [hoveredScreenshotId, setHoveredScreenshotId] = useState<string | null>(null);
+  const [confirmDeleteScreenshotId, setConfirmDeleteScreenshotId] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -516,20 +518,32 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               <div
                 key={s.id}
                 style={{ position: 'relative', width: 80, height: 56, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-bg)' }}
-                onClick={() => { setViewingScreenshot(s.id); loadScreenshotImage(s.id); }}
-                onMouseEnter={() => loadScreenshotImage(s.id)}
+                onClick={() => { if (confirmDeleteScreenshotId === s.id) return; setViewingScreenshot(s.id); loadScreenshotImage(s.id); }}
+                onMouseEnter={() => { loadScreenshotImage(s.id); setHoveredScreenshotId(s.id); }}
+                onMouseLeave={() => setHoveredScreenshotId(null)}
                 title={new Date(s.captured_at * 1000).toLocaleString()}
               >
                 {screenshotImages[s.id]?.startsWith('error:') ? (
                   <div title={screenshotImages[s.id].slice(6)} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-danger)', padding: '0 4px', textAlign: 'center' }}>Failed to load</div>
                 ) : screenshotImages[s.id] ? (
-                  <img
-                    src={screenshotImages[s.id]}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    alt="screenshot"
-                  />
+                  <img src={screenshotImages[s.id]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="screenshot" />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-text-muted)' }}>⬜</div>
+                )}
+                {confirmDeleteScreenshotId === s.id ? (
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 10, color: '#fff', fontWeight: 600 }}>Delete?</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: 'var(--color-danger)', border: 'none', color: '#fff', borderRadius: 3 }} onClick={(e) => { e.stopPropagation(); setConfirmDeleteScreenshotId(null); handleDeleteScreenshot(s.id); }}>Yes</button>
+                      <button style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 3 }} onClick={(e) => { e.stopPropagation(); setConfirmDeleteScreenshotId(null); }}>No</button>
+                    </div>
+                  </div>
+                ) : hoveredScreenshotId === s.id && (
+                  <button
+                    style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', borderRadius: 3, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
+                    onClick={(e) => { e.stopPropagation(); setConfirmDeleteScreenshotId(s.id); }}
+                    title="Delete screenshot"
+                  >×</button>
                 )}
               </div>
             ))}

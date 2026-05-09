@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { randomBytes } from 'crypto';
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
 
 const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
@@ -49,6 +49,15 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
 
   if (req.method === 'GET' && url.pathname === '/status') {
     json(res, 200, { running: true, locked: !isDatabaseOpen(), version: '1.0.0' });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/focus') {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) { win.show(); win.focus(); }
+    app.focus({ steal: true });
+    res.writeHead(204);
+    res.end();
     return;
   }
 

@@ -92,19 +92,28 @@ async function captureFullPage(tabId, onProgress) {
 
       const el = findScrollRoot();
       window.__srcEl = el; // cache so scroll calls can reuse the same element
+      const isDocScroller = el === document.scrollingElement ||
+                            el === document.documentElement ||
+                            el === document.body;
+      const rect = isDocScroller
+        ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+        : (() => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; })();
       return {
         totalHeight: Math.min(el.scrollHeight, 15000),
-        viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
         origScrollTop: el.scrollTop,
         dpr: window.devicePixelRatio || 1,
+        scrollElLeft: rect.left,
+        scrollElTop: rect.top,
+        scrollElWidth: rect.width,
+        scrollElHeight: rect.height,
       };
     },
   });
 
   if (!metricsResult?.result) throw new Error('Could not read page dimensions — try reloading the tab.');
-  const { totalHeight, viewportWidth, viewportHeight, origScrollTop, dpr } = metricsResult.result;
-  const totalSteps = Math.ceil(totalHeight / viewportHeight);
+  const { totalHeight, origScrollTop, dpr,
+          scrollElLeft, scrollElTop, scrollElWidth, scrollElHeight } = metricsResult.result;
+  const totalSteps = Math.ceil(totalHeight / scrollElHeight);
 
   onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
   await new Promise(r => setTimeout(r, 600));
@@ -118,74 +127,103 @@ async function captureFullPage(tabId, onProgress) {
     func: () => {
       const style = document.createElement('style');
       style.id = '__srcCapStyle';
-      style.textContent = '.__srcHide{visibility:hidden!important}';
+      style.textContent = '.__srcHide{display:none!important}';
       document.head.appendChild(style);
       window.__srcHidden = [];
-      for (const el of document.querySelectorAll('*')) {
-        const pos = getComputedStyle(el).position;
-        if (pos === 'fixed' || pos === 'sticky') {
+
+      function srcHide(el) {
+        if (!el.classList.contains('__srcHide')) {
           window.__srcHidden.push(el);
           el.classList.add('__srcHide');
         }
       }
+
+      for (const el of document.querySelectorAll('*')) {
+        const pos = getComputedStyle(el).position;
+        if (pos === 'fixed' || pos === 'sticky') srcHide(el);
+      }
+
+      // Watch for elements added or modified after scroll (e.g. LinkedIn's compact
+      // profile bar, which appears after the first scroll via a class change)
+      window.__srcObserver = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (m.type === 'childList') {
+            for (const node of m.addedNodes) {
+              if (node.nodeType !== 1) continue;
+              const pos = getComputedStyle(node).position;
+              if (pos === 'fixed' || pos === 'sticky') srcHide(node);
+              for (const el of node.querySelectorAll('*')) {
+                const p = getComputedStyle(el).position;
+                if (p === 'fixed' || p === 'sticky') srcHide(el);
+              }
+            }
+          } else if (m.type === 'attributes') {
+            const el = m.target;
+            const pos = getComputedStyle(el).position;
+            if (pos === 'fixed' || pos === 'sticky') srcHide(el);
+          }
+        }
+      });
+      window.__srcObserver.observe(document.body, {
+        childList: true, subtree: true,
+        attributes: true, attributeFilter: ['class', 'style'],
+      });
+
       return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     },
   });
 
   const canvas = new OffscreenCanvas(
-    Math.round(viewportWidth * dpr),
+    Math.round(scrollElWidth * dpr),
     Math.round(totalHeight * dpr),
   );
   const ctx = canvas.getContext('2d');
 
   try {
     let step = 0;
-    for (let y = 0; y < totalHeight; y += viewportHeight) {
+    for (let y = 0; y < totalHeight; y += scrollElHeight) {
       step++;
       onProgress(`Capturing… (${step}/${totalSteps})`);
 
-      const actualY = Math.min(y, totalHeight - viewportHeight);
+      const actualY = Math.min(y, totalHeight - scrollElHeight);
       // Scroll and wait for two animation frames so the browser has repainted
       // (and any React scroll-handler re-renders have settled) before capturing.
       await chrome.scripting.executeScript({
         target: { tabId },
         func: (scrollY) => {
           (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY;
+          // Two RAFs: first lets scroll handlers + MutationObserver fire and hide
+          // any newly fixed/sticky elements; second ensures the browser has repainted.
           return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         },
         args: [actualY],
       });
 
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        func: () => {
-          const els = window.__srcHidden || [];
-          console.log(`[srcr] pre-capture: ${els.length} hidden elements`);
-          els.forEach((el, i) => {
-            console.log(`[srcr]   [${i}] <${el.tagName.toLowerCase()}> id="${el.id}" hasClass=${el.classList.contains('__srcHide')} computedVisibility=${getComputedStyle(el).visibility} className="${el.className}"`);
-          });
-        },
-      });
-
       const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
       const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
 
-      const srcY = Math.round((y - actualY) * dpr);
+      // Crop each captured viewport strip to the scroll container's bounds.
+      // For document-level scrollers scrollElLeft/Top are 0 and scrollElWidth/Height
+      // equal the viewport, so this degrades gracefully to the original behaviour.
+      const srcX = Math.round(scrollElLeft * dpr);
+      const srcY = Math.round((scrollElTop + (y - actualY)) * dpr);
       const dstY = Math.round(y * dpr);
-      const w    = Math.round(viewportWidth * dpr);
-      const h    = Math.round(Math.min(viewportHeight, totalHeight - y) * dpr);
-      ctx.drawImage(bitmap, 0, srcY, w, h, 0, dstY, w, h);
+      const w    = Math.round(scrollElWidth * dpr);
+      const h    = Math.round(Math.min(scrollElHeight, totalHeight - y) * dpr);
+      ctx.drawImage(bitmap, srcX, srcY, w, h, 0, dstY, w, h);
       bitmap.close();
     }
   } finally {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: (origY) => {
+        window.__srcObserver?.disconnect();
         for (const el of (window.__srcHidden || [])) el.classList.remove('__srcHide');
         document.getElementById('__srcCapStyle')?.remove();
         (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = origY;
         delete window.__srcEl;
         delete window.__srcHidden;
+        delete window.__srcObserver;
       },
       args: [origScrollTop],
     });
@@ -279,6 +317,7 @@ async function init() {
     btnConnect.disabled = true;
     setStatus('Requesting access — approve in Sourcerer…', '');
     try {
+      fetch(`${BASE}/focus`, { method: 'POST', signal: AbortSignal.timeout(1000) }).catch(() => {});
       await requestAccess();
       const newToken = await pollAccessStatus();
       if (newToken) {
