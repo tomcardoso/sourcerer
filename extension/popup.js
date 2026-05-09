@@ -101,8 +101,11 @@ async function captureFullPage(tabId) {
 }
 
 async function captureAndSend(token) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tabUrl = tab?.url ?? null;
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!tab?.id || !tab.url?.startsWith('http')) {
+    throw new Error('Navigate to a web page first.');
+  }
+  const tabUrl = tab.url;
 
   const base64 = await captureFullPage(tab.id);
   const blob = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob());
