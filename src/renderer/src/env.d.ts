@@ -188,6 +188,7 @@ declare global {
       listScreenshots: (contactId: string) => Promise<ContactScreenshot[]>;
       loadScreenshot: (screenshotId: string) => Promise<{ data: string } | { error: string }>;
       deleteScreenshot: (screenshotId: string) => Promise<void>;
+      saveScreenshot: (screenshotId: string) => Promise<{ success: boolean; error?: string }>;
 
       // Panic wipe
       panicWipe: () => Promise<void>;

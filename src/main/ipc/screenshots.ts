@@ -1,4 +1,4 @@
-import { ipcMain, app } from 'electron';
+import { ipcMain, app, dialog } from 'electron';
 import { randomUUID } from 'crypto';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import fs from 'fs/promises';
@@ -97,7 +97,37 @@ export function registerScreenshotHandlers(): void {
         const mimeType = detectMimeType(decrypted);
         return { data: `data:${mimeType};base64,${decrypted.toString('base64')}` };
       } catch (err) {
+        console.error('[screenshots:load] failed:', err);
         return { error: String(err) };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'screenshots:save',
+    async (_e, screenshotId: string): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const db = getDatabase();
+        const row = db
+          .prepare('SELECT file_path, iv, captured_at FROM contact_screenshots WHERE id = ?')
+          .get(screenshotId) as { file_path: string; iv: string; captured_at: number } | undefined;
+        if (!row) return { success: false, error: 'Not found.' };
+
+        const encrypted = await fs.readFile(path.join(screenshotsDir(), row.file_path));
+        const decrypted = decryptBuffer(encrypted, getKeyHex(), row.iv);
+        const ext = detectMimeType(decrypted) === 'image/png' ? 'png' : 'jpg';
+        const dateStr = new Date(row.captured_at * 1000).toISOString().split('T')[0];
+
+        const { canceled, filePath: savePath } = await dialog.showSaveDialog({
+          defaultPath: `screenshot-${dateStr}.${ext}`,
+          filters: [{ name: 'Images', extensions: [ext] }],
+        });
+        if (canceled || !savePath) return { success: false };
+
+        await fs.writeFile(savePath, decrypted);
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: String(err) };
       }
     },
   );

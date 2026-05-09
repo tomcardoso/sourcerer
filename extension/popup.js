@@ -67,17 +67,47 @@ async function pollAccessStatus() {
   });
 }
 
+function sendDebugCmd(target, method, params = {}) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand(target, method, params, (result) => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve(result);
+    });
+  });
+}
+
+async function captureFullPage(tabId) {
+  const target = { tabId };
+  await new Promise((resolve, reject) => {
+    chrome.debugger.attach(target, '1.3', () => {
+      if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+      else resolve();
+    });
+  });
+  try {
+    const metrics = await sendDebugCmd(target, 'Page.getLayoutMetrics');
+    const w = Math.ceil(metrics.cssContentSize?.width ?? metrics.contentSize.width);
+    const h = Math.min(Math.ceil(metrics.cssContentSize?.height ?? metrics.contentSize.height), 16384);
+    await sendDebugCmd(target, 'Emulation.setDeviceMetricsOverride', {
+      width: w, height: h, deviceScaleFactor: 1, mobile: false,
+    });
+    const { data } = await sendDebugCmd(target, 'Page.captureScreenshot', {
+      format: 'jpeg', quality: 80, captureBeyondViewport: true,
+    });
+    return data;
+  } finally {
+    await new Promise(resolve => chrome.debugger.detach(target, resolve));
+  }
+}
+
 async function captureAndSend(token) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const tabUrl = tab?.url ?? null;
 
-  const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 85 });
+  const base64 = await captureFullPage(tab.id);
+  const blob = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob());
 
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-
-  const mimeType = blob.type || 'image/jpeg';
-  const headers = { 'Content-Type': mimeType, 'X-Sourcerer-Token': token };
+  const headers = { 'Content-Type': 'image/jpeg', 'X-Sourcerer-Token': token };
   if (tabUrl) headers['X-Tab-Url'] = tabUrl;
 
   const r = await fetch(`${BASE}/screenshot`, { method: 'POST', headers, body: blob });

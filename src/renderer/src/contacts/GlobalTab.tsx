@@ -106,7 +106,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     if ('data' in result) {
       setScreenshotImages((prev) => ({ ...prev, [id]: result.data }));
     } else {
-      setScreenshotImages((prev) => ({ ...prev, [id]: 'error' }));
+      console.error('[screenshot] load failed for', id, '—', result.error);
+      setScreenshotImages((prev) => ({ ...prev, [id]: `error:${result.error}` }));
     }
   }
 
@@ -504,8 +505,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 onMouseEnter={() => loadScreenshotImage(s.id)}
                 title={new Date(s.captured_at * 1000).toLocaleString()}
               >
-                {screenshotImages[s.id] === 'error' ? (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-danger)', padding: '0 4px', textAlign: 'center' }}>Failed to load</div>
+                {screenshotImages[s.id]?.startsWith('error:') ? (
+                  <div title={screenshotImages[s.id].slice(6)} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-danger)', padding: '0 4px', textAlign: 'center' }}>Failed to load</div>
                 ) : screenshotImages[s.id] ? (
                   <img
                     src={screenshotImages[s.id]}
@@ -521,7 +522,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
       )}
 
-      {viewingScreenshot && screenshotImages[viewingScreenshot] && screenshotImages[viewingScreenshot] !== 'error' && (
+      {viewingScreenshot && screenshotImages[viewingScreenshot] && !screenshotImages[viewingScreenshot].startsWith('error:') && (
         <div
           ref={viewerRef}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
@@ -534,6 +535,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               alt="screenshot"
             />
             <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => window.sourcerer.saveScreenshot(viewingScreenshot)}
+                style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
+              >Download</button>
               <button
                 onClick={() => handleDeleteScreenshot(viewingScreenshot)}
                 style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}

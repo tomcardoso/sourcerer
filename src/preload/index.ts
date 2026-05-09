@@ -199,6 +199,8 @@ const sourcererApi = {
     ipcRenderer.invoke('screenshots:load', screenshotId),
   deleteScreenshot: (screenshotId: string): Promise<void> =>
     ipcRenderer.invoke('screenshots:delete', screenshotId),
+  saveScreenshot: (screenshotId: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('screenshots:save', screenshotId),
 
   // Sync
   triggerSync: (projectId: string): Promise<SyncStatusEvent> =>
