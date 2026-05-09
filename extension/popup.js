@@ -156,6 +156,17 @@ async function captureFullPage(tabId, onProgress) {
         args: [actualY],
       });
 
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const els = window.__srcHidden || [];
+          console.log(`[srcr] pre-capture: ${els.length} hidden elements`);
+          els.forEach((el, i) => {
+            console.log(`[srcr]   [${i}] <${el.tagName.toLowerCase()}> id="${el.id}" hasClass=${el.classList.contains('__srcHide')} computedVisibility=${getComputedStyle(el).visibility} className="${el.className}"`);
+          });
+        },
+      });
+
       const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
       const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
 
