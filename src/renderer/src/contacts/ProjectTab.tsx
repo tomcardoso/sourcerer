@@ -15,12 +15,9 @@ interface Props {
   statusOptions: StatusOption[];
   priorityOptions: PriorityOption[];
   onMembershipUpdated: () => void;
+  currentUser?: { email: string; firstName: string; lastName: string } | null;
 }
 
-function formatDate(ts: number | null): string {
-  if (!ts) return '';
-  return new Date(ts * 1000).toISOString().split('T')[0];
-}
 
 function formatTimestamp(ts: number): string {
   return new Date(ts * 1000).toLocaleString(undefined, {
@@ -316,7 +313,7 @@ function RemindersSection({
   );
 }
 
-export default function ProjectTab({ contact, statusOptions, priorityOptions, onMembershipUpdated }: Props) {
+export default function ProjectTab({ contact, statusOptions, priorityOptions, onMembershipUpdated, currentUser }: Props) {
   const [selectedId, setSelectedId] = useState<string>(() => contact.projects[0]?.id ?? '');
   const [reminderRefresh, setReminderRefresh] = useState(0);
 
@@ -381,11 +378,41 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   async function handleOutreachDisabledChange(disabled: boolean) {
     setLocalOutreachDisabled(disabled);
     await membershipUpdate({ outreachDisabled: disabled });
+    onMembershipUpdated();
     setReminderRefresh((t) => t + 1);
+  }
+
+  async function handleAssignToMe() {
+    if (!currentUser) return;
+    const reporterName = `${currentUser.firstName} ${currentUser.lastName}`.trim();
+    await window.sourcerer.updateMembership({
+      membershipId: membership.membership_id,
+      reporterEmail: currentUser.email,
+      reporterName,
+    });
+    onMembershipUpdated();
+  }
+
+  async function handleDismissConflict() {
+    await window.sourcerer.updateMembership({
+      membershipId: membership.membership_id,
+      clearConflict: true,
+    });
+    onMembershipUpdated();
   }
 
   return (
     <div className="detail-body">
+      {membership.reporter_conflict === 1 && (
+        <div className="pt-conflict-banner">
+          <div className="pt-conflict-banner-text">
+            <strong>Assignment conflict:</strong> This source was recently assigned to a different reporter during sync.
+            Currently assigned to <strong>{membership.reporter_name}</strong>. Review and reassign if needed.
+          </div>
+          <button className="pt-conflict-dismiss" onClick={handleDismissConflict} title="Dismiss">×</button>
+        </div>
+      )}
+
       {contact.projects.length > 1 && (
         <div className="pt-section">
           <div className="pt-section-label">Project</div>
@@ -447,7 +474,14 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
         <div className="pt-field">
           <label className="pt-label">Reporter</label>
-          <span className="pt-reporter">{membership.reporter_name}</span>
+          <span className="pt-reporter">
+            {membership.reporter_name}
+            {currentUser && membership.reporter_email !== currentUser.email && (
+              <button className="pt-assign-btn" onClick={handleAssignToMe} title="Assign to yourself">
+                Assign to me
+              </button>
+            )}
+          </span>
         </div>
 
         <div className="pt-field">
@@ -491,6 +525,9 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
                 const days = opt.outreach_interval_days;
                 if (!days) return `${localPriority} · no interval configured`;
                 if (days === 7) return `${localPriority} · weekly`;
+                if (days === 14) return `${localPriority} · every 2 weeks`;
+                if (days === 28) return `${localPriority} · every 4 weeks`;
+                if (days === 60) return `${localPriority} · every 2 months`;
                 if (days % 7 === 0) return `${localPriority} · every ${days / 7} weeks`;
                 return `${localPriority} · every ${days} days`;
               })()}

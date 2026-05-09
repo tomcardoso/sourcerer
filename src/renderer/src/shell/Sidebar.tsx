@@ -12,6 +12,7 @@ interface Props {
   onNav: (nav: NavTarget) => void;
   unseenMentions: number;
   overdueReminders: number;
+  onSearchOpen: () => void;
   onProjectCreated: (project: Project) => void;
   onProjectCreatedShared: (project: Project, payload: string) => void;
   onProjectJoined: (project: Project) => void;
@@ -26,6 +27,7 @@ export default function Sidebar({
   onNav,
   unseenMentions,
   overdueReminders,
+  onSearchOpen,
   onProjectCreated,
   onProjectCreatedShared,
   onProjectJoined,
@@ -88,6 +90,11 @@ export default function Sidebar({
 
         {/* Top-level nav */}
         <nav className="sidebar-nav">
+          <button className="sidebar-nav-item sidebar-search-btn" onClick={onSearchOpen}>
+            <span className="sidebar-nav-icon">⌕</span>
+            Search
+            <span className="sidebar-search-hint">⌘K</span>
+          </button>
           <button
             className={`sidebar-nav-item ${isActive({ view: 'all-contacts' }) ? 'active' : ''}`}
             onClick={() => onNav({ view: 'all-contacts' })}

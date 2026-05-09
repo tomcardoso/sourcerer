@@ -39,10 +39,12 @@ export interface User {
   idle_timeout_seconds: number;
   phone_country: string;
   outreach_reminders_enabled: 0 | 1;
+  outreach_require_interaction: 0 | 1;
   staleness_enabled: 0 | 1;
   staleness_threshold_days: number;
   alert_notifications_enabled: 0 | 1;
   reminder_notifications_enabled: 0 | 1;
+  rss_poll_interval_hours: number;
 }
 
 export interface ContactListItem {
@@ -77,6 +79,7 @@ export interface ContactLink {
   type: string;
   label: string | null;
   url: string;
+  wayback_url: string | null;
   sort_order: number;
 }
 
@@ -93,6 +96,7 @@ export interface ContactProject {
   reporter_name: string;
   reporter_email: string;
   outreach_reminders_disabled: 0 | 1;
+  reporter_conflict: 0 | 1;
 }
 
 export interface ContactDetail {
@@ -139,6 +143,9 @@ export interface UpdateMembershipInput {
   priority?: string | null;
   theme?: string | null;
   outreachRemindersDisabled?: 0 | 1;
+  reporterEmail?: string;
+  reporterName?: string;
+  clearConflict?: boolean;
 }
 
 export interface InteractionLogEntry {
@@ -285,4 +292,18 @@ export interface DuplicatePair {
   a: DedupContact;
   b: DedupContact;
   reason: 'email' | 'phone' | 'name';
+}
+
+export interface SearchResult {
+  type: 'contact' | 'project';
+  id: string;
+  name: string;
+  subtitle: string | null;
+}
+
+export interface ContactScreenshot {
+  id: string;
+  contact_id: string;
+  tab_url: string | null;
+  captured_at: number;
 }

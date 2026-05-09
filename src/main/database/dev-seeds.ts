@@ -81,7 +81,6 @@ const P3_THEMES = ['Executive accountability', 'Billing practices', 'Patient adv
 const P4_THEMES = ['Emergency response failures', 'Climate context', 'Infrastructure / evacuation', 'Community impact', 'Federal oversight', 'Insurance / liability'];
 const P5_THEMES = ['PAC finances', 'Political influence', 'Community oversight', 'Officer testimony', 'Legal analysis', 'Academic / expert'];
 
-function theme(n: number, themes: string[]): string { return themes[n % themes.length]; }
 
 interface BulkContact {
   num: number;

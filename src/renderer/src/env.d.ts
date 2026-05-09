@@ -22,6 +22,8 @@ import type {
   ImportResult,
   AuditLogEntry,
   DuplicatePair,
+  ContactScreenshot,
+  SearchResult,
 } from '@shared/types';
 
 declare global {
@@ -61,6 +63,7 @@ declare global {
       regenerateSharedProject: (projectId: string) => Promise<{ payload: string } | null>;
       renameProject: (id: string, name: string) => Promise<void>;
       deleteProject: (id: string) => Promise<void>;
+      unshareProject: (id: string) => Promise<Project>;
 
       // Contacts
       listContacts: () => Promise<ContactListItem[]>;
@@ -105,6 +108,11 @@ declare global {
       setStalenessEnabled: (enabled: boolean) => Promise<User>;
       setStalenessThreshold: (days: number) => Promise<User>;
       setOutreachRemindersEnabled: (enabled: boolean) => Promise<User>;
+      setOutreachRequireInteraction: (required: boolean) => Promise<User>;
+      changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+      setAlertNotificationsEnabled: (enabled: boolean) => Promise<User>;
+      setReminderNotificationsEnabled: (enabled: boolean) => Promise<User>;
+      setRssPollInterval: (hours: number) => Promise<User>;
       setPriorityInterval: (id: string, days: number | null) => Promise<void>;
       getCalendarUrl: () => Promise<string>;
       regenerateCalendarToken: () => Promise<User>;
@@ -164,6 +172,22 @@ declare global {
 
       // Audit log
       listAuditLog: () => Promise<AuditLogEntry[]>;
+
+      // Backup
+      exportBackup: () => Promise<{ success: boolean; error?: string }>;
+      restoreBackup: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+
+      // Search
+      searchGlobal: (query: string) => Promise<SearchResult[]>;
+
+      onRemindersChanged: (callback: () => void) => () => void;
+
+      // Screenshots
+      onScreenshotReceived: (callback: (tempId: string) => void) => () => void;
+      assignScreenshot: (data: { tempId: string; contactId: string }) => Promise<{ success: boolean; error?: string }>;
+      listScreenshots: (contactId: string) => Promise<ContactScreenshot[]>;
+      loadScreenshot: (screenshotId: string) => Promise<{ data: string } | { error: string }>;
+      deleteScreenshot: (screenshotId: string) => Promise<void>;
 
       // Panic wipe
       panicWipe: () => Promise<void>;

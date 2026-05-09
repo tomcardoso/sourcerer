@@ -1,7 +1,8 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
-import { getDatabase } from '../database';
+import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone } from '../sanitize';
+import { broadcastRemindersChanged } from './reminders';
 import type {
   ContactListItem,
   ContactDetail,
@@ -24,6 +25,23 @@ import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb
 import type { DuplicatePair } from '@shared/types';
 
 let cachedPairs: DuplicatePair[] = [];
+
+async function triggerWaybackSave(contactId: string, url: string): Promise<void> {
+  try {
+    const response = await fetch(`https://web.archive.org/save/${encodeURIComponent(url)}`, {
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Sourcerer/1.0' },
+    });
+    const waybackUrl = response.url;
+    if (waybackUrl.includes('web.archive.org/web/') && isDatabaseOpen()) {
+      getDatabase()
+        .prepare("UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?")
+        .run(waybackUrl, contactId, url);
+    }
+  } catch {
+    // Silent failure — Wayback may not be reachable
+  }
+}
 
 function runDedupScan(): void {
   try {
@@ -118,13 +136,13 @@ export function registerContactHandlers(): void {
       .prepare('SELECT id, phone, label, sort_order FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactPhone[];
     const links = db
-      .prepare('SELECT id, type, label, url, sort_order FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
+      .prepare('SELECT id, type, label, url, wayback_url, sort_order FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactLink[];
     const projects = db
       .prepare(
         `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
                 pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
-                pm.outreach_reminders_disabled,
+                pm.outreach_reminders_disabled, pm.reporter_conflict,
                 (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
                  WHERE ile.membership_id = pm.id) AS first_log_at,
                 (SELECT MAX(ile.created_at) FROM interaction_log_entries ile
@@ -179,6 +197,12 @@ export function registerContactHandlers(): void {
 
     insert();
     setImmediate(runDedupScan);
+
+    // Trigger background Wayback saves for website links
+    const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
+    for (const link of websiteLinks) {
+      triggerWaybackSave(id, link.url.trim()).catch(() => {});
+    }
     return {
       id,
       name: data.name.trim(),
@@ -188,6 +212,8 @@ export function registerContactHandlers(): void {
       has_phone: phones.length > 0 ? 1 : 0,
       date_first_contacted: null,
       date_last_contacted: null,
+      emails_raw: (data.emails ?? []).filter(Boolean).join(' ') || null,
+      phones_raw: phones.length > 0 ? phones.join(' ') : null,
       projects: [],
     };
   });
@@ -256,6 +282,13 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
     const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
+
+    // Preserve existing website Wayback URLs before re-insert
+    const existingWebsites = db
+      .prepare("SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
+      .all(data.id) as { url: string; wayback_url: string | null }[];
+    const existingWaybacks = new Map(existingWebsites.map((r) => [r.url, r.wayback_url]));
+
     const run = db.transaction(() => {
       db.prepare(
         'UPDATE contacts SET name = ?, organization = ?, notes = ?, updated_at = ? WHERE id = ?',
@@ -287,32 +320,70 @@ export function registerContactHandlers(): void {
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i);
       });
+
+      // Restore wayback_urls for previously saved website links
+      for (const [url, waybackUrl] of existingWaybacks) {
+        if (waybackUrl) {
+          db.prepare(
+            "UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?"
+          ).run(waybackUrl, data.id, url);
+        }
+      }
     });
     run();
     setImmediate(runDedupScan);
+
+    // Trigger Wayback saves for newly added website URLs
+    const newWebsiteUrls = (data.links ?? [])
+      .filter((l) => l.type === 'website' && l.url.trim() && !existingWaybacks.has(l.url.trim()))
+      .map((l) => l.url.trim());
+    for (const url of newWebsiteUrls) {
+      triggerWaybackSave(data.id, url).catch(() => {});
+    }
   });
 
   ipcMain.handle('memberships:update', (_, data: UpdateMembershipInput): void => {
     const now = Math.floor(Date.now() / 1000);
     const db = getDatabase();
     const current = db
-      .prepare('SELECT outreach_reminders_disabled FROM project_memberships WHERE id = ?')
-      .get(data.membershipId) as { outreach_reminders_disabled: 0 | 1 } | undefined;
+      .prepare('SELECT reporter_email, outreach_reminders_disabled FROM project_memberships WHERE id = ?')
+      .get(data.membershipId) as { reporter_email: string; outreach_reminders_disabled: 0 | 1 } | undefined;
+
+    const newDisabled = data.outreachRemindersDisabled !== undefined
+      ? data.outreachRemindersDisabled
+      : (current?.outreach_reminders_disabled ?? 0);
+
+    const reporterChanging = data.reporterEmail !== undefined && data.reporterEmail !== current?.reporter_email;
 
     db.prepare(
       `UPDATE project_memberships
        SET status = ?, priority = ?, theme = ?,
            outreach_reminders_disabled = ?,
+           reporter_email = COALESCE(?, reporter_email),
+           reporter_name  = COALESCE(?, reporter_name),
+           reporter_assigned_at = CASE WHEN ? THEN ? ELSE reporter_assigned_at END,
+           reporter_conflict = CASE WHEN ? OR ? THEN 0 ELSE reporter_conflict END,
            updated_at = ?
        WHERE id = ?`,
     ).run(
       data.status ?? null,
       data.priority ?? null,
       data.theme ?? null,
-      data.outreachRemindersDisabled !== undefined ? data.outreachRemindersDisabled : (current?.outreach_reminders_disabled ?? 0),
+      newDisabled,
+      data.reporterEmail ?? null,
+      data.reporterName ?? null,
+      reporterChanging ? 1 : 0, now,
+      reporterChanging ? 1 : 0, data.clearConflict ? 1 : 0,
       now,
       data.membershipId,
     );
+
+    if (newDisabled === 1) {
+      db.prepare(
+        `DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1`,
+      ).run(data.membershipId);
+      broadcastRemindersChanged();
+    }
   });
 
   ipcMain.handle('interaction-log:list', (_, membershipId: string): InteractionLogEntry[] => {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ContactDetail as ContactDetailType, Project, StatusOption, PriorityOption } from '@shared/types';
+import type { ContactDetail as ContactDetailType, Project, StatusOption, PriorityOption, User } from '@shared/types';
 import GlobalTab from './GlobalTab';
 import ProjectTab from './ProjectTab';
 import './ContactDetail.css';
@@ -9,11 +9,12 @@ interface Props {
   onClose: () => void;
   onDeleted: (id: string) => void;
   onUpdated: () => void;
+  user?: User | null;
 }
 
 type Tab = 'global' | 'project';
 
-export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated }: Props) {
+export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated, user }: Props) {
   const [contact, setContact] = useState<ContactDetailType | null>(null);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
@@ -106,6 +107,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               statusOptions={statusOptions}
               priorityOptions={priorityOptions}
               onMembershipUpdated={handleMembershipChanged}
+              currentUser={user ? { email: user.email, firstName: user.first_name, lastName: user.last_name } : null}
             />
           )}
         </>

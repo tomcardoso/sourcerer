@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
+import SearchModal from './SearchModal';
 import SetupPayloadModal from './SetupPayloadModal';
 import AllContacts from '../views/AllContacts';
 import ProjectView from '../views/ProjectView';
@@ -26,6 +27,8 @@ export default function AppShell() {
   } | null>(null);
   const [unseenMentions, setUnseenMentions] = useState(0);
   const [overdueReminders, setOverdueReminders] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [openContactId, setOpenContactId] = useState<string | null>(null);
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
@@ -39,6 +42,10 @@ export default function AppShell() {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
         e.preventDefault();
         document.body.classList.toggle('redacted');
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((open) => !open);
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -63,6 +70,10 @@ export default function AppShell() {
     return window.sourcerer.onSyncStatus(() => {
       window.sourcerer.listProjects().then(setProjects);
     });
+  }, []);
+
+  useEffect(() => {
+    return window.sourcerer.onRemindersChanged(refreshOverdue);
   }, []);
 
   function handleProjectCreated(project: Project) {
@@ -110,6 +121,7 @@ export default function AppShell() {
         onNav={setNav}
         unseenMentions={unseenMentions}
         overdueReminders={overdueReminders}
+        onSearchOpen={() => setSearchOpen(true)}
         onProjectCreated={handleProjectCreated}
         onProjectCreatedShared={handleProjectCreatedShared}
         onProjectJoined={handleProjectJoined}
@@ -117,7 +129,14 @@ export default function AppShell() {
         onProjectDeleted={handleProjectDeleted}
       />
       <main className="app-content">
-        {nav.view === 'all-contacts' && <AllContacts projects={projects} user={user} />}
+        {nav.view === 'all-contacts' && (
+          <AllContacts
+            projects={projects}
+            user={user}
+            openContactId={openContactId}
+            onOpenContactIdConsumed={() => setOpenContactId(null)}
+          />
+        )}
         {nav.view === 'alerts' && (
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
@@ -133,6 +152,14 @@ export default function AppShell() {
         )}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
+
+      {searchOpen && (
+        <SearchModal
+          onClose={() => setSearchOpen(false)}
+          onNav={setNav}
+          onOpenContact={(id) => setOpenContactId(id)}
+        />
+      )}
 
       {pendingPayload && (
         <SetupPayloadModal

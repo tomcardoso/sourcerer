@@ -15,6 +15,8 @@ import { registerReminderHandlers } from './ipc/reminders';
 import { registerImportHandlers } from './ipc/import';
 import { registerAuditHandlers } from './ipc/audit';
 import { registerBackupHandlers } from './ipc/backup';
+import { registerScreenshotHandlers } from './ipc/screenshots';
+import { registerSearchHandlers } from './ipc/search';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -70,6 +72,8 @@ app.whenReady().then(() => {
   registerImportHandlers();
   registerAuditHandlers();
   registerBackupHandlers();
+  registerScreenshotHandlers();
+  registerSearchHandlers();
   startHttpServer();
   createWindow();
 

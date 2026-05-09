@@ -9,6 +9,12 @@ import { checkReminders } from './reminder-checker';
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let rssPollIntervalMs = 6 * 60 * 60 * 1000; // default 6 hours
+let lastRssPollAt = 0;
+
+export function setRssPollIntervalHours(hours: number): void {
+  rssPollIntervalMs = Math.max(1, hours) * 60 * 60 * 1000;
+}
 
 export interface SyncStatusEvent {
   projectId: string;
@@ -20,6 +26,14 @@ export interface SyncStatusEvent {
 
 export function startPoller(): void {
   if (pollTimer) return;
+  // Load RSS interval from DB
+  if (isDatabaseOpen()) {
+    const row = getDatabase()
+      .prepare('SELECT rss_poll_interval_hours FROM users WHERE id = 1')
+      .get() as { rss_poll_interval_hours: number } | undefined;
+    rssPollIntervalMs = Math.max(1, row?.rss_poll_interval_hours ?? 6) * 60 * 60 * 1000;
+  }
+  lastRssPollAt = 0; // ensure RSS runs on first tick
   pollTimer = setInterval(pollAll, DEFAULT_INTERVAL_MS);
 }
 
@@ -43,7 +57,12 @@ export function pollAll(): void {
     syncOne(project.id, project.shared_db_path, project.shared_db_key);
   }
 
-  pollAllRss().catch(() => {});
+  const now = Date.now();
+  if (now - lastRssPollAt >= rssPollIntervalMs) {
+    lastRssPollAt = now;
+    pollAllRss().catch(() => {});
+  }
+
   checkOutreachReminders();
   checkReminders();
 }

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import Setup from './screens/Setup';
 import Unlock from './screens/Unlock';
 import AppShell from './shell/AppShell';
+import ScreenshotPickerModal from './contacts/ScreenshotPickerModal';
 
 type AppScreen = 'loading' | 'setup' | 'locked' | 'unlocked';
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
   const [showExtensionApproval, setShowExtensionApproval] = useState(false);
+  const [pendingScreenshotTempId, setPendingScreenshotTempId] = useState<string | null>(null);
 
   useEffect(() => {
     window.sourcerer.checkFirstLaunch().then(({ isFirstLaunch }) => {
@@ -18,9 +20,13 @@ export default function App() {
     const removeAccess = window.sourcerer.onExtensionAccessRequest(() =>
       setShowExtensionApproval(true),
     );
+    const removeScreenshot = window.sourcerer.onScreenshotReceived((tempId) =>
+      setPendingScreenshotTempId(tempId),
+    );
     return () => {
       removeLocked();
       removeAccess();
+      removeScreenshot();
     };
   }, []);
 
@@ -92,7 +98,14 @@ export default function App() {
     );
   }
 
-  if (screen === 'setup') return <>{extensionModal}<Setup onComplete={() => setScreen('locked')} /></>;
-  if (screen === 'locked') return <>{extensionModal}<Unlock onUnlocked={() => setScreen('unlocked')} /></>;
-  return <>{extensionModal}<AppShell /></>;
+  const screenshotModal = pendingScreenshotTempId ? (
+    <ScreenshotPickerModal
+      tempId={pendingScreenshotTempId}
+      onClose={() => setPendingScreenshotTempId(null)}
+    />
+  ) : null;
+
+  if (screen === 'setup') return <>{extensionModal}{screenshotModal}<Setup onComplete={() => setScreen('locked')} /></>;
+  if (screen === 'locked') return <>{extensionModal}{screenshotModal}<Unlock onUnlocked={() => setScreen('unlocked')} /></>;
+  return <>{extensionModal}{screenshotModal}<AppShell /></>;
 }

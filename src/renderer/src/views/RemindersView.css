@@ -1,3 +1,79 @@
+.reminders-ical-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.reminders-cal-setup {
+  width: 100%;
+  text-align: left;
+}
+
+.reminders-cal-setup-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.reminders-cal-setup-toggle:hover {
+  color: var(--color-text);
+}
+
+.reminders-cal-setup-body {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reminders-cal-setup-url {
+  font-family: monospace;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  word-break: break-all;
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.reminders-cal-setup-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.reminders-cal-setup-item strong {
+  color: var(--color-text);
+}
+
+.reminders-cal-setup-item span {
+  color: var(--color-text-muted);
+}
+
+.reminders-cal-setup-note {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
 .reminders-ical-btn {
   height: 32px;
   padding: 0 12px;

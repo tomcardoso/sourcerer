@@ -5,6 +5,7 @@ import { seedDefaults } from './seeds';
 import { seedDevData } from './dev-seeds';
 
 let activeDb: Database.Database | null = null;
+let activeKeyHex: string | null = null;
 
 function openRaw(dbPath: string, keyHex: string): Database.Database {
   const db = new Database(dbPath);
@@ -113,7 +114,7 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
   // Set default outreach intervals for built-in priority levels where not yet configured
   try {
     const defaults: Array<[string, number]> = [
-      ['Critical', 7], ['High', 14], ['Medium', 28], ['Low', 56],
+      ['Critical', 7], ['High', 14], ['Medium', 28], ['Low', 60],
     ];
     for (const [label, days] of defaults) {
       db.prepare(
@@ -127,6 +128,46 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     db.prepare('ALTER TABLE contact_phones ADD COLUMN label TEXT').run();
   } catch {}
 
+  // Migrate existing databases: add outreach_require_interaction if missing
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN outreach_require_interaction INTEGER NOT NULL DEFAULT 1');
+  } catch {}
+
+  // Migrate existing databases: update Low priority interval to 60 days (every two months)
+  try {
+    db.prepare(`UPDATE priority_options SET outreach_interval_days = 60 WHERE label = 'Low'`).run();
+  } catch {}
+
+  // Migrate existing databases: add contact_screenshots table if missing
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS contact_screenshots (
+      id          TEXT    PRIMARY KEY,
+      contact_id  TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      tab_url     TEXT,
+      file_path   TEXT    NOT NULL,
+      iv          TEXT    NOT NULL,
+      captured_at INTEGER NOT NULL
+    )`);
+  } catch {}
+
+  // Migrate existing databases: add rss_poll_interval_hours if missing
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN rss_poll_interval_hours INTEGER NOT NULL DEFAULT 6');
+  } catch {}
+
+  // Migrate existing databases: add reporter_assigned_at and reporter_conflict if missing
+  try {
+    db.exec('ALTER TABLE project_memberships ADD COLUMN reporter_assigned_at INTEGER');
+  } catch {}
+  try {
+    db.exec('ALTER TABLE project_memberships ADD COLUMN reporter_conflict INTEGER NOT NULL DEFAULT 0');
+  } catch {}
+
+  // Migrate existing databases: add wayback_url to contact_links if missing
+  try {
+    db.exec('ALTER TABLE contact_links ADD COLUMN wayback_url TEXT');
+  } catch {}
+
   return db;
 }
 
@@ -136,6 +177,7 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
   db.exec(LOCAL_SCHEMA_SQL);
   seedDefaults(db);
   activeDb = db;
+  activeKeyHex = keyHex;
   return db;
 }
 
@@ -153,6 +195,7 @@ export function maybeRunDevSeeds(db: Database.Database): void {
 export function unlockDatabase(dbPath: string, keyHex: string): Database.Database {
   const db = openRaw(dbPath, keyHex);
   activeDb = db;
+  activeKeyHex = keyHex;
   return db;
 }
 
@@ -161,10 +204,16 @@ export function getDatabase(): Database.Database {
   return activeDb;
 }
 
+export function getKeyHex(): string {
+  if (!activeKeyHex) throw new Error('Database is not open.');
+  return activeKeyHex;
+}
+
 export function closeDatabase(): void {
   if (activeDb) {
     activeDb.close();
     activeDb = null;
+    activeKeyHex = null;
   }
 }
 

@@ -64,9 +64,11 @@ function isFilterActive(f: Filters): boolean {
 interface Props {
   projects: Project[];
   user: User | null;
+  openContactId?: string | null;
+  onOpenContactIdConsumed?: () => void;
 }
 
-export default function AllContacts({ projects, user }: Props) {
+export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
@@ -88,6 +90,13 @@ export default function AllContacts({ projects, user }: Props) {
   const refresh = useCallback(() => {
     window.sourcerer.listContacts().then(setContacts);
   }, []);
+
+  useEffect(() => {
+    if (openContactId) {
+      setDetailId(openContactId);
+      onOpenContactIdConsumed?.();
+    }
+  }, [openContactId, onOpenContactIdConsumed]);
 
   useEffect(() => {
     refresh();
@@ -663,6 +672,7 @@ export default function AllContacts({ projects, user }: Props) {
             onClose={() => setDetailId(null)}
             onDeleted={handleDeleted}
             onUpdated={refresh}
+            user={user}
           />
         )}
       </div>

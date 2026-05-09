@@ -3,6 +3,38 @@ import type { Reminder } from '@shared/types';
 import './View.css';
 import './RemindersView.css';
 
+function CalendarSetupInstructions({ url }: { url: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="reminders-cal-setup">
+      <button className="reminders-cal-setup-toggle" onClick={() => setOpen((v) => !v)}>
+        <span className={`reminders-chevron${open ? ' reminders-chevron-open' : ''}`}>›</span>
+        How to subscribe in your calendar app
+      </button>
+      {open && (
+        <div className="reminders-cal-setup-body">
+          <p className="reminders-cal-setup-url">{url}</p>
+          <div className="reminders-cal-setup-item">
+            <strong>Apple Calendar (Mac)</strong>
+            <span>File → New Calendar Subscription → paste the URL above → Subscribe</span>
+          </div>
+          <div className="reminders-cal-setup-item">
+            <strong>Outlook (Windows)</strong>
+            <span>Add Calendar → From Internet → paste the URL above → Import</span>
+          </div>
+          <div className="reminders-cal-setup-item">
+            <strong>Google Calendar</strong>
+            <span>Settings → Other calendars → From URL → paste the URL above → Add calendar</span>
+          </div>
+          <p className="reminders-cal-setup-note">
+            The feed is only available while Sourcerer is running. Existing calendar events are unaffected when the app is closed.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type TypeFilter = 'all' | 'outreach' | 'manual';
 
 function fmtDueDate(ts: number): string {
@@ -98,9 +130,12 @@ export default function RemindersView({ onCountChange }: Props) {
           )}
         </div>
         {calendarUrl && (
-          <button className="reminders-ical-btn" onClick={handleCopy} title={calendarUrl}>
-            {copied ? 'Copied!' : '📅 Copy iCal URL'}
-          </button>
+          <div className="reminders-ical-wrap">
+            <button className="reminders-ical-btn" onClick={handleCopy} title={calendarUrl}>
+              {copied ? 'Copied!' : '📅 Copy iCal URL'}
+            </button>
+            <CalendarSetupInstructions url={calendarUrl} />
+          </div>
         )}
       </div>
 

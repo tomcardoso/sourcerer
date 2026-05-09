@@ -27,7 +27,7 @@ const INTERVAL_PRESETS = [
   { label: 'Weekly', days: 7 },
   { label: 'Every 2 weeks', days: 14 },
   { label: 'Every 4 weeks', days: 28 },
-  { label: 'Every 8 weeks', days: 56 },
+  { label: 'Every 2 months', days: 60 },
   { label: 'No reminders', days: null as number | null },
 ];
 
@@ -191,8 +191,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('CA');
   const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
+  const [outreachRequireInteraction, setOutreachRequireInteraction] = useState<boolean>(true);
   const [alertNotificationsEnabled, setAlertNotificationsEnabled] = useState<boolean>(true);
   const [reminderNotificationsEnabled, setReminderNotificationsEnabled] = useState<boolean>(true);
+  const [rssPollIntervalHours, setRssPollIntervalHours] = useState<number>(6);
   const [stalenessEnabled, setStalenessEnabled] = useState<boolean>(true);
   const [stalenessThreshold, setStalenessThreshold] = useState<number>(90);
   const [stalenessThresholdInput, setStalenessThresholdInput] = useState<string>('90');
@@ -209,6 +211,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   const [backingUp, setBackingUp] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState(false);
+  const [restoringBackup, setRestoringBackup] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
   const [panicWipeInput, setPanicWipeInput] = useState('');
   const [panicWiping, setPanicWiping] = useState(false);
@@ -231,11 +236,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setEmail(user.email);
       setPhoneCountry(user.phone_country ?? 'CA');
       setOutreachRemindersEnabled(user.outreach_reminders_enabled !== 0);
+      setOutreachRequireInteraction(user.outreach_require_interaction !== 0);
       setAlertNotificationsEnabled(user.alert_notifications_enabled !== 0);
       setReminderNotificationsEnabled(user.reminder_notifications_enabled !== 0);
       setStalenessEnabled(user.staleness_enabled !== 0);
       setStalenessThreshold(user.staleness_threshold_days ?? 90);
       setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
+      setRssPollIntervalHours(user.rss_poll_interval_hours ?? 6);
     }
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
@@ -298,6 +305,20 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     if (!result.success && result.error) setBackupError(result.error);
   }
 
+  async function handleRestoreBackup() {
+    setRestoringBackup(true);
+    setRestoreError(null);
+    const result = await window.sourcerer.restoreBackup();
+    setRestoringBackup(false);
+    if (result.canceled) {
+      setRestoreConfirm(false);
+      return;
+    }
+    if (!result.success) {
+      setRestoreError(result.error ?? 'Restore failed.');
+    }
+  }
+
   async function handlePanicWipe() {
     if (panicWipeInput !== 'WIPE') return;
     setPanicWiping(true);
@@ -338,6 +359,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     onUserUpdated(updated);
   }
 
+  async function handleRssPollIntervalChange(hours: number) {
+    setRssPollIntervalHours(hours);
+    const updated = await window.sourcerer.setRssPollInterval(hours);
+    onUserUpdated(updated);
+  }
+
   async function handleReminderNotificationsToggle(enabled: boolean) {
     setReminderNotificationsEnabled(enabled);
     const updated = await window.sourcerer.setReminderNotificationsEnabled(enabled);
@@ -347,6 +374,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   async function handleOutreachToggle(enabled: boolean) {
     setOutreachRemindersEnabled(enabled);
     const updated = await window.sourcerer.setOutreachRemindersEnabled(enabled);
+    onUserUpdated(updated);
+  }
+
+  async function handleOutreachRequireInteractionToggle(required: boolean) {
+    setOutreachRequireInteraction(required);
+    const updated = await window.sourcerer.setOutreachRequireInteraction(required);
     onUserUpdated(updated);
   }
 
@@ -580,6 +613,41 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               onChange={(e) => handleOutreachToggle(e.target.checked)}
             />
           </div>
+          <div className="sv-field">
+            <div>
+              <div className="sv-label">Start clock after first interaction</div>
+              <div className="sv-hint sv-hint--inline">
+                When on, outreach reminders won't appear until at least one interaction has been logged for a source. When off, the clock starts as soon as a priority is assigned.
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={outreachRequireInteraction}
+              onChange={(e) => handleOutreachRequireInteractionToggle(e.target.checked)}
+            />
+          </div>
+        </div>
+
+        {/* Google Alerts */}
+        <div className="sv-section">
+          <div className="view-section-title">Google Alerts</div>
+          <p className="sv-hint">
+            Sourcerer polls RSS feeds for each contact's Google Alert. Control how often it checks.
+          </p>
+          <div className="sv-field">
+            <label className="sv-label">Check every</label>
+            <select
+              className="sv-select"
+              value={rssPollIntervalHours}
+              onChange={(e) => handleRssPollIntervalChange(Number(e.target.value))}
+            >
+              <option value={1}>1 hour</option>
+              <option value={3}>3 hours</option>
+              <option value={6}>6 hours (default)</option>
+              <option value={12}>12 hours</option>
+              <option value={24}>24 hours</option>
+            </select>
+          </div>
         </div>
 
         {/* Notifications */}
@@ -717,6 +785,47 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               {backingUp ? 'Exporting…' : 'Export backup…'}
             </button>
           </div>
+          {!restoreConfirm ? (
+            <div className="sv-field">
+              <div>
+                <div className="sv-label">Restore from backup</div>
+                <div className="sv-hint sv-hint--inline">
+                  Restore a <code>.sourcerer-backup</code> file. Your current database will be permanently replaced.
+                </div>
+                {restoreError && <div className="sv-error-inline">{restoreError}</div>}
+              </div>
+              <button
+                className="sv-add-btn"
+                onClick={() => { setRestoreConfirm(true); setRestoreError(null); }}
+              >
+                Restore from backup…
+              </button>
+            </div>
+          ) : (
+            <div className="sv-wipe-confirm">
+              <p className="sv-wipe-warning">
+                Restoring a backup will permanently overwrite your current database and cannot be undone.
+                A file picker will open — choose your <code>.sourcerer-backup</code> file to proceed.
+              </p>
+              <div className="sv-wipe-row">
+                <button
+                  className="sv-wipe-confirm-btn"
+                  onClick={handleRestoreBackup}
+                  disabled={restoringBackup}
+                >
+                  {restoringBackup ? 'Restoring…' : 'Choose backup file…'}
+                </button>
+                <button
+                  className="sv-cancel-small-btn"
+                  onClick={() => { setRestoreConfirm(false); setRestoreError(null); }}
+                  disabled={restoringBackup}
+                >
+                  Cancel
+                </button>
+              </div>
+              {restoreError && <div className="sv-error-inline">{restoreError}</div>}
+            </div>
+          )}
         </div>
 
         {/* Danger Zone */}

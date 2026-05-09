@@ -294,3 +294,20 @@
 .sidebar-overdue-badge {
   background: #d97706;
 }
+
+/* Search button */
+.sidebar-search-btn {
+  color: var(--sidebar-text-muted);
+  margin-bottom: 2px;
+}
+
+.sidebar-search-btn:hover {
+  color: var(--sidebar-text);
+}
+
+.sidebar-search-hint {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.45;
+  letter-spacing: 0.02em;
+}

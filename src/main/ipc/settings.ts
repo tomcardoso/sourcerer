@@ -7,6 +7,7 @@ import { getDatabase } from '../database';
 import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
 import { appendAuditLog } from './audit';
+import { setRssPollIntervalHours } from '../sync/poller';
 import type { User, StatusOption, PriorityOption } from '@shared/types';
 
 const PORT = 27371;
@@ -109,7 +110,7 @@ export function registerSettingsHandlers(): void {
     db.prepare(
       'INSERT INTO priority_options (id, label, sort_order, is_default) VALUES (?, ?, ?, 0)',
     ).run(id, label.trim(), maxRow.m + 1);
-    return { id, label: label.trim(), sort_order: maxRow.m + 1, is_default: 0 };
+    return { id, label: label.trim(), sort_order: maxRow.m + 1, is_default: 0, outreach_interval_days: null };
   });
 
   ipcMain.handle('priority-options:rename', (_, { id, label }: { id: string; label: string }): void => {
@@ -148,6 +149,20 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:set-outreach-reminders-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET outreach_reminders_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
+  ipcMain.handle('settings:set-outreach-require-interaction', (_, required: boolean): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET outreach_require_interaction = ? WHERE id = 1').run(required ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
+  ipcMain.handle('settings:set-rss-poll-interval', (_, hours: number): User => {
+    const db = getDatabase();
+    const clamped = Math.max(1, Math.floor(hours));
+    db.prepare('UPDATE users SET rss_poll_interval_hours = ? WHERE id = 1').run(clamped);
+    setRssPollIntervalHours(clamped);
     return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
   });
 

@@ -11,11 +11,13 @@ export const LOCAL_SCHEMA_SQL = `
     calendar_token             TEXT    NOT NULL,
     idle_timeout_seconds       INTEGER NOT NULL DEFAULT 900,
     phone_country              TEXT    NOT NULL DEFAULT 'CA',
-    outreach_reminders_enabled INTEGER NOT NULL DEFAULT 1,
-    staleness_enabled                 INTEGER NOT NULL DEFAULT 1,
-    staleness_threshold_days          INTEGER NOT NULL DEFAULT 90,
-    alert_notifications_enabled       INTEGER NOT NULL DEFAULT 1,
-    reminder_notifications_enabled    INTEGER NOT NULL DEFAULT 1
+    outreach_reminders_enabled    INTEGER NOT NULL DEFAULT 1,
+    outreach_require_interaction  INTEGER NOT NULL DEFAULT 1,
+    staleness_enabled             INTEGER NOT NULL DEFAULT 1,
+    staleness_threshold_days      INTEGER NOT NULL DEFAULT 90,
+    alert_notifications_enabled   INTEGER NOT NULL DEFAULT 1,
+    reminder_notifications_enabled INTEGER NOT NULL DEFAULT 1,
+    rss_poll_interval_hours       INTEGER NOT NULL DEFAULT 6
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
@@ -51,6 +53,7 @@ export const LOCAL_SCHEMA_SQL = `
     type       TEXT    NOT NULL,
     label      TEXT,
     url        TEXT    NOT NULL,
+    wayback_url TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
     synced_at  INTEGER
   );
@@ -119,6 +122,8 @@ export const LOCAL_SCHEMA_SQL = `
     first_outreach_at           INTEGER,
     outreach_interval_days      INTEGER,
     outreach_reminders_disabled INTEGER NOT NULL DEFAULT 0,
+    reporter_assigned_at        INTEGER,
+    reporter_conflict           INTEGER NOT NULL DEFAULT 0,
     created_at                  INTEGER NOT NULL,
     updated_at                  INTEGER NOT NULL,
     synced_at                   INTEGER,
@@ -185,5 +190,14 @@ export const LOCAL_SCHEMA_SQL = `
     actor       TEXT,
     occurred_at INTEGER NOT NULL,
     details     TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS contact_screenshots (
+    id          TEXT    PRIMARY KEY,
+    contact_id  TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    tab_url     TEXT,
+    file_path   TEXT    NOT NULL,
+    iv          TEXT    NOT NULL,
+    captured_at INTEGER NOT NULL
   );
 `;

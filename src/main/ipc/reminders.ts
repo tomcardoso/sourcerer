@@ -1,7 +1,13 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import type { Reminder } from '@shared/types';
+
+export function broadcastRemindersChanged(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('reminders:changed');
+  }
+}
 
 const SELECT_COLS = `
   r.id, r.contact_id, r.project_id, r.membership_id,
@@ -55,7 +61,7 @@ export function registerReminderHandlers(): void {
         `INSERT INTO reminders (id, contact_id, project_id, due_date, note, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       ).run(id, contactId, projectId, dueDate, note ?? null, now);
-      return db
+      const reminder = db
         .prepare(
           `SELECT ${SELECT_COLS}
            FROM reminders r
@@ -64,10 +70,13 @@ export function registerReminderHandlers(): void {
            WHERE r.id = ?`,
         )
         .get(id) as Reminder;
+      broadcastRemindersChanged();
+      return reminder;
     },
   );
 
   ipcMain.handle('reminders:delete', (_, id: string): void => {
     getDatabase().prepare(`DELETE FROM reminders WHERE id = ?`).run(id);
+    broadcastRemindersChanged();
   });
 }

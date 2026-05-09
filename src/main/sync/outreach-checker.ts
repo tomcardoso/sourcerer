@@ -1,6 +1,7 @@
 import { Notification } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
+import { broadcastRemindersChanged } from '../ipc/reminders';
 
 // Tracks which membership IDs have already triggered a notification this session.
 // Cleared on unlock so every session gets a fresh check.
@@ -16,13 +17,21 @@ interface OutreachRow {
   last_contacted: number | null;
 }
 
+function nextWeekday(unixSeconds: number): number {
+  const d = new Date(unixSeconds * 1000);
+  const day = d.getUTCDay();
+  if (day === 6) return unixSeconds + 2 * 86400; // Saturday → Monday
+  if (day === 0) return unixSeconds + 86400;      // Sunday → Monday
+  return unixSeconds;
+}
+
 export function checkOutreachReminders(): void {
   if (!isDatabaseOpen()) return;
   const db = getDatabase();
 
   const user = db
-    .prepare('SELECT outreach_reminders_enabled FROM users WHERE id = 1')
-    .get() as { outreach_reminders_enabled: number } | undefined;
+    .prepare('SELECT outreach_reminders_enabled, outreach_require_interaction FROM users WHERE id = 1')
+    .get() as { outreach_reminders_enabled: number; outreach_require_interaction: number } | undefined;
   if (!user?.outreach_reminders_enabled) return;
 
   const now = Math.floor(Date.now() / 1000);
@@ -49,9 +58,11 @@ export function checkOutreachReminders(): void {
     .all() as OutreachRow[];
 
   for (const row of rows) {
+    if (user.outreach_require_interaction && row.last_contacted === null) continue;
+
     const lastContacted = row.last_contacted ?? 0;
-    // due_date is when the next outreach is due: last contact + interval
-    const dueDate = lastContacted + row.interval_days * 86400;
+    const rawDueDate = lastContacted + row.interval_days * 86400;
+    const dueDate = nextWeekday(rawDueDate);
     const isOverdue = dueDate < now;
 
     // Upsert the auto-outreach reminder with the correct due_date.
@@ -67,8 +78,10 @@ export function checkOutreachReminders(): void {
            (id, contact_id, project_id, membership_id, due_date, note, is_auto_outreach, created_at)
          VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`,
       ).run(uuidv4(), row.contact_id, row.project_id, row.membership_id, dueDate, now);
+      broadcastRemindersChanged();
     } else if (existing.due_date !== dueDate) {
       db.prepare('UPDATE reminders SET due_date = ? WHERE id = ?').run(dueDate, existing.id);
+      broadcastRemindersChanged();
     }
 
     // OS notification: only when overdue, once per session.

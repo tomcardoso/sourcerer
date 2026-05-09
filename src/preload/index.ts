@@ -48,6 +48,16 @@ const sourcererApi = {
   },
   approveExtension: (): Promise<void> => ipcRenderer.invoke('http:approve-extension'),
   denyExtension: (): Promise<void> => ipcRenderer.invoke('http:deny-extension'),
+  onRemindersChanged: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('reminders:changed', handler);
+    return () => ipcRenderer.removeListener('reminders:changed', handler);
+  },
+  onScreenshotReceived: (callback: (tempId: string) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, tempId: string) => callback(tempId);
+    ipcRenderer.on('extension:screenshot-received', handler);
+    return () => ipcRenderer.removeListener('extension:screenshot-received', handler);
+  },
 
   // App data
   getUser: (): Promise<User> => ipcRenderer.invoke('app:get-user'),
@@ -136,6 +146,10 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-staleness-threshold', days),
   setOutreachRemindersEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-outreach-reminders-enabled', enabled),
+  setOutreachRequireInteraction: (required: boolean): Promise<User> =>
+    ipcRenderer.invoke('settings:set-outreach-require-interaction', required),
+  setRssPollInterval: (hours: number): Promise<User> =>
+    ipcRenderer.invoke('settings:set-rss-poll-interval', hours),
   setAlertNotificationsEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-alert-notifications-enabled', enabled),
   setReminderNotificationsEnabled: (enabled: boolean): Promise<User> =>
@@ -173,6 +187,18 @@ const sourcererApi = {
     ipcRenderer.invoke('export:project', { projectId, mode }),
   exportBackup: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('backup:export'),
+  restoreBackup: (): Promise<{ success: boolean; canceled?: boolean; error?: string }> =>
+    ipcRenderer.invoke('backup:restore'),
+  searchGlobal: (query: string): Promise<import('@shared/types').SearchResult[]> =>
+    ipcRenderer.invoke('search:global', query),
+  assignScreenshot: (data: { tempId: string; contactId: string }): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('screenshots:assign', data),
+  listScreenshots: (contactId: string): Promise<import('@shared/types').ContactScreenshot[]> =>
+    ipcRenderer.invoke('screenshots:list', contactId),
+  loadScreenshot: (screenshotId: string): Promise<{ data: string } | { error: string }> =>
+    ipcRenderer.invoke('screenshots:load', screenshotId),
+  deleteScreenshot: (screenshotId: string): Promise<void> =>
+    ipcRenderer.invoke('screenshots:delete', screenshotId),
 
   // Sync
   triggerSync: (projectId: string): Promise<SyncStatusEvent> =>

@@ -164,6 +164,8 @@ function pullMemberships(
   projectId: string,
   now: number,
 ): void {
+  const CONFLICT_WINDOW_SECS = 24 * 3600; // 24-hour window for reporter conflict detection
+
   const sharedMemberships = shared.prepare('SELECT * FROM project_memberships').all() as {
     id: string;
     contact_id: string;
@@ -178,22 +180,28 @@ function pullMemberships(
   }[];
 
   for (const sm of sharedMemberships) {
-    const lm = local.prepare('SELECT updated_at FROM project_memberships WHERE id = ?').get(sm.id) as
-      | { updated_at: number }
+    const lm = local.prepare('SELECT updated_at, reporter_email, reporter_assigned_at FROM project_memberships WHERE id = ?').get(sm.id) as
+      | { updated_at: number; reporter_email: string; reporter_assigned_at: number | null }
       | undefined;
 
     if (!lm || sm.updated_at > lm.updated_at) {
+      // Detect reporter conflict: sync is overwriting a recently-claimed local assignment
+      const reporterChanging = lm && lm.reporter_email !== sm.reporter_email;
+      const recentlyAssigned = lm?.reporter_assigned_at && (now - lm.reporter_assigned_at) < CONFLICT_WINDOW_SECS;
+      const hasConflict = reporterChanging && recentlyAssigned ? 1 : 0;
+
       local
         .prepare(
           `INSERT INTO project_memberships
              (id, contact_id, project_id, reporter_email, reporter_name, theme, priority,
-              status, first_outreach_at, created_at, updated_at, synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              status, first_outreach_at, created_at, updated_at, synced_at, reporter_conflict)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              reporter_email = excluded.reporter_email, reporter_name = excluded.reporter_name,
              theme = excluded.theme, priority = excluded.priority, status = excluded.status,
              first_outreach_at = excluded.first_outreach_at,
-             updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
+             updated_at = excluded.updated_at, synced_at = excluded.synced_at,
+             reporter_conflict = CASE WHEN excluded.reporter_conflict = 1 THEN 1 ELSE reporter_conflict END`,
         )
         .run(
           sm.id,
@@ -208,6 +216,7 @@ function pullMemberships(
           sm.created_at,
           sm.updated_at,
           now,
+          hasConflict,
         );
     }
 

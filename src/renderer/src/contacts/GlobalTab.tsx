@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { ContactDetail as ContactDetailType, ContactAlertRss, Project } from '@shared/types';
+import { useEffect, useRef, useState } from 'react';
+import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project } from '@shared/types';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -20,6 +20,8 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
   instagram: { label: 'Instagram',   placeholder: 'https://instagram.com/…' },
   facebook:  { label: 'Facebook',    placeholder: 'https://facebook.com/…' },
 };
+
+const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
 
 function DynamicList({
   values,
@@ -74,6 +76,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingToProject, setAddingToProject] = useState('');
   const [alertRss, setAlertRss] = useState<ContactAlertRss | null>(null);
+  const [screenshots, setScreenshots] = useState<ContactScreenshot[]>([]);
+  const [screenshotImages, setScreenshotImages] = useState<Record<string, string>>({});
+  const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -84,13 +90,32 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [], x: [], instagram: [], facebook: [],
   });
+  const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [editRssUrl, setEditRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
 
   useEffect(() => {
     window.sourcerer.getAlertRss(contact.id).then(setAlertRss);
+    window.sourcerer.listScreenshots(contact.id).then(setScreenshots);
   }, [contact.id]);
+
+  async function loadScreenshotImage(id: string) {
+    if (screenshotImages[id]) return;
+    const result = await window.sourcerer.loadScreenshot(id);
+    if ('data' in result) {
+      setScreenshotImages((prev) => ({ ...prev, [id]: result.data }));
+    } else {
+      setScreenshotImages((prev) => ({ ...prev, [id]: 'error' }));
+    }
+  }
+
+  async function handleDeleteScreenshot(id: string) {
+    await window.sourcerer.deleteScreenshot(id);
+    setScreenshots((prev) => prev.filter((s) => s.id !== id));
+    setScreenshotImages((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    if (viewingScreenshot === id) setViewingScreenshot(null);
+  }
 
   function startEdit() {
     setEditName(contact.name);
@@ -105,6 +130,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       ]),
     ) as Record<SocialType, string[]>;
     setEditSocials(socialsByType);
+    setEditWebsites(contact.links.filter((l) => l.type === 'website').map((l) => l.url));
     setEditRssUrl(alertRss?.rss_url ?? '');
     setEmailCollisions({});
     setPhoneCollisions({});
@@ -139,9 +165,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     if (!editName.trim()) return;
     setSaving(true);
     try {
-      const links = SOCIAL_TYPES.flatMap((type) =>
-        editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
-      );
+      const links = [
+        ...SOCIAL_TYPES.flatMap((type) =>
+          editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
+        ),
+        ...editWebsites.filter((u) => u.trim()).map((url) => ({ type: 'website', url })),
+      ];
       await window.sourcerer.updateContact({
         id: contact.id,
         name: editName,
@@ -189,8 +218,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const socialLinks = Object.fromEntries(
     SOCIAL_TYPES.map((type) => [type, contact.links.filter((l) => l.type === type)]),
   ) as Record<SocialType, typeof contact.links>;
-  const knownTypes = new Set<string>(SOCIAL_TYPES);
-  const otherLinks = contact.links.filter((l) => !knownTypes.has(l.type));
+  const websiteLinks = contact.links.filter((l) => l.type === 'website');
+  const otherLinks = contact.links.filter((l) => !KNOWN_LINK_TYPES.has(l.type));
   const contactProjectIds = new Set(contact.projects.map((p) => p.id));
   const availableProjects = allProjects.filter((p) => !contactProjectIds.has(p.id));
 
@@ -289,6 +318,16 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         ))}
 
         <div className="ac-field">
+          <label className="ac-label">Website</label>
+          <DynamicList
+            values={editWebsites}
+            placeholder="https://example.com"
+            onChange={setEditWebsites}
+          />
+          <p className="ac-field-hint">When added, Sourcerer will submit the URL to the Wayback Machine for archiving.</p>
+        </div>
+
+        <div className="ac-field">
           <label className="ac-label">Notes</label>
           <textarea
             className="ac-textarea"
@@ -307,7 +346,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             onChange={(e) => setEditRssUrl(e.target.value)}
             placeholder="https://news.google.com/rss/search?q=…"
           />
-          <p className="ac-field-hint">Paste a Google Alerts or any RSS feed URL to track mentions of this contact.</p>
+          <p className="ac-field-hint">
+            Paste a Google Alerts RSS URL to automatically track mentions.
+            To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
+          </p>
         </div>
       </div>
     );
@@ -351,6 +393,22 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             ))}
           </div>
         ) : null,
+      )}
+
+      {websiteLinks.length > 0 && (
+        <div className="detail-section">
+          <div className="detail-section-label">Website</div>
+          {websiteLinks.map((l) => (
+            <div key={l.id} className="detail-website-row">
+              <a href={l.url} className="detail-link" onClick={(e) => e.preventDefault()}>{l.url}</a>
+              {l.wayback_url && (
+                <a href={l.wayback_url} className="detail-wayback-link" onClick={(e) => e.preventDefault()} title="Wayback Machine snapshot">
+                  archived ↗
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
       )}
 
       {otherLinks.length > 0 && (
@@ -433,6 +491,66 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         )}
       </div>
+
+      {screenshots.length > 0 && (
+        <div className="detail-section">
+          <div className="detail-section-label">Screenshots</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+            {screenshots.map((s) => (
+              <div
+                key={s.id}
+                style={{ position: 'relative', width: 80, height: 56, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-bg)' }}
+                onClick={() => { setViewingScreenshot(s.id); loadScreenshotImage(s.id); }}
+                onMouseEnter={() => loadScreenshotImage(s.id)}
+                title={new Date(s.captured_at * 1000).toLocaleString()}
+              >
+                {screenshotImages[s.id] === 'error' ? (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-danger)', padding: '0 4px', textAlign: 'center' }}>Failed to load</div>
+                ) : screenshotImages[s.id] ? (
+                  <img
+                    src={screenshotImages[s.id]}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    alt="screenshot"
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-text-muted)' }}>⬜</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {viewingScreenshot && screenshotImages[viewingScreenshot] && screenshotImages[viewingScreenshot] !== 'error' && (
+        <div
+          ref={viewerRef}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
+          onClick={(e) => { if (e.target === viewerRef.current) setViewingScreenshot(null); }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img
+              src={screenshotImages[viewingScreenshot]}
+              style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 6, display: 'block' }}
+              alt="screenshot"
+            />
+            <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => handleDeleteScreenshot(viewingScreenshot)}
+                style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
+              >Delete</button>
+              <button
+                onClick={() => setViewingScreenshot(null)}
+                style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
+              >Close</button>
+            </div>
+            {screenshots.find((s) => s.id === viewingScreenshot)?.tab_url && (
+              <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: '4px 8px', fontSize: 11, color: '#ccc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {screenshots.find((s) => s.id === viewingScreenshot)?.tab_url}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="detail-section detail-danger-zone">
         {confirmDelete ? (

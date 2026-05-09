@@ -3,6 +3,15 @@ import { randomBytes } from 'crypto';
 import { BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
 
+const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
+const pendingScreenshots = new Map<string, { buf: Buffer; tabUrl: string | null }>();
+
+export function consumePendingScreenshot(tempId: string): { buf: Buffer; tabUrl: string | null } | null {
+  const entry = pendingScreenshots.get(tempId) ?? null;
+  pendingScreenshots.delete(tempId);
+  return entry;
+}
+
 const PORT = 27371;
 const HOST = '127.0.0.1';
 
@@ -100,6 +109,39 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
   if (!isDatabaseOpen()) {
     json(res, 403, { error: 'locked' });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname.startsWith('/screenshot-status/')) {
+    const tempId = url.pathname.slice('/screenshot-status/'.length);
+    json(res, 200, { status: pendingScreenshots.has(tempId) ? 'pending' : 'assigned' });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/screenshot') {
+    const tabUrl = req.headers['x-tab-url'] as string | undefined ?? null;
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size <= MAX_SCREENSHOT_BYTES) chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (size > MAX_SCREENSHOT_BYTES) {
+        json(res, 413, { error: 'too_large' });
+        return;
+      }
+      const buf = Buffer.concat(chunks);
+      const tempId = randomBytes(16).toString('hex');
+      pendingScreenshots.set(tempId, { buf, tabUrl });
+      const win = BrowserWindow.getAllWindows()[0];
+      if (win) {
+        win.show();
+        win.focus();
+        win.webContents.send('extension:screenshot-received', tempId);
+      }
+      json(res, 200, { tempId });
+    });
     return;
   }
 

@@ -972,6 +972,7 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
             onClose={() => setSelectedId(null)}
             onDeleted={handleDeleted}
             onUpdated={refresh}
+            user={user}
           />
         )}
       </div>
