@@ -109,18 +109,26 @@ async function captureFullPage(tabId, onProgress) {
   onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
   await new Promise(r => setTimeout(r, 600));
 
-  // Hide fixed/sticky elements so they don't appear in every strip
+  // Inject a stylesheet + class to hide fixed/sticky elements.
+  // Using a CSS class (not inline style) survives React re-renders because React
+  // doesn't manage classes it didn't add. The RAF wait ensures the browser has
+  // repainted with the elements hidden before we start capturing.
   await chrome.scripting.executeScript({
     target: { tabId },
     func: () => {
+      const style = document.createElement('style');
+      style.id = '__srcCapStyle';
+      style.textContent = '.__srcHide{visibility:hidden!important}';
+      document.head.appendChild(style);
       window.__srcHidden = [];
       for (const el of document.querySelectorAll('*')) {
         const pos = getComputedStyle(el).position;
         if (pos === 'fixed' || pos === 'sticky') {
-          window.__srcHidden.push([el, el.style.visibility]);
-          el.style.setProperty('visibility', 'hidden', 'important');
+          window.__srcHidden.push(el);
+          el.classList.add('__srcHide');
         }
       }
+      return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     },
   });
 
@@ -137,12 +145,16 @@ async function captureFullPage(tabId, onProgress) {
       onProgress(`Capturing… (${step}/${totalSteps})`);
 
       const actualY = Math.min(y, totalHeight - viewportHeight);
+      // Scroll and wait for two animation frames so the browser has repainted
+      // (and any React scroll-handler re-renders have settled) before capturing.
       await chrome.scripting.executeScript({
         target: { tabId },
-        func: (scrollY) => { (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY; },
+        func: (scrollY) => {
+          (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY;
+          return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        },
         args: [actualY],
       });
-      await new Promise(r => setTimeout(r, 220));
 
       const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
       const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
@@ -155,11 +167,11 @@ async function captureFullPage(tabId, onProgress) {
       bitmap.close();
     }
   } finally {
-    // Always restore fixed/sticky elements and scroll position
     await chrome.scripting.executeScript({
       target: { tabId },
       func: (origY) => {
-        for (const [el, vis] of (window.__srcHidden || [])) el.style.visibility = vis;
+        for (const el of (window.__srcHidden || [])) el.classList.remove('__srcHide');
+        document.getElementById('__srcCapStyle')?.remove();
         (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = origY;
         delete window.__srcEl;
         delete window.__srcHidden;
