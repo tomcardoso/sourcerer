@@ -68,21 +68,30 @@ async function pollAccessStatus() {
 }
 
 async function captureFullPage(tabId, onProgress) {
-  const [{ result: metrics }] = await chrome.scripting.executeScript({
+  const [metricsResult] = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => ({
-      totalHeight: Math.min(document.documentElement.scrollHeight, 15000),
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
-      origScrollY: window.scrollY,
-      dpr: window.devicePixelRatio || 1,
-    }),
+    func: () => {
+      const scrollEl = document.scrollingElement || document.documentElement;
+      return {
+        totalHeight: Math.min(Math.max(
+          scrollEl.scrollHeight,
+          document.body ? document.body.scrollHeight : 0,
+        ), 15000),
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        origScrollY: scrollEl.scrollTop,
+        dpr: window.devicePixelRatio || 1,
+      };
+    },
   });
 
-  const { totalHeight, viewportWidth, viewportHeight, origScrollY, dpr } = metrics;
+  if (!metricsResult?.result) throw new Error('Could not read page dimensions — try reloading the tab.');
+  const { totalHeight, viewportWidth, viewportHeight, origScrollY, dpr } = metricsResult.result;
   const totalSteps = Math.ceil(totalHeight / viewportHeight);
 
-  // Canvas must be sized in physical pixels to match what captureVisibleTab returns
+  onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
+  await new Promise(r => setTimeout(r, 600));
+
   const canvas = new OffscreenCanvas(
     Math.round(viewportWidth * dpr),
     Math.round(totalHeight * dpr),
@@ -97,27 +106,32 @@ async function captureFullPage(tabId, onProgress) {
     const actualY = Math.min(y, totalHeight - viewportHeight);
     await chrome.scripting.executeScript({
       target: { tabId },
-      // 'instant' bypasses CSS scroll-behavior: smooth so the scroll lands before we capture
-      func: (scrollY) => window.scrollTo({ top: scrollY, behavior: 'instant' }),
+      func: (scrollY) => {
+        const scrollEl = document.scrollingElement || document.documentElement;
+        scrollEl.scrollTop = scrollY;
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+      },
       args: [actualY],
     });
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 220));
 
     const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
     const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
 
-    // All coordinates in physical pixels
-    const srcY  = Math.round((y - actualY) * dpr);
-    const dstY  = Math.round(y * dpr);
-    const w     = Math.round(viewportWidth * dpr);
-    const h     = Math.round(Math.min(viewportHeight, totalHeight - y) * dpr);
+    const srcY = Math.round((y - actualY) * dpr);
+    const dstY = Math.round(y * dpr);
+    const w    = Math.round(viewportWidth * dpr);
+    const h    = Math.round(Math.min(viewportHeight, totalHeight - y) * dpr);
     ctx.drawImage(bitmap, 0, srcY, w, h, 0, dstY, w, h);
     bitmap.close();
   }
 
   await chrome.scripting.executeScript({
     target: { tabId },
-    func: (y) => window.scrollTo({ top: y, behavior: 'instant' }),
+    func: (y) => {
+      const scrollEl = document.scrollingElement || document.documentElement;
+      scrollEl.scrollTop = y;
+    },
     args: [origScrollY],
   });
 
