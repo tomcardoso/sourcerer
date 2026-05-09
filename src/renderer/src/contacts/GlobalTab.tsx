@@ -100,6 +100,14 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     window.sourcerer.listScreenshots(contact.id).then(setScreenshots);
   }, [contact.id]);
 
+  useEffect(() => {
+    return window.sourcerer.onScreenshotAssigned((assignedId) => {
+      if (assignedId === contact.id) {
+        window.sourcerer.listScreenshots(contact.id).then(setScreenshots);
+      }
+    });
+  }, [contact.id]);
+
   async function loadScreenshotImage(id: string) {
     if (screenshotImages[id]) return;
     const result = await window.sourcerer.loadScreenshot(id);

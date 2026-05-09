@@ -109,45 +109,64 @@ async function captureFullPage(tabId, onProgress) {
   onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
   await new Promise(r => setTimeout(r, 600));
 
+  // Hide fixed/sticky elements so they don't appear in every strip
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      window.__srcHidden = [];
+      for (const el of document.querySelectorAll('*')) {
+        const pos = getComputedStyle(el).position;
+        if (pos === 'fixed' || pos === 'sticky') {
+          window.__srcHidden.push([el, el.style.visibility]);
+          el.style.setProperty('visibility', 'hidden', 'important');
+        }
+      }
+    },
+  });
+
   const canvas = new OffscreenCanvas(
     Math.round(viewportWidth * dpr),
     Math.round(totalHeight * dpr),
   );
   const ctx = canvas.getContext('2d');
 
-  let step = 0;
-  for (let y = 0; y < totalHeight; y += viewportHeight) {
-    step++;
-    onProgress(`Capturing… (${step}/${totalSteps})`);
+  try {
+    let step = 0;
+    for (let y = 0; y < totalHeight; y += viewportHeight) {
+      step++;
+      onProgress(`Capturing… (${step}/${totalSteps})`);
 
-    const actualY = Math.min(y, totalHeight - viewportHeight);
+      const actualY = Math.min(y, totalHeight - viewportHeight);
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (scrollY) => { (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY; },
+        args: [actualY],
+      });
+      await new Promise(r => setTimeout(r, 220));
+
+      const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
+      const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
+
+      const srcY = Math.round((y - actualY) * dpr);
+      const dstY = Math.round(y * dpr);
+      const w    = Math.round(viewportWidth * dpr);
+      const h    = Math.round(Math.min(viewportHeight, totalHeight - y) * dpr);
+      ctx.drawImage(bitmap, 0, srcY, w, h, 0, dstY, w, h);
+      bitmap.close();
+    }
+  } finally {
+    // Always restore fixed/sticky elements and scroll position
     await chrome.scripting.executeScript({
       target: { tabId },
-      func: (scrollY) => { (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY; },
-      args: [actualY],
+      func: (origY) => {
+        for (const [el, vis] of (window.__srcHidden || [])) el.style.visibility = vis;
+        (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = origY;
+        delete window.__srcEl;
+        delete window.__srcHidden;
+      },
+      args: [origScrollTop],
     });
-    await new Promise(r => setTimeout(r, 220));
-
-    const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
-    const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
-
-    const srcY = Math.round((y - actualY) * dpr);
-    const dstY = Math.round(y * dpr);
-    const w    = Math.round(viewportWidth * dpr);
-    const h    = Math.round(Math.min(viewportHeight, totalHeight - y) * dpr);
-    ctx.drawImage(bitmap, 0, srcY, w, h, 0, dstY, w, h);
-    bitmap.close();
   }
-
-  // Restore scroll position and clean up
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    func: (y) => {
-      (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = y;
-      delete window.__srcEl;
-    },
-    args: [origScrollTop],
-  });
 
   return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
 }

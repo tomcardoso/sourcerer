@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog } from 'electron';
+import { ipcMain, app, dialog, BrowserWindow } from 'electron';
 import { randomUUID } from 'crypto';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import fs from 'fs/promises';
@@ -60,6 +60,7 @@ export function registerScreenshotHandlers(): void {
            VALUES (?, ?, ?, ?, ?, ?)`,
         ).run(id, contactId, entry.tabUrl, fileName, iv, Math.floor(Date.now() / 1000));
 
+        BrowserWindow.getAllWindows()[0]?.webContents.send('screenshots:assigned', contactId);
         return { success: true };
       } catch (err) {
         return { success: false, error: String(err) };
