@@ -68,25 +68,42 @@ async function pollAccessStatus() {
 }
 
 async function captureFullPage(tabId, onProgress) {
+  // Inject once to find + cache the real scroll container, then return metrics
   const [metricsResult] = await chrome.scripting.executeScript({
     target: { tabId },
     func: () => {
-      const scrollEl = document.scrollingElement || document.documentElement;
+      function findScrollRoot() {
+        // Try the standard scroll element first
+        const docEl = document.scrollingElement || document.documentElement;
+        if (docEl.scrollHeight > window.innerHeight + 50) return docEl;
+
+        // Walk the DOM for an element with overflow scroll/auto that is taller than the viewport
+        let best = docEl;
+        for (const el of document.querySelectorAll('*')) {
+          if (el.scrollHeight <= window.innerHeight + 50) continue;
+          const { overflowY, overflow } = getComputedStyle(el);
+          if (overflowY === 'scroll' || overflowY === 'auto' ||
+              overflow  === 'scroll' || overflow  === 'auto') {
+            if (el.scrollHeight > best.scrollHeight) best = el;
+          }
+        }
+        return best;
+      }
+
+      const el = findScrollRoot();
+      window.__srcEl = el; // cache so scroll calls can reuse the same element
       return {
-        totalHeight: Math.min(Math.max(
-          scrollEl.scrollHeight,
-          document.body ? document.body.scrollHeight : 0,
-        ), 15000),
+        totalHeight: Math.min(el.scrollHeight, 15000),
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
-        origScrollY: scrollEl.scrollTop,
+        origScrollTop: el.scrollTop,
         dpr: window.devicePixelRatio || 1,
       };
     },
   });
 
   if (!metricsResult?.result) throw new Error('Could not read page dimensions — try reloading the tab.');
-  const { totalHeight, viewportWidth, viewportHeight, origScrollY, dpr } = metricsResult.result;
+  const { totalHeight, viewportWidth, viewportHeight, origScrollTop, dpr } = metricsResult.result;
   const totalSteps = Math.ceil(totalHeight / viewportHeight);
 
   onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
@@ -106,11 +123,7 @@ async function captureFullPage(tabId, onProgress) {
     const actualY = Math.min(y, totalHeight - viewportHeight);
     await chrome.scripting.executeScript({
       target: { tabId },
-      func: (scrollY) => {
-        const scrollEl = document.scrollingElement || document.documentElement;
-        scrollEl.scrollTop = scrollY;
-        window.scrollTo({ top: scrollY, behavior: 'instant' });
-      },
+      func: (scrollY) => { (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY; },
       args: [actualY],
     });
     await new Promise(r => setTimeout(r, 220));
@@ -126,13 +139,14 @@ async function captureFullPage(tabId, onProgress) {
     bitmap.close();
   }
 
+  // Restore scroll position and clean up
   await chrome.scripting.executeScript({
     target: { tabId },
     func: (y) => {
-      const scrollEl = document.scrollingElement || document.documentElement;
-      scrollEl.scrollTop = y;
+      (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = y;
+      delete window.__srcEl;
     },
-    args: [origScrollY],
+    args: [origScrollTop],
   });
 
   return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
