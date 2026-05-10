@@ -177,7 +177,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       className="modal-overlay"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
-      <div className="ac-card" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="ac-card">
         <div className="ac-header">
           <h2 className="ac-title">Add Contact</h2>
           <button className="ac-close" onClick={onCancel}>×</button>

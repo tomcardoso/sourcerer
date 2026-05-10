@@ -208,8 +208,8 @@
 }
 
 .ac-field-hint {
-  font-size: 11px;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color: var(--color-text-dim);
   margin-top: 4px;
   line-height: 1.4;
 }

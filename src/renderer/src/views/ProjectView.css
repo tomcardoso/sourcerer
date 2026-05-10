@@ -4,10 +4,6 @@
   align-self: center;
 }
 
-.contacts-table tbody tr.row-mine {
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-}
-
 /* View header right-side cluster */
 .view-header-right {
   display: flex;
@@ -179,21 +175,22 @@
 }
 
 .export-menu-item:hover {
-  background: var(--color-hover);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .export-menu-label {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 10px;
   color: var(--color-text-primary);
   font-family: var(--font-mono);
 }
 
 .export-menu-desc {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--color-text-muted);
   margin-top: 2px;
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Sync error banner */
@@ -229,20 +226,16 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .inline-confirm-yes {
   padding: 4px 10px;
-  font-size: 12px;
   background: var(--color-danger);
-  border: none;
-  border-radius: 0;
+  border: 1px solid var(--color-danger);
   color: #fff;
   cursor: pointer;
-  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .inline-confirm-yes:hover {
@@ -251,13 +244,12 @@
 
 .inline-confirm-no {
   padding: 4px 10px;
-  font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: 0;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .inline-confirm-no:hover {
@@ -267,45 +259,36 @@
 /* ── Project metadata bar ──────────────────────────── */
 
 .project-meta-bar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
   padding: 7px 0 8px;
+  display: block;
 }
 
 .project-meta-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+  display: inline-block;
 }
 
 .project-meta-right {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  position: relative;
+  display: inline-block;
 }
 
 .project-meta-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: inline;
+}
+
+.project-meta-left .project-meta-item {
+  margin-right: 20px;
+}
+
+.project-meta-item:last-child {
+  margin-right: 8px;
 }
 
 .project-meta-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-text);
+  margin-right: 6px;
 }
 
 .project-meta-value {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
+  color: var(--color-text-dim) !important;
 }
 
 .project-meta-action-btn {
@@ -313,12 +296,6 @@
   padding: 0 10px;
   background: none;
   border: 1px solid transparent;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -334,5 +311,5 @@
 }
 
 .project-meta-action-btn--active {
-  color: var(--color-primary);
+  color: var(--color-primary) !important;
 }

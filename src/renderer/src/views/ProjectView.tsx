@@ -111,6 +111,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -463,6 +464,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     );
   }
 
+  function closeDetail() {
+    setDrawerClosing(true);
+    setTimeout(() => {
+      setSelectedId(null);
+      setDrawerClosing(false);
+    }, 160);
+  }
+
   function handleDeleted(id: string) {
     setRows((prev) => prev.filter((r) => r.id !== id));
     setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
@@ -507,82 +516,92 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
         <div className="view-rule-thin" />
         <div className="project-meta-bar">
           <div className="project-meta-left">
-            <span className="project-meta-item">
-              <span className="project-meta-label">Created</span>
-              <span className="project-meta-value">{fmtOpened(project.created_at)}</span>
-            </span>
+            <div className="project-meta-item ">
+              <span className="project-meta-label utility-type-small">Created</span>
+              <span className="project-meta-value utility-type-small">{fmtOpened(project.created_at)}</span>
+            </div>
             {project.is_shared === 1 && (
-              <span className="project-meta-item">
-                <span className="project-meta-label">Last sync</span>
-                <span className="project-meta-value">
+              <div className="project-meta-item">
+                <span className="project-meta-label utility-type-small">Last sync</span>
+                <span className="project-meta-value utility-type-small">
                   {lastSyncedAt ? fmtRelative(lastSyncedAt) : syncing ? 'syncing…' : '—'}
                 </span>
-              </span>
+              </div>
             )}
-            {anyFilter && (
+          </div>
+          <div className="project-meta-right">
+          {anyFilter && (
+            <div className="project-meta-item">
               <button
-                className="project-meta-action-btn project-meta-action-btn--active"
+                className="project-meta-action-btn utility-type-small project-meta-action-btn--active"
                 onClick={() => { setFilters(DEFAULT_FILTERS); setOpenFilter(null); }}
               >
                 Clear filters
               </button>
-            )}
-          </div>
-          <div className="project-meta-right">
-            {project.is_shared === 0 && (
-              <button className="project-meta-action-btn" onClick={handleConvertToShared}>
-                Share project
-              </button>
-            )}
-            {project.is_shared === 1 && !confirmUnshare && (
-              <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
-                Unshare project
-              </button>
-            )}
-            {confirmUnshare && (
-              <span className="inline-confirm">
-                Stop syncing?
-                <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
-                <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
-              </span>
-            )}
-            <div className="export-menu-wrap" ref={exportMenuRef}>
-              <button
-                className="project-meta-action-btn"
-                onClick={() => setShowExportMenu((v) => !v)}
-                disabled={exporting || rows.length === 0}
-              >
-                {exporting ? 'Exporting…' : '↓ Export'}
-              </button>
-              {showExportMenu && (
-                <div className="export-menu">
-                  <button className="export-menu-item" onClick={() => handleExport('full')}>
-                    <span className="export-menu-label">Full export</span>
-                    <span className="export-menu-desc">All fields including notes and interaction log</span>
-                  </button>
-                  <button className="export-menu-item" onClick={() => handleExport('sanitized')}>
-                    <span className="export-menu-label">Sanitized export</span>
-                    <span className="export-menu-desc">Omits notes and interaction log</span>
-                  </button>
-                  <button
-                    className="export-menu-item"
-                    onClick={() => { setShowExportMenu(false); window.sourcerer.exportVCardProject(project.id); }}
-                  >
-                    <span className="export-menu-label">Export as vCard</span>
-                    <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
-                  </button>
-                </div>
-              )}
             </div>
-            {project.is_shared === 1 && (
+          )}
+          {project.is_shared === 1 && (
+            <div className="project-meta-item">
               <button
-                className="project-meta-action-btn"
+                className="project-meta-action-btn utility-type-small"
                 onClick={handleSyncNow}
                 disabled={syncing}
               >
                 {syncing ? 'Syncing…' : '↻ Sync'}
               </button>
+            </div>
+          )}
+          <div className="project-meta-item export-menu-wrap" ref={exportMenuRef}>
+            <button
+              className="project-meta-action-btn utility-type-small"
+              onClick={() => setShowExportMenu((v) => !v)}
+              disabled={exporting || rows.length === 0}
+            >
+              {exporting ? 'Exporting…' : '↓ Export'}
+            </button>
+            {showExportMenu && (
+              <div className="export-menu">
+                <button className="export-menu-item" onClick={() => handleExport('full')}>
+                  <span className="export-menu-label">Full export</span>
+                  <span className="export-menu-desc">All fields including notes and interaction log</span>
+                </button>
+                <button className="export-menu-item" onClick={() => handleExport('sanitized')}>
+                  <span className="export-menu-label">Sanitized export</span>
+                  <span className="export-menu-desc">Omits notes and interaction log</span>
+                </button>
+                <button
+                  className="export-menu-item"
+                  onClick={() => { setShowExportMenu(false); window.sourcerer.exportVCardProject(project.id); }}
+                >
+                  <span className="export-menu-label">Export as vCard</span>
+                  <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
+                </button>
+              </div>
             )}
+          </div>
+          {project.is_shared === 0 && (
+            <div className="project-meta-item">
+              <button className="project-meta-action-btn utility-type-small" onClick={handleConvertToShared}>
+                + Share project
+              </button>
+            </div>
+          )}
+          {project.is_shared === 1 && !confirmUnshare && (
+            <div className="project-meta-item">
+              <button className="project-meta-action-btn utility-type-small" onClick={() => setConfirmUnshare(true)}>
+                  Unshare project
+              </button>
+            </div>
+          )}
+          {confirmUnshare && (
+            <div className="project-meta-item">
+              <span className="utility-type-small inline-confirm">
+                Stop syncing?
+                <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
+                <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
+              </span>
+            </div>
+          )}
           </div>
         </div>
       </div>
@@ -617,17 +636,18 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
       {checkedCount > 0 && (
         <div className="bulk-bar">
-          <span className="bulk-bar-count">{checkedCount} selected</span>
-          <button
-            className="bulk-bar-clear"
-            onClick={() => { setCheckedIds(new Set()); setConfirmDelete(false); setConfirmRemove(false); }}
-            title="Clear selection"
-          >
-            ×
-          </button>
-
+          <div className="bulk-bar-element">
+            <span className="utility-type-small bulk-bar-count">{checkedCount} selected</span>
+            <button
+              className="bulk-bar-clear"
+              onClick={() => { setCheckedIds(new Set()); setConfirmDelete(false); setConfirmRemove(false); }}
+              title="Clear selection"
+            >
+              ×
+            </button>
+          </div>
           {confirmRemove ? (
-            <>
+            <div className="bulk-bar-element">
               <span className="bulk-delete-confirm-text">
                 Remove {checkedCount} contact{checkedCount !== 1 ? 's' : ''} from this project?
               </span>
@@ -645,9 +665,9 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               >
                 Cancel
               </button>
-            </>
+            </div>
           ) : confirmDelete ? (
-            <>
+            <div className="bulk-bar-element">
               <span className="bulk-delete-confirm-text">
                 Permanently delete {checkedCount} contact{checkedCount !== 1 ? 's' : ''}?
               </span>
@@ -665,24 +685,28 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               >
                 Cancel
               </button>
-            </>
+            </div>
           ) : (
             <>
-              <button
-                className="bulk-delete-btn"
-                style={{ marginLeft: 'auto' }}
-                onClick={() => setConfirmRemove(true)}
-                disabled={bulkWorking}
-              >
-                Remove from project
-              </button>
-              <button
-                className="bulk-delete-btn"
-                onClick={() => setConfirmDelete(true)}
-                disabled={bulkWorking}
-              >
-                Delete from Sourcerer
-              </button>
+              <div className="bulk-bar-element">
+                <button
+                  className="bulk-delete-btn"
+                  style={{ marginLeft: 'auto' }}
+                  onClick={() => setConfirmRemove(true)}
+                  disabled={bulkWorking}
+                >
+                  Remove from project
+                </button>
+              </div>
+              <div className="bulk-bar-element">
+                <button
+                  className="bulk-delete-btn"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={bulkWorking}
+                >
+                  Delete from Sourcerer
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -690,18 +714,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
       <div className="contacts-body">
         <div className="contacts-table-area">
-          {rows.length === 0 ? (
-            <div className="view-empty">
-              <div className="view-empty-icon">◎</div>
-              <div className="view-empty-label">No contacts in this project yet</div>
-              <div className="view-empty-hint">
-                Open a contact from All Contacts and add it to this project.
-              </div>
-            </div>
-          ) : displayed.length === 0 ? (
-            <div className="contacts-no-results">No contacts match the current filters.</div>
-          ) : (
-            <table className="contacts-table">
+          <table className="contacts-table">
               <thead>
                 <tr>
                   <th className="col-check">
@@ -913,6 +926,19 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                 </tr>
               </thead>
               <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="contacts-no-results">
+                      No contacts in this project yet. Open a contact from All Contacts and add it to this project.
+                    </td>
+                  </tr>
+                ) : displayed.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="contacts-no-results">
+                      No contacts match the current filters.
+                    </td>
+                  </tr>
+                ) : null}
                 {displayed.map((r) => {
                   const isMe = user?.email && r.reporter_email === user.email;
                   return (
@@ -921,11 +947,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                       className={[
                         selectedId === r.id ? 'selected' : '',
                         checkedIds.has(r.id) ? 'checked' : '',
-                        isMe ? 'row-mine' : '',
+                        isMe ? 'row row-mine' : 'row',
                       ]
                         .filter(Boolean)
                         .join(' ')}
-                      onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
+                      onClick={() => { if (r.id === selectedId) { closeDetail(); } else { setSelectedId(r.id); } }}
                     >
                       <td className="contact-check-cell" onClick={(e) => toggleCheck(r.id, e)}>
                         <input
@@ -982,16 +1008,16 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                 })}
               </tbody>
             </table>
-          )}
         </div>
 
         {selectedId && checkedIds.size <= 1 && (
           <ContactDetail
             contactId={selectedId}
-            onClose={() => setSelectedId(null)}
+            onClose={closeDetail}
             onDeleted={handleDeleted}
             onUpdated={refresh}
             user={user}
+            closing={drawerClosing}
           />
         )}
       </div>

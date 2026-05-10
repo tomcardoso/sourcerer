@@ -731,7 +731,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 Save your encrypted database and key file as a <code>.sourcerer-backup</code> file. Keep this somewhere safe — anyone with your master password can restore it.
               </div>
               <button className="sv-save-btn" onClick={handleExportBackup} disabled={backingUp}>
-                {backingUp ? 'Exporting…' : 'Export backup…'}
+                {backingUp ? 'Exporting…' : 'Export backup'}
               </button>
               {backupError && <div className="sv-error-inline">{backupError}</div>}
             </div>
@@ -746,7 +746,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                   className="sv-save-btn"
                   onClick={() => { setRestoreConfirm(true); setRestoreError(null); }}
                 >
-                  Restore from backup…
+                  Restore from backup
                 </button>
                 {restoreError && <div className="sv-error-inline">{restoreError}</div>}
               </div>

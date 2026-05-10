@@ -3,7 +3,7 @@
 }
 
 .icm-intro {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-text);
   line-height: 1.55;
   margin: 0 0 16px;
@@ -48,12 +48,14 @@
   border: 1px solid var(--color-border);
   border-radius: 0;
   font-size: 12px;
-  font-family: 'SF Mono', 'Consolas', monospace;
+  font-family: var(--font-serif);
+  /* text-transform: uppercase; */
+  /* font-family: 'SF Mono', 'Consolas', monospace; */
   color: var(--color-text);
 }
 
 .icm-collision-note {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
   margin: 0 0 16px;
   line-height: 1.5;
@@ -99,10 +101,11 @@
   border: 1px solid var(--color-border);
   border-radius: 0;
   font-size: 13px;
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   color: var(--color-text);
   background: var(--color-surface);
   outline: none;
+  /* text-transform: uppercase; */
 }
 
 .icm-select:focus {

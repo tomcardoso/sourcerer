@@ -1,12 +1,15 @@
 .import-result-modal {
   max-width: 420px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .ir-summary {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .ir-count {
@@ -26,7 +29,9 @@
   border: 1px solid var(--color-border);
   border-radius: 0;
   padding: 14px 16px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .ir-skipped-intro {
@@ -41,18 +46,20 @@
 }
 
 .ir-collision-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 4px;
+  font-family: var(--font-mono);
 }
 
 .ir-collision-list {
   margin: 0;
-  padding: 0 0 0 16px;
-  font-size: 13px;
+  padding: 0;
+  font-size: 14px;
   color: var(--color-text);
   line-height: 1.8;
+  list-style-type: none;
 }

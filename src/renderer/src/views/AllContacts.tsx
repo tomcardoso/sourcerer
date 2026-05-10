@@ -69,6 +69,7 @@ interface Props {
 export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed, refreshTrigger }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
@@ -279,6 +280,14 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     }
   }
 
+  function closeDetail() {
+    setDrawerClosing(true);
+    setTimeout(() => {
+      setDetailId(null);
+      setDrawerClosing(false);
+    }, 160);
+  }
+
   function handleDeleted(id: string) {
     setContacts((prev) => prev.filter((c) => c.id !== id));
     setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
@@ -405,14 +414,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
 
       <div className={`contacts-body${detailId && checkedIds.size <= 1 ? ' contacts-body--detail-open' : ''}`}>
         <div className="contacts-table-area">
-          {contacts.length === 0 ? (
-            <div className="view-empty">
-              <div className="view-empty-icon">◎</div>
-              <div className="view-empty-label">No contacts yet</div>
-              <div className="view-empty-hint">Add your first contact to get started.</div>
-            </div>
-          ) : (
-            <table className="contacts-table">
+          <table className="contacts-table">
               <thead>
                 <tr>
                   <th className="col-check">
@@ -572,7 +574,13 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                 </tr>
               </thead>
               <tbody>
-                {displayed.length === 0 ? (
+                {contacts.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="contacts-no-results">
+                      No contacts yet. Add your first contact to get started.
+                    </td>
+                  </tr>
+                ) : displayed.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="contacts-no-results">
                       No contacts match the current filters.
@@ -584,8 +592,9 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                     className={[
                       detailId === c.id ? 'selected' : '',
                       checkedIds.has(c.id) ? 'checked' : '',
+                      'row'
                     ].filter(Boolean).join(' ')}
-                    onClick={() => setDetailId(c.id === detailId ? null : c.id)}
+                    onClick={() => { if (c.id === detailId) { closeDetail(); } else { setDetailId(c.id); } }}
                   >
                     <td className="contact-check-cell" onClick={(e) => toggleCheck(c.id, e)}>
                       <input
@@ -646,17 +655,17 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                 ))}
               </tbody>
             </table>
-          )}
         </div>
       </div>
 
       {detailId && checkedIds.size <= 1 && (
         <ContactDetail
           contactId={detailId}
-          onClose={() => setDetailId(null)}
+          onClose={closeDetail}
           onDeleted={handleDeleted}
           onUpdated={refresh}
           user={user}
+          closing={drawerClosing}
         />
       )}
 

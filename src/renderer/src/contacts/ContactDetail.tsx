@@ -10,11 +10,12 @@ interface Props {
   onDeleted: (id: string) => void;
   onUpdated: () => void;
   user?: User | null;
+  closing?: boolean;
 }
 
 type Tab = 'global' | 'project';
 
-export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated, user }: Props) {
+export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated, user, closing }: Props) {
   const [contact, setContact] = useState<ContactDetailType | null>(null);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
@@ -46,7 +47,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   }
 
   return (
-    <div className="detail-panel">
+    <div className={`detail-panel${closing ? ' detail-panel--closing' : ''}`}>
       <div className="detail-header">
         <div className="detail-header-main">
           {contact ? (

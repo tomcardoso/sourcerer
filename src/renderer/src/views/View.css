@@ -44,13 +44,13 @@
 .view-rule-thick {
   height: 3px;
   background: var(--color-text);
-  margin: 14px 0 4px;
+  margin: 14px -16px 4px;
 }
 
 .view-rule-thin {
   height: 1px;
   background: var(--color-text);
-  margin-bottom: 0;
+  margin: 0 -16px;
 }
 
 /* Legacy title — kept for Settings/Alerts/Reminders views */

@@ -31,6 +31,7 @@ export default function ImportResultModal({ result, onClose }: Props) {
 
         {result.skipped.length > 0 && (
           <div className="ir-skipped-section">
+            <div className="ir-collision-label">Result</div>
             <p className="ir-skipped-intro">
               {result.skipped.length} {result.skipped.length === 1 ? 'row was' : 'rows were'} skipped
               due to existing contacts with the same name or email:
@@ -38,7 +39,7 @@ export default function ImportResultModal({ result, onClose }: Props) {
 
             {nameCollisions.length > 0 && (
               <div className="ir-collision-group">
-                <div className="ir-collision-label">Name collision</div>
+                <div className="ir-collision-label">Name collision{nameCollisions.length > 1 ? 's' : ''}</div>
                 <ul className="ir-collision-list">
                   {nameCollisions.map((s) => (
                     <li key={s.name}>{s.name}</li>

@@ -112,11 +112,11 @@
 }
 
 .search-hint {
+  color: var(--color-text-dim) !important;
+}
+
+.search-hint span {
+  border: 1px solid var(--color-border);
+  padding: 3px 2px 2px 4px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  opacity: 0.7;
 }

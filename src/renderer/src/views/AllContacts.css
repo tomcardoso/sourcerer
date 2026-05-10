@@ -7,7 +7,7 @@
 .contacts-table-area {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   display: flex;
   flex-direction: column;
 }
@@ -58,8 +58,8 @@
 }
 
 .contacts-table td {
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 10px 12px 9px 12px;
+  /* border-bottom: 1px solid var(--color-border); */
   vertical-align: middle;
 }
 
@@ -70,10 +70,11 @@
 .contacts-table tbody tr {
   cursor: pointer;
   transition: background 0.1s;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .contacts-table tbody tr:hover {
-  background: var(--color-surface);
+  /* background: var(--color-surface); */
 }
 
 .contacts-table tbody tr.selected {
@@ -178,13 +179,16 @@
 
 .contact-cell-muted {
   color: var(--color-text-muted);
+  font: inherit;
 }
 
 /* Date cell */
 .contact-date-cell {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-text-muted);
   white-space: nowrap;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
 }
 
 .contact-date-stale {
@@ -222,6 +226,7 @@
 .bulk-bar {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   padding: 8px 20px;
   background: var(--color-surface-2);
@@ -231,12 +236,13 @@
 }
 
 .bulk-bar-count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--color-text);
+  /* font-family: var(--font-mono);
+  font-size: 11px; */
+  /* font-weight: 600;
+  letter-spacing: 0.08em; */
+  color: var(--color-primary) !important;
   margin-right: 4px;
+  display: inline;
 }
 
 .bulk-bar-clear {
@@ -244,15 +250,20 @@
   height: 20px;
   border: none;
   background: none;
-  color: var(--color-text-muted);
+  /* color: var(--color-text-muted); */
+  color: var(--color-primary) !important;
+  /* margin-bottom: 2px; */
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
-  display: flex;
+  /* display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center; */
   margin-right: 4px;
+  /* display: inline; */
+  position: relative;
+  top: 1px;
 }
 
 .bulk-bar-clear:hover {
@@ -311,6 +322,7 @@
   color: var(--color-danger);
   cursor: pointer;
   margin-left: auto;
+  margin-right: 10px;
 }
 
 .bulk-delete-btn:hover {
