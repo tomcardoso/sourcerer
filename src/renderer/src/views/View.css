@@ -5,24 +5,58 @@
 }
 
 .view-header {
+  padding: 24px 28px 0;
+  background: var(--color-bg);
+}
+
+.view-header-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 24px 28px 16px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
 }
 
-.view-title {
-  font-size: 18px;
-  font-weight: 700;
+.view-kicker {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.view-headline {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--color-text);
+  line-height: 1.05;
 }
 
 .view-subtitle {
   font-size: 13px;
   color: var(--color-text-muted);
-  margin-top: 3px;
+  margin-top: 4px;
+}
+
+.view-rule-thick {
+  height: 3px;
+  background: var(--color-text);
+  margin: 14px 0 4px;
+}
+
+.view-rule-thin {
+  height: 1px;
+  background: var(--color-text);
+  margin-bottom: 0;
+}
+
+/* Legacy title — kept for Settings/Alerts/Reminders views */
+.view-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .view-empty {
@@ -73,7 +107,6 @@
 .view-dl {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
   overflow: hidden;
 }
 

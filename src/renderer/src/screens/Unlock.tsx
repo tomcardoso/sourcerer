@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { WordmarkLogo } from '../components/WordmarkLogo';
 import './Unlock.css';
 
 interface Props {
@@ -39,8 +40,7 @@ export default function Unlock({ onUnlocked }: Props) {
   return (
     <div className="unlock-root">
       <div className="unlock-card">
-        <div className="unlock-icon">🔒</div>
-        <h1 className="unlock-title">Sourcerer is locked</h1>
+        <WordmarkLogo size={48} className="unlock-wordmark" />
         <p className="unlock-subtitle">Enter your master password to continue.</p>
 
         <form onSubmit={handleSubmit} noValidate>

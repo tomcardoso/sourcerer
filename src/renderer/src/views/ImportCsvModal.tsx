@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { ImportResult, Project } from '@shared/types';
 import './ImportCsvModal.css';
 
@@ -12,6 +12,12 @@ interface Props {
 export default function ImportCsvModal({ projects, preselectedProjectId, onComplete, onClose }: Props) {
   const [projectId, setProjectId] = useState(preselectedProjectId ?? '');
   const [importing, setImporting] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   async function handleImport() {
     setImporting(true);

@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { WordmarkLogo } from '../components/WordmarkLogo';
 import './Setup.css';
 
 interface Props {
@@ -79,7 +80,7 @@ export default function Setup({ onComplete }: Props) {
   return (
     <div className="setup-root">
       <div className="setup-card">
-        <h1 className="setup-title">Welcome to Sourcerer</h1>
+        <WordmarkLogo size={48} className="setup-wordmark" />
         <p className="setup-subtitle">
           Set up your profile and master password to get started.
         </p>

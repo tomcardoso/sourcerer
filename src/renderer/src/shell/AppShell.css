@@ -1,6 +1,43 @@
 .app-shell {
-  display: flex;
+  display: grid;
+  grid-template-rows: var(--titlebar-height) 1fr;
   height: 100vh;
+  overflow: hidden;
+}
+
+/* Custom title bar — replaces the OS chrome */
+.app-titlebar {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  -webkit-app-region: drag;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.app-titlebar-left {
+  border-right: 1px solid var(--color-border);
+  height: 100%;
+  /* traffic lights appear here automatically via titleBarStyle: hiddenInset */
+}
+
+.app-titlebar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 14px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+/* Sidebar + content row */
+.app-body {
+  display: flex;
   overflow: hidden;
 }
 

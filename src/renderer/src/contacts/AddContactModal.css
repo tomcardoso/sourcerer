@@ -11,7 +11,7 @@
 .ac-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 0;
   width: 480px;
   max-height: 88vh;
   display: flex;
@@ -59,11 +59,12 @@
 
 .ac-label {
   display: block;
-  font-size: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.18em;
   margin-bottom: 5px;
 }
 
@@ -76,9 +77,8 @@
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
   font-size: 13px;
-  font-family: var(--font);
+  font-family: var(--font-serif);
   color: var(--color-text);
   background: var(--color-surface);
   outline: none;
@@ -87,16 +87,15 @@
 
 .ac-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  box-shadow: 0 0 0 3px rgba(200, 122, 26, 0.18);
 }
 
 .ac-textarea {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
   font-size: 13px;
-  font-family: var(--font);
+  font-family: var(--font-serif);
   color: var(--color-text);
   background: var(--color-surface);
   outline: none;
@@ -107,7 +106,7 @@
 
 .ac-textarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  box-shadow: 0 0 0 3px rgba(200, 122, 26, 0.18);
 }
 
 .ac-dynamic-row {
@@ -125,7 +124,6 @@
   flex-shrink: 0;
   background: none;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
   color: var(--color-text-muted);
   font-size: 16px;
   cursor: pointer;
@@ -135,8 +133,7 @@
 }
 
 .ac-remove:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
+  border-color: var(--color-danger);
   color: var(--color-danger);
 }
 
@@ -145,7 +142,7 @@
   border: none;
   color: var(--color-primary);
   font-size: 12px;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   cursor: pointer;
   padding: 2px 0;
 }
@@ -168,31 +165,33 @@
 .modal-btn-create {
   height: 34px;
   padding: 0 16px;
-  border-radius: 5px;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   font-weight: 500;
-  font-family: var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
   border: none;
-  transition: background 0.15s;
 }
 
 .modal-btn-cancel {
-  background: #f3f4f6;
-  color: var(--color-text);
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
 }
 
 .modal-btn-cancel:hover:not(:disabled) {
-  background: #e5e7eb;
+  border-color: var(--color-text);
+  color: var(--color-text);
 }
 
 .modal-btn-create {
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-text);
+  color: var(--color-bg);
 }
 
 .modal-btn-create:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+  background: var(--color-text-muted);
 }
 
 .modal-btn-create:disabled,

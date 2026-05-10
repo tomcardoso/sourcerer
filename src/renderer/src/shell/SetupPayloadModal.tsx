@@ -14,11 +14,16 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Use SVG output — no Canvas/native-addon dependency
     QRCode.toString(payload, { type: 'svg', width: 200, margin: 2 })
       .then((svg) => setQrSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`))
       .catch(() => setQrSrc(null));
   }, [payload]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onDone(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onDone]);
 
   function handleCopy() {
     navigator.clipboard.writeText(payload).then(() => {

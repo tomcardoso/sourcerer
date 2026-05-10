@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { ImportResult } from '@shared/types';
 import './ImportResultModal.css';
 
@@ -9,6 +10,12 @@ interface Props {
 export default function ImportResultModal({ result, onClose }: Props) {
   const nameCollisions = result.skipped.filter((s) => s.reason === 'name');
   const emailCollisions = result.skipped.filter((s) => s.reason === 'email');
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

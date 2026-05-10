@@ -313,15 +313,12 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   return (
     <div className="view">
       <div className="view-header">
+        <div className="view-header-row">
         <div>
-          <h1 className="view-title">All Contacts</h1>
-          {contacts.length > 0 && (
-            <p className="view-subtitle">
-              {displayed.length !== contacts.length
-                ? `${displayed.length} of ${contacts.length} contacts`
-                : `${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
-            </p>
-          )}
+          <p className="view-kicker">
+            All Contacts{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
+          </p>
+          <h1 className="view-headline">All Contacts</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {dupCount > 0 && (
@@ -354,6 +351,9 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
             + Add Contact
           </button>
         </div>
+        </div>
+        <div className="view-rule-thick" />
+        <div className="view-rule-thin" />
       </div>
 
       {checkedCount > 0 && (

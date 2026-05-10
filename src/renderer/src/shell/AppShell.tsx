@@ -114,6 +114,11 @@ export default function AppShell() {
 
   return (
     <div className="app-shell">
+      <div className="app-titlebar">
+        <div className="app-titlebar-left" />
+        <div className="app-titlebar-right">Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted</div>
+      </div>
+      <div className="app-body">
       <Sidebar
         user={user}
         projects={projects}
@@ -168,6 +173,7 @@ export default function AppShell() {
           onDone={() => setPendingPayload(null)}
         />
       )}
+      </div>
     </div>
   );
 }

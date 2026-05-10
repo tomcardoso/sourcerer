@@ -1,94 +1,180 @@
 .sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
-  background: var(--sidebar-bg);
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--sidebar-border);
+  border-right: 1px solid var(--color-border);
 }
 
-/* Header */
+/* ── Header ───────────────────────────────────────── */
 .sidebar-header {
-  padding: 16px 14px 12px;
-  border-bottom: 1px solid var(--sidebar-border);
+  padding: 18px 14px 14px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .sidebar-logo {
   display: block;
-  font-size: 15px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.3px;
+  line-height: 0;
 }
 
-.sidebar-user {
-  display: block;
+.sidebar-header-add {
+  background: none;
+  border: none;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sidebar-header-add:hover {
+  color: var(--color-primary-hover);
+}
+
+/* ── Section label ────────────────────────────────── */
+.sidebar-section-label {
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--sidebar-text-muted);
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 0 8px 6px;
+  display: block;
 }
 
-/* Nav items */
+/* ── Workspace nav ────────────────────────────────── */
 .sidebar-nav {
-  padding: 8px 6px 4px;
+  padding: 12px 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
   width: 100%;
   padding: 7px 8px;
   border: none;
+  border-radius: 0;
   background: none;
-  color: var(--sidebar-text);
-  font-size: 13px;
-  font-family: var(--font);
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
   text-align: left;
-  border-radius: 5px;
   cursor: pointer;
   transition: background 0.1s;
+  gap: 0;
 }
 
 .sidebar-nav-item:hover {
-  background: var(--sidebar-hover-bg);
+  background: var(--color-surface);
 }
 
 .sidebar-nav-item.active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-active-text);
+  background: var(--color-surface-2);
+  box-shadow: inset 3px 0 0 var(--color-text);
+  color: var(--color-text);
+  border-radius: 0;
 }
 
-.sidebar-nav-icon {
+/* Fixed-width indicator slot — keeps all text left-aligned */
+.sidebar-nav-indicator {
+  width: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Amber dot for reminders overdue state */
+.sidebar-nav-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  flex-shrink: 1;
+  margin-left: -4px;
+}
+
+/* Right-aligned count (mentions) */
+.sidebar-nav-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+/* "N Overdue" amber label */
+.sidebar-overdue-label {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+/* Search button */
+.sidebar-search-btn {
+  margin-bottom: 10px;
+  /* color: var(--color-text-muted); */
+}
+
+.sidebar-search-btn:hover {
+  color: var(--color-text);
+}
+
+.sidebar-search-hint {
+  margin-left: auto;
+  font-family: var(--font-mono);
   font-size: 12px;
-  opacity: 0.7;
-  width: 14px;
-  text-align: center;
+  opacity: 0.55;
+  letter-spacing: 0.02em;
 }
 
-/* Projects section */
+.sidebar-search-hint span {
+  font-size: 12px;
+  /* padding: 2px 4px; */
+  /* border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 500; */
+}
+
+/* ── Projects section ─────────────────────────────── */
 .sidebar-section {
   flex: 1;
   overflow-y: auto;
   padding: 12px 6px 4px;
 }
 
-.sidebar-section-header {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sidebar-text-muted);
-  padding: 0 8px 6px;
+.sidebar-section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 4px;
+}
+
+.sidebar-section-header-row .sidebar-header-add {
+  font-size: 18px;
+  padding: 0 4px;
+  margin-bottom: 6px;
 }
 
 .sidebar-empty {
   font-size: 12px;
-  color: var(--sidebar-text-muted);
+  color: var(--color-text-muted);
   padding: 4px 8px 8px;
   font-style: italic;
 }
@@ -108,24 +194,36 @@
   width: 100%;
   padding: 6px 8px;
   border: none;
+  border-radius: 0;
   background: none;
-  color: var(--sidebar-text);
-  font-size: 13px;
-  font-family: var(--font);
+  color: var(--color-text);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
   text-align: left;
-  border-radius: 5px;
   cursor: pointer;
   transition: background 0.1s;
-  gap: 4px;
+  gap: 8px;
 }
 
 .sidebar-project-btn:hover {
-  background: var(--sidebar-hover-bg);
+  background: var(--color-surface);
 }
 
 .sidebar-project-btn.active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-active-text);
+  background: var(--color-surface-2);
+  box-shadow: inset 3px 0 0 var(--color-text);
+  color: var(--color-text);
+  border-radius: 0;
+}
+
+/* Colored square dot per project */
+.sidebar-project-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 .sidebar-project-name {
@@ -133,16 +231,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-transform: none;
+  font-family: var(--font-serif);
+  font-size: 13px;
 }
 
 .sidebar-project-delete {
   flex-shrink: 0;
   font-size: 16px;
   line-height: 1;
-  color: var(--sidebar-text-muted);
+  color: var(--color-text-muted);
   opacity: 0;
   padding: 0 2px;
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
   transition: opacity 0.1s, color 0.1s;
 }
@@ -152,17 +253,16 @@
 }
 
 .sidebar-project-delete:hover {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 /* Rename input */
 .sidebar-rename-input {
   width: 100%;
   padding: 5px 8px;
-  background: #2d3448;
-  border: 1px solid #4a5568;
-  border-radius: 5px;
-  color: #fff;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
   font-size: 13px;
   font-family: var(--font);
   outline: none;
@@ -176,7 +276,6 @@
 .sidebar-delete-confirm {
   padding: 6px 8px;
   background: rgba(239, 68, 68, 0.1);
-  border-radius: 5px;
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
@@ -200,11 +299,13 @@
   flex: 1;
   padding: 4px 0;
   border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: var(--font);
-  cursor: pointer;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .sidebar-delete-yes {
@@ -217,97 +318,100 @@
 }
 
 .sidebar-delete-no {
-  background: #374151;
-  color: #d1d5db;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
 }
 
 .sidebar-delete-no:hover {
-  background: #4b5563;
+  background: var(--color-border-strong);
 }
 
-.sidebar-project-shared-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #60a5fa;
-  margin-right: 5px;
-  flex-shrink: 0;
-  vertical-align: middle;
-  position: relative;
-  top: -1px;
-}
-
-/* Project action buttons */
-.sidebar-project-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sidebar-new-project,
+/* Join project link */
 .sidebar-join-project {
-  display: flex;
-  align-items: center;
+  display: block;
   width: 100%;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border: none;
   background: none;
-  color: var(--sidebar-text-muted);
-  font-size: 13px;
-  font-family: var(--font);
+  color: var(--color-text-muted);
+  font-size: 10px;
   text-align: left;
-  border-radius: 5px;
   cursor: pointer;
-  transition: color 0.1s, background 0.1s;
+  opacity: 0.7;
+  margin-top: 2px;
 }
 
-.sidebar-new-project:hover,
 .sidebar-join-project:hover {
-  background: var(--sidebar-hover-bg);
-  color: var(--sidebar-text);
+  opacity: 1;
+  color: var(--color-text);
 }
 
-/* Footer */
+/* ── Settings / user footer ───────────────────────── */
 .sidebar-footer {
-  padding: 4px 6px 10px;
-  border-top: 1px solid var(--sidebar-border);
-  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  padding: 4px 6px 8px;
 }
 
-.sidebar-unseen-badge {
-  margin-left: auto;
-  background: var(--color-primary);
-  color: #fff;
+.sidebar-user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.sidebar-user-card:hover {
+  background: var(--color-surface);
+}
+
+.sidebar-user-card.active {
+  background: var(--color-surface-2);
+  box-shadow: inset 3px 0 0 var(--color-text);
+}
+
+.sidebar-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  padding: 0 5px;
-  display: inline-flex;
+  letter-spacing: 0.04em;
+  display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  flex-shrink: 0;
 }
 
-.sidebar-overdue-badge {
-  background: #d97706;
+.sidebar-user-name {
+  flex: 1;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-/* Search button */
-.sidebar-search-btn {
-  color: var(--sidebar-text-muted);
-  margin-bottom: 2px;
+.sidebar-settings-icon {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  opacity: 0.35;
+  flex-shrink: 0;
+  transition: opacity 0.1s;
 }
 
-.sidebar-search-btn:hover {
-  color: var(--sidebar-text);
-}
-
-.sidebar-search-hint {
-  margin-left: auto;
-  font-size: 10px;
-  opacity: 0.45;
-  letter-spacing: 0.02em;
+.sidebar-user-card:hover .sidebar-settings-icon {
+  opacity: 0.75;
 }

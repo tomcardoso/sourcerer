@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
 import './JoinProjectModal.css';
 
@@ -14,6 +14,12 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
   async function handlePayloadChange(value: string) {
     setPayload(value);

@@ -31,6 +31,8 @@ function createWindow(): BrowserWindow {
     resizable: false,
     center: true,
     title: 'Sourcerer',
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#faf9f5',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

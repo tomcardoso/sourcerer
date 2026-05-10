@@ -25,10 +25,16 @@
 }
 
 .contacts-table th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
   text-align: left;
   padding: 8px 12px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-strong);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -46,7 +52,7 @@
 
 .contacts-table td {
   padding: 9px 12px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
 
@@ -60,11 +66,12 @@
 }
 
 .contacts-table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--color-surface);
 }
 
 .contacts-table tbody tr.selected {
-  background: #eff6ff;
+  background: var(--color-surface);
+  box-shadow: inset 3px 0 0 var(--color-text);
 }
 
 .contact-name-cell {
@@ -89,26 +96,29 @@
 }
 
 .project-tag {
-  font-size: 11px;
-  background: #dbeafe;
-  color: #1e40af;
-  padding: 2px 7px;
-  border-radius: 10px;
-  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
   font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  padding: 2px 7px;
+  white-space: nowrap;
 }
 
-/* Header button */
+/* Header buttons */
 .btn-primary {
   height: 32px;
   padding: 0 14px;
   background: var(--color-primary);
   color: #fff;
   border: none;
-  border-radius: 5px;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   font-weight: 500;
-  font-family: var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -120,18 +130,20 @@
 .btn-secondary {
   height: 32px;
   padding: 0 12px;
-  background: var(--color-surface);
+  background: none;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
-  font-size: 13px;
-  font-family: var(--font);
+  border: 1px solid var(--color-border-strong);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg);
+  border-color: var(--color-text);
 }
 
 .btn-secondary:disabled {
@@ -145,12 +157,13 @@
   background: none;
   color: var(--color-text-muted);
   border: none;
-  font-size: 12px;
-  font-family: var(--font);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .btn-link:hover {
@@ -209,11 +222,12 @@
 }
 
 .contacts-table tbody tr.checked {
-  background: #f0f7ff;
+  background: var(--color-surface);
+  box-shadow: inset 3px 0 0 var(--color-amber);
 }
 
 .contacts-table tbody tr.checked:hover {
-  background: #e6f2ff;
+  background: var(--color-surface-2);
 }
 
 /* Bulk action bar */
@@ -222,15 +236,18 @@
   align-items: center;
   gap: 8px;
   padding: 8px 20px;
-  background: #eff6ff;
-  border-bottom: 1px solid #bfdbfe;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-strong);
   font-size: 13px;
   flex-shrink: 0;
 }
 
 .bulk-bar-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 600;
-  color: #1e40af;
+  letter-spacing: 0.08em;
+  color: var(--color-text);
   margin-right: 4px;
 }
 
@@ -239,7 +256,7 @@
   height: 20px;
   border: none;
   background: none;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
@@ -247,13 +264,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
   margin-right: 4px;
 }
 
 .bulk-bar-clear:hover {
-  background: #dbeafe;
-  color: #1e40af;
+  color: var(--color-text);
 }
 
 .bulk-bar-btn {
@@ -271,9 +286,8 @@
   top: calc(100% + 4px);
   left: 0;
   z-index: 100;
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   min-width: 180px;
   overflow: hidden;
@@ -285,7 +299,7 @@
   text-align: left;
   padding: 8px 14px;
   font-size: 13px;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   background: none;
   border: none;
   cursor: pointer;
@@ -293,41 +307,47 @@
 }
 
 .bulk-project-item:hover {
-  background: #f3f4f6;
+  background: var(--color-surface);
 }
 
 .bulk-delete-btn {
   height: 28px;
   padding: 0 10px;
   background: none;
-  border: 1px solid #fca5a5;
-  border-radius: 5px;
-  font-size: 12px;
-  font-family: var(--font);
-  color: #dc2626;
+  border: 1px solid var(--color-danger);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-danger);
   cursor: pointer;
   margin-left: auto;
 }
 
 .bulk-delete-btn:hover {
-  background: #fef2f2;
+  background: rgba(185, 28, 28, 0.06);
 }
 
 .bulk-delete-confirm-text {
   margin-left: auto;
-  font-size: 12px;
-  color: #dc2626;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-danger);
   font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .bulk-delete-confirm-btn {
   height: 28px;
   padding: 0 10px;
-  background: #dc2626;
+  background: var(--color-danger);
   border: none;
-  border-radius: 5px;
-  font-size: 12px;
-  font-family: var(--font);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: #fff;
   cursor: pointer;
 }
@@ -347,9 +367,11 @@
   padding: 0 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
-  font-size: 12px;
-  font-family: var(--font);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
   white-space: nowrap;
@@ -357,20 +379,21 @@
 }
 
 .clear-filters-btn:hover {
-  background: #f5f5f5;
+  background: var(--color-surface);
   color: var(--color-text);
 }
 
 .dedup-badge {
   height: 30px;
   padding: 0 12px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 5px;
-  font-size: 12px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 500;
-  font-family: var(--font);
-  color: #92400e;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-warning-text);
   cursor: pointer;
   white-space: nowrap;
 }

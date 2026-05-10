@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
 import './NewProjectModal.css';
 
@@ -13,6 +13,12 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
   const [description, setDescription] = useState('');
   const [isShared, setIsShared] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

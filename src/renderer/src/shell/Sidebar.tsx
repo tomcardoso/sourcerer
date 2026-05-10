@@ -3,7 +3,10 @@ import type { Project, User } from '@shared/types';
 import type { NavTarget } from './AppShell';
 import NewProjectModal from './NewProjectModal';
 import JoinProjectModal from './JoinProjectModal';
+import { WordmarkLogo } from '../components/WordmarkLogo';
 import './Sidebar.css';
+
+const DOT_COLORS = ['#1a1815', '#e8a840', '#7a6f60', '#c87a1a', '#5b5750', '#b8a898'];
 
 interface Props {
   user: User | null;
@@ -75,69 +78,80 @@ export default function Sidebar({
     return true;
   };
 
+  const initials = user
+    ? `${user.first_name[0] ?? ''}${user.last_name[0] ?? ''}`.toUpperCase()
+    : '';
+
   return (
     <>
       <aside className="sidebar">
-        {/* App header */}
+
+        {/* Wordmark header */}
         <div className="sidebar-header">
-          <span className="sidebar-logo">Sourcerer</span>
-          {user && (
-            <span className="sidebar-user">
-              {user.first_name} {user.last_name}
-            </span>
-          )}
+          <WordmarkLogo size={30} rules={false} className="sidebar-logo" />
         </div>
 
-        {/* Top-level nav */}
+        {/* Workspace nav */}
         <nav className="sidebar-nav">
-          <button className="sidebar-nav-item sidebar-search-btn" onClick={onSearchOpen}>
-            <span className="sidebar-nav-icon">⌕</span>
-            Search
-            <span className="sidebar-search-hint">⌘K</span>
-          </button>
+
+          <div className="sidebar-section-label">Workspace</div>
+
           <button
             className={`sidebar-nav-item ${isActive({ view: 'all-contacts' }) ? 'active' : ''}`}
             onClick={() => onNav({ view: 'all-contacts' })}
           >
-            <span className="sidebar-nav-icon">◎</span>
-            All Contacts
+            <span className="sidebar-nav-indicator" />
+            All contacts
           </button>
-          <button
-            className={`sidebar-nav-item ${isActive({ view: 'alerts' }) ? 'active' : ''}`}
-            onClick={() => onNav({ view: 'alerts' })}
-          >
-            <span className="sidebar-nav-icon">◉</span>
-            Alert Mentions
-            {unseenMentions > 0 && (
-              <span className="sidebar-unseen-badge">
-                {unseenMentions > 99 ? '99+' : unseenMentions}
-              </span>
-            )}
-          </button>
+
           <button
             className={`sidebar-nav-item ${isActive({ view: 'reminders' }) ? 'active' : ''}`}
             onClick={() => onNav({ view: 'reminders' })}
           >
-            <span className="sidebar-nav-icon">◷</span>
+            <span className="sidebar-nav-indicator">
+              {overdueReminders > 0 && <span className="sidebar-nav-dot" />}
+            </span>
             Reminders
             {overdueReminders > 0 && (
-              <span className="sidebar-unseen-badge sidebar-overdue-badge">
-                {overdueReminders > 99 ? '99+' : overdueReminders}
+              <span className="sidebar-overdue-label">
+                {overdueReminders}&nbsp;Overdue
               </span>
             )}
           </button>
+
+          <button
+            className={`sidebar-nav-item ${isActive({ view: 'alerts' }) ? 'active' : ''}`}
+            onClick={() => onNav({ view: 'alerts' })}
+          >
+            <span className="sidebar-nav-indicator">
+              {unseenMentions > 0 && <span className="sidebar-nav-dot" />}
+            </span>
+            Mentions
+            {unseenMentions > 0 && (
+              <span className="sidebar-overdue-label">{unseenMentions > 99 ? '99+ hits' : `${unseenMentions} hits`}</span>
+            )}
+          </button>
+
+          <button className="sidebar-nav-item sidebar-search-btn" onClick={onSearchOpen}>
+            <span className="sidebar-nav-indicator" />
+            Search
+            <span className="sidebar-search-hint"><span>⌘</span>K</span>
+          </button>
         </nav>
 
-        {/* Projects section */}
+        {/* Projects */}
         <div className="sidebar-section">
-          <div className="sidebar-section-header">Projects</div>
+          <div className="sidebar-section-header-row">
+            <span className="sidebar-section-label">Projects</span>
+            <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} title="New project">+</button>
+          </div>
 
           {projects.length === 0 && (
             <p className="sidebar-empty">No projects yet.</p>
           )}
 
           <ul className="sidebar-project-list">
-            {projects.map((project) => (
+            {projects.map((project, idx) => (
               <li key={project.id} className="sidebar-project-item">
                 {renamingId === project.id ? (
                   <input
@@ -153,18 +167,8 @@ export default function Sidebar({
                   <div className="sidebar-delete-confirm">
                     <span className="sidebar-delete-label">Delete "{project.name}"?</span>
                     <div className="sidebar-delete-actions">
-                      <button
-                        className="sidebar-delete-yes"
-                        onClick={() => confirmDelete(project.id)}
-                      >
-                        Delete
-                      </button>
-                      <button
-                        className="sidebar-delete-no"
-                        onClick={() => setDeletingId(null)}
-                      >
-                        Cancel
-                      </button>
+                      <button className="sidebar-delete-yes" onClick={() => confirmDelete(project.id)}>Delete</button>
+                      <button className="sidebar-delete-no" onClick={() => setDeletingId(null)}>Cancel</button>
                     </div>
                   </div>
                 ) : (
@@ -174,71 +178,54 @@ export default function Sidebar({
                     onDoubleClick={() => startRename(project)}
                     title="Double-click to rename"
                   >
-                    <span className="sidebar-project-name">
-                      {project.is_shared === 1 && (
-                        <span className="sidebar-project-shared-dot" title="Shared project" />
-                      )}
-                      {project.name}
-                    </span>
+                    <span
+                      className="sidebar-project-dot"
+                      style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
+                    />
+                    <span className="sidebar-project-name">{project.name}</span>
                     <span
                       className="sidebar-project-delete"
                       role="button"
                       title="Delete project"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeletingId(project.id);
-                      }}
-                    >
-                      ×
-                    </span>
+                      onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
+                    >×</span>
                   </button>
                 )}
               </li>
             ))}
           </ul>
 
-          <div className="sidebar-project-actions">
-            <button className="sidebar-new-project" onClick={() => setShowNewProject(true)}>
-              + New project
-            </button>
-            <button className="sidebar-join-project" onClick={() => setShowJoinProject(true)}>
-              Join project
-            </button>
-          </div>
-        </div>
-
-        {/* Settings at bottom */}
-        <div className="sidebar-footer">
-          <button
-            className={`sidebar-nav-item ${isActive({ view: 'settings' }) ? 'active' : ''}`}
-            onClick={() => onNav({ view: 'settings' })}
-          >
-            <span className="sidebar-nav-icon">⚙</span>
-            Settings
+          <button className="sidebar-join-project" onClick={() => setShowJoinProject(true)}>
+            Join shared project…
           </button>
         </div>
+
+        {/* Settings / user footer */}
+        {user && (
+          <div className="sidebar-footer">
+            <button
+              className={`sidebar-user-card ${isActive({ view: 'settings' }) ? 'active' : ''}`}
+              onClick={() => onNav({ view: 'settings' })}
+              title="Settings"
+            >
+              <div className="sidebar-avatar">{initials}</div>
+              <span className="sidebar-user-name">{user.first_name} {user.last_name}</span>
+            </button>
+          </div>
+        )}
       </aside>
 
       {showNewProject && (
         <NewProjectModal
-          onCreated={(project) => {
-            onProjectCreated(project);
-            setShowNewProject(false);
-          }}
-          onCreatedShared={(project, payload) => {
-            onProjectCreatedShared(project, payload);
-            setShowNewProject(false);
-          }}
+          onCreated={(project) => { onProjectCreated(project); setShowNewProject(false); }}
+          onCreatedShared={(project, payload) => { onProjectCreatedShared(project, payload); setShowNewProject(false); }}
           onCancel={() => setShowNewProject(false)}
         />
       )}
 
       {showJoinProject && (
         <JoinProjectModal
-          onJoined={(project) => {
-            onProjectJoined(project);
-            setShowJoinProject(false);
-          }}
+          onJoined={(project) => { onProjectJoined(project); setShowJoinProject(false); }}
           onCancel={() => setShowJoinProject(false)}
         />
       )}

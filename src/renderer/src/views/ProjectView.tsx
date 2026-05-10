@@ -468,8 +468,12 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     <>
     <div className="view">
       <div className="view-header">
+        <div className="view-header-row">
         <div>
-          <h1 className="view-title">
+          <p className="view-kicker">
+            {`Project · ${rows.length} source${rows.length !== 1 ? 's' : ''}`}
+          </p>
+          <h1 className="view-headline">
             {project.name}
             {project.is_shared === 1 && (
               <span
@@ -487,11 +491,6 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
           {project.description && <p className="view-subtitle">{project.description}</p>}
         </div>
         <div className="view-header-right">
-          <span className="project-contact-count">
-            {displayed.length !== rows.length
-              ? `${displayed.length} of ${rows.length}`
-              : `${rows.length} contact${rows.length !== 1 ? 's' : ''}`}
-          </span>
           {anyFilter && (
             <button
               className="clear-filters-btn"
@@ -566,6 +565,9 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
             </button>
           )}
         </div>
+        </div>
+        <div className="view-rule-thick" />
+        <div className="view-rule-thin" />
       </div>
 
       {fileUnreachable && (

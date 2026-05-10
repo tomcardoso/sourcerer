@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DedupContact, DuplicatePair } from '@shared/types';
 import './DedupModal.css';
 import '../contacts/AddContactModal.css';
@@ -84,6 +84,12 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
   const [pairs, setPairs] = useState(initialPairs);
   const [index, setIndex] = useState(0);
   const [working, setWorking] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   function advance() {
     const newPairs = pairs.filter((_, i) => i !== index);

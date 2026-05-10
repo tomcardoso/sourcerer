@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import type { ContactListItem, CreateContactInput } from '@shared/types';
 import './AddContactModal.css';
 
@@ -78,6 +78,12 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
   async function checkEmailBlur(value: string) {
     if (!value) return;

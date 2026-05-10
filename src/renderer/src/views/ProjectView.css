@@ -51,10 +51,10 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border-radius: 0;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   transition: background 0.1s, color 0.1s;
 }
 
@@ -72,7 +72,7 @@
 .recovery-banner {
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.4);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 12px 16px;
   margin: 0 0 16px;
   display: flex;
@@ -97,12 +97,12 @@
 .recovery-btn {
   padding: 6px 12px;
   font-size: 12px;
-  border-radius: 5px;
+  border-radius: 0;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-primary);
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   white-space: nowrap;
 }
 
@@ -129,10 +129,10 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border-radius: 0;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   transition: background 0.1s, color 0.1s;
 }
 
@@ -152,7 +152,7 @@
   right: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 7px;
+  border-radius: 0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   min-width: 220px;
   z-index: 50;
@@ -168,7 +168,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
   transition: background 0.1s;
@@ -198,7 +198,7 @@
 .sync-error-banner {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 10px 14px;
   margin: 0 0 16px;
   font-size: 12px;
@@ -211,10 +211,10 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border-radius: 0;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
   transition: background 0.1s, color 0.1s;
 }
 
@@ -237,10 +237,10 @@
   font-size: 12px;
   background: var(--color-danger);
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   color: #fff;
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
 }
 
 .inline-confirm-yes:hover {
@@ -252,10 +252,10 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-mono);
 }
 
 .inline-confirm-no:hover {
