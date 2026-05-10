@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import type { Project, User } from '@shared/types';
+import type { ImportResult, Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
 import SearchModal from './SearchModal';
 import SetupPayloadModal from './SetupPayloadModal';
 import AllContacts from '../views/AllContacts';
 import ProjectView from '../views/ProjectView';
+import ImportCsvModal from '../views/ImportCsvModal';
+import ImportResultModal from '../views/ImportResultModal';
+import AddContactModal from '../contacts/AddContactModal';
 import AlertMentions from '../views/AlertMentions';
 import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
@@ -31,6 +34,8 @@ export default function AppShell() {
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showImportCsv, setShowImportCsv] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
@@ -134,8 +139,8 @@ export default function AppShell() {
         onProjectJoined={handleProjectJoined}
         onProjectRenamed={handleProjectRenamed}
         onProjectDeleted={handleProjectDeleted}
-        onAddContact={() => { setNav({ view: 'all-contacts' }); setShowAddContact(true); }}
-        onImportCsv={() => { setNav({ view: 'all-contacts' }); setShowImportCsv(true); }}
+        onAddContact={() => setShowAddContact(true)}
+        onImportCsv={() => setShowImportCsv(true)}
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && (
@@ -144,10 +149,7 @@ export default function AppShell() {
             user={user}
             openContactId={openContactId}
             onOpenContactIdConsumed={() => setOpenContactId(null)}
-            showAdd={showAddContact}
-            onShowAddChange={setShowAddContact}
-            showImportModal={showImportCsv}
-            onShowImportModalChange={setShowImportCsv}
+            refreshTrigger={importRefreshTrigger}
           />
         )}
         {nav.view === 'alerts' && (
@@ -161,6 +163,7 @@ export default function AppShell() {
             onProjectUpdated={(updated) =>
               setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
             }
+            refreshTrigger={importRefreshTrigger}
           />
         )}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
@@ -180,6 +183,33 @@ export default function AppShell() {
           payload={pendingPayload.payload}
           onDone={() => setPendingPayload(null)}
         />
+      )}
+
+      {showAddContact && (
+        <AddContactModal
+          onCreated={(contact) => {
+            setShowAddContact(false);
+            setNav({ view: 'all-contacts' });
+            setOpenContactId(contact.id);
+          }}
+          onCancel={() => setShowAddContact(false)}
+        />
+      )}
+
+      {showImportCsv && (
+        <ImportCsvModal
+          projects={projects}
+          onComplete={(result) => {
+            setShowImportCsv(false);
+            setImportResult(result);
+            setImportRefreshTrigger((n) => n + 1);
+          }}
+          onClose={() => setShowImportCsv(false)}
+        />
+      )}
+
+      {importResult && (
+        <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
       )}
       </div>
     </div>

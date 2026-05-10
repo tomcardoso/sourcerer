@@ -81,6 +81,8 @@ declare global {
       addToProject: (contactId: string, projectId: string) => Promise<void>;
       removeFromProject: (contactId: string, projectId: string) => Promise<void>;
       updateMembership: (data: UpdateMembershipInput) => Promise<void>;
+      setMembershipReporters: (membershipId: string, reporters: Array<{ email: string; name: string }>) => Promise<void>;
+      listProjectReporters: (projectId: string) => Promise<Array<{ email: string; name: string }>>;
 
       // Interaction log
       listInteractionLog: (membershipId: string) => Promise<InteractionLogEntry[]>;
@@ -159,6 +161,7 @@ declare global {
         dueDate: number;
         note?: string;
       }) => Promise<Reminder>;
+      completeReminder: (id: string) => Promise<void>;
       deleteReminder: (id: string) => Promise<void>;
 
       // vCard export

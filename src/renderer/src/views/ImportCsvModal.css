@@ -32,6 +32,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .icm-col-tags {
@@ -89,6 +90,7 @@
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-family: var(--font-mono);
 }
 
 .icm-select {

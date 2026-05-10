@@ -12,7 +12,7 @@ export function broadcastRemindersChanged(): void {
 const SELECT_COLS = `
   r.id, r.contact_id, r.project_id, r.membership_id,
   c.name AS contact_name, p.name AS project_name,
-  r.due_date, r.note, r.is_auto_outreach, r.created_at`;
+  r.due_date, r.note, r.is_auto_outreach, r.created_at, r.completed_at`;
 
 export function registerReminderHandlers(): void {
   ipcMain.handle(
@@ -38,6 +38,7 @@ export function registerReminderHandlers(): void {
          FROM reminders r
          JOIN contacts c ON c.id = r.contact_id
          JOIN projects p ON p.id = r.project_id
+         WHERE r.completed_at IS NULL
          ORDER BY r.due_date ASC`,
       )
       .all() as Reminder[];
@@ -74,6 +75,12 @@ export function registerReminderHandlers(): void {
       return reminder;
     },
   );
+
+  ipcMain.handle('reminders:complete', (_, id: string): void => {
+    const now = Math.floor(Date.now() / 1000);
+    getDatabase().prepare(`UPDATE reminders SET completed_at = ? WHERE id = ?`).run(now, id);
+    broadcastRemindersChanged();
+  });
 
   ipcMain.handle('reminders:delete', (_, id: string): void => {
     getDatabase().prepare(`DELETE FROM reminders WHERE id = ?`).run(id);

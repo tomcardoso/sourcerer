@@ -20,8 +20,8 @@ const FLEURON_LG = 'M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 
 const FLEURON_SM = 'M 5 0 L 6 4 L 10 5 L 6 6 L 5 10 L 4 6 L 0 5 L 4 4 Z'
 
 // Full wordmark coordinate space.
-const VB_W = 378
-const VB_H = 74
+const VB_W = 270
+const VB_H = 64
 
 interface Props {
   compact?: boolean
@@ -70,7 +70,6 @@ export function WordmarkLogo({ compact = false, size, rules, className }: Props)
   // Rules are suppressed below size 24 (sub-pixel at that scale).
   const h      = size ?? 36
   const w      = Math.round(h * (VB_W / VB_H))
-  const showRules = rules ?? h >= 24
 
   return (
     <svg
@@ -83,10 +82,6 @@ export function WordmarkLogo({ compact = false, size, rules, className }: Props)
       role="img"
       aria-label="Sourcerer"
     >
-      {/* Thick rule — 3px, spans just past the last letterform */}
-      {showRules && (
-        <rect x="0" y="0" width="334" height="3" fill={INK} />
-      )}
 
       {/* Wordmark text */}
       <text
@@ -106,10 +101,6 @@ export function WordmarkLogo({ compact = false, size, rules, className }: Props)
         <path d={FLEURON_LG} />
       </g>
 
-      {/* Thin rule — 1px, baseline of the letterforms */}
-      {showRules && (
-        <rect x="0" y="68" width="334" height="1" fill={INK} />
-      )}
     </svg>
   )
 }

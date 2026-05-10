@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ContactListItem, DuplicatePair, ImportResult, Project, User } from '@shared/types';
-import AddContactModal from '../contacts/AddContactModal';
+import type { ContactListItem, DuplicatePair, Project, User } from '@shared/types';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
 import ColumnHeader, { TextFilter, ToggleFilter, PresetFilter } from './ColumnHeader';
-import ImportCsvModal from './ImportCsvModal';
-import ImportResultModal from './ImportResultModal';
 import './View.css';
 import './AllContacts.css';
 
@@ -66,29 +63,19 @@ interface Props {
   user: User | null;
   openContactId?: string | null;
   onOpenContactIdConsumed?: () => void;
-  showAdd?: boolean;
-  onShowAddChange?: (v: boolean) => void;
-  showImportModal?: boolean;
-  onShowImportModalChange?: (v: boolean) => void;
+  refreshTrigger?: number;
 }
 
-export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed, showAdd: showAddProp, onShowAddChange, showImportModal: showImportModalProp, onShowImportModalChange }: Props) {
+export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed, refreshTrigger }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
-  const [showAddLocal, setShowAddLocal] = useState(false);
-  const showAdd = showAddProp ?? showAddLocal;
-  const setShowAdd = (v: boolean) => { setShowAddLocal(v); onShowAddChange?.(v); };
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
-  const [showImportModalLocal, setShowImportModalLocal] = useState(false);
-  const showImportModal = showImportModalProp ?? showImportModalLocal;
-  const setShowImportModal = (v: boolean) => { setShowImportModalLocal(v); onShowImportModalChange?.(v); };
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [dupCount, setDupCount] = useState(0);
   const [showDedup, setShowDedup] = useState(false);
   const [dupPairs, setDupPairs] = useState<DuplicatePair[]>([]);
@@ -109,6 +96,10 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (refreshTrigger) refresh();
+  }, [refreshTrigger, refresh]);
 
   useEffect(() => {
     window.sourcerer.getDuplicatePairs().then((pairs) => {
@@ -288,20 +279,6 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     }
   }
 
-  function handleImportComplete(result: ImportResult) {
-    setShowImportModal(false);
-    setImportResult(result);
-    refresh();
-  }
-
-  function handleCreated(contact: ContactListItem) {
-    setContacts((prev) =>
-      [...prev, contact].sort((a, b) => a.name.localeCompare(b.name)),
-    );
-    setShowAdd(false);
-    setDetailId(contact.id);
-  }
-
   function handleDeleted(id: string) {
     setContacts((prev) => prev.filter((c) => c.id !== id));
     setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
@@ -324,7 +301,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
         <div className="view-header-row">
         <div>
           <p className="view-kicker">
-            All contacts{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
+            Everyone{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
           </p>
           <h1 className="view-headline">All contacts</h1>
         </div>
@@ -681,22 +658,6 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
           onUpdated={refresh}
           user={user}
         />
-      )}
-
-      {showAdd && (
-        <AddContactModal onCreated={handleCreated} onCancel={() => setShowAdd(false)} />
-      )}
-
-      {showImportModal && (
-        <ImportCsvModal
-          projects={projects}
-          onComplete={handleImportComplete}
-          onClose={() => setShowImportModal(false)}
-        />
-      )}
-
-      {importResult && (
-        <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
       )}
 
       {showDedup && (

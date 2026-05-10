@@ -33,12 +33,15 @@
 }
 
 .detail-name {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--color-text);
+  line-height: 1.05;
 }
 
 .detail-org {
@@ -530,57 +533,178 @@
   white-space: nowrap;
 }
 
-/* Interaction log */
-.pt-log-list {
-  max-height: 220px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  margin-bottom: 8px;
-  padding: 8px;
-  background: var(--color-bg);
+.pt-reporter-select {
+  position: relative;
+  flex: 1;
 }
 
-.pt-log-entry {
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.pt-log-entry:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.pt-log-meta {
+.pt-reporter-chips {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 3px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: text;
 }
 
-.pt-log-reporter {
+.pt-reporter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   font-size: 11px;
-  font-weight: 600;
+  font-family: var(--font-mono);
   color: var(--color-text);
+  padding: 2px 6px;
+  white-space: nowrap;
 }
 
-.pt-log-time {
-  font-size: 10px;
+.pt-reporter-chip-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pt-reporter-chip-remove:hover {
+  color: var(--color-danger);
+}
+
+.pt-reporter-search {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  outline: none;
+  padding: 2px 0;
+}
+
+.pt-reporter-search::placeholder {
   color: var(--color-text-muted);
 }
 
-.pt-log-body {
-  font-size: 13px;
-  color: var(--color-text);
-  line-height: 1.5;
-  white-space: pre-wrap;
+.pt-reporter-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+  max-height: 160px;
+  overflow-y: auto;
 }
 
+.pt-reporter-option {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.pt-reporter-option:last-child {
+  border-bottom: none;
+}
+
+.pt-reporter-option:hover {
+  background: var(--color-hover);
+}
+
+/* Interaction log */
+/* ── Interaction log rows ── */
+.pt-log-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pt-log-row-date {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 80px;
+  padding-top: 2px;
+}
+
+.pt-log-row-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pt-log-row-body {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  margin-bottom: 4px;
+}
+
+.pt-log-row-reporter {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── Log modal ── */
+.pt-log-modal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  width: 560px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pt-log-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--color-text);
+  flex-shrink: 0;
+}
+
+.pt-log-modal-body {
+  overflow-y: auto;
+  padding: 0 20px 20px;
+  flex: 1;
+}
+
+/* ── Compose form ── */
 .pt-log-compose {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  padding: 12px 0 4px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .pt-log-input {
@@ -622,6 +746,25 @@
 .pt-log-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.pt-reminder-cancel {
+  height: 28px;
+  padding: 0 14px;
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pt-reminder-cancel:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
 }
 
 /* Scratchpad */
@@ -742,86 +885,137 @@
 }
 
 /* Reminders */
-.pt-reminder {
+/* ── Reminders section header ── */
+.pt-reminders-header {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 10px;
-  border: 1px solid var(--color-border);
-  margin-bottom: 6px;
-  /* background: var(--color-surface); */
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-text);
+  margin-bottom: 0;
 }
 
-.pt-reminder-overdue {
-  border-color: #fca5a5;
-  background: #fff5f5;
-}
-
-.pt-reminder-auto {
-  border-color: var(--color-warning, #f59e0b);
-  /* background: var(--color-surface); */
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pt-reminder-auto-label {
-  font-size: 12px;
+.pt-reminders-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   font-weight: 600;
-  color: var(--color-warning, #f59e0b);
-}
-
-.pt-reminder-auto-hint {
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-.pt-reminder-date {
-  flex: 1;
-  font-size: 12px;
-  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
   color: var(--color-text);
 }
 
-.pt-reminder-overdue-label {
-  font-weight: 400;
-  color: var(--color-danger);
-}
-
-.pt-reminder-note {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-top: 2px;
-}
-
-.pt-reminder-delete {
+.pt-reminder-add-btn {
   background: none;
   border: none;
-  font-size: 16px;
-  color: var(--color-text-muted);
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-primary);
   cursor: pointer;
-  padding: 0 2px;
+}
+
+.pt-reminder-add-btn:hover {
+  opacity: 0.75;
+}
+
+.pt-reminders-empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: 14px 0 6px;
+  margin: 0;
+}
+
+/* ── Reminder rows ── */
+.pt-reminder-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pt-reminder-row--auto {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.pt-reminder-row--completing {
+  opacity: 0.35;
+  transition: opacity 0.4s ease;
+}
+
+.pt-reminder-row--completing .pt-reminder-row-note,
+.pt-reminder-row--completing .pt-reminder-row-date {
+  text-decoration: line-through;
+}
+
+.pt-reminder-row-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.1s;
-  line-height: 1;
+  min-width: 96px;
 }
 
-.pt-reminder:hover .pt-reminder-delete {
-  opacity: 1;
+.pt-reminder-row-date--overdue {
+  color: var(--color-primary);
 }
 
-.pt-reminder-delete:hover {
-  color: var(--color-danger);
+.pt-reminder-row-note {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-text);
 }
 
+.pt-reminder-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--color-text-muted);
+  border-radius: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: border-color 0.1s;
+  position: relative;
+}
+
+.pt-reminder-check:hover {
+  border-color: var(--color-primary);
+}
+
+.pt-reminder-check:checked {
+  border-color: var(--color-text-muted);
+}
+
+.pt-reminder-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: -1px;
+  width: 5px;
+  height: 8px;
+  border: 1.5px solid var(--color-text-muted);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* ── Add reminder form ── */
 .pt-reminder-form {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  margin-bottom: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .pt-reminder-form-actions {

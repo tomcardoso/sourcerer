@@ -89,13 +89,13 @@ export default function AlertMentions({ onUnseenCountChange }: Props) {
     <div className="view">
       <div className="view-header">
         <div>
-          <h1 className="view-title">Alert Mentions</h1>
           {mentions.length > 0 && (
-            <p className="view-subtitle">
+            <p className="view-kicker">
               {mentions.length} article{mentions.length !== 1 ? 's' : ''}
               {unseenCount > 0 ? ` · ${unseenCount} unread` : ''}
             </p>
           )}
+          <h1 className="view-headline">Mentions</h1>
         </div>
         <div className="alerts-header-actions">
           {unseenCount > 0 && (

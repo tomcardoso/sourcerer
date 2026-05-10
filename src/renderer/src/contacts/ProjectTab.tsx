@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -29,21 +30,73 @@ function formatTimestamp(ts: number): string {
   });
 }
 
+function fmtLogDate(ts: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - ts;
+  if (diff < 86400) return 'today';
+  if (diff < 2 * 86400) return 'yesterday';
+  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)} days ago`;
+  const d = new Date(ts * 1000);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const thisYear = new Date().getFullYear();
+  if (d.getFullYear() !== thisYear) return `${mm}.${dd}.${String(d.getFullYear()).slice(2)}`;
+  return `${mm}.${dd}`;
+}
+
+function LogRow({ entry }: { entry: InteractionLogEntry }) {
+  return (
+    <div className="pt-log-row">
+      <div className="pt-log-row-date">{fmtLogDate(entry.created_at)}</div>
+      <div className="pt-log-row-content">
+        <p className="pt-log-row-body">{entry.body}</p>
+        <span className="pt-log-row-reporter">{entry.reporter_name}</span>
+      </div>
+    </div>
+  );
+}
+
+function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="pt-log-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="pt-log-modal-header">
+          <span className="pt-reminders-label">Interaction Log</span>
+          <button className="detail-close" onClick={onClose}>×</button>
+        </div>
+        <div className="pt-log-modal-body">
+          {entries.length === 0
+            ? <p className="pt-reminders-empty">No entries yet.</p>
+            : [...entries].reverse().map((e) => <LogRow key={e.id} entry={e} />)
+          }
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+const LOG_PREVIEW = 3;
+
 function LogSection({ membership, onEntryAdded }: { membership: ContactProject; onEntryAdded?: () => void }) {
   const [entries, setEntries] = useState<InteractionLogEntry[]>([]);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const [adding, setAdding] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     setEntries([]);
     setText('');
+    setAdding(false);
     window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [entries.length]);
 
   async function handleSubmit() {
     const body = text.trim();
@@ -53,50 +106,62 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
       const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body);
       setEntries((prev) => [...prev, entry]);
       setText('');
+      setAdding(false);
       onEntryAdded?.();
     } finally {
       setSubmitting(false);
     }
   }
 
+  const preview = [...entries].reverse().slice(0, LOG_PREVIEW);
+
   return (
     <div className="pt-section">
-      <div className="pt-section-label">Interaction Log</div>
-      {entries.length === 0 ? (
-        <p className="pt-empty">No entries yet.</p>
-      ) : (
-        <div className="pt-log-list">
-          {entries.map((e) => (
-            <div key={e.id} className="pt-log-entry">
-              <div className="pt-log-meta">
-                <span className="pt-log-reporter">{e.reporter_name}</span>
-                <span className="pt-log-time">{formatTimestamp(e.created_at)}</span>
-              </div>
-              <p className="pt-log-body">{e.body}</p>
-            </div>
-          ))}
-          <div ref={logEndRef} />
+      <div className="pt-reminders-header">
+        <span className="pt-reminders-label">Interaction Log</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          {entries.length > 0 && (
+            <button className="pt-reminder-add-btn" onClick={() => setShowAll(true)}>
+              View all ({entries.length})
+            </button>
+          )}
+          <button className="pt-reminder-add-btn" onClick={() => setAdding((v) => !v)}>
+            {adding ? '× Cancel' : '+ Add'}
+          </button>
+        </div>
+      </div>
+
+      {entries.length === 0 && !adding && (
+        <p className="pt-reminders-empty">No entries yet.</p>
+      )}
+
+      {preview.map((e) => <LogRow key={e.id} entry={e} />)}
+
+      {adding && (
+        <div className="pt-log-compose">
+          <textarea
+            className="pt-log-input"
+            placeholder="Log an interaction…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
+            }}
+          />
+          <div className="pt-reminder-form-actions">
+            <button className="pt-log-submit" onClick={handleSubmit} disabled={!text.trim() || submitting}>
+              {submitting ? 'Saving…' : 'Log'}
+            </button>
+            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); }}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
-      <div className="pt-log-compose">
-        <textarea
-          className="pt-log-input"
-          placeholder="Log an interaction…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={3}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
-          }}
-        />
-        <button
-          className="pt-log-submit"
-          onClick={handleSubmit}
-          disabled={!text.trim() || submitting}
-        >
-          Log
-        </button>
-      </div>
+
+      {showAll && <LogAllModal entries={entries} onClose={() => setShowAll(false)} />}
     </div>
   );
 }
@@ -163,12 +228,16 @@ function ScratchpadSection({
 
   return (
     <div className="pt-section">
-      <div className="pt-section-label">Message Scratchpad</div>
-      {drafts.length === 0 && <p className="pt-empty">No drafts yet.</p>}
+      <div className="pt-reminders-header">
+        <span className="pt-reminders-label">Message Scratchpad</span>
+        <button className="pt-reminder-add-btn" onClick={handleNewDraft}>
+          + Add
+        </button>
+      </div>
+      {drafts.length === 0 && <p className="pt-reminders-empty">No drafts yet.</p>}
       {drafts.map((draft) => {
         const edit = getEdit(draft);
-        const dirty =
-          edit.label !== draft.label || edit.body !== draft.body;
+        const dirty = edit.label !== draft.label || edit.body !== draft.body;
         return (
           <div key={draft.id} className="pt-draft">
             <div className="pt-draft-header">
@@ -197,9 +266,6 @@ function ScratchpadSection({
           </div>
         );
       })}
-      <button className="pt-new-draft-btn" onClick={handleNewDraft}>
-        + New draft
-      </button>
     </div>
   );
 }
@@ -214,13 +280,18 @@ function RemindersSection({
   refreshToken: number;
 }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [completing, setCompleting] = useState<Set<string>>(new Set());
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     setReminders([]);
-    window.sourcerer.listRemindersForContactProject(contactId, projectId).then(setReminders);
+    setCompleting(new Set());
+    window.sourcerer.listRemindersForContactProject(contactId, projectId).then((loaded) => {
+      setReminders(loaded);
+      setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
+    });
   }, [contactId, projectId, refreshToken]);
 
   async function handleAdd() {
@@ -243,44 +314,65 @@ function RemindersSection({
     setReminders((prev) => prev.filter((r) => r.id !== id));
   }
 
+  function handleComplete(id: string) {
+    setCompleting((prev) => new Set(prev).add(id));
+    window.sourcerer.completeReminder(id);
+  }
+
   const now = Math.floor(Date.now() / 1000);
+
+  function fmtReminderDate(ts: number, overdue: boolean): string {
+    const d = new Date(ts * 1000);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${mm}.${dd}`;
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const dayName = days[d.getDay()];
+    const diffDays = Math.ceil((ts - now) / 86400);
+    if (overdue) return `WAS ${dayName} · ${dateStr}`;
+    if (diffDays <= 7) return `${dayName} · ${dateStr}`;
+    return dateStr;
+  }
 
   return (
     <div className="pt-section">
-      <div className="pt-section-label">Reminders</div>
-      {reminders.length === 0 && !adding && <p className="pt-empty">No reminders set.</p>}
+      <div className="pt-reminders-header">
+        <span className="pt-reminders-label">Reminders</span>
+        <button className="pt-reminder-add-btn" onClick={() => setAdding((v) => !v)}>
+          {adding ? '× CANCEL' : '+ ADD'}
+        </button>
+      </div>
+      {reminders.length === 0 && !adding && (
+        <p className="pt-reminders-empty">No reminders set.</p>
+      )}
       {reminders.map((r) => {
         const overdue = r.due_date < now;
         if (r.is_auto_outreach === 1) {
           return (
-            <div key={r.id} className="pt-reminder pt-reminder-auto">
-              <div className="pt-reminder-auto-label">Outreach overdue</div>
-              <div className="pt-reminder-auto-hint">Log an interaction to clear this.</div>
+            <div key={r.id} className="pt-reminder-row pt-reminder-row--auto">
+              <div className="pt-reminder-row-date pt-reminder-row-date--overdue">Outreach overdue</div>
+              <div className="pt-reminder-row-note">Log an interaction to clear this.</div>
             </div>
           );
         }
+        const done = completing.has(r.id);
         return (
-          <div key={r.id} className={`pt-reminder${overdue ? ' pt-reminder-overdue' : ''}`}>
-            <div className="pt-reminder-date">
-              {new Date(r.due_date * 1000).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-              {overdue && <span className="pt-reminder-overdue-label"> · overdue</span>}
+          <div key={r.id} className={`pt-reminder-row${overdue ? ' pt-reminder-row--overdue' : ''}${done ? ' pt-reminder-row--completing' : ''}`}>
+            <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
+              {fmtReminderDate(r.due_date, overdue)}
             </div>
-            {r.note && <div className="pt-reminder-note">{r.note}</div>}
-            <button
-              className="pt-reminder-delete"
-              onClick={() => handleDelete(r.id)}
-              title="Remove reminder"
-            >
-              ×
-            </button>
+            <div className="pt-reminder-row-note">{r.note || ''}</div>
+            <input
+              type="checkbox"
+              className="pt-reminder-check"
+              checked={done}
+              onChange={() => { if (!done) handleComplete(r.id); }}
+              title="Mark complete"
+            />
           </div>
         );
       })}
-      {adding ? (
+      {adding && (
         <div className="pt-reminder-form">
           <input
             type="date"
@@ -299,15 +391,11 @@ function RemindersSection({
             <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate}>
               Add
             </button>
-            <button className="pt-draft-delete" onClick={() => setAdding(false)}>
+            <button className="pt-reminder-cancel" onClick={() => setAdding(false)}>
               Cancel
             </button>
           </div>
         </div>
-      ) : (
-        <button className="pt-new-draft-btn" onClick={() => setAdding(true)}>
-          + Add reminder
-        </button>
       )}
     </div>
   );
@@ -326,6 +414,13 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   const [localOutreachDisabled, setLocalOutreachDisabled] = useState<boolean>(
     membership?.outreach_reminders_disabled === 1,
   );
+  const [localReporters, setLocalReporters] = useState<Array<{ email: string; name: string }>>(
+    membership?.reporters ?? [],
+  );
+  const [projectReporters, setProjectReporters] = useState<Array<{ email: string; name: string }>>([]);
+  const [reporterQuery, setReporterQuery] = useState('');
+  const [reporterDropdownOpen, setReporterDropdownOpen] = useState(false);
+  const reporterWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!membership) return;
@@ -333,7 +428,33 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalPriority(membership.priority ?? '');
     setLocalTheme(membership.theme ?? '');
     setLocalOutreachDisabled(membership.outreach_reminders_disabled === 1);
+    setLocalReporters(membership.reporters ?? []);
+    setReporterQuery('');
+    setReporterDropdownOpen(false);
   }, [membership?.membership_id]);
+
+  useEffect(() => {
+    if (!membership) return;
+    window.sourcerer.listProjectReporters(membership.id).then((list) => {
+      if (list.length === 0 && currentUser) {
+        setProjectReporters([{ email: currentUser.email, name: `${currentUser.firstName} ${currentUser.lastName}`.trim() }]);
+      } else {
+        setProjectReporters(list);
+      }
+    });
+  }, [membership?.id, currentUser]);
+
+  useEffect(() => {
+    if (!reporterDropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (reporterWrapRef.current && !reporterWrapRef.current.contains(e.target as Node)) {
+        setReporterDropdownOpen(false);
+        setReporterQuery('');
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [reporterDropdownOpen]);
 
   if (!membership) return null;
 
@@ -382,16 +503,26 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setReminderRefresh((t) => t + 1);
   }
 
-  async function handleAssignToMe() {
-    if (!currentUser) return;
-    const reporterName = `${currentUser.firstName} ${currentUser.lastName}`.trim();
-    await window.sourcerer.updateMembership({
-      membershipId: membership.membership_id,
-      reporterEmail: currentUser.email,
-      reporterName,
-    });
+  async function addReporter(r: { email: string; name: string }) {
+    const next = [...localReporters, r];
+    setLocalReporters(next);
+    setReporterQuery('');
+    await window.sourcerer.setMembershipReporters(membership.membership_id, next);
     onMembershipUpdated();
   }
+
+  async function removeReporter(email: string) {
+    const next = localReporters.filter((r) => r.email !== email);
+    setLocalReporters(next);
+    await window.sourcerer.setMembershipReporters(membership.membership_id, next);
+    onMembershipUpdated();
+  }
+
+  const filteredReporterOptions = projectReporters.filter(
+    (r) =>
+      !localReporters.some((lr) => lr.email === r.email) &&
+      r.name.toLowerCase().includes(reporterQuery.toLowerCase()),
+  );
 
   async function handleDismissConflict() {
     await window.sourcerer.updateMembership({
@@ -473,15 +604,40 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         </div>
 
         <div className="pt-field">
-          <label className="pt-label">Reporter</label>
-          <span className="pt-reporter">
-            {membership.reporter_name}
-            {currentUser && membership.reporter_email !== currentUser.email && (
-              <button className="pt-assign-btn" onClick={handleAssignToMe} title="Assign to yourself">
-                Assign to me
-              </button>
+          <label className="pt-label">Reporters</label>
+          <div className="pt-reporter-select" ref={reporterWrapRef}>
+            <div className="pt-reporter-chips" onClick={() => setReporterDropdownOpen(true)}>
+              {localReporters.map((r) => (
+                <span key={r.email} className="pt-reporter-chip">
+                  {r.name}
+                  <button
+                    className="pt-reporter-chip-remove"
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeReporter(r.email); }}
+                  >×</button>
+                </span>
+              ))}
+              <input
+                className="pt-reporter-search"
+                value={reporterQuery}
+                onChange={(e) => { setReporterQuery(e.target.value); setReporterDropdownOpen(true); }}
+                onFocus={() => setReporterDropdownOpen(true)}
+                placeholder={localReporters.length === 0 ? 'Assign reporters…' : ''}
+              />
+            </div>
+            {reporterDropdownOpen && filteredReporterOptions.length > 0 && (
+              <div className="pt-reporter-dropdown">
+                {filteredReporterOptions.map((r) => (
+                  <button
+                    key={r.email}
+                    className="pt-reporter-option"
+                    onMouseDown={(e) => { e.preventDefault(); addReporter(r); }}
+                  >
+                    {r.name}
+                  </button>
+                ))}
+              </div>
             )}
-          </span>
+          </div>
         </div>
 
         <div className="pt-field">
@@ -515,7 +671,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
                 checked={localOutreachDisabled}
                 onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
               />
-              Disable for this source
+              Disable for this contact
             </label>
             <span className="pt-outreach-interval">
               {(() => {

@@ -168,6 +168,21 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
     db.exec('ALTER TABLE contact_links ADD COLUMN wayback_url TEXT');
   } catch {}
 
+  try { db.exec('ALTER TABLE reminders ADD COLUMN completed_at INTEGER'); } catch {}
+
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS membership_reporters (
+      id             TEXT PRIMARY KEY,
+      membership_id  TEXT NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
+      reporter_email TEXT NOT NULL,
+      reporter_name  TEXT NOT NULL,
+      UNIQUE(membership_id, reporter_email)
+    )`);
+    db.exec(`INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name)
+      SELECT lower(hex(randomblob(16))), id, reporter_email, reporter_name
+      FROM project_memberships WHERE reporter_email IS NOT NULL AND reporter_email != ''`);
+  } catch {}
+
   return db;
 }
 

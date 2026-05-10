@@ -51,6 +51,9 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
         <div className="detail-header-main">
           {contact ? (
             <>
+              <div className="view-kicker">
+                Hello world  ·
+              </div>
               <h2 className="detail-name">{contact.name}</h2>
               {contact.organization && (
                 <p className="detail-org">{contact.organization}</p>

@@ -1,4 +1,6 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, nativeImage } from 'electron';
+
+app.name = 'Sourcerer';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { registerSetupHandlers } from './ipc/setup';
@@ -24,6 +26,9 @@ import { startHttpServer } from './http-server';
 import { stopPoller } from './sync/poller';
 
 function createWindow(): BrowserWindow {
+  const icon = nativeImage.createFromPath(
+    join(__dirname, '../../build/icons/icon-512.png'),
+  );
   const win = new BrowserWindow({
     width: 560,
     height: 720,
@@ -33,6 +38,7 @@ function createWindow(): BrowserWindow {
     title: 'Sourcerer',
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#faf9f5',
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

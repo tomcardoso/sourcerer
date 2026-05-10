@@ -130,6 +130,14 @@ export const LOCAL_SCHEMA_SQL = `
     UNIQUE(contact_id, project_id)
   );
 
+  CREATE TABLE IF NOT EXISTS membership_reporters (
+    id             TEXT PRIMARY KEY,
+    membership_id  TEXT NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
+    reporter_email TEXT NOT NULL,
+    reporter_name  TEXT NOT NULL,
+    UNIQUE(membership_id, reporter_email)
+  );
+
   CREATE TABLE IF NOT EXISTS interview_dates (
     id            TEXT    PRIMARY KEY,
     membership_id TEXT    NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
@@ -181,7 +189,8 @@ export const LOCAL_SCHEMA_SQL = `
     due_date         INTEGER NOT NULL,
     note             TEXT,
     is_auto_outreach INTEGER NOT NULL DEFAULT 0,
-    created_at       INTEGER NOT NULL
+    created_at       INTEGER NOT NULL,
+    completed_at     INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS audit_log (

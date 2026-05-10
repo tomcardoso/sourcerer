@@ -97,6 +97,7 @@ export interface ContactProject {
   reporter_email: string;
   outreach_reminders_disabled: 0 | 1;
   reporter_conflict: 0 | 1;
+  reporters: Array<{ email: string; name: string }>;
 }
 
 export interface ContactDetail {
@@ -242,6 +243,7 @@ export interface Reminder {
   note: string | null;
   is_auto_outreach: 0 | 1;
   created_at: number;
+  completed_at: number | null;
 }
 
 export interface ImportResult {

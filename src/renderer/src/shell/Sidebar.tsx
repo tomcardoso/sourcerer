@@ -100,7 +100,7 @@ export default function Sidebar({
 
           <div className="sidebar-action-btns">
             <button className="sidebar-action-btn" onClick={onAddContact}>+ Add contact</button>
-            <button className="sidebar-action-btn sidebar-action-btn--secondary" onClick={onImportCsv}>Import CSV…</button>
+            <button className="sidebar-action-btn sidebar-action-btn--secondary" onClick={onImportCsv}>Import contacts</button>
           </div>
 
           <div className="sidebar-section-label">Workspace</div>

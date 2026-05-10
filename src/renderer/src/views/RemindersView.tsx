@@ -3,34 +3,59 @@ import type { Reminder } from '@shared/types';
 import './View.css';
 import './RemindersView.css';
 
-function CalendarSetupInstructions({ url }: { url: string }) {
-  const [open, setOpen] = useState(false);
+function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
-    <div className="reminders-cal-setup">
-      <button className="reminders-cal-setup-toggle" onClick={() => setOpen((v) => !v)}>
-        <span className={`reminders-chevron${open ? ' reminders-chevron-open' : ''}`}>›</span>
-        How to subscribe in your calendar app
-      </button>
-      {open && (
-        <div className="reminders-cal-setup-body">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card reminders-cal-modal" onClick={(e) => e.stopPropagation()}>
+        <h2 className="modal-title">Add to Calendar</h2>
+        <p className="reminders-cal-modal-intro">
+          Subscribe to this URL in your calendar app to see your Sourcerer reminders.
+        </p>
+
+        <div className="reminders-cal-url-row">
           <p className="reminders-cal-setup-url">{url}</p>
+          <button className="reminders-cal-copy-btn" onClick={handleCopy}>
+            {copied ? 'Copied!' : 'Copy URL'}
+          </button>
+        </div>
+
+        <div className="reminders-cal-setup-body">
           <div className="reminders-cal-setup-item">
             <strong>Apple Calendar (Mac)</strong>
-            <span>File → New Calendar Subscription → paste the URL above → Subscribe</span>
+            <span>File → New Calendar Subscription → paste the URL → Subscribe</span>
           </div>
           <div className="reminders-cal-setup-item">
             <strong>Outlook (Windows)</strong>
-            <span>Add Calendar → From Internet → paste the URL above → Import</span>
+            <span>Add Calendar → From Internet → paste the URL → Import</span>
           </div>
           <div className="reminders-cal-setup-item">
             <strong>Google Calendar</strong>
-            <span>Settings → Other calendars → From URL → paste the URL above → Add calendar</span>
+            <span>Settings → Other calendars → From URL → paste the URL → Add calendar</span>
           </div>
-          <p className="reminders-cal-setup-note">
-            The feed is only available while Sourcerer is running. Existing calendar events are unaffected when the app is closed.
-          </p>
         </div>
-      )}
+
+        <p className="reminders-cal-setup-note">
+          The feed is only available while Sourcerer is running. Existing calendar events are unaffected when the app is closed.
+        </p>
+
+        <div className="modal-actions">
+          <button className="modal-btn-create" onClick={onClose}>Done</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -54,7 +79,7 @@ interface Props {
 export default function RemindersView({ onCountChange }: Props) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [calendarUrl, setCalendarUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [overdueOpen, setOverdueOpen] = useState(true);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
@@ -79,13 +104,6 @@ export default function RemindersView({ onCountChange }: Props) {
       onCountChange?.(next.filter((r) => r.due_date < now).length);
       return next;
     });
-  }
-
-  async function handleCopy() {
-    if (!calendarUrl) return;
-    await navigator.clipboard.writeText(calendarUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -114,12 +132,15 @@ export default function RemindersView({ onCountChange }: Props) {
   const hasAny = reminders.length > 0;
 
   return (
+    <>
+    {calendarUrl && calendarModalOpen && (
+      <CalendarSetupModal url={calendarUrl} onClose={() => setCalendarModalOpen(false)} />
+    )}
     <div className="view">
       <div className="view-header">
         <div>
-          <h1 className="view-title">Reminders</h1>
           {hasAny && (
-            <p className="view-subtitle">
+            <p className="view-kicker">
               {outreachCount > 0 && manualCount > 0
                 ? `${outreachCount} outreach · ${manualCount} manual`
                 : outreachCount > 0
@@ -128,14 +149,12 @@ export default function RemindersView({ onCountChange }: Props) {
               {overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
             </p>
           )}
+          <h1 className="view-headline">Reminders</h1>
         </div>
         {calendarUrl && (
-          <div className="reminders-ical-wrap">
-            <button className="reminders-ical-btn" onClick={handleCopy} title={calendarUrl}>
-              {copied ? 'Copied!' : '📅 Copy iCal URL'}
-            </button>
-            <CalendarSetupInstructions url={calendarUrl} />
-          </div>
+          <button className="reminders-ical-btn" onClick={() => setCalendarModalOpen(true)}>
+            Add to calendar
+          </button>
         )}
       </div>
 
@@ -219,6 +238,7 @@ export default function RemindersView({ onCountChange }: Props) {
         </>
       )}
     </div>
+    </>
   );
 }
 

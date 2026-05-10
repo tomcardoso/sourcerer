@@ -1,32 +1,40 @@
-.reminders-ical-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+/* ── Calendar modal ────────────────────────────────────────── */
+
+.reminders-cal-modal {
+  max-width: 480px;
 }
 
-.reminders-cal-setup {
-  width: 100%;
-  text-align: left;
-}
-
-.reminders-cal-setup-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 11px;
+.reminders-cal-modal-intro {
+  font-size: 13px;
   color: var(--color-text-muted);
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  margin-bottom: 14px;
+  line-height: 1.5;
 }
 
-.reminders-cal-setup-toggle:hover {
+.reminders-cal-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.reminders-cal-url-row .reminders-cal-setup-url {
+  flex: 1;
+}
+
+.reminders-cal-copy-btn {
+  height: 32px;
+  padding: 0 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   color: var(--color-text);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reminders-cal-copy-btn:hover {
+  background: var(--color-border);
 }
 
 .reminders-cal-setup-body {

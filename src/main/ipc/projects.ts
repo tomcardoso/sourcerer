@@ -318,4 +318,10 @@ export function registerProjectHandlers(): void {
     closeSharedDb(id);
     getDatabase().prepare('DELETE FROM projects WHERE id = ?').run(id);
   });
+
+  ipcMain.handle('projects:list-reporters', (_, projectId: string): Array<{ email: string; name: string }> => {
+    return getDatabase()
+      .prepare('SELECT email, name FROM project_reporters WHERE project_id = ? ORDER BY is_self DESC, name ASC')
+      .all(projectId) as Array<{ email: string; name: string }>;
+  });
 }

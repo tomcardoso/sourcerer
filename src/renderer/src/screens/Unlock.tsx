@@ -40,13 +40,13 @@ export default function Unlock({ onUnlocked }: Props) {
   return (
     <div className="unlock-root">
       <div className="unlock-card">
-        <WordmarkLogo size={48} className="unlock-wordmark" />
-        <p className="unlock-subtitle">Enter your master password to continue.</p>
+        <WordmarkLogo size={64} className="unlock-wordmark" />
+        <p className="unlock-subtitle">Enter your password to continue.</p>
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="unlock-field">
             <label htmlFor="password" className="unlock-label">
-              Master password
+              Password
             </label>
             <input
               id="password"

@@ -152,9 +152,24 @@ export function registerContactHandlers(): void {
          WHERE pm.contact_id = ?
          ORDER BY p.name ASC`,
       )
-      .all(id) as ContactProject[];
+      .all(id) as Omit<ContactProject, 'reporters'>[];
 
-    return { ...contact, emails, phones, links, projects };
+    const membershipIds = projects.map((p) => p.membership_id);
+    const allReporters = membershipIds.length
+      ? (db
+          .prepare(
+            `SELECT membership_id, reporter_email AS email, reporter_name AS name
+             FROM membership_reporters WHERE membership_id IN (${membershipIds.map(() => '?').join(',')})`,
+          )
+          .all(...membershipIds) as Array<{ membership_id: string; email: string; name: string }>)
+      : [];
+
+    const projectsWithReporters: ContactProject[] = projects.map((p) => ({
+      ...p,
+      reporters: allReporters.filter((r) => r.membership_id === p.membership_id),
+    }));
+
+    return { ...contact, emails, phones, links, projects: projectsWithReporters };
   });
 
   ipcMain.handle('contacts:create', (_, data: CreateContactInput): ContactListItem => {
@@ -385,6 +400,20 @@ export function registerContactHandlers(): void {
       broadcastRemindersChanged();
     }
   });
+
+  ipcMain.handle(
+    'memberships:set-reporters',
+    (_, { membershipId, reporters }: { membershipId: string; reporters: Array<{ email: string; name: string }> }): void => {
+      const db = getDatabase();
+      db.prepare('DELETE FROM membership_reporters WHERE membership_id = ?').run(membershipId);
+      const insert = db.prepare(
+        'INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name) VALUES (lower(hex(randomblob(16))), ?, ?, ?)',
+      );
+      for (const r of reporters) {
+        insert.run(membershipId, r.email, r.name);
+      }
+    },
+  );
 
   ipcMain.handle('interaction-log:list', (_, membershipId: string): InteractionLogEntry[] => {
     return getDatabase()

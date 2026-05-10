@@ -531,7 +531,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         {/* Priority options */}
         <OptionsSection
           title="Priority Levels"
-          description="Assign a priority level to each source within a project to signal how urgently you need to maintain the relationship. The reminder interval sets how often you want to be nudged to reach out to sources at that priority — leave it blank to suppress reminders for that level."
+          description="Assign a priority level to each source within a project to signal how urgently you need to maintain the relationship. The reminder interval sets how often you want to be nudged to reach out to contacts at that priority — leave it blank to suppress reminders for that level."
           options={priorityOptions}
           onAdd={addPriority}
           onRename={renamePriority}

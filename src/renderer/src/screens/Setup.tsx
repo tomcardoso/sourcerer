@@ -80,7 +80,7 @@ export default function Setup({ onComplete }: Props) {
   return (
     <div className="setup-root">
       <div className="setup-card">
-        <WordmarkLogo size={48} className="setup-wordmark" />
+        <WordmarkLogo size={64} className="setup-wordmark" />
         <p className="setup-subtitle">
           Set up your profile and master password to get started.
         </p>
@@ -137,7 +137,7 @@ export default function Setup({ onComplete }: Props) {
           </div>
 
           <div className="setup-field">
-            <label htmlFor="password">Master password</label>
+            <label htmlFor="password">Password</label>
             <input
               id="password"
               name="password"
@@ -147,11 +147,8 @@ export default function Setup({ onComplete }: Props) {
               onChange={handleChange}
               disabled={submitting}
             />
-            <span className="setup-hint">Minimum 12 characters. This encrypts your database.</span>
-            <span className="setup-hint setup-passphrase-tip">
-              Tip: a passphrase — four random words like "coral fence orbit lamp" — is easier to
-              remember than a complex string and just as strong. Consider using{' '}
-              <strong>diceware</strong> to generate one.
+            <span className="setup-hint">Minimum 12 characters. This encrypts your database. Tip: a passphrase — four random words like "coral fence orbit lamp" — is easier to
+              remember than a complex string and just as strong.
             </span>
           </div>
 

@@ -4,6 +4,7 @@
   gap: 2px;
   position: relative;
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 
 .col-sort-btn {
@@ -19,7 +20,6 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
   transition: color 0.1s;
 }
 
@@ -39,6 +39,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .col-filter-btn {
@@ -103,7 +104,7 @@
   padding: 5px 8px;
   font-size: 13px;
   color: var(--color-text);
-  font-family: var(--font-serif);
+  /* font-family: var(--font-serif); */
   outline: none;
   min-width: 0;
 }

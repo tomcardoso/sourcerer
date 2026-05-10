@@ -111,6 +111,10 @@ const sourcererApi = {
     ipcRenderer.invoke('memberships:remove', { contactId, projectId }),
   updateMembership: (data: UpdateMembershipInput): Promise<void> =>
     ipcRenderer.invoke('memberships:update', data),
+  setMembershipReporters: (membershipId: string, reporters: Array<{ email: string; name: string }>): Promise<void> =>
+    ipcRenderer.invoke('memberships:set-reporters', { membershipId, reporters }),
+  listProjectReporters: (projectId: string): Promise<Array<{ email: string; name: string }>> =>
+    ipcRenderer.invoke('projects:list-reporters', projectId),
 
   // Interaction log
   listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
@@ -258,6 +262,7 @@ const sourcererApi = {
     dueDate: number;
     note?: string;
   }): Promise<Reminder> => ipcRenderer.invoke('reminders:create', data),
+  completeReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:complete', id),
   deleteReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:delete', id),
 
   // vCard export

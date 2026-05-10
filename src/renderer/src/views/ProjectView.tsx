@@ -18,6 +18,7 @@ interface Props {
   project: Project | null;
   user: User | null;
   onProjectUpdated: (project: Project) => void;
+  refreshTrigger?: number;
 }
 
 type SortKey =
@@ -105,7 +106,7 @@ function isFilterActive(f: Filters): boolean {
   );
 }
 
-export default function ProjectView({ project, user, onProjectUpdated }: Props) {
+export default function ProjectView({ project, user, onProjectUpdated, refreshTrigger }: Props) {
   const [rows, setRows] = useState<ProjectContactRow[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
@@ -125,7 +126,6 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -172,6 +172,10 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
   }, []);
+
+  useEffect(() => {
+    if (refreshTrigger) refresh();
+  }, [refreshTrigger, refresh]);
 
   useEffect(() => {
     if (!project?.is_shared) return;
@@ -250,12 +254,6 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     const updated = projects.find((p) => p.id === project.id);
     if (updated) onProjectUpdated(updated);
     setRegenPayload({ projectName: project.name, payload: result.payload });
-  }
-
-  function handleImportComplete(result: ImportResult) {
-    setShowImportModal(false);
-    setImportResult(result);
-    refresh();
   }
 
   // Bulk selection handlers (allChecked/someChecked are computed after displayed is built below)
@@ -533,12 +531,12 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
           <div className="project-meta-right">
             {project.is_shared === 0 && (
               <button className="project-meta-action-btn" onClick={handleConvertToShared}>
-                Share…
+                Share project
               </button>
             )}
             {project.is_shared === 1 && !confirmUnshare && (
               <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
-                Unshare…
+                Unshare project
               </button>
             )}
             {confirmUnshare && (
@@ -548,9 +546,6 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
                 <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
               </span>
             )}
-            <button className="project-meta-action-btn" onClick={() => setShowImportModal(true)}>
-              Import CSV…
-            </button>
             <div className="export-menu-wrap" ref={exportMenuRef}>
               <button
                 className="project-meta-action-btn"
@@ -1007,15 +1002,6 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
         projectName={regenPayload.projectName}
         payload={regenPayload.payload}
         onDone={() => setRegenPayload(null)}
-      />
-    )}
-
-    {showImportModal && project && (
-      <ImportCsvModal
-        projects={[]}
-        preselectedProjectId={project.id}
-        onComplete={handleImportComplete}
-        onClose={() => setShowImportModal(false)}
       />
     )}
 
