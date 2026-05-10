@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
 }
 
 .view-header {
@@ -22,7 +23,7 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--color-primary);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .view-headline {
@@ -35,7 +36,7 @@
 }
 
 .view-subtitle {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--color-text-muted);
   margin-top: 4px;
 }
@@ -93,15 +94,6 @@
 /* Settings content */
 .view-section {
   padding: 24px 28px;
-}
-
-.view-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  margin-bottom: 12px;
 }
 
 .view-dl {

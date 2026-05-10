@@ -671,17 +671,17 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
             </table>
           )}
         </div>
-
-        {detailId && checkedIds.size <= 1 && (
-          <ContactDetail
-            contactId={detailId}
-            onClose={() => setDetailId(null)}
-            onDeleted={handleDeleted}
-            onUpdated={refresh}
-            user={user}
-          />
-        )}
       </div>
+
+      {detailId && checkedIds.size <= 1 && (
+        <ContactDetail
+          contactId={detailId}
+          onClose={() => setDetailId(null)}
+          onDeleted={handleDeleted}
+          onUpdated={refresh}
+          user={user}
+        />
+      )}
 
       {showAdd && (
         <AddContactModal onCreated={handleCreated} onCancel={() => setShowAdd(false)} />
