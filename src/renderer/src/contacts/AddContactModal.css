@@ -226,16 +226,97 @@
   width: 100%;
 }
 
-.ac-project-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.ac-project-select {
+  position: relative;
 }
 
-.ac-project-item {
+.ac-project-chips {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: text;
+}
+
+.ac-project-chips:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(200, 122, 26, 0.18);
+}
+
+.ac-project-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: 11px;
+  font-family: var(--font-serif);
+  color: var(--color-text);
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+
+.ac-project-chip-remove {
+  background: none;
+  border: none;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.ac-project-chip-remove:hover {
+  color: var(--color-danger);
+}
+
+.ac-project-search {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: var(--font-serif);
+  color: var(--color-text);
+  text-transform: none;
+  letter-spacing: normal;
+  padding: 0 2px;
+}
+
+.ac-project-search::placeholder {
+  color: var(--color-text-muted);
+}
+
+.ac-project-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  max-height: 160px;
+  overflow-y: auto;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.ac-project-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  background: none;
+  border: none;
   font-size: 12px;
   font-family: var(--font-serif);
   color: var(--color-text);
@@ -244,7 +325,6 @@
   letter-spacing: normal;
 }
 
-.ac-project-name {
-  text-transform: none;
-  letter-spacing: normal;
+.ac-project-option:hover {
+  background: var(--color-surface-2);
 }

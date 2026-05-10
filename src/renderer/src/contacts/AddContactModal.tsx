@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import './AddContactModal.css';
 
@@ -81,6 +81,10 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
+  const [projectQuery, setProjectQuery] = useState('');
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const projectInputRef = useRef<HTMLInputElement>(null);
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
@@ -91,6 +95,34 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   useEffect(() => {
     window.sourcerer.listProjects().then(setProjects);
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        projectDropdownRef.current &&
+        !projectDropdownRef.current.contains(e.target as Node) &&
+        !projectInputRef.current?.contains(e.target as Node)
+      ) {
+        setProjectDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredProjects = projects.filter(
+    (p) => !selectedProjectIds.has(p.id) && p.name.toLowerCase().includes(projectQuery.toLowerCase()),
+  );
+
+  function selectProject(id: string) {
+    setSelectedProjectIds((prev) => new Set([...prev, id]));
+    setProjectQuery('');
+    projectInputRef.current?.focus();
+  }
+
+  function removeProject(id: string) {
+    setSelectedProjectIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  }
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
@@ -259,25 +291,48 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           {projects.length > 0 && (
             <div className="ac-field">
               <label className="ac-label">Add to projects</label>
-              <div className="ac-project-list">
-                {projects.map((p) => (
-                  <label key={p.id} className="ac-project-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedProjectIds.has(p.id)}
-                      onChange={(e) => {
-                        setSelectedProjectIds((prev) => {
-                          const next = new Set(prev);
-                          if (e.target.checked) next.add(p.id);
-                          else next.delete(p.id);
-                          return next;
-                        });
-                      }}
-                      disabled={submitting}
-                    />
-                    <span className="ac-project-name">{p.name}</span>
-                  </label>
-                ))}
+              <div className="ac-project-select">
+                <div className="ac-project-chips">
+                  {[...selectedProjectIds].map((id) => {
+                    const p = projects.find((p) => p.id === id);
+                    if (!p) return null;
+                    return (
+                      <span key={id} className="ac-project-chip">
+                        {p.name}
+                        <button
+                          type="button"
+                          className="ac-project-chip-remove"
+                          onClick={() => removeProject(id)}
+                          disabled={submitting}
+                        >×</button>
+                      </span>
+                    );
+                  })}
+                  <input
+                    ref={projectInputRef}
+                    className="ac-project-search"
+                    type="text"
+                    value={projectQuery}
+                    onChange={(e) => { setProjectQuery(e.target.value); setProjectDropdownOpen(true); }}
+                    onFocus={() => setProjectDropdownOpen(true)}
+                    placeholder={selectedProjectIds.size === 0 ? 'Search projects…' : ''}
+                    disabled={submitting}
+                  />
+                </div>
+                {projectDropdownOpen && filteredProjects.length > 0 && (
+                  <div className="ac-project-dropdown" ref={projectDropdownRef}>
+                    {filteredProjects.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="ac-project-option"
+                        onMouseDown={(e) => { e.preventDefault(); selectProject(p.id); }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
