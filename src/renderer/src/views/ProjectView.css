@@ -186,12 +186,14 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-primary);
+  font-family: var(--font-mono);
 }
 
 .export-menu-desc {
   font-size: 11px;
   color: var(--color-text-muted);
   margin-top: 2px;
+  font-family: var(--font-mono);
 }
 
 /* Sync error banner */
@@ -260,4 +262,34 @@
 
 .inline-confirm-no:hover {
   background: var(--color-surface);
+}
+
+/* ── Project metadata bar ──────────────────────────── */
+
+.project-meta-bar {
+  display: flex;
+  gap: 28px;
+  padding: 8px 28px 10px;
+}
+
+.project-meta-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.project-meta-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.project-meta-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
 }

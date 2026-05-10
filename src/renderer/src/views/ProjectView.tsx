@@ -62,6 +62,22 @@ const DEFAULT_FILTERS: Filters = {
   reporter: [],
 };
 
+function fmtOpened(ts: number): string {
+  const d = new Date(ts * 1000);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}.${m}.${day}`;
+}
+
+function fmtRelative(ms: number): string {
+  const secs = Math.floor((Date.now() - ms) / 1000);
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
 function fmtDate(ts: number | null): string {
   if (ts === null) return 'Never';
   const d = new Date(ts * 1000);
@@ -111,6 +127,7 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
   const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
@@ -173,6 +190,7 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
       } else {
         setFileUnreachable(false);
         setSyncError(null);
+        setLastSyncedAt(Date.now());
         refresh();
       }
     });
@@ -568,6 +586,20 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
         </div>
         <div className="view-rule-thick" />
         <div className="view-rule-thin" />
+        <div className="project-meta-bar">
+          <span className="project-meta-item">
+            <span className="project-meta-label">Opened</span>
+            <span className="project-meta-value">{fmtOpened(project.created_at)}</span>
+          </span>
+          {project.is_shared === 1 && (
+            <span className="project-meta-item">
+              <span className="project-meta-label">Last sync</span>
+              <span className="project-meta-value">
+                {lastSyncedAt ? fmtRelative(lastSyncedAt) : syncing ? 'syncing…' : '—'}
+              </span>
+            </span>
+          )}
+        </div>
       </div>
 
       {fileUnreachable && (
