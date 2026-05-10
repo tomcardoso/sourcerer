@@ -426,7 +426,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
         </div>
       )}
 
-      <div className="contacts-body">
+      <div className={`contacts-body${detailId && checkedIds.size <= 1 ? ' contacts-body--detail-open' : ''}`}>
         <div className="contacts-table-area">
           {contacts.length === 0 ? (
             <div className="view-empty">

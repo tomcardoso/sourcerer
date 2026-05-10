@@ -7,8 +7,15 @@
 .contacts-table-area {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.contacts-body--detail-open .contacts-table-area {
+  overflow-x: auto;
+  width: 50%;
+  flex: none;
 }
 
 .contacts-no-results {
