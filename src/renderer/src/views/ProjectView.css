@@ -269,7 +269,7 @@
 .project-meta-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 24px;
   padding: 7px 0 8px;
 }
 
