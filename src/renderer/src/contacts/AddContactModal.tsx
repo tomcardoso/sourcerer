@@ -84,7 +84,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [projectQuery, setProjectQuery] = useState('');
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const projectInputRef = useRef<HTMLInputElement>(null);
-  const projectDropdownRef = useRef<HTMLDivElement>(null);
+  const projectWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
@@ -98,11 +98,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        projectDropdownRef.current &&
-        !projectDropdownRef.current.contains(e.target as Node) &&
-        !projectInputRef.current?.contains(e.target as Node)
-      ) {
+      if (projectWrapRef.current && !projectWrapRef.current.contains(e.target as Node)) {
         setProjectDropdownOpen(false);
       }
     }
@@ -291,7 +287,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           {projects.length > 0 && (
             <div className="ac-field">
               <label className="ac-label">Add to projects</label>
-              <div className="ac-project-select">
+              <div className="ac-project-select" ref={projectWrapRef}>
                 <div className="ac-project-chips">
                   {[...selectedProjectIds].map((id) => {
                     const p = projects.find((p) => p.id === id);
@@ -320,7 +316,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                   />
                 </div>
                 {projectDropdownOpen && filteredProjects.length > 0 && (
-                  <div className="ac-project-dropdown" ref={projectDropdownRef}>
+                  <div className="ac-project-dropdown">
                     {filteredProjects.map((p) => (
                       <button
                         key={p.id}
