@@ -23,7 +23,6 @@ import type {
   ContactAlertMention,
   Reminder,
   ImportResult,
-  AuditLogEntry,
   DuplicatePair,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
@@ -272,8 +271,7 @@ const sourcererApi = {
     ipcRenderer.invoke('import:csv', data),
   downloadSampleCsv: (): Promise<void> => ipcRenderer.invoke('import:download-sample-csv'),
 
-  // Audit log
-  listAuditLog: (): Promise<AuditLogEntry[]> => ipcRenderer.invoke('audit:list'),
+
 
   // Panic wipe
   panicWipe: (): Promise<void> => ipcRenderer.invoke('settings:panic-wipe'),

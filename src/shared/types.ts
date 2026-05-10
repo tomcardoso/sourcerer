@@ -244,14 +244,6 @@ export interface Reminder {
   created_at: number;
 }
 
-export interface AuditLogEntry {
-  id: string;
-  event_type: 'unlock' | 'password_changed' | 'panic_wipe';
-  actor: string | null;
-  occurred_at: number;
-  details: string | null;
-}
-
 export interface ImportResult {
   imported: number;
   skipped: Array<{ name: string; reason: 'name' | 'email' }>;

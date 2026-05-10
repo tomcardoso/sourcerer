@@ -20,7 +20,6 @@ import type {
   ContactAlertMention,
   Reminder,
   ImportResult,
-  AuditLogEntry,
   DuplicatePair,
   ContactScreenshot,
   SearchResult,
@@ -169,9 +168,6 @@ declare global {
       // CSV import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;
       downloadSampleCsv: () => Promise<void>;
-
-      // Audit log
-      listAuditLog: () => Promise<AuditLogEntry[]>;
 
       // Backup
       exportBackup: () => Promise<{ success: boolean; error?: string }>;

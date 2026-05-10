@@ -29,6 +29,8 @@ export default function AppShell() {
   const [overdueReminders, setOverdueReminders] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [openContactId, setOpenContactId] = useState<string | null>(null);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [showImportCsv, setShowImportCsv] = useState(false);
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
@@ -132,6 +134,8 @@ export default function AppShell() {
         onProjectJoined={handleProjectJoined}
         onProjectRenamed={handleProjectRenamed}
         onProjectDeleted={handleProjectDeleted}
+        onAddContact={() => { setNav({ view: 'all-contacts' }); setShowAddContact(true); }}
+        onImportCsv={() => { setNav({ view: 'all-contacts' }); setShowImportCsv(true); }}
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && (
@@ -140,6 +144,10 @@ export default function AppShell() {
             user={user}
             openContactId={openContactId}
             onOpenContactIdConsumed={() => setOpenContactId(null)}
+            showAdd={showAddContact}
+            onShowAddChange={setShowAddContact}
+            showImportModal={showImportCsv}
+            onShowImportModalChange={setShowImportCsv}
           />
         )}
         {nav.view === 'alerts' && (

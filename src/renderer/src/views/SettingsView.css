@@ -12,6 +12,14 @@
   margin-bottom: 20px;
 }
 
+.sv-section-title {
+  font-size: 16px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
 .sv-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -29,12 +37,19 @@
   grid-column: 1 / -1;
 }
 
+.sv-field-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
 .sv-label {
   font-size: 11px;
+  letter-spacing: 0.12em;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .sv-input,
@@ -231,10 +246,14 @@
 }
 
 .sv-hint {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--color-text-muted);
-  margin: 0 0 10px;
+  margin: 0 0 15px;
   line-height: 1.5;
+}
+
+.sv-hint code {
+  font-size: 0.85em;
 }
 
 .sv-inline-field {
@@ -254,7 +273,7 @@
 }
 
 .sv-hint--small {
-  font-size: 11px;
+  font-size: 12px;
   margin-top: -4px;
 }
 
@@ -285,7 +304,7 @@
 
 .sv-calendar-url {
   flex: 1;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--color-text-muted);
   cursor: default;
 }
@@ -316,82 +335,8 @@
   flex-wrap: wrap;
 }
 
-/* Audit log */
-
-.sv-audit-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  padding: 0;
-}
-
-.sv-audit-toggle-label {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
-.sv-audit-chevron {
-  font-size: 14px;
-  color: var(--color-text-muted);
-  transform: rotate(0deg);
-  transition: transform 0.15s;
-  display: inline-block;
-}
-
-.sv-audit-chevron-open {
-  transform: rotate(90deg);
-}
-
-.sv-audit-body {
-  margin-top: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  overflow: hidden;
-}
-
-.sv-audit-empty {
-  padding: 12px 14px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.sv-audit-row {
-  display: grid;
-  grid-template-columns: 130px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 7px 14px;
-  font-size: 12px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.sv-audit-row:last-child {
-  border-bottom: none;
-}
-
-.sv-audit-event {
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.sv-audit-actor {
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sv-audit-date {
-  color: var(--color-text-muted);
-  white-space: nowrap;
+.sv-backup-export-restore {
+  margin-bottom: 20px;
 }
 
 /* Danger Zone */
@@ -477,7 +422,7 @@
 .sv-credit {
   margin-top: 24px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--color-muted);
 }
 

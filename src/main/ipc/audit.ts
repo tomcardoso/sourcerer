@@ -3,7 +3,6 @@ import { promises as fs } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, closeDatabase } from '../database';
 import { getPaths } from '../utils';
-import type { AuditLogEntry } from '@shared/types';
 
 export function appendAuditLog(
   eventType: 'unlock' | 'password_changed' | 'panic_wipe',
@@ -23,21 +22,9 @@ export function appendAuditLog(
 }
 
 export function registerAuditHandlers(): void {
-  ipcMain.handle('audit:list', (): AuditLogEntry[] => {
-    return getDatabase()
-      .prepare(
-        `SELECT id, event_type, actor, occurred_at, details
-         FROM audit_log
-         ORDER BY occurred_at DESC
-         LIMIT 200`,
-      )
-      .all() as AuditLogEntry[];
-  });
-
   ipcMain.handle('settings:panic-wipe', async (): Promise<void> => {
     const { dbPath, saltPath } = getPaths();
 
-    // Best-effort: record the event before wiping
     appendAuditLog('panic_wipe', null);
 
     closeDatabase();

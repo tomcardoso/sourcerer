@@ -21,6 +21,8 @@ interface Props {
   onProjectJoined: (project: Project) => void;
   onProjectRenamed: (id: string, name: string) => void;
   onProjectDeleted: (id: string) => void;
+  onAddContact: () => void;
+  onImportCsv: () => void;
 }
 
 export default function Sidebar({
@@ -36,6 +38,8 @@ export default function Sidebar({
   onProjectJoined,
   onProjectRenamed,
   onProjectDeleted,
+  onAddContact,
+  onImportCsv,
 }: Props) {
   const [showNewProject, setShowNewProject] = useState(false);
   const [showJoinProject, setShowJoinProject] = useState(false);
@@ -88,7 +92,7 @@ export default function Sidebar({
 
         {/* Wordmark header */}
         <div className="sidebar-header">
-          <WordmarkLogo size={30} rules={false} className="sidebar-logo" />
+          <WordmarkLogo size={36} rules={false} className="sidebar-logo" />
         </div>
 
         {/* Workspace nav */}
@@ -136,6 +140,16 @@ export default function Sidebar({
             <span className="sidebar-nav-indicator" />
             Search
             <span className="sidebar-search-hint"><span>⌘</span>K</span>
+          </button>
+
+          <div className="sidebar-section-label sidebar-section-label--actions">Actions</div>
+          <button className="sidebar-nav-item" onClick={onAddContact}>
+            <span className="sidebar-nav-indicator" />
+            Add contact
+          </button>
+          <button className="sidebar-nav-item" onClick={onImportCsv}>
+            <span className="sidebar-nav-indicator" />
+            Import contacts
           </button>
         </nav>
 

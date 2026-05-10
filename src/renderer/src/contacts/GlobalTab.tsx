@@ -375,9 +375,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   return (
     <div className="detail-body">
-      <div className="detail-edit-row">
-        <button className="detail-edit-btn" onClick={startEdit}>Edit</button>
-      </div>
 
       {contact.emails.length > 0 && (
         <div className="detail-section">
@@ -596,9 +593,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             </div>
           </div>
         ) : (
-          <button className="detail-delete-btn" onClick={() => setConfirmDelete(true)}>
-            Delete contact
-          </button>
+          <div className="detail-bottom-actions">
+            <button className="detail-edit-btn" onClick={startEdit}>Edit</button>
+            <button className="detail-delete-btn" onClick={() => setConfirmDelete(true)}>
+              Delete contact
+            </button>
+          </div>
         )}
       </div>
     </div>

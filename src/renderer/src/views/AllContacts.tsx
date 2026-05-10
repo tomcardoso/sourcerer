@@ -66,20 +66,28 @@ interface Props {
   user: User | null;
   openContactId?: string | null;
   onOpenContactIdConsumed?: () => void;
+  showAdd?: boolean;
+  onShowAddChange?: (v: boolean) => void;
+  showImportModal?: boolean;
+  onShowImportModalChange?: (v: boolean) => void;
 }
 
-export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed }: Props) {
+export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed, showAdd: showAddProp, onShowAddChange, showImportModal: showImportModalProp, onShowImportModalChange }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAddLocal, setShowAddLocal] = useState(false);
+  const showAdd = showAddProp ?? showAddLocal;
+  const setShowAdd = (v: boolean) => { setShowAddLocal(v); onShowAddChange?.(v); };
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportModalLocal, setShowImportModalLocal] = useState(false);
+  const showImportModal = showImportModalProp ?? showImportModalLocal;
+  const setShowImportModal = (v: boolean) => { setShowImportModalLocal(v); onShowImportModalChange?.(v); };
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [dupCount, setDupCount] = useState(0);
   const [showDedup, setShowDedup] = useState(false);
@@ -316,9 +324,9 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
         <div className="view-header-row">
         <div>
           <p className="view-kicker">
-            All Contacts{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
+            All contacts{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
           </p>
-          <h1 className="view-headline">All Contacts</h1>
+          <h1 className="view-headline">All contacts</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {dupCount > 0 && (
@@ -344,12 +352,6 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
               Clear filters
             </button>
           )}
-          <button className="btn-secondary" onClick={() => setShowImportModal(true)}>
-            Import CSV…
-          </button>
-          <button className="btn-primary" onClick={() => setShowAdd(true)}>
-            + Add Contact
-          </button>
         </div>
         </div>
         <div className="view-rule-thick" />
@@ -432,8 +434,6 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
               <div className="view-empty-label">No contacts yet</div>
               <div className="view-empty-hint">Add your first contact to get started.</div>
             </div>
-          ) : displayed.length === 0 ? (
-            <div className="contacts-no-results">No contacts match the current filters.</div>
           ) : (
             <table className="contacts-table">
               <thead>
@@ -595,7 +595,13 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((c) => (
+                {displayed.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="contacts-no-results">
+                      No contacts match the current filters.
+                    </td>
+                  </tr>
+                ) : displayed.map((c) => (
                   <tr
                     key={c.id}
                     className={[

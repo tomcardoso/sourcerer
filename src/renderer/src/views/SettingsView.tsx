@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
-import type { User, StatusOption, PriorityOption, AuditLogEntry } from '@shared/types';
+import type { User, StatusOption, PriorityOption } from '@shared/types';
 import './View.css';
 import './SettingsView.css';
 
@@ -9,19 +9,6 @@ interface Props {
   onUserUpdated: (user: User) => void;
 }
 
-const AUDIT_LABELS: Record<string, string> = {
-  unlock: 'Unlocked',
-  password_changed: 'Password changed',
-  panic_wipe: 'Data wiped',
-};
-
-function fmtAuditDate(ts: number): string {
-  const d = new Date(ts * 1000);
-  return d.toLocaleString(undefined, {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-}
 
 const INTERVAL_PRESETS = [
   { label: 'Weekly', days: 7 },
@@ -90,7 +77,7 @@ function OptionsSection({
 
   return (
     <div className="sv-section">
-      <div className="view-section-title">{title}</div>
+      <div className="sv-section-title">{title}</div>
       {description && <p className="sv-hint">{description}</p>}
       <div className="sv-option-list">
         {deleteError && (
@@ -206,9 +193,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordResult, setPasswordResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
-  const [auditLogOpen, setAuditLogOpen] = useState(false);
-
   const [backingUp, setBackingUp] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [restoreConfirm, setRestoreConfirm] = useState(false);
@@ -285,15 +269,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       }
     } finally {
       setPasswordSaving(false);
-    }
-  }
-
-  async function handleAuditLogOpen() {
-    const nextOpen = !auditLogOpen;
-    setAuditLogOpen(nextOpen);
-    if (nextOpen) {
-      const entries = await window.sourcerer.listAuditLog();
-      setAuditLog(entries);
     }
   }
 
@@ -443,7 +418,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       <div className="sv-body">
         {/* Profile */}
         <div className="sv-section">
-          <div className="view-section-title">Profile</div>
+          <div className="sv-section-title">Profile</div>
           <div className="sv-fields">
             <div className="sv-field">
               <label className="sv-label">First name</label>
@@ -487,7 +462,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Security */}
         <div className="sv-section">
-          <div className="view-section-title">Security</div>
+          <div className="sv-section-title">Security</div>
           <p className="sv-hint">
             Change your Sourcerer password. You'll need to enter your current password to confirm the change.
           </p>
@@ -568,17 +543,17 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Staleness */}
         <div className="sv-section">
-          <div className="view-section-title">Source Staleness</div>
+          <div className="sv-section-title">Source Staleness</div>
           <p className="sv-hint">
             Contacts with no interaction or outreach logged within the threshold will show a subtle amber indicator in the contacts table.
           </p>
-          <div className="sv-field">
-            <label className="sv-label">Enable staleness indicator</label>
+          <div className="sv-field sv-field-check">
             <input
               type="checkbox"
               checked={stalenessEnabled}
               onChange={(e) => handleStalenessToggle(e.target.checked)}
             />
+            <label className="sv-label">Enable staleness indicator</label>
           </div>
           {stalenessEnabled && (
             <div className="sv-field sv-staleness-threshold">
@@ -601,36 +576,36 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Outreach reminders */}
         <div className="sv-section">
-          <div className="view-section-title">Outreach Reminders</div>
+          <div className="sv-section-title">Outreach Reminders</div>
           <p className="sv-hint">
             Get a native notification when a source hasn't been contacted within their priority's reminder interval. Configure intervals per priority level above. Reminders can be disabled per-source in the contact's project tab.
           </p>
-          <div className="sv-field">
-            <label className="sv-label">Enable outreach reminders</label>
+          <div className="sv-field sv-field-check">
             <input
               type="checkbox"
               checked={outreachRemindersEnabled}
               onChange={(e) => handleOutreachToggle(e.target.checked)}
             />
+            <label className="sv-label">Enable outreach reminders</label>
           </div>
-          <div className="sv-field">
+          <div className="sv-field sv-field-check">
+            <input
+              type="checkbox"
+              checked={outreachRequireInteraction}
+              onChange={(e) => handleOutreachRequireInteractionToggle(e.target.checked)}
+            />
             <div>
               <div className="sv-label">Start clock after first interaction</div>
               <div className="sv-hint sv-hint--inline">
                 When on, outreach reminders won't appear until at least one interaction has been logged for a source. When off, the clock starts as soon as a priority is assigned.
               </div>
             </div>
-            <input
-              type="checkbox"
-              checked={outreachRequireInteraction}
-              onChange={(e) => handleOutreachRequireInteractionToggle(e.target.checked)}
-            />
           </div>
         </div>
 
         {/* Google Alerts */}
         <div className="sv-section">
-          <div className="view-section-title">Google Alerts</div>
+          <div className="sv-section-title">Google Alerts</div>
           <p className="sv-hint">
             Sourcerer polls RSS feeds for each contact's Google Alert. Control how often it checks.
           </p>
@@ -652,31 +627,31 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Notifications */}
         <div className="sv-section">
-          <div className="view-section-title">Notifications</div>
+          <div className="sv-section-title">Notifications</div>
           <p className="sv-hint">
             Control which events trigger OS-level notifications.
           </p>
-          <div className="sv-field">
-            <label className="sv-label">Alert mentions</label>
+          <div className="sv-field sv-field-check">
             <input
               type="checkbox"
               checked={alertNotificationsEnabled}
               onChange={(e) => handleAlertNotificationsToggle(e.target.checked)}
             />
+            <label className="sv-label">Alert mentions</label>
           </div>
-          <div className="sv-field">
-            <label className="sv-label">Reminders</label>
+          <div className="sv-field sv-field-check">
             <input
               type="checkbox"
               checked={reminderNotificationsEnabled}
               onChange={(e) => handleReminderNotificationsToggle(e.target.checked)}
             />
+            <label className="sv-label">Reminders</label>
           </div>
         </div>
 
         {/* Security */}
         <div className="sv-section">
-          <div className="view-section-title">Security</div>
+          <div className="sv-section-title">Security</div>
           <div className="sv-field">
             <label className="sv-label">Auto-lock after</label>
             <select
@@ -693,7 +668,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Phone formatting */}
         <div className="sv-section">
-          <div className="view-section-title">Phone Numbers</div>
+          <div className="sv-section-title">Phone Numbers</div>
           <p className="sv-hint">
             Numbers entered without a country code (e.g. 07911 123456) will be interpreted as belonging to this country and stored in E.164 format.
           </p>
@@ -715,7 +690,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Calendar */}
         <div className="sv-section">
-          <div className="view-section-title">Calendar Subscription</div>
+          <div className="sv-section-title">Calendar Subscription</div>
           <p className="sv-hint">
             Subscribe to this URL in Apple Calendar, Outlook, or Google Calendar to see your reminders.
           </p>
@@ -737,7 +712,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           {calendarRegenConfirm ? (
             <div className="sv-regen-confirm">
               <span>This invalidates your existing calendar subscription. Continue?</span>
-              <button className="sv-delete-btn" onClick={handleRegenerateToken}>Yes, regenerate</button>
+              <button className="sv-save-btn" onClick={handleRegenerateToken}>Yes, regenerate</button>
               <button className="sv-cancel-small-btn" onClick={() => setCalendarRegenConfirm(false)}>Cancel</button>
             </div>
           ) : (
@@ -747,59 +722,34 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           )}
         </div>
 
-        {/* Audit Log */}
-        <div className="sv-section">
-          <button className="sv-audit-toggle" onClick={handleAuditLogOpen}>
-            <span className="sv-audit-toggle-label">Audit log</span>
-            <span className={`sv-audit-chevron${auditLogOpen ? ' sv-audit-chevron-open' : ''}`}>›</span>
-          </button>
-          {auditLogOpen && (
-            <div className="sv-audit-body">
-              {auditLog.length === 0 ? (
-                <div className="sv-audit-empty">No events recorded yet.</div>
-              ) : (
-                auditLog.map((e) => (
-                  <div key={e.id} className="sv-audit-row">
-                    <span className="sv-audit-event">{AUDIT_LABELS[e.event_type] ?? e.event_type}</span>
-                    <span className="sv-audit-actor">{e.actor ?? '—'}</span>
-                    <span className="sv-audit-date">{fmtAuditDate(e.occurred_at)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Backup */}
         <div className="sv-section">
-          <div className="view-section-title">Backup</div>
+          <div className="sv-section-title">Backup</div>
           <div className="sv-field">
-            <div>
-              <div className="sv-label">Export encrypted backup</div>
-              <div className="sv-hint sv-hint--inline">
-                Saves your encrypted database and key file as a <code>.sourcerer-backup</code> file. Keep this somewhere safe — anyone with your master password can restore it.
+            <div className="sv-backup-export-restore">
+              <div className="sv-hint">
+                Save your encrypted database and key file as a <code>.sourcerer-backup</code> file. Keep this somewhere safe — anyone with your master password can restore it.
               </div>
+              <button className="sv-save-btn" onClick={handleExportBackup} disabled={backingUp}>
+                {backingUp ? 'Exporting…' : 'Export backup…'}
+              </button>
               {backupError && <div className="sv-error-inline">{backupError}</div>}
             </div>
-            <button className="sv-add-btn" onClick={handleExportBackup} disabled={backingUp}>
-              {backingUp ? 'Exporting…' : 'Export backup…'}
-            </button>
           </div>
           {!restoreConfirm ? (
             <div className="sv-field">
               <div>
-                <div className="sv-label">Restore from backup</div>
-                <div className="sv-hint sv-hint--inline">
+                <div className="sv-hint">
                   Restore a <code>.sourcerer-backup</code> file. Your current database will be permanently replaced.
                 </div>
+                <button
+                  className="sv-save-btn"
+                  onClick={() => { setRestoreConfirm(true); setRestoreError(null); }}
+                >
+                  Restore from backup…
+                </button>
                 {restoreError && <div className="sv-error-inline">{restoreError}</div>}
               </div>
-              <button
-                className="sv-add-btn"
-                onClick={() => { setRestoreConfirm(true); setRestoreError(null); }}
-              >
-                Restore from backup…
-              </button>
             </div>
           ) : (
             <div className="sv-wipe-confirm">
@@ -830,12 +780,11 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Danger Zone */}
         <div className="sv-section sv-danger-zone">
-          <div className="view-section-title sv-danger-title">Danger Zone</div>
+          <div className="sv-section-title sv-danger-title">Danger Zone</div>
           {!panicWipeConfirm ? (
             <div className="sv-field">
               <div>
-                <div className="sv-label">Wipe all data</div>
-                <div className="sv-hint sv-hint--inline">
+                <div className="sv-hint">
                   Permanently deletes the database and encryption key. This cannot be undone.
                 </div>
               </div>

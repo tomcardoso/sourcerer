@@ -29,7 +29,7 @@
 }
 
 .ac-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
 }
@@ -60,7 +60,7 @@
 .ac-label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -141,7 +141,7 @@
   background: none;
   border: none;
   color: var(--color-primary);
-  font-size: 12px;
+  font-size: 11px;
   font-family: var(--font-mono);
   cursor: pointer;
   padding: 2px 0;
@@ -224,4 +224,27 @@
 
 .ac-phone-row .ac-input {
   width: 100%;
+}
+
+.ac-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ac-project-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-family: var(--font-serif);
+  color: var(--color-text);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.ac-project-name {
+  text-transform: none;
+  letter-spacing: normal;
 }

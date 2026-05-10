@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import type { ContactListItem, CreateContactInput } from '@shared/types';
+import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import './AddContactModal.css';
 
 interface Props {
@@ -71,6 +71,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [org, setOrg] = useState('');
   const [emails, setEmails] = useState<string[]>(['']);
   const [phones, setPhones] = useState<Array<{ phone: string; label: string }>>([{ phone: '', label: '' }]);
+  const [websites, setWebsites] = useState<string[]>(['']);
   const [socials, setSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [''], x: [], instagram: [], facebook: [],
   });
@@ -78,12 +79,18 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onCancel]);
+
+  useEffect(() => {
+    window.sourcerer.listProjects().then(setProjects);
+  }, []);
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
@@ -116,9 +123,12 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     if (!name.trim()) return;
     setSubmitting(true);
 
-    const links = SOCIAL_TYPES.flatMap((type) =>
-      socials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
-    );
+    const links = [
+      ...websites.filter((u) => u.trim()).map((url) => ({ type: 'website', url })),
+      ...SOCIAL_TYPES.flatMap((type) =>
+        socials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
+      ),
+    ];
 
     const data: CreateContactInput = {
       name: name.trim(),
@@ -130,6 +140,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     };
 
     const contact = await window.sourcerer.createContact(data);
+    await Promise.all([...selectedProjectIds].map((pid) => window.sourcerer.addToProject(contact.id, pid)));
     onCreated(contact);
   }
 
@@ -228,6 +239,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             </button>
           </div>
 
+          <DynamicList
+            label="Website"
+            values={websites}
+            placeholder="https://example.com"
+            onChange={setWebsites}
+          />
+
           {SOCIAL_TYPES.map((type) => (
             <DynamicList
               key={type}
@@ -237,6 +255,32 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               onChange={(vals) => setSocial(type, vals)}
             />
           ))}
+
+          {projects.length > 0 && (
+            <div className="ac-field">
+              <label className="ac-label">Add to projects</label>
+              <div className="ac-project-list">
+                {projects.map((p) => (
+                  <label key={p.id} className="ac-project-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedProjectIds.has(p.id)}
+                      onChange={(e) => {
+                        setSelectedProjectIds((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(p.id);
+                          else next.delete(p.id);
+                          return next;
+                        });
+                      }}
+                      disabled={submitting}
+                    />
+                    <span className="ac-project-name">{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="ac-field">
             <label htmlFor="ac-notes" className="ac-label">Notes</label>
