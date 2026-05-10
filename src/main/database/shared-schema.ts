@@ -20,6 +20,7 @@ export const SHARED_SCHEMA_SQL = `
     id         TEXT    PRIMARY KEY,
     contact_id TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     email      TEXT    NOT NULL,
+    label      TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0
   );
 

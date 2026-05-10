@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
-import type { User, StatusOption, PriorityOption } from '@shared/types';
+import type { User } from '@shared/types';
 import './View.css';
 import './SettingsView.css';
 
@@ -9,14 +9,6 @@ interface Props {
   onUserUpdated: (user: User) => void;
 }
 
-
-const INTERVAL_PRESETS = [
-  { label: 'Weekly', days: 7 },
-  { label: 'Every 2 weeks', days: 14 },
-  { label: 'Every 4 weeks', days: 28 },
-  { label: 'Every 2 months', days: 60 },
-  { label: 'No reminders', days: null as number | null },
-];
 
 const TIMEOUT_OPTIONS = [
   { label: '1 minute', seconds: 60 },
@@ -27,140 +19,21 @@ const TIMEOUT_OPTIONS = [
   { label: 'Never', seconds: 0 },
 ];
 
-function OptionsSection({
-  title,
-  description,
-  options,
-  onAdd,
-  onRename,
-  onDelete,
-  onMove,
-  showInterval,
-  onSetInterval,
-}: {
-  title: string;
-  description?: string;
-  options: (StatusOption | PriorityOption)[];
-  onAdd: (label: string) => Promise<void>;
-  onRename: (id: string, label: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onMove: (id: string, direction: 'up' | 'down') => Promise<void>;
-  showInterval?: boolean;
-  onSetInterval?: (id: string, days: number | null) => Promise<void>;
-}) {
-  const [adding, setAdding] = useState(false);
-  const [newLabel, setNewLabel] = useState('');
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, string>>({});
-
-  function getEditValue(opt: StatusOption | PriorityOption) {
-    return editValues[opt.id] ?? opt.label;
-  }
-
-  async function handleBlur(opt: StatusOption | PriorityOption) {
-    const val = (editValues[opt.id] ?? opt.label).trim();
-    if (!val || val === opt.label) {
-      setEditValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
-      return;
-    }
-    await onRename(opt.id, val);
-    setEditValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
-  }
-
-  async function handleAddConfirm() {
-    const label = newLabel.trim();
-    if (!label) { setAdding(false); setNewLabel(''); return; }
-    await onAdd(label);
-    setNewLabel('');
-    setAdding(false);
-  }
-
+function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
   return (
-    <div className="sv-section">
-      <div className="sv-section-title">{title}</div>
-      {description && <p className="sv-hint">{description}</p>}
-      <div className="sv-option-list">
-        {deleteError && (
-          <div className="sv-error">{deleteError}</div>
-        )}
-        {options.map((opt, i) => (
-          <div key={opt.id} className="sv-option-row">
-            <input
-              className="sv-option-input"
-              value={getEditValue(opt)}
-              onChange={(e) => setEditValues((prev) => ({ ...prev, [opt.id]: e.target.value }))}
-              onBlur={() => handleBlur(opt)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                if (e.key === 'Escape') {
-                  setEditValues((prev) => { const n = { ...prev }; delete n[opt.id]; return n; });
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-            />
-            {showInterval && onSetInterval && (
-              <select
-                className="sv-interval-select"
-                title="Outreach reminder frequency"
-                value={String((opt as PriorityOption).outreach_interval_days ?? '')}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  onSetInterval(opt.id, val === '' ? null : Number(val));
-                }}
-              >
-                {INTERVAL_PRESETS.map((p) => (
-                  <option key={p.days ?? 'none'} value={p.days ?? ''}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            )}
-            <button
-              className="sv-move-btn"
-              disabled={i === 0}
-              onClick={() => onMove(opt.id, 'up')}
-              title="Move up"
-            >▲</button>
-            <button
-              className="sv-move-btn"
-              disabled={i === options.length - 1}
-              onClick={() => onMove(opt.id, 'down')}
-              title="Move down"
-            >▼</button>
-            <button
-              className="sv-delete-btn"
-              onClick={async () => {
-                try {
-                  setDeleteError(null);
-                  await onDelete(opt.id);
-                } catch {
-                  setDeleteError(`"${opt.label}" is in use and cannot be deleted.`);
-                }
-              }}
-              title="Delete"
-            >×</button>
-          </div>
-        ))}
-
-        {adding ? (
-          <div className="sv-option-row">
-            <input
-              className="sv-option-input"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              autoFocus
-              placeholder="Label…"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddConfirm();
-                if (e.key === 'Escape') { setAdding(false); setNewLabel(''); }
-              }}
-            />
-            <button className="sv-confirm-btn" onClick={handleAddConfirm}>Add</button>
-            <button className="sv-cancel-small-btn" onClick={() => { setAdding(false); setNewLabel(''); }}>Cancel</button>
-          </div>
-        ) : (
-          <button className="sv-add-btn" onClick={() => setAdding(true)}>+ Add</button>
-        )}
+    <div className={`sv-toggle-row${hint ? ' sv-toggle-row--has-hint' : ''}`}>
+      <button
+        type="button"
+        className={`sv-toggle${checked ? ' sv-toggle--on' : ''}`}
+        onClick={() => onChange(!checked)}
+        aria-pressed={checked}
+      >
+        <span className="sv-toggle-knob" />
+        <span className="sv-toggle-label">{checked ? 'ON' : 'OFF'}</span>
+      </button>
+      <div>
+        <div className="sv-toggle-text">{label}</div>
+        {hint && <div className="sv-hint sv-hint--inline">{hint}</div>}
       </div>
     </div>
   );
@@ -173,8 +46,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
-  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
-  const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('CA');
   const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
@@ -182,6 +53,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [alertNotificationsEnabled, setAlertNotificationsEnabled] = useState<boolean>(true);
   const [reminderNotificationsEnabled, setReminderNotificationsEnabled] = useState<boolean>(true);
   const [rssPollIntervalHours, setRssPollIntervalHours] = useState<number>(6);
+  const [waybackEnabled, setWaybackEnabled] = useState<boolean>(true);
   const [stalenessEnabled, setStalenessEnabled] = useState<boolean>(true);
   const [stalenessThreshold, setStalenessThreshold] = useState<number>(90);
   const [stalenessThresholdInput, setStalenessThresholdInput] = useState<string>('90');
@@ -227,9 +99,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setStalenessThreshold(user.staleness_threshold_days ?? 90);
       setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
       setRssPollIntervalHours(user.rss_poll_interval_hours ?? 6);
+      setWaybackEnabled(user.wayback_enabled !== 0);
     }
-    window.sourcerer.listStatusOptions().then(setStatusOptions);
-    window.sourcerer.listPriorityOptions().then(setPriorityOptions);
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
   }, [user?.id]);
 
@@ -340,6 +211,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     onUserUpdated(updated);
   }
 
+  async function handleWaybackToggle(enabled: boolean) {
+    setWaybackEnabled(enabled);
+    const updated = await window.sourcerer.setWaybackEnabled(enabled);
+    onUserUpdated(updated);
+  }
+
   async function handleReminderNotificationsToggle(enabled: boolean) {
     setReminderNotificationsEnabled(enabled);
     const updated = await window.sourcerer.setReminderNotificationsEnabled(enabled);
@@ -358,51 +235,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     onUserUpdated(updated);
   }
 
-  async function handlePriorityInterval(id: string, days: number | null) {
-    await window.sourcerer.setPriorityInterval(id, days);
-    setPriorityOptions(await window.sourcerer.listPriorityOptions());
-  }
-
   async function handlePhoneCountryChange(country: string) {
     setPhoneCountry(country);
     const updated = await window.sourcerer.setPhoneCountry(country);
     onUserUpdated(updated);
-  }
-
-  // Status option handlers
-  async function addStatus(label: string) {
-    const opt = await window.sourcerer.createStatusOption(label);
-    setStatusOptions((prev) => [...prev, opt]);
-  }
-  async function renameStatus(id: string, label: string) {
-    await window.sourcerer.renameStatusOption(id, label);
-    setStatusOptions((prev) => prev.map((o) => (o.id === id ? { ...o, label } : o)));
-  }
-  async function deleteStatus(id: string) {
-    await window.sourcerer.deleteStatusOption(id);
-    setStatusOptions((prev) => prev.filter((o) => o.id !== id));
-  }
-  async function moveStatus(id: string, direction: 'up' | 'down') {
-    await window.sourcerer.moveStatusOption(id, direction);
-    setStatusOptions(await window.sourcerer.listStatusOptions());
-  }
-
-  // Priority option handlers
-  async function addPriority(label: string) {
-    const opt = await window.sourcerer.createPriorityOption(label);
-    setPriorityOptions((prev) => [...prev, opt]);
-  }
-  async function renamePriority(id: string, label: string) {
-    await window.sourcerer.renamePriorityOption(id, label);
-    setPriorityOptions((prev) => prev.map((o) => (o.id === id ? { ...o, label } : o)));
-  }
-  async function deletePriority(id: string) {
-    await window.sourcerer.deletePriorityOption(id);
-    setPriorityOptions((prev) => prev.filter((o) => o.id !== id));
-  }
-  async function movePriority(id: string, direction: 'up' | 'down') {
-    await window.sourcerer.movePriorityOption(id, direction);
-    setPriorityOptions(await window.sourcerer.listPriorityOptions());
   }
 
   const profileDirty =
@@ -412,13 +248,17 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   return (
     <div className="view">
       <div className="view-header">
-        <h1 className="view-title">Settings</h1>
+        <p className="view-kicker">Settings</p>
+        <h1 className="view-headline">Preferences</h1>
+        <div className="view-rule-thick" />
+        <div className="view-rule-thin" />
       </div>
 
       <div className="sv-body">
         {/* Profile */}
         <div className="sv-section">
           <div className="sv-section-title">Profile</div>
+          <p className="sv-hint">Your name and email are attached to notes and interactions you log across projects.</p>
           <div className="sv-fields">
             <div className="sv-field">
               <label className="sv-label">First name</label>
@@ -518,47 +358,21 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           </div>
         </div>
 
-        {/* Status options */}
-        <OptionsSection
-          title="Source Statuses"
-          options={statusOptions}
-          onAdd={addStatus}
-          onRename={renameStatus}
-          onDelete={deleteStatus}
-          onMove={moveStatus}
-        />
-
-        {/* Priority options */}
-        <OptionsSection
-          title="Priority Levels"
-          description="Assign a priority level to each source within a project to signal how urgently you need to maintain the relationship. The reminder interval sets how often you want to be nudged to reach out to contacts at that priority — leave it blank to suppress reminders for that level."
-          options={priorityOptions}
-          onAdd={addPriority}
-          onRename={renamePriority}
-          onDelete={deletePriority}
-          onMove={movePriority}
-          showInterval
-          onSetInterval={handlePriorityInterval}
-        />
-
         {/* Staleness */}
         <div className="sv-section">
-          <div className="sv-section-title">Source Staleness</div>
+          <div className="sv-section-title">Contact staleness</div>
           <p className="sv-hint">
             Contacts with no interaction or outreach logged within the threshold will show a subtle amber indicator in the contacts table.
           </p>
-          <div className="sv-field sv-field-check">
-            <input
-              type="checkbox"
-              checked={stalenessEnabled}
-              onChange={(e) => handleStalenessToggle(e.target.checked)}
-            />
-            <label className="sv-label">Enable staleness indicator</label>
-          </div>
+          <Toggle
+            checked={stalenessEnabled}
+            onChange={handleStalenessToggle}
+            label="Enable staleness indicator"
+          />
           {stalenessEnabled && (
             <div className="sv-field sv-staleness-threshold">
-              <label className="sv-label">Stale after</label>
               <div className="sv-inline-field">
+                <label className="sv-label sv-label--inline">Stale after</label>
                 <input
                   type="number"
                   className="sv-input sv-threshold-input"
@@ -576,36 +390,26 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Outreach reminders */}
         <div className="sv-section">
-          <div className="sv-section-title">Outreach Reminders</div>
+          <div className="sv-section-title">Outreach reminders</div>
           <p className="sv-hint">
-            Get a native notification when a source hasn't been contacted within their priority's reminder interval. Configure intervals per priority level above. Reminders can be disabled per-source in the contact's project tab.
+            Get a native notification when a contact hasn't been contacted within their priority's reminder interval. Configure intervals per priority level above. Reminders can be disabled per-contact in the contact's project tab.
           </p>
-          <div className="sv-field sv-field-check">
-            <input
-              type="checkbox"
-              checked={outreachRemindersEnabled}
-              onChange={(e) => handleOutreachToggle(e.target.checked)}
-            />
-            <label className="sv-label">Enable outreach reminders</label>
-          </div>
-          <div className="sv-field sv-field-check">
-            <input
-              type="checkbox"
-              checked={outreachRequireInteraction}
-              onChange={(e) => handleOutreachRequireInteractionToggle(e.target.checked)}
-            />
-            <div>
-              <div className="sv-label">Start clock after first interaction</div>
-              <div className="sv-hint sv-hint--inline">
-                When on, outreach reminders won't appear until at least one interaction has been logged for a source. When off, the clock starts as soon as a priority is assigned.
-              </div>
-            </div>
-          </div>
+          <Toggle
+            checked={outreachRemindersEnabled}
+            onChange={handleOutreachToggle}
+            label="Enable outreach reminders"
+          />
+          <Toggle
+            checked={outreachRequireInteraction}
+            onChange={handleOutreachRequireInteractionToggle}
+            label="Start clock after first interaction"
+            hint="When on, outreach reminders won't appear until at least one interaction has been logged for a source. When off, the clock starts as soon as a priority is assigned."
+          />
         </div>
 
         {/* Google Alerts */}
         <div className="sv-section">
-          <div className="sv-section-title">Google Alerts</div>
+          <div className="sv-section-title">Google alerts</div>
           <p className="sv-hint">
             Sourcerer polls RSS feeds for each contact's Google Alert. Control how often it checks.
           </p>
@@ -631,27 +435,22 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           <p className="sv-hint">
             Control which events trigger OS-level notifications.
           </p>
-          <div className="sv-field sv-field-check">
-            <input
-              type="checkbox"
-              checked={alertNotificationsEnabled}
-              onChange={(e) => handleAlertNotificationsToggle(e.target.checked)}
-            />
-            <label className="sv-label">Alert mentions</label>
-          </div>
-          <div className="sv-field sv-field-check">
-            <input
-              type="checkbox"
-              checked={reminderNotificationsEnabled}
-              onChange={(e) => handleReminderNotificationsToggle(e.target.checked)}
-            />
-            <label className="sv-label">Reminders</label>
-          </div>
+          <Toggle
+            checked={alertNotificationsEnabled}
+            onChange={handleAlertNotificationsToggle}
+            label="Alert mentions"
+          />
+          <Toggle
+            checked={reminderNotificationsEnabled}
+            onChange={handleReminderNotificationsToggle}
+            label="Reminders"
+          />
         </div>
 
         {/* Security */}
         <div className="sv-section">
           <div className="sv-section-title">Security</div>
+          <p className="sv-hint">Sourcerer will lock itself and require your password after a period of inactivity.</p>
           <div className="sv-field">
             <label className="sv-label">Auto-lock after</label>
             <select
@@ -668,7 +467,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Phone formatting */}
         <div className="sv-section">
-          <div className="sv-section-title">Phone Numbers</div>
+          <div className="sv-section-title">Phone numbers</div>
           <p className="sv-hint">
             Numbers entered without a country code (e.g. 07911 123456) will be interpreted as belonging to this country and stored in E.164 format.
           </p>
@@ -688,11 +487,24 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           </div>
         </div>
 
+        {/* Website archiving */}
+        <div className="sv-section">
+          <div className="sv-section-title">Website archiving</div>
+          <p className="sv-hint">
+            When enabled, Sourcerer automatically submits website URLs to the Internet Archive (Wayback Machine) when you add or update a contact.
+          </p>
+          <Toggle
+            checked={waybackEnabled}
+            onChange={handleWaybackToggle}
+            label="Submit URLs to the Wayback Machine"
+          />
+        </div>
+
         {/* Calendar */}
         <div className="sv-section">
-          <div className="sv-section-title">Calendar Subscription</div>
+          <div className="sv-section-title">Calendar subscription</div>
           <p className="sv-hint">
-            Subscribe to this URL in Apple Calendar, Outlook, or Google Calendar to see your reminders.
+            Subscribe to this URL in your calendar app to see your Sourcerer reminders. This link will only work on devices where you are logged in to Sourcerer and have the app running.
           </p>
           <div className="sv-calendar-url-row">
             <input
@@ -780,7 +592,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
         {/* Danger Zone */}
         <div className="sv-section sv-danger-zone">
-          <div className="sv-section-title sv-danger-title">Danger Zone</div>
+          <div className="sv-section-title sv-danger-title">Danger zone</div>
+          <div className="sv-danger-inset">
           {!panicWipeConfirm ? (
             <div className="sv-field">
               <div>
@@ -789,7 +602,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 </div>
               </div>
               <button className="sv-wipe-btn" onClick={() => { setPanicWipeConfirm(true); setPanicWipeInput(''); }}>
-                Wipe all data…
+                Wipe all data
               </button>
             </div>
           ) : (
@@ -823,6 +636,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               </div>
             </div>
           )}
+          </div>
         </div>
 
         <div className="sv-credit">

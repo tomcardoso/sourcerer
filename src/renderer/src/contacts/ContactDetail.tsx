@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ContactDetail as ContactDetailType, Project, StatusOption, PriorityOption, User } from '@shared/types';
 import GlobalTab from './GlobalTab';
 import ProjectTab from './ProjectTab';
+import '../views/View.css';
 import './ContactDetail.css';
 
 interface Props {
@@ -21,6 +22,15 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('global');
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isEditing) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, isEditing]);
 
   const reload = useCallback(() => {
     window.sourcerer.getContact(contactId).then(setContact);
@@ -64,17 +74,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
             <div className="detail-loading">Loading…</div>
           )}
         </div>
-        {contact && (
-          <button
-            className="detail-vcard-btn"
-            onClick={() => window.sourcerer.exportVCardContact(contact.id)}
-            title="Export as vCard (.vcf)"
-          >
-            ↓ vCard
-          </button>
-        )}
         <button className="detail-close" onClick={onClose}>×</button>
       </div>
+      <div className="view-rule-thick" />
+      <div className="view-rule-thin" />
 
       {contact && (
         <>
@@ -102,6 +105,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               onRefresh={reload}
               onMembershipChanged={handleMembershipChanged}
               onDeleted={onDeleted}
+              onEditingChange={setIsEditing}
             />
           )}
 

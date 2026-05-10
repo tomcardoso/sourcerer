@@ -188,6 +188,53 @@ export function registerExportHandlers(): void {
     },
   );
 
+  ipcMain.handle(
+    'export:all-contacts',
+    async (event): Promise<{ success: boolean; error?: string }> => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const db = getDatabase();
+
+      const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+        title: 'Export all contacts',
+        defaultPath: 'all-contacts',
+        filters: [
+          { name: 'CSV', extensions: ['csv'] },
+          { name: 'Excel', extensions: ['xlsx'] },
+        ],
+      });
+      if (saveResult.canceled || !saveResult.filePath) return { success: false };
+
+      const filePath = saveResult.filePath;
+      const isXlsx = filePath.endsWith('.xlsx');
+
+      const contacts = db
+        .prepare('SELECT id, name, organization, notes FROM contacts ORDER BY name COLLATE NOCASE')
+        .all() as { id: string; name: string; organization: string | null; notes: string | null }[];
+
+      const rows: { Name: string; Organization: string; Emails: string; Phones: string; Notes: string }[] = [];
+
+      for (const c of contacts) {
+        const emails = (
+          db.prepare('SELECT email FROM contact_emails WHERE contact_id = ? ORDER BY sort_order').all(c.id) as { email: string }[]
+        ).map((r) => r.email).join('; ');
+        const phones = (
+          db.prepare('SELECT phone FROM contact_phones WHERE contact_id = ? ORDER BY sort_order').all(c.id) as { phone: string }[]
+        ).map((r) => r.phone).join('; ');
+        rows.push({ Name: c.name, Organization: c.organization ?? '', Emails: emails, Phones: phones, Notes: c.notes ?? '' });
+      }
+
+      try {
+        const ws = utils.json_to_sheet(rows);
+        const wb = utils.book_new();
+        utils.book_append_sheet(wb, ws, 'Contacts');
+        writeFile(wb, filePath, isXlsx ? undefined : { bookType: 'csv' });
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: String(err) };
+      }
+    },
+  );
+
   ipcMain.handle('export:vcard-contact', async (event, contactId: string): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const db = getDatabase();
@@ -239,8 +286,8 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
   if (!contact) return null;
 
   const emails = (
-    db.prepare('SELECT email FROM contact_emails WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { email: string }[]
-  ).map((r) => r.email);
+    db.prepare('SELECT email, label FROM contact_emails WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { email: string; label: string | null }[]
+  );
 
   const phones = (
     db.prepare('SELECT phone FROM contact_phones WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { phone: string }[]
@@ -254,7 +301,10 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
   lines.push(`FN:${escapeVCard(contact.name)}`);
   lines.push(`N:${escapeVCard(contact.name)};;;;`);
   if (contact.organization) lines.push(`ORG:${escapeVCard(contact.organization)}`);
-  emails.forEach((e) => lines.push(`EMAIL;TYPE=INTERNET:${e}`));
+  emails.forEach((e) => {
+    const typeParam = e.label ? `;TYPE=${e.label.toUpperCase()}` : ';TYPE=INTERNET';
+    lines.push(`EMAIL${typeParam}:${e.email}`);
+  });
   phones.forEach((p) => lines.push(`TEL:${p}`));
   links.forEach((l) => {
     const typeLabel = l.type.charAt(0).toUpperCase() + l.type.slice(1);

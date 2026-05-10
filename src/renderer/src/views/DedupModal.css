@@ -18,25 +18,57 @@
   flex-shrink: 0;
 }
 
+.dedup-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dedup-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.dedup-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dedup-reason-desc {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
 .dedup-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-text);
 }
 
 .dedup-reason {
-  font-size: 11px;
-  background: #eff6ff;
-  color: var(--color-primary);
-  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+  padding: 2px 6px;
   border-radius: 0;
-  font-weight: 500;
 }
 
 .dedup-progress {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--color-text-dim);
 }
 
 .dedup-body {
@@ -52,9 +84,10 @@
 }
 
 .dedup-col-header {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 10px;
@@ -81,12 +114,13 @@
 }
 
 .dedup-field-label {
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.16em;
   color: var(--color-text-muted);
-  width: 44px;
+  width: 64px;
   flex-shrink: 0;
   padding-top: 2px;
 }
@@ -99,8 +133,9 @@
 }
 
 .dedup-field-value--unique {
-  font-style: italic;
-  color: var(--color-primary);
+  border-left: 2px solid var(--color-warning-border);
+  padding-left: 6px;
+  margin-left: -8px;
 }
 
 .dedup-notes {
@@ -132,12 +167,13 @@
   height: 34px;
   padding: 0 14px;
   border-radius: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   font-family: var(--font-mono);
+  letter-spacing: 0.10em;
   cursor: pointer;
-  border: none;
-  transition: background 0.15s;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .dedup-btn:disabled {
@@ -155,10 +191,12 @@
 }
 
 .dedup-btn--secondary {
-  background: #f3f4f6;
-  color: var(--color-text);
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
 }
 
 .dedup-btn--secondary:hover:not(:disabled) {
-  background: #e5e7eb;
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }

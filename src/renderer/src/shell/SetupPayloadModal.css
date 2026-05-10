@@ -6,7 +6,7 @@
   font-size: 13px;
   color: var(--color-text-muted);
   margin: 0 0 16px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .setup-payload-link-row {
@@ -38,7 +38,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;

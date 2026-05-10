@@ -103,7 +103,7 @@ export default function Sidebar({
             <button className="sidebar-action-btn sidebar-action-btn--secondary" onClick={onImportCsv}>Import contacts</button>
           </div>
 
-          <div className="utility-type-large sidebar-section-label">Workspace</div>
+          <div className="sidebar-section-label">Workspace</div>
 
           <button
             className={`sidebar-nav-item ${isActive({ view: 'all-contacts' }) ? 'active' : ''}`}
@@ -122,7 +122,7 @@ export default function Sidebar({
             </span>
             Reminders
             {overdueReminders > 0 && (
-              <span className="utility-type-small sidebar-overdue-label">
+              <span className="sidebar-overdue-label">
                 {overdueReminders}&nbsp;Overdue
               </span>
             )}
@@ -137,21 +137,23 @@ export default function Sidebar({
             </span>
             Mentions
             {unseenMentions > 0 && (
-              <span className="utility-type-small sidebar-overdue-label">{unseenMentions > 99 ? '99+ hits' : `${unseenMentions} hits`}</span>
+              <span className="sidebar-overdue-label">{unseenMentions > 99 ? '99+ hits' : `${unseenMentions} hits`}</span>
             )}
           </button>
 
           <button className="sidebar-nav-item sidebar-search-btn" onClick={onSearchOpen}>
             <span className="sidebar-nav-indicator" />
             Search
-            <span className="utility-type-small sidebar-search-hint"><span>⌘</span>K</span>
+            <span className="sidebar-search-hint">
+              {navigator.platform.startsWith('Mac') ? <><span>⌘</span>K</> : 'Ctrl+K'}
+            </span>
           </button>
         </nav>
 
         {/* Projects */}
         <div className="sidebar-section">
           <div className="sidebar-section-header-row">
-            <span className="utility-type-large sidebar-section-label">Projects</span>
+            <span className="sidebar-section-label">Projects</span>
             <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} title="New project">+</button>
           </div>
 
@@ -204,7 +206,7 @@ export default function Sidebar({
             ))}
           </ul>
 
-          <button className="utility-type-small sidebar-join-project" onClick={() => setShowJoinProject(true)}>
+          <button className="sidebar-join-project" onClick={() => setShowJoinProject(true)}>
             + Join shared project
           </button>
         </div>

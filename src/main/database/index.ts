@@ -170,6 +170,21 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
 
   try { db.exec('ALTER TABLE reminders ADD COLUMN completed_at INTEGER'); } catch {}
 
+  try { db.exec('ALTER TABLE contact_emails ADD COLUMN label TEXT'); } catch {}
+
+  try { db.exec('ALTER TABLE users ADD COLUMN wayback_enabled INTEGER NOT NULL DEFAULT 1'); } catch {}
+  try { db.exec('ALTER TABLE projects ADD COLUMN last_synced_at INTEGER'); } catch {}
+  try { db.exec('ALTER TABLE users ADD COLUMN last_rss_fetched_at INTEGER'); } catch {}
+
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS dedup_dismissed_pairs (
+      contact_a_id TEXT NOT NULL,
+      contact_b_id TEXT NOT NULL,
+      dismissed_at INTEGER NOT NULL,
+      PRIMARY KEY (contact_a_id, contact_b_id)
+    )`);
+  } catch {}
+
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS membership_reporters (
       id             TEXT PRIMARY KEY,

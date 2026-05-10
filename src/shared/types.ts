@@ -27,6 +27,7 @@ export interface Project {
   shared_db_path: string | null;
   shared_pending_writes: 0 | 1;
   created_at: number;
+  last_synced_at: number | null;
 }
 
 export interface User {
@@ -45,6 +46,7 @@ export interface User {
   alert_notifications_enabled: 0 | 1;
   reminder_notifications_enabled: 0 | 1;
   rss_poll_interval_hours: number;
+  wayback_enabled: 0 | 1;
 }
 
 export interface ContactListItem {
@@ -64,6 +66,7 @@ export interface ContactListItem {
 export interface ContactEmail {
   id: string;
   email: string;
+  label: string | null;
   sort_order: number;
 }
 
@@ -123,7 +126,7 @@ export interface CreateContactInput {
   name: string;
   organization?: string;
   notes?: string;
-  emails?: string[];
+  emails?: Array<{ email: string; label?: string }>;
   phones?: Array<{ phone: string; label?: string }>;
   links?: ContactLinkInput[];
 }
@@ -133,7 +136,7 @@ export interface UpdateContactInput {
   name: string;
   organization?: string;
   notes?: string;
-  emails?: string[];
+  emails?: Array<{ email: string; label?: string }>;
   phones?: Array<{ phone: string; label?: string }>;
   links?: ContactLinkInput[];
 }
@@ -280,6 +283,7 @@ export interface DedupContact {
   emails: string[];
   phones: string[];
   projectCount: number;
+  projects: string[];
 }
 
 export interface DuplicatePair {

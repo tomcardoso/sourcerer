@@ -155,7 +155,7 @@ export default function AppShell() {
         {nav.view === 'alerts' && (
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
-        {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} />}
+        {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} user={user} />}
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}

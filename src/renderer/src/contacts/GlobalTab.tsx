@@ -9,6 +9,7 @@ interface Props {
   onRefresh: () => void;
   onMembershipChanged: () => void;
   onDeleted: (id: string) => void;
+  onEditingChange?: (editing: boolean) => void;
 }
 
 const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
@@ -70,11 +71,17 @@ function DynamicList({
   );
 }
 
-export default function GlobalTab({ contact, allProjects, onRefresh, onMembershipChanged, onDeleted }: Props) {
+export default function GlobalTab({ contact, allProjects, onRefresh, onMembershipChanged, onDeleted, onEditingChange }: Props) {
   const [editing, setEditing] = useState(false);
+
+  function setEditingAndNotify(value: boolean) {
+    setEditing(value);
+    onEditingChange?.(value);
+  }
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingToProject, setAddingToProject] = useState('');
+  const [confirmRemoveProjectId, setConfirmRemoveProjectId] = useState<string | null>(null);
   const [alertRss, setAlertRss] = useState<ContactAlertRss | null>(null);
   const [screenshots, setScreenshots] = useState<ContactScreenshot[]>([]);
   const [screenshotImages, setScreenshotImages] = useState<Record<string, string>>({});
@@ -94,7 +101,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editName, setEditName] = useState('');
   const [editOrg, setEditOrg] = useState('');
   const [editNotes, setEditNotes] = useState('');
-  const [editEmails, setEditEmails] = useState<string[]>([]);
+  const [editEmails, setEditEmails] = useState<Array<{ email: string; label: string }>>([]);
   const [editPhones, setEditPhones] = useState<Array<{ phone: string; label: string }>>([]);
   const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [], x: [], instagram: [], facebook: [],
@@ -139,7 +146,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditName(contact.name);
     setEditOrg(contact.organization ?? '');
     setEditNotes(contact.notes ?? '');
-    setEditEmails(contact.emails.map((e) => e.email));
+    setEditEmails(contact.emails.map((e) => ({ email: e.email, label: e.label ?? '' })));
     setEditPhones(contact.phones.map((p) => ({ phone: p.phone, label: p.label ?? '' })));
     const socialsByType = Object.fromEntries(
       SOCIAL_TYPES.map((type) => [
@@ -152,7 +159,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditRssUrl(alertRss?.rss_url ?? '');
     setEmailCollisions({});
     setPhoneCollisions({});
-    setEditing(true);
+    setEditingAndNotify(true);
   }
 
   async function checkEmailBlur(value: string) {
@@ -194,7 +201,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         name: editName,
         organization: editOrg,
         notes: editNotes,
-        emails: editEmails,
+        emails: editEmails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
         phones: editPhones.map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
         links,
       });
@@ -209,7 +216,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         setAlertRss(null);
       }
       onRefresh();
-      setEditing(false);
+      setEditingAndNotify(false);
     } finally {
       setSaving(false);
     }
@@ -224,6 +231,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function handleRemoveFromProject(projectId: string) {
     await window.sourcerer.removeFromProject(contact.id, projectId);
+    setConfirmRemoveProjectId(null);
     onMembershipChanged();
   }
 
@@ -248,7 +256,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <button className="detail-save-btn" onClick={handleSave} disabled={saving || !editName.trim()}>
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button className="detail-cancel-btn" onClick={() => setEditing(false)} disabled={saving}>
+          <button className="detail-cancel-btn" onClick={() => setEditingAndNotify(false)} disabled={saving}>
             Cancel
           </button>
         </div>
@@ -265,13 +273,52 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
         <div className="ac-field">
           <label className="ac-label">Email</label>
-          <DynamicList
-            values={editEmails}
-            placeholder="email@example.com"
-            onChange={setEditEmails}
-            onBlurItem={checkEmailBlur}
-            warnings={emailCollisions}
-          />
+          {editEmails.map((entry, i) => (
+            <div key={i}>
+              <div className="ac-phone-row">
+                <input
+                  className="ac-input"
+                  value={entry.email}
+                  placeholder="email@example.com"
+                  disabled={saving}
+                  onChange={(e) => {
+                    const next = [...editEmails];
+                    next[i] = { ...next[i], email: e.target.value };
+                    setEditEmails(next);
+                  }}
+                  onBlur={() => checkEmailBlur(entry.email.trim())}
+                />
+                <input
+                  className="ac-input"
+                  value={entry.label}
+                  placeholder="label"
+                  disabled={saving}
+                  onChange={(e) => {
+                    const next = [...editEmails];
+                    next[i] = { ...next[i], label: e.target.value };
+                    setEditEmails(next);
+                  }}
+                />
+                <button
+                  className="ac-remove"
+                  type="button"
+                  onClick={() => setEditEmails(editEmails.filter((_, j) => j !== i))}
+                >×</button>
+              </div>
+              {entry.email.trim() && emailCollisions[entry.email.trim()] && (
+                <div className="ac-collision-warn">
+                  Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
+                </div>
+              )}
+            </div>
+          ))}
+          <button
+            className="ac-add-row"
+            type="button"
+            onClick={() => setEditEmails([...editEmails, { email: '', label: '' }])}
+          >
+            + Add
+          </button>
         </div>
 
         <div className="ac-field">
@@ -294,7 +341,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 <input
                   className="ac-input"
                   value={entry.label}
-                  placeholder="label…"
+                  placeholder="label"
                   disabled={saving}
                   onChange={(e) => {
                     const next = [...editPhones];
@@ -342,7 +389,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             placeholder="https://example.com"
             onChange={setEditWebsites}
           />
-          <p className="ac-field-hint">When added, Sourcerer will submit the URL to the Wayback Machine for archiving.</p>
+          <p className="ac-field-hint">Wayback Machine archiving can be enabled or disabled in Settings.</p>
         </div>
 
         <div className="ac-field">
@@ -380,7 +427,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="detail-section">
           <div className="detail-section-label">Email</div>
           {contact.emails.map((e) => (
-            <a key={e.id} href={`mailto:${e.email}`} className="detail-link">{e.email}</a>
+            <span key={e.id} className="detail-value">
+              <a href={`mailto:${e.email}`} className="detail-link" onClick={(ev) => { ev.preventDefault(); window.open(`mailto:${e.email}`); }}>{e.email}</a>
+              {e.label && <span className="detail-phone-label">· {e.label}</span>}
+            </span>
           ))}
         </div>
       )}
@@ -402,7 +452,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <div key={type} className="detail-section">
             <div className="detail-section-label">{SOCIAL_META[type].label}</div>
             {socialLinks[type].map((l) => (
-              <a key={l.id} href={l.url} className="detail-link" onClick={(e) => e.preventDefault()}>
+              <a key={l.id} href={l.url} className="detail-link" onClick={(e) => { e.preventDefault(); window.open(l.url); }}>
                 {l.url}
               </a>
             ))}
@@ -415,9 +465,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <div className="detail-section-label">Website</div>
           {websiteLinks.map((l) => (
             <div key={l.id} className="detail-website-row">
-              <a href={l.url} className="detail-link" onClick={(e) => e.preventDefault()}>{l.url}</a>
+              <a href={l.url} className="detail-link" onClick={(e) => { e.preventDefault(); window.open(l.url); }}>{l.url}</a>
               {l.wayback_url && (
-                <a href={l.wayback_url} className="detail-wayback-link" onClick={(e) => e.preventDefault()} title="Wayback Machine snapshot">
+                <a href={l.wayback_url} className="detail-wayback-link" onClick={(e) => { e.preventDefault(); window.open(l.wayback_url!); }} title="Wayback Machine snapshot">
                   archived ↗
                 </a>
               )}
@@ -462,7 +512,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </a>
           {alertRss.last_polled_at && (
             <span className="detail-rss-polled">
-              Last polled {new Date(alertRss.last_polled_at * 1000).toLocaleDateString()}
+              Last polled {new Date(alertRss.last_polled_at * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
             </span>
           )}
         </div>
@@ -478,11 +528,24 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               <li key={p.id} className="detail-project-item">
                 <span className="detail-project-name">{p.name}</span>
                 {p.status && <span className="detail-project-status">{p.status}</span>}
-                <button
-                  className="detail-project-remove"
-                  title="Remove from project"
-                  onClick={() => handleRemoveFromProject(p.id)}
-                >×</button>
+                {confirmRemoveProjectId === p.id ? (
+                  <span className="detail-project-remove-confirm">
+                    <button
+                      className="detail-project-remove-yes"
+                      onClick={() => handleRemoveFromProject(p.id)}
+                    >Remove</button>
+                    <button
+                      className="detail-project-remove-no"
+                      onClick={() => setConfirmRemoveProjectId(null)}
+                    >Cancel</button>
+                  </span>
+                ) : (
+                  <button
+                    className="detail-project-remove"
+                    title="Remove from project"
+                    onClick={() => setConfirmRemoveProjectId(p.id)}
+                  >×</button>
+                )}
               </li>
             ))}
           </ul>
@@ -594,7 +657,16 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         ) : (
           <div className="detail-bottom-actions">
-            <button className="detail-edit-btn" onClick={startEdit}>Edit</button>
+            <div className="detail-bottom-left">
+              <button
+                className="detail-vcard-btn"
+                onClick={() => window.sourcerer.exportVCardContact(contact.id)}
+                title="Export as vCard (.vcf)"
+              >
+                ↓ vCard
+              </button>
+              <button className="detail-edit-btn" onClick={startEdit}>Edit</button>
+            </div>
             <button className="detail-delete-btn" onClick={() => setConfirmDelete(true)}>
               Delete contact
             </button>

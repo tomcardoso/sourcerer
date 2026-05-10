@@ -485,7 +485,15 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   async function handlePriorityChange(value: string) {
     setLocalPriority(value);
-    await membershipUpdate({ priority: value });
+    const opt = priorityOptions.find((p) => p.label === value);
+    const shouldDisable = !value || !opt?.outreach_interval_days;
+    if (shouldDisable) {
+      // Force toggle to OFF (visually reset) whenever priority has no interval
+      setLocalOutreachDisabled(false);
+      await membershipUpdate({ priority: value, outreachDisabled: false });
+    } else {
+      await membershipUpdate({ priority: value });
+    }
     onMembershipUpdated();
     setReminderRefresh((t) => t + 1);
   }
@@ -665,29 +673,36 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         <div className="pt-field">
           <label className="pt-label">Outreach reminder</label>
           <div className="pt-outreach-wrap">
-            <label className="pt-outreach-disable">
-              <input
-                type="checkbox"
-                checked={localOutreachDisabled}
-                onChange={(e) => handleOutreachDisabledChange(e.target.checked)}
-              />
-              Disable for this contact
-            </label>
-            <span className="pt-outreach-interval">
-              {(() => {
-                if (!localPriority) return 'No priority set';
-                const opt = priorityOptions.find((p) => p.label === localPriority);
-                if (!opt) return null;
-                const days = opt.outreach_interval_days;
-                if (!days) return `${localPriority} · no interval configured`;
-                if (days === 7) return `${localPriority} · weekly`;
-                if (days === 14) return `${localPriority} · every 2 weeks`;
-                if (days === 28) return `${localPriority} · every 4 weeks`;
-                if (days === 60) return `${localPriority} · every 2 months`;
-                if (days % 7 === 0) return `${localPriority} · every ${days / 7} weeks`;
-                return `${localPriority} · every ${days} days`;
-              })()}
-            </span>
+            {(() => {
+              const opt = localPriority ? priorityOptions.find((p) => p.label === localPriority) : undefined;
+              const noReminders = !localPriority || !opt?.outreach_interval_days;
+              return (
+              <div className={`pt-outreach-disable${noReminders ? ' pt-outreach-disable--no-priority' : ''}`}>
+                <button
+                  type="button"
+                  className={`sv-toggle${localOutreachDisabled ? ' sv-toggle--on' : ''}`}
+                  onClick={() => handleOutreachDisabledChange(!localOutreachDisabled)}
+                  aria-pressed={localOutreachDisabled}
+                  disabled={noReminders}
+                >
+                  <span className="sv-toggle-knob" />
+                  <span className="sv-toggle-label">{localOutreachDisabled ? 'ON' : 'OFF'}</span>
+                </button>
+                {noReminders
+                  ? <span className="sv-toggle-text pt-outreach-no-priority">
+                      {!localPriority ? 'Set a priority to enable' : 'No interval set for this priority'}
+                    </span>
+                  : opt && (() => {
+                    const days = opt.outreach_interval_days as number;
+                    let interval: string;
+                    if (days % 30 === 0) interval = `every ${days / 30} month${days / 30 > 1 ? 's' : ''}`;
+                    else if (days % 7 === 0) interval = `every ${days / 7} week${days / 7 > 1 ? 's' : ''}`;
+                    else interval = `every ${days} day${days > 1 ? 's' : ''}`;
+                    return <span className="sv-toggle-text">{localPriority} · {interval}</span>;
+                  })()}
+              </div>
+              );
+            })()}
           </div>
         </div>
       </div>

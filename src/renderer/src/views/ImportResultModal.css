@@ -20,8 +20,8 @@
 }
 
 .ir-label {
-  font-size: 15px;
-  color: var(--color-text-secondary);
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
 .ir-skipped-section {
@@ -36,9 +36,9 @@
 
 .ir-skipped-intro {
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   margin: 0 0 12px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .ir-collision-group {
@@ -48,7 +48,7 @@
 .ir-collision-label {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 4px;
@@ -58,7 +58,7 @@
 .ir-collision-list {
   margin: 0;
   padding: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-text);
   line-height: 1.8;
   list-style-type: none;

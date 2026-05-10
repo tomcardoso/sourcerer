@@ -305,6 +305,16 @@ export function registerProjectHandlers(): void {
     },
   );
 
+  ipcMain.handle(
+    'projects:update',
+    (_, { id, name, description }: { id: string; name: string; description: string | null }): Project => {
+      const db = getDatabase();
+      db.prepare('UPDATE projects SET name = ?, description = ? WHERE id = ?')
+        .run(name.trim(), description?.trim() || null, id);
+      return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
+    },
+  );
+
   ipcMain.handle('projects:unshare', (_, id: string): Project => {
     closeSharedDb(id);
     const db = getDatabase();

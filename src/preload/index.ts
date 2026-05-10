@@ -84,6 +84,8 @@ const sourcererApi = {
     ipcRenderer.invoke('projects:regenerateShared', projectId),
   renameProject: (id: string, name: string): Promise<void> =>
     ipcRenderer.invoke('projects:rename', { id, name }),
+  updateProject: (id: string, name: string, description: string | null): Promise<Project> =>
+    ipcRenderer.invoke('projects:update', { id, name, description }),
   unshareProject: (id: string): Promise<Project> => ipcRenderer.invoke('projects:unshare', id),
   deleteProject: (id: string): Promise<void> => ipcRenderer.invoke('projects:delete', id),
 
@@ -153,6 +155,8 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-outreach-require-interaction', required),
   setRssPollInterval: (hours: number): Promise<User> =>
     ipcRenderer.invoke('settings:set-rss-poll-interval', hours),
+  setWaybackEnabled: (enabled: boolean): Promise<User> =>
+    ipcRenderer.invoke('settings:set-wayback-enabled', enabled),
   setAlertNotificationsEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-alert-notifications-enabled', enabled),
   setReminderNotificationsEnabled: (enabled: boolean): Promise<User> =>
@@ -237,12 +241,18 @@ const sourcererApi = {
     ipcRenderer.invoke('alerts:mark-seen', id),
   markAllMentionsSeen: (): Promise<void> =>
     ipcRenderer.invoke('alerts:mark-all-seen'),
+  dismissMention: (id: string): Promise<void> =>
+    ipcRenderer.invoke('alerts:dismiss-mention', id),
   clearAllMentions: (): Promise<void> =>
     ipcRenderer.invoke('alerts:clear-all-mentions'),
   getUnseenMentionCount: (): Promise<number> =>
     ipcRenderer.invoke('alerts:unseen-count'),
   pollAlertsNow: (): Promise<void> =>
     ipcRenderer.invoke('alerts:poll-now'),
+  getFeedCount: (): Promise<number> =>
+    ipcRenderer.invoke('alerts:feed-count'),
+  getLastFetched: (): Promise<number | null> =>
+    ipcRenderer.invoke('alerts:last-fetched'),
   onMentionsUpdated: (callback: () => void): (() => void) => {
     const handler = () => callback();
     ipcRenderer.on('mentions:updated', handler);
@@ -270,6 +280,8 @@ const sourcererApi = {
     ipcRenderer.invoke('export:vcard-contact', contactId),
   exportVCardProject: (projectId: string): Promise<void> =>
     ipcRenderer.invoke('export:vcard-project', projectId),
+  exportAllContacts: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('export:all-contacts'),
 
   // CSV import
   importCsv: (data: { projectId?: string }): Promise<ImportResult> =>
@@ -287,7 +299,7 @@ const sourcererApi = {
   mergeContacts: (data: {
     winnerId: string;
     loserId: string;
-    strategy: 'keep' | 'merge';
+    strategy: 'keep' | 'merge' | 'skip';
   }): Promise<void> => ipcRenderer.invoke('contacts:merge', data),
   onDuplicatePairsUpdated: (callback: (count: number) => void): (() => void) => {
     const handler = (_: unknown, count: number) => callback(count);

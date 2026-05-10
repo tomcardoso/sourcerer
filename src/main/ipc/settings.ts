@@ -193,6 +193,12 @@ export function registerSettingsHandlers(): void {
     return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
   });
 
+  ipcMain.handle('settings:set-wayback-enabled', (_, enabled: boolean): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET wayback_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
   ipcMain.handle(
     'settings:change-password',
     async (_, { currentPassword, newPassword }: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; error?: string }> => {

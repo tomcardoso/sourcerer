@@ -80,6 +80,9 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   const [dupCount, setDupCount] = useState(0);
   const [showDedup, setShowDedup] = useState(false);
   const [dupPairs, setDupPairs] = useState<DuplicatePair[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const bulkProjectMenuRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +135,31 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [bulkProjectMenuOpen]);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowExportMenu(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showExportMenu]);
+
+  async function handleExportAll() {
+    setShowExportMenu(false);
+    setExporting(true);
+    await window.sourcerer.exportAllContacts();
+    setExporting(false);
+  }
 
   function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -307,41 +335,58 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   return (
     <div className="view">
       <div className="view-header">
-        <div className="view-header-row">
-        <div>
-          <p className="view-kicker">
-            Everyone{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
-          </p>
-          <h1 className="view-headline">All contacts</h1>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {dupCount > 0 && (
-            <button
-              className="dedup-badge"
-              onClick={async () => {
-                const pairs = await window.sourcerer.getDuplicatePairs();
-                setDupPairs(pairs);
-                setShowDedup(true);
-              }}
-            >
-              {dupCount} possible duplicate{dupCount !== 1 ? 's' : ''}
-            </button>
-          )}
-          {anyFilter && (
-            <button
-              className="clear-filters-btn"
-              onClick={() => {
-                setFilters(DEFAULT_FILTERS);
-                setOpenFilter(null);
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-        </div>
+        <p className="view-kicker">
+          Everyone{contacts.length > 0 && ` · ${contacts.length} contact${contacts.length !== 1 ? 's' : ''}`}
+        </p>
+        <h1 className="view-headline">All contacts</h1>
+        <p className="view-subtitle">Every contact across all projects, searchable and filterable.</p>
         <div className="view-rule-thick" />
         <div className="view-rule-thin" />
+        <div className="project-meta-bar">
+          <div className="project-meta-left">
+            {dupCount > 0 && (
+              <div className="project-meta-item">
+                <button
+                  className="project-meta-action-btn project-meta-action-btn--active"
+                  onClick={async () => {
+                    const pairs = await window.sourcerer.getDuplicatePairs();
+                    setDupPairs(pairs);
+                    setShowDedup(true);
+                  }}
+                >
+                  ⚠ {dupCount} duplicate{dupCount !== 1 ? 's' : ''}
+                </button>
+              </div>
+            )}
+            {anyFilter && (
+              <div className="project-meta-item">
+                <button
+                  className="project-meta-action-btn"
+                  onClick={() => { setFilters(DEFAULT_FILTERS); setOpenFilter(null); }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+            <div className="project-meta-item export-menu-wrap" ref={exportMenuRef}>
+              <button
+                className="project-meta-action-btn"
+                onClick={() => setShowExportMenu((v) => !v)}
+                disabled={exporting || contacts.length === 0}
+              >
+                {exporting ? 'Exporting…' : '↓ Export'}
+              </button>
+              {showExportMenu && (
+                <div className="export-menu">
+                  <button className="export-menu-item" onClick={handleExportAll}>
+                    <span className="export-menu-label">Export as CSV / Excel</span>
+                    <span className="export-menu-desc">Name, organization, emails, phones, notes</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {checkedCount > 0 && (
@@ -362,7 +407,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                 onClick={() => setBulkProjectMenuOpen((v) => !v)}
                 disabled={bulkWorking}
               >
-                Add to project…
+                Add to project
               </button>
               {bulkProjectMenuOpen && (
                 <div className="bulk-project-menu">

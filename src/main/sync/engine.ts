@@ -45,7 +45,7 @@ export function syncProject(
         pushAppendOnly(localDb, sharedDb, contactIds, membershipIds, now);
       })();
 
-      localDb.prepare('UPDATE projects SET shared_pending_writes = 0 WHERE id = ?').run(projectId);
+      localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
     })();
 
     return { success: true };
@@ -104,12 +104,12 @@ function replaceSubTablesFromShared(
   local.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
   for (const e of shared
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as { id: string; email: string; sort_order: number }[]) {
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number }[]) {
     local
       .prepare(
-        'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
+        'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
       )
-      .run(e.id, contactId, e.email, e.sort_order);
+      .run(e.id, contactId, e.email, e.label, e.sort_order);
   }
 
   // Phones
@@ -383,12 +383,12 @@ function pushSubTablesToShared(
   shared.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
   for (const e of local
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as { id: string; email: string; sort_order: number }[]) {
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number }[]) {
     shared
       .prepare(
-        'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
+        'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
       )
-      .run(e.id, contactId, e.email, e.sort_order);
+      .run(e.id, contactId, e.email, e.label, e.sort_order);
   }
 
   shared.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(contactId);

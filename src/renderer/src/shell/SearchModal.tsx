@@ -115,9 +115,9 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
         )}
 
         <div className="search-footer">
-          <span className="utility-type-small search-hint">↑↓ navigate</span>
-          <span className="utility-type-small search-hint">↵ open</span>
-          <span className="utility-type-small search-hint">Esc close</span>
+          <span className="search-hint">↑↓ navigate</span>
+          <span className="search-hint">↵ open</span>
+          <span className="search-hint">Esc close</span>
         </div>
       </div>
     </div>

@@ -32,9 +32,20 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 20px 16px 0;
   flex-shrink: 0;
+}
+
+/* Rules sit directly in .detail-panel (no horizontal padding),
+   so override the negative bleed margins from View.css */
+.detail-panel > .view-rule-thick {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.detail-panel > .view-rule-thin {
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .detail-header-main {
@@ -60,26 +71,26 @@
 }
 
 .detail-org {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--color-text-muted);
-  margin-top: 2px;
+  margin-top: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .detail-vcard-btn {
+  height: 28px;
+  padding: 0 10px;
   background: none;
   border: 1px solid var(--color-border-strong);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  flex-shrink: 0;
   white-space: nowrap;
 }
 
@@ -116,9 +127,9 @@
 
 .detail-section-label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-text);
   padding-bottom: 6px;
@@ -189,9 +200,9 @@
 
 .detail-project-status {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   /* background: var(--color-surface-2); */
   color: var(--color-text-muted);
@@ -220,6 +231,46 @@
   color: var(--color-danger);
 }
 
+.detail-project-remove-confirm {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.detail-project-remove-yes,
+.detail-project-remove-no {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+}
+
+.detail-project-remove-yes {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.detail-project-remove-yes:hover {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.detail-project-remove-no {
+  color: var(--color-text-muted);
+}
+
+.detail-project-remove-no:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+
 .detail-add-project {
   display: flex;
   gap: 6px;
@@ -233,9 +284,10 @@
   padding: 0 8px;
   border: 1px solid var(--color-border);
   font-size: 13px;
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
+  letter-spacing: normal;
   color: var(--color-text);
-  /* background: var(--color-surface); */
+  background: transparent;
   outline: none;
 }
 
@@ -248,7 +300,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -271,7 +323,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 6px 12px;
   cursor: pointer;
@@ -302,7 +354,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -320,7 +372,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -341,9 +393,9 @@
 
 .detail-tab {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   padding: 8px 16px 7px;
@@ -370,6 +422,12 @@
   align-items: center;
 }
 
+.detail-bottom-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .detail-edit-btn {
   height: 28px;
   padding: 0 12px;
@@ -378,7 +436,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -405,7 +463,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -435,9 +493,9 @@
 
 .pt-section-label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-text);
   padding-bottom: 6px;
@@ -447,8 +505,8 @@
 
 .pt-empty {
   font-size: 13px;
-  color: var(--color-text-muted);
-  font-style: italic;
+  font-family: var(--font-serif);
+  color: var(--color-text-dim);
   margin-bottom: 8px;
 }
 
@@ -458,9 +516,10 @@
   padding: 0 8px;
   border: 1px solid var(--color-border);
   font-size: 13px;
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
+  letter-spacing: normal;
   color: var(--color-text);
-  /* background: var(--color-surface); */
+  background: transparent;
   outline: none;
 }
 
@@ -479,7 +538,7 @@
 
 .pt-label {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -495,7 +554,7 @@
   font-size: 13px;
   font-family: var(--font-serif);
   color: var(--color-text);
-  background: var(--color-bg);
+  background: transparent;
   outline: none;
   width: 100%;
 }
@@ -511,8 +570,8 @@
 }
 
 .pt-readonly-date {
-  font-size: 13px;
-  color: var(--color-text-muted);
+  font-size: 14px;
+  color: var(--color-text);
 }
 
 .pt-outreach-wrap {
@@ -524,12 +583,17 @@
 .pt-outreach-disable {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.pt-outreach-disable--no-priority .sv-toggle {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pt-outreach-no-priority {
+  color: var(--color-text-dim) !important;
 }
 
 .pt-outreach-interval {
@@ -554,15 +618,15 @@
 
 .pt-reporter-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
-  min-height: 30px;
-  padding: 3px 6px;
+  height: 30px;
+  padding: 0 6px;
   border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  background: transparent;
   cursor: text;
-  /* font-family: var(--font-serif); */
+  overflow: hidden;
 }
 
 .pt-reporter-chip {
@@ -571,10 +635,12 @@
   gap: 4px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  font-size: 13px;
-  font-family: var(--font-serif);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-text);
-  padding: 2px 6px;
+  padding: 1px 5px;
   white-space: nowrap;
 }
 
@@ -597,8 +663,9 @@
   min-width: 80px;
   border: none;
   background: transparent;
-  font-size: 12px;
-  font-family: var(--font-mono);
+  font-size: 13px;
+  font-family: var(--font-serif);
+  letter-spacing: normal;
   color: var(--color-text);
   outline: none;
   padding: 2px 0;
@@ -629,8 +696,9 @@
   background: none;
   border: none;
   border-bottom: 1px solid var(--color-border);
-  font-size: 12px;
-  font-family: var(--font-mono);
+  font-size: 13px;
+  font-family: var(--font-serif);
+  letter-spacing: normal;
   color: var(--color-text);
   cursor: pointer;
 }
@@ -640,7 +708,7 @@
 }
 
 .pt-reporter-option:hover {
-  background: var(--color-hover);
+  background: var(--color-surface);
 }
 
 /* Interaction log */
@@ -655,9 +723,9 @@
 
 .pt-log-row-date {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   color: var(--color-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
@@ -683,7 +751,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-text-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.16em;
 }
 
 /* ── Log modal ── */
@@ -732,7 +800,7 @@
   background: var(--color-bg);
   outline: none;
   resize: vertical;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .pt-log-input:focus {
@@ -749,7 +817,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -771,7 +839,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -838,7 +906,7 @@
   background: var(--color-bg);
   outline: none;
   resize: vertical;
-  line-height: 1.5;
+  line-height: 1.55;
   display: block;
   margin-bottom: 8px;
 }
@@ -853,9 +921,9 @@
   background: none;
   border: 1px solid var(--color-primary);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-primary);
   cursor: pointer;
@@ -912,9 +980,9 @@
 
 .pt-reminders-label {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-text);
 }
@@ -924,9 +992,9 @@
   border: none;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-primary);
   cursor: pointer;
@@ -938,8 +1006,8 @@
 
 .pt-reminders-empty {
   font-size: 13px;
-  color: var(--color-text-muted);
-  font-style: italic;
+  font-family: var(--font-serif);
+  color: var(--color-text-dim);
   padding: 14px 0 6px;
   margin: 0;
 }

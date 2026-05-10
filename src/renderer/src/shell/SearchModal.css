@@ -31,7 +31,7 @@
   background: none;
   border: none;
   outline: none;
-  font-size: 15px;
+  font-size: 14px;
   font-family: var(--font-serif);
   color: var(--color-text);
   text-transform: none;
@@ -112,7 +112,12 @@
 }
 
 .search-hint {
-  color: var(--color-text-dim) !important;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-dim);
 }
 
 .search-hint span {

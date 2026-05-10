@@ -18,9 +18,9 @@
 
 .view-kicker {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-primary);
   margin-bottom: 12px;
@@ -123,4 +123,202 @@
 
 .view-dl-row dd {
   color: var(--color-text);
+}
+
+/* ── Shared meta-bar (Project / Alerts / Reminders headers) ── */
+
+.project-meta-bar {
+  padding: 7px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  justify-content: flex-start;
+}
+
+.project-meta-left {
+  display: flex;
+  align-items: center;
+}
+
+.project-meta-right {
+  display: flex;
+  align-items: center;
+}
+
+.project-meta-item {
+  display: flex;
+  align-items: center;
+}
+
+.project-meta-left .project-meta-item--field {
+  margin-right: 20px;
+}
+
+.project-meta-left .project-meta-item--btn {
+  margin-right: 0;
+}
+
+.project-meta-item:last-child {
+  margin-right: 0;
+}
+
+.project-meta-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  margin-right: 6px;
+}
+
+.project-meta-value {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-dim);
+}
+
+.project-meta-action-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  height: 24px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.project-meta-action-btn:hover:not(:disabled) {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.project-meta-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.project-meta-action-btn--syncing {
+  animation: meta-btn-pulse 1s ease-in-out infinite;
+}
+
+@keyframes meta-btn-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+.project-meta-action-btn--active {
+  color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.project-meta-filter-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-primary);
+  margin-left: 3px;
+}
+
+.inline-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.inline-confirm-yes {
+  padding: 4px 10px;
+  background: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.inline-confirm-yes:hover {
+  opacity: 0.85;
+}
+
+.inline-confirm-no {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+
+.inline-confirm-no:hover {
+  background: var(--color-surface);
+}
+
+/* ── Shared export menu ─────────────────────────── */
+.export-menu-wrap {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  min-width: 220px;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.export-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.1s;
+}
+
+.export-menu-item:last-child {
+  border-bottom: none;
+}
+
+.export-menu-item:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.export-menu-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.export-menu-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  font-family: var(--font-serif);
+  text-transform: none;
+  letter-spacing: normal;
 }

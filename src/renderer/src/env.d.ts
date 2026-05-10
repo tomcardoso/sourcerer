@@ -61,6 +61,7 @@ declare global {
       convertProjectToShared: (projectId: string) => Promise<{ project: Project; payload: string } | null>;
       regenerateSharedProject: (projectId: string) => Promise<{ payload: string } | null>;
       renameProject: (id: string, name: string) => Promise<void>;
+      updateProject: (id: string, name: string, description: string | null) => Promise<Project>;
       deleteProject: (id: string) => Promise<void>;
       unshareProject: (id: string) => Promise<Project>;
 
@@ -114,6 +115,7 @@ declare global {
       setAlertNotificationsEnabled: (enabled: boolean) => Promise<User>;
       setReminderNotificationsEnabled: (enabled: boolean) => Promise<User>;
       setRssPollInterval: (hours: number) => Promise<User>;
+      setWaybackEnabled: (enabled: boolean) => Promise<User>;
       setPriorityInterval: (id: string, days: number | null) => Promise<void>;
       getCalendarUrl: () => Promise<string>;
       regenerateCalendarToken: () => Promise<User>;
@@ -147,9 +149,12 @@ declare global {
       listMentions: () => Promise<ContactAlertMention[]>;
       markMentionSeen: (id: string) => Promise<void>;
       markAllMentionsSeen: () => Promise<void>;
+      dismissMention: (id: string) => Promise<void>;
       clearAllMentions: () => Promise<void>;
       getUnseenMentionCount: () => Promise<number>;
       pollAlertsNow: () => Promise<void>;
+      getFeedCount: () => Promise<number>;
+      getLastFetched: () => Promise<number | null>;
       onMentionsUpdated: (callback: () => void) => () => void;
 
       // Reminders
@@ -167,6 +172,7 @@ declare global {
       // vCard export
       exportVCardContact: (contactId: string) => Promise<void>;
       exportVCardProject: (projectId: string) => Promise<void>;
+      exportAllContacts: () => Promise<{ success: boolean; error?: string }>;
 
       // CSV import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;
@@ -198,7 +204,7 @@ declare global {
       mergeContacts: (data: {
         winnerId: string;
         loserId: string;
-        strategy: 'keep' | 'merge';
+        strategy: 'keep' | 'merge' | 'skip';
       }) => Promise<void>;
       onDuplicatePairsUpdated: (callback: (count: number) => void) => () => void;
     };

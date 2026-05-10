@@ -1,83 +1,3 @@
-.alerts-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.alerts-action-btn {
-  height: 32px;
-  padding: 0 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.1s, color 0.1s;
-}
-
-.alerts-action-btn:hover:not(:disabled) {
-  background: #f5f5f5;
-  color: var(--color-text);
-}
-
-.alerts-action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Clear all inline confirm */
-
-.alerts-clear-confirm {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.alerts-clear-confirm-text {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.alerts-clear-confirm-yes {
-  height: 28px;
-  padding: 0 10px;
-  background: var(--color-danger);
-  border: none;
-  border-radius: 0;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  color: #fff;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.alerts-clear-confirm-yes:hover {
-  opacity: 0.85;
-}
-
-.alerts-clear-confirm-no {
-  height: 28px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.alerts-clear-confirm-no:hover {
-  background: var(--color-surface);
-}
-
 /* Body */
 
 .alerts-body {
@@ -124,19 +44,20 @@
 }
 
 .alerts-section-title {
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.16em;
   color: var(--color-text-muted);
   transition: color 0.1s;
 }
 
 .alerts-section-count {
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
-  color: var(--color-text-muted);
-  opacity: 0.6;
+  color: var(--color-primary);
   margin-left: 2px;
 }
 
@@ -147,12 +68,11 @@
 }
 
 .alerts-contact-name {
-  font-size: 11px;
+  font-family: var(--font-serif);
+  font-size: 16px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  padding: 6px 20px 4px 32px;
+  color: var(--color-text);
+  padding: 6px 20px 4px 20px;
 }
 
 /* Mention rows */
@@ -161,21 +81,21 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 9px 20px 9px 32px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--color-border);
   transition: background 0.1s;
 }
 
 .alerts-item:hover {
-  background: #f9fafb;
+  background: var(--color-surface);
 }
 
 .alerts-item-unread {
-  background: #eff6ff;
+  background: #fffbeb;
 }
 
 .alerts-item-unread:hover {
-  background: #dbeafe;
+  background: #fef3c7;
 }
 
 .alerts-item-main {
@@ -189,7 +109,7 @@
   font-weight: 500;
   color: var(--color-text);
   text-decoration: none;
-  line-height: 1.4;
+  line-height: 1.55;
   margin-bottom: 3px;
 }
 
@@ -206,6 +126,24 @@
   color: var(--color-text-muted);
 }
 
+.alerts-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.alerts-source {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
 .alerts-source::after {
   content: '·';
   margin-left: 8px;
@@ -218,4 +156,46 @@
   background: var(--color-primary);
   flex-shrink: 0;
   margin-top: 5px;
+}
+
+.alerts-dismiss-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  margin-top: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.alerts-dismiss-btn:hover {
+  color: var(--color-text);
+}
+
+.alerts-item:hover .alerts-dismiss-btn {
+  opacity: 1;
+}
+
+.alerts-dismiss-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  margin-top: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.alerts-dismiss-btn:hover {
+  color: var(--color-text);
+}
+
+.alerts-item:hover .alerts-dismiss-btn {
+  opacity: 1;
 }

@@ -64,7 +64,7 @@
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   margin-bottom: 5px;
 }
 
@@ -101,7 +101,7 @@
   outline: none;
   resize: vertical;
   transition: border-color 0.15s;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .ac-textarea:focus {
@@ -143,6 +143,7 @@
   color: var(--color-primary);
   font-size: 11px;
   font-family: var(--font-mono);
+  letter-spacing: 0.14em;
   cursor: pointer;
   padding: 2px 0;
 }
@@ -166,9 +167,9 @@
   height: 34px;
   padding: 0 16px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
   border: none;
@@ -254,7 +255,7 @@
   padding: 2px 6px 2px 8px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-serif);
   color: var(--color-text);
   text-transform: none;

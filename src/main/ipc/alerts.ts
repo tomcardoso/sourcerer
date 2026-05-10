@@ -64,6 +64,12 @@ export function registerAlertHandlers(): void {
       .run();
   });
 
+  ipcMain.handle('alerts:dismiss-mention', (_, id: string): void => {
+    getDatabase()
+      .prepare(`UPDATE contact_alert_mentions SET dismissed = 1 WHERE id = ?`)
+      .run(id);
+  });
+
   ipcMain.handle('alerts:clear-all-mentions', (): void => {
     getDatabase()
       .prepare(`UPDATE contact_alert_mentions SET dismissed = 1`)
@@ -77,7 +83,21 @@ export function registerAlertHandlers(): void {
     return row.n;
   });
 
-  ipcMain.handle('alerts:poll-now', (): void => {
-    pollAllRss().catch(() => {});
+  ipcMain.handle('alerts:poll-now', async (): Promise<void> => {
+    await pollAllRss();
+  });
+
+  ipcMain.handle('alerts:feed-count', (): number => {
+    const row = getDatabase()
+      .prepare(`SELECT COUNT(*) AS n FROM contact_alert_rss WHERE is_invalid = 0`)
+      .get() as { n: number };
+    return row.n;
+  });
+
+  ipcMain.handle('alerts:last-fetched', (): number | null => {
+    const row = getDatabase()
+      .prepare('SELECT last_rss_fetched_at FROM users WHERE id = 1')
+      .get() as { last_rss_fetched_at: number | null } | undefined;
+    return row?.last_rss_fetched_at ?? null;
   });
 }

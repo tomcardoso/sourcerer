@@ -17,7 +17,8 @@ export const LOCAL_SCHEMA_SQL = `
     staleness_threshold_days      INTEGER NOT NULL DEFAULT 90,
     alert_notifications_enabled   INTEGER NOT NULL DEFAULT 1,
     reminder_notifications_enabled INTEGER NOT NULL DEFAULT 1,
-    rss_poll_interval_hours       INTEGER NOT NULL DEFAULT 6
+    rss_poll_interval_hours        INTEGER NOT NULL DEFAULT 6,
+    wayback_enabled                INTEGER NOT NULL DEFAULT 1
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
@@ -30,10 +31,18 @@ export const LOCAL_SCHEMA_SQL = `
     synced_at    INTEGER
   );
 
+  CREATE TABLE IF NOT EXISTS dedup_dismissed_pairs (
+    contact_a_id TEXT NOT NULL,
+    contact_b_id TEXT NOT NULL,
+    dismissed_at INTEGER NOT NULL,
+    PRIMARY KEY (contact_a_id, contact_b_id)
+  );
+
   CREATE TABLE IF NOT EXISTS contact_emails (
     id         TEXT    PRIMARY KEY,
     contact_id TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     email      TEXT    NOT NULL,
+    label      TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
     synced_at  INTEGER
   );

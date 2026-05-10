@@ -118,7 +118,7 @@ button,
 [role="button"] {
   font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
 }
 
 html,
@@ -187,33 +187,80 @@ code {
   font-size: 12px;
 }
 
-.utility-type-small {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-}
-
-.utility-type-medium {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-}
-
-.utility-type-large {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-}
-
 .row:hover {
   background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+/* ── Shared toggle component ─────────────────────── */
+.sv-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-strong);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  transition: border-color 0.1s, color 0.1s;
+}
+
+.sv-toggle--on {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.sv-toggle-knob {
+  width: 8px;
+  height: 8px;
+  background: var(--color-border-strong);
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.sv-toggle--on .sv-toggle-knob {
+  background: var(--color-primary);
+}
+
+.sv-toggle-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sv-toggle-text {
+  font-size: 14px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.sv-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sv-toggle-row:last-child {
+  margin-bottom: 0;
+}
+
+.sv-toggle-row--has-hint {
+  align-items: flex-start;
+}
+
+.sv-toggle-row--has-hint > div {
+  padding-top: 4px;
 }

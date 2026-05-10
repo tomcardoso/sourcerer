@@ -129,8 +129,13 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [showEditProject, setShowEditProject] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const syncStartedAt = useRef<number>(0);
 
   useEffect(() => {
     if (!showExportMenu) return;
@@ -166,6 +171,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     setOpenFilter(null);
     setSyncError(null);
     setFileUnreachable(false);
+    setLastSyncedAt(project?.last_synced_at ? project.last_synced_at * 1000 : null);
     refresh();
   }, [refresh]);
 
@@ -182,7 +188,9 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     if (!project?.is_shared) return;
     return window.sourcerer.onSyncStatus((event) => {
       if (event.projectId !== project.id) return;
-      setSyncing(false);
+      const elapsed = Date.now() - syncStartedAt.current;
+      const remaining = Math.max(0, 800 - elapsed);
+      setTimeout(() => setSyncing(false), remaining);
       if (!event.success) {
         const msg = event.error ?? 'Unknown sync error';
         const isUnreachable =
@@ -203,9 +211,34 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
   async function handleSyncNow() {
     if (!project) return;
+    syncStartedAt.current = Date.now();
     setSyncing(true);
     setSyncError(null);
     await window.sourcerer.triggerSync(project.id);
+  }
+
+  function openEditProject() {
+    if (!project) return;
+    setEditName(project.name);
+    setEditDescription(project.description ?? '');
+    setShowEditProject(true);
+  }
+
+  useEffect(() => {
+    if (!showEditProject) return;
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShowEditProject(false); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showEditProject]);
+
+  async function handleEditProjectSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!project || !editName.trim()) return;
+    setEditSubmitting(true);
+    const updated = await window.sourcerer.updateProject(project.id, editName.trim(), editDescription.trim() || null);
+    onProjectUpdated(updated);
+    setShowEditProject(false);
+    setEditSubmitting(false);
   }
 
   async function handleRelocate() {
@@ -516,34 +549,37 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
         <div className="view-rule-thin" />
         <div className="project-meta-bar">
           <div className="project-meta-left">
-            <div className="project-meta-item ">
-              <span className="project-meta-label utility-type-small">Created</span>
-              <span className="project-meta-value utility-type-small">{fmtOpened(project.created_at)}</span>
+            <div className="project-meta-item project-meta-item--field">
+              <span className="project-meta-label">Created</span>
+              <span className="project-meta-value">{fmtOpened(project.created_at)}</span>
             </div>
             {project.is_shared === 1 && (
-              <div className="project-meta-item">
-                <span className="project-meta-label utility-type-small">Last sync</span>
-                <span className="project-meta-value utility-type-small">
+              <div className="project-meta-item project-meta-item--field">
+                <span className="project-meta-label">Last sync</span>
+                <span className="project-meta-value">
                   {lastSyncedAt ? fmtRelative(lastSyncedAt) : syncing ? 'syncing…' : '—'}
                 </span>
               </div>
             )}
-          </div>
-          <div className="project-meta-right">
           {anyFilter && (
             <div className="project-meta-item">
               <button
-                className="project-meta-action-btn utility-type-small project-meta-action-btn--active"
+                className="project-meta-action-btn project-meta-action-btn--active"
                 onClick={() => { setFilters(DEFAULT_FILTERS); setOpenFilter(null); }}
               >
                 Clear filters
               </button>
             </div>
           )}
+          <div className="project-meta-item">
+            <button className="project-meta-action-btn" onClick={openEditProject}>
+              ✎ Edit
+            </button>
+          </div>
           {project.is_shared === 1 && (
             <div className="project-meta-item">
               <button
-                className="project-meta-action-btn utility-type-small"
+                className={`project-meta-action-btn${syncing ? ' project-meta-action-btn--syncing' : ''}`}
                 onClick={handleSyncNow}
                 disabled={syncing}
               >
@@ -553,7 +589,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
           )}
           <div className="project-meta-item export-menu-wrap" ref={exportMenuRef}>
             <button
-              className="project-meta-action-btn utility-type-small"
+              className="project-meta-action-btn"
               onClick={() => setShowExportMenu((v) => !v)}
               disabled={exporting || rows.length === 0}
             >
@@ -581,21 +617,21 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
           </div>
           {project.is_shared === 0 && (
             <div className="project-meta-item">
-              <button className="project-meta-action-btn utility-type-small" onClick={handleConvertToShared}>
+              <button className="project-meta-action-btn" onClick={handleConvertToShared}>
                 + Share project
               </button>
             </div>
           )}
           {project.is_shared === 1 && !confirmUnshare && (
             <div className="project-meta-item">
-              <button className="project-meta-action-btn utility-type-small" onClick={() => setConfirmUnshare(true)}>
+              <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
                   Unshare project
               </button>
             </div>
           )}
           {confirmUnshare && (
             <div className="project-meta-item">
-              <span className="utility-type-small inline-confirm">
+              <span className="inline-confirm">
                 Stop syncing?
                 <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
                 <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
@@ -637,7 +673,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       {checkedCount > 0 && (
         <div className="bulk-bar">
           <div className="bulk-bar-element">
-            <span className="utility-type-small bulk-bar-count">{checkedCount} selected</span>
+            <span className="bulk-bar-count">{checkedCount} selected</span>
             <button
               className="bulk-bar-clear"
               onClick={() => { setCheckedIds(new Set()); setConfirmDelete(false); setConfirmRemove(false); }}
@@ -1033,6 +1069,45 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
     {importResult && (
       <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
+    )}
+
+    {showEditProject && (
+      <div className="modal-overlay" onClick={() => setShowEditProject(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <h2 className="modal-title">Edit project</h2>
+          <form onSubmit={handleEditProjectSubmit}>
+            <div className="modal-field">
+              <label className="modal-label">Project name <span className="modal-required">*</span></label>
+              <input
+                className="modal-input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoFocus
+                required
+                disabled={editSubmitting}
+              />
+            </div>
+            <div className="modal-field">
+              <label className="modal-label">Description <span className="modal-optional">(optional)</span></label>
+              <input
+                className="modal-input"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Short slug line"
+                disabled={editSubmitting}
+              />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="modal-btn-cancel" onClick={() => setShowEditProject(false)} disabled={editSubmitting}>
+                Cancel
+              </button>
+              <button type="submit" className="modal-btn-create" disabled={editSubmitting || !editName.trim()}>
+                {editSubmitting ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     )}
   </>
   );

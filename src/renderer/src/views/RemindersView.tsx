@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Reminder } from '@shared/types';
+import type { Reminder, User } from '@shared/types';
+import ContactDetail from '../contacts/ContactDetail';
 import './View.css';
 import './RemindersView.css';
 
@@ -21,9 +22,9 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card reminders-cal-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Add to Calendar</h2>
+        <h2 className="modal-title">Add to calendar</h2>
         <p className="reminders-cal-modal-intro">
-          Subscribe to this URL in your calendar app to see your Sourcerer reminders.
+          Subscribe to this URL in your calendar app to see your Sourcerer reminders. This link will only work on devices where you are logged in to Sourcerer and have the app running.
         </p>
 
         <div className="reminders-cal-url-row">
@@ -74,15 +75,18 @@ function relDays(ts: number): number {
 
 interface Props {
   onCountChange?: (overdue: number) => void;
+  user?: User | null;
 }
 
-export default function RemindersView({ onCountChange }: Props) {
+export default function RemindersView({ onCountChange, user }: Props) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [calendarUrl, setCalendarUrl] = useState<string | null>(null);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [overdueOpen, setOverdueOpen] = useState(true);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [drawerClosing, setDrawerClosing] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await window.sourcerer.listAllReminders();
@@ -104,6 +108,22 @@ export default function RemindersView({ onCountChange }: Props) {
       onCountChange?.(next.filter((r) => r.due_date < now).length);
       return next;
     });
+  }
+
+  function openContact(contactId: string) {
+    if (selectedContactId === contactId) {
+      closeContact();
+      return;
+    }
+    setSelectedContactId(contactId);
+  }
+
+  function closeContact() {
+    setDrawerClosing(true);
+    setTimeout(() => {
+      setSelectedContactId(null);
+      setDrawerClosing(false);
+    }, 160);
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -138,24 +158,44 @@ export default function RemindersView({ onCountChange }: Props) {
     )}
     <div className="view">
       <div className="view-header">
-        <div>
-          {hasAny && (
-            <p className="view-kicker">
-              {outreachCount > 0 && manualCount > 0
-                ? `${outreachCount} outreach · ${manualCount} manual`
-                : outreachCount > 0
-                  ? `${outreachCount} outreach reminder${outreachCount !== 1 ? 's' : ''}`
-                  : `${manualCount} reminder${manualCount !== 1 ? 's' : ''}`}
-              {overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
-            </p>
-          )}
-          <h1 className="view-headline">Reminders</h1>
-        </div>
-        {calendarUrl && (
-          <button className="reminders-ical-btn" onClick={() => setCalendarModalOpen(true)}>
-            Add to calendar
-          </button>
+        {hasAny && (
+          <p className="view-kicker">
+            {outreachCount > 0 && manualCount > 0
+              ? `${outreachCount} outreach · ${manualCount} manual`
+              : outreachCount > 0
+                ? `${outreachCount} outreach reminder${outreachCount !== 1 ? 's' : ''}`
+                : `${manualCount} reminder${manualCount !== 1 ? 's' : ''}`}
+            {overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}
+          </p>
         )}
+        <h1 className="view-headline">Reminders</h1>
+        <p className="view-subtitle">Scheduled follow-ups and outreach nudges across all your projects.</p>
+        <div className="view-rule-thick" />
+        <div className="view-rule-thin" />
+        <div className="project-meta-bar">
+          <div className="project-meta-left">
+            {([
+              { key: 'all', label: 'All', count: allCount },
+              { key: 'outreach', label: 'Outreach', count: outreachCount },
+              { key: 'manual', label: 'Manual', count: manualCount },
+            ] as { key: TypeFilter; label: string; count: number }[]).map(({ key, label, count }) => (
+              <div key={key} className="project-meta-item project-meta-item--btn">
+                <button
+                  className={`project-meta-action-btn${typeFilter === key ? ' project-meta-action-btn--active' : ''}`}
+                  onClick={() => setTypeFilter(key)}
+                  disabled={count === 0 && key !== 'all'}
+                                >
+                  {label}<span className="project-meta-filter-count">{count}</span>
+                </button>
+              </div>
+            ))}
+            {calendarUrl && (
+              <div className="project-meta-item">
+                <button className="project-meta-action-btn" onClick={() => setCalendarModalOpen(true)}>Add to calendar</button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {!hasAny ? (
@@ -168,24 +208,6 @@ export default function RemindersView({ onCountChange }: Props) {
         </div>
       ) : (
         <>
-          <div className="reminders-filter-bar">
-            {([
-              { key: 'all', label: 'All', count: allCount },
-              { key: 'outreach', label: 'Outreach', count: outreachCount },
-              { key: 'manual', label: 'Manual', count: manualCount },
-            ] as { key: TypeFilter; label: string; count: number }[]).map(({ key, label, count }) => (
-              <button
-                key={key}
-                className={`reminders-filter-pill${typeFilter === key ? ' reminders-filter-pill-active' : ''}`}
-                onClick={() => setTypeFilter(key)}
-                disabled={count === 0 && key !== 'all'}
-              >
-                {label}
-                <span className="reminders-filter-count">{count}</span>
-              </button>
-            ))}
-          </div>
-
           <div className="reminders-body">
             {overdue.length > 0 && (
               <div className="reminders-group">
@@ -204,6 +226,7 @@ export default function RemindersView({ onCountChange }: Props) {
                     daysLabel={`${Math.abs(relDays(r.due_date))}d ago`}
                     overdue
                     onDelete={handleDelete}
+                    onContactClick={openContact}
                   />
                 ))}
               </div>
@@ -223,7 +246,7 @@ export default function RemindersView({ onCountChange }: Props) {
                   const days = relDays(r.due_date);
                   const label = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `in ${days}d`;
                   return (
-                    <ReminderRow key={r.id} reminder={r} daysLabel={label} overdue={false} onDelete={handleDelete} />
+                    <ReminderRow key={r.id} reminder={r} daysLabel={label} overdue={false} onDelete={handleDelete} onContactClick={openContact} />
                   );
                 })}
               </div>
@@ -237,6 +260,16 @@ export default function RemindersView({ onCountChange }: Props) {
           </div>
         </>
       )}
+      {selectedContactId && (
+        <ContactDetail
+          contactId={selectedContactId}
+          onClose={closeContact}
+          onDeleted={() => { closeContact(); refresh(); }}
+          onUpdated={refresh}
+          user={user}
+          closing={drawerClosing}
+        />
+      )}
     </div>
     </>
   );
@@ -247,11 +280,13 @@ function ReminderRow({
   daysLabel,
   overdue,
   onDelete,
+  onContactClick,
 }: {
   reminder: Reminder;
   daysLabel: string;
   overdue: boolean;
   onDelete: (id: string) => void;
+  onContactClick: (contactId: string) => void;
 }) {
   const isAuto = reminder.is_auto_outreach === 1;
 
@@ -266,8 +301,11 @@ function ReminderRow({
     <div className={rowClass}>
       <div className="reminders-item-main">
         <div className="reminders-item-contact">
-          {reminder.contact_name}
+          <button className="reminders-item-contact-btn" onClick={() => onContactClick(reminder.contact_id)}>
+            {reminder.contact_name}
+          </button>
           {isAuto && <span className="reminders-item-badge reminders-item-badge-outreach">Outreach</span>}
+          {!isAuto && <span className="reminders-item-badge reminders-item-badge-manual">Reminder</span>}
         </div>
         <div className="reminders-item-meta">
           <span className="reminders-item-project">{reminder.project_name}</span>

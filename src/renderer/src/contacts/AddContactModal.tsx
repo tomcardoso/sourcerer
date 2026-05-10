@@ -69,7 +69,7 @@ function DynamicList({
 export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
-  const [emails, setEmails] = useState<string[]>(['']);
+  const [emails, setEmails] = useState<Array<{ email: string; label: string }>>([{ email: '', label: '' }]);
   const [phones, setPhones] = useState<Array<{ phone: string; label: string }>>([{ phone: '', label: '' }]);
   const [websites, setWebsites] = useState<string[]>(['']);
   const [socials, setSocials] = useState<Record<SocialType, string[]>>({
@@ -162,7 +162,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       name: name.trim(),
       organization: org.trim() || undefined,
       notes: notes.trim() || undefined,
-      emails: emails.filter((e) => e.trim()),
+      emails: emails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
       phones: phones.filter((p) => p.phone.trim()).map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
       links,
     };
@@ -213,14 +213,47 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
-          <DynamicList
-            label="Email"
-            values={emails}
-            placeholder="email@example.com"
-            onChange={setEmails}
-            onBlurItem={checkEmailBlur}
-            warnings={emailCollisions}
-          />
+          <div className="ac-field">
+            <label className="ac-label">Email</label>
+            {emails.map((entry, i) => (
+              <div key={i}>
+                <div className="ac-phone-row">
+                  <input
+                    className="ac-input"
+                    type="email"
+                    value={entry.email}
+                    placeholder="email@example.com"
+                    onChange={(e) => setEmails(emails.map((em, j) => j === i ? { ...em, email: e.target.value } : em))}
+                    onBlur={() => checkEmailBlur(entry.email.trim())}
+                    disabled={submitting}
+                  />
+                  <input
+                    className="ac-input"
+                    type="text"
+                    value={entry.label}
+                    placeholder="label"
+                    onChange={(e) => setEmails(emails.map((em, j) => j === i ? { ...em, label: e.target.value } : em))}
+                    disabled={submitting}
+                  />
+                  {emails.length > 1 && (
+                    <button
+                      type="button"
+                      className="ac-remove"
+                      onClick={() => setEmails(emails.filter((_, j) => j !== i))}
+                    >×</button>
+                  )}
+                </div>
+                {entry.email.trim() && emailCollisions[entry.email.trim()] && (
+                  <div className="ac-collision-warn">
+                    Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
+                  </div>
+                )}
+              </div>
+            ))}
+            <button type="button" className="ac-add-row" onClick={() => setEmails([...emails, { email: '', label: '' }])}>
+              + Add email
+            </button>
+          </div>
           <div className="ac-field">
             <label className="ac-label">Phone</label>
             {phones.map((entry, i) => (
@@ -239,7 +272,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     className="ac-input"
                     type="text"
                     value={entry.label}
-                    placeholder="label…"
+                    placeholder="label"
                     onChange={(e) => setPhones(phones.map((p, j) => j === i ? { ...p, label: e.target.value } : p))}
                     disabled={submitting}
                   />

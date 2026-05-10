@@ -29,7 +29,7 @@
 .icm-col-label {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
@@ -49,8 +49,6 @@
   border-radius: 0;
   font-size: 12px;
   font-family: var(--font-serif);
-  /* text-transform: uppercase; */
-  /* font-family: 'SF Mono', 'Consolas', monospace; */
   color: var(--color-text);
 }
 
@@ -87,11 +85,11 @@
 }
 
 .icm-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.10em;
   font-family: var(--font-mono);
 }
 
@@ -103,9 +101,8 @@
   font-size: 13px;
   font-family: var(--font-serif);
   color: var(--color-text);
-  background: var(--color-surface);
+  background: transparent;
   outline: none;
-  /* text-transform: uppercase; */
 }
 
 .icm-select:focus {

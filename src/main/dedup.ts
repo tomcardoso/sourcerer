@@ -40,6 +40,17 @@ export function loadDedupContacts(db: Database.Database): DedupContact[] {
     phonesByContact.set(row.contact_id, arr);
   }
 
+  const projectRows = db
+    .prepare(`SELECT pm.contact_id, p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id`)
+    .all() as Array<{ contact_id: string; name: string }>;
+
+  const projectsByContact = new Map<string, string[]>();
+  for (const row of projectRows) {
+    const arr = projectsByContact.get(row.contact_id) ?? [];
+    arr.push(row.name);
+    projectsByContact.set(row.contact_id, arr);
+  }
+
   return contacts.map((c) => ({
     id: c.id,
     name: c.name,
@@ -48,6 +59,7 @@ export function loadDedupContacts(db: Database.Database): DedupContact[] {
     emails: emailsByContact.get(c.id) ?? [],
     phones: phonesByContact.get(c.id) ?? [],
     projectCount: c.project_count,
+    projects: projectsByContact.get(c.id) ?? [],
   }));
 }
 
@@ -96,38 +108,61 @@ function jaroWinkler(a: string, b: string): number {
   return jaro + prefix * 0.1 * (1 - jaro);
 }
 
-export function findDuplicatePairs(contacts: DedupContact[]): DuplicatePair[] {
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+// For matching purposes only — strips formatting to compare digit sequences
+function digitsOnly(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Set<string>): DuplicatePair[] {
+  const isDismissed = (a: string, b: string) => {
+    if (!dismissedPairs) return false;
+    const key1 = `${a}|${b}`;
+    const key2 = `${b}|${a}`;
+    return dismissedPairs.has(key1) || dismissedPairs.has(key2);
+  };
+
   const pairs: DuplicatePair[] = [];
   const pairedIds = new Set<string>();
 
-  // Pass 1: exact email signals
+  // Pass 1: exact email signals (normalized)
   const emailIndex = new Map<string, string>();
   for (const c of contacts) {
     for (const email of c.emails) {
-      const existing = emailIndex.get(email);
+      const key = normalizeEmail(email);
+      const existing = emailIndex.get(key);
       if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
-        const a = contacts.find((x) => x.id === existing)!;
-        pairs.push({ a, b: c, reason: 'email' });
-        pairedIds.add(existing);
-        pairedIds.add(c.id);
+        if (!isDismissed(existing, c.id)) {
+          const a = contacts.find((x) => x.id === existing)!;
+          pairs.push({ a, b: c, reason: 'email' });
+          pairedIds.add(existing);
+          pairedIds.add(c.id);
+        }
       } else if (!existing) {
-        emailIndex.set(email, c.id);
+        emailIndex.set(key, c.id);
       }
     }
   }
 
-  // Pass 1b: exact phone signals
+  // Pass 1b: exact phone signals (normalized)
   const phoneIndex = new Map<string, string>();
   for (const c of contacts) {
     for (const phone of c.phones) {
-      const existing = phoneIndex.get(phone);
+      const key = digitsOnly(phone);
+      if (!key) continue;
+      const existing = phoneIndex.get(key);
       if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
-        const a = contacts.find((x) => x.id === existing)!;
-        pairs.push({ a, b: c, reason: 'phone' });
-        pairedIds.add(existing);
-        pairedIds.add(c.id);
+        if (!isDismissed(existing, c.id)) {
+          const a = contacts.find((x) => x.id === existing)!;
+          pairs.push({ a, b: c, reason: 'phone' });
+          pairedIds.add(existing);
+          pairedIds.add(c.id);
+        }
       } else if (!existing) {
-        phoneIndex.set(phone, c.id);
+        phoneIndex.set(key, c.id);
       }
     }
   }
@@ -139,6 +174,7 @@ export function findDuplicatePairs(contacts: DedupContact[]): DuplicatePair[] {
       const a = unpaired[i];
       const b = unpaired[j];
       if (pairedIds.has(a.id) || pairedIds.has(b.id)) continue;
+      if (isDismissed(a.id, b.id)) continue;
       if (jaroWinkler(a.name, b.name) >= 0.95) {
         pairs.push({ a, b, reason: 'name' });
         pairedIds.add(a.id);
@@ -148,6 +184,23 @@ export function findDuplicatePairs(contacts: DedupContact[]): DuplicatePair[] {
   }
 
   return pairs;
+}
+
+export function loadDismissedPairs(db: Database.Database): Set<string> {
+  const rows = db
+    .prepare('SELECT contact_a_id, contact_b_id FROM dedup_dismissed_pairs')
+    .all() as Array<{ contact_a_id: string; contact_b_id: string }>;
+  const set = new Set<string>();
+  for (const row of rows) {
+    set.add(`${row.contact_a_id}|${row.contact_b_id}`);
+  }
+  return set;
+}
+
+export function dismissPair(db: Database.Database, aId: string, bId: string): void {
+  db.prepare(
+    'INSERT OR IGNORE INTO dedup_dismissed_pairs (contact_a_id, contact_b_id, dismissed_at) VALUES (?, ?, ?)',
+  ).run(aId, bId, Date.now());
 }
 
 export function mergeContacts(
@@ -197,8 +250,8 @@ export function mergeContacts(
         ).map((r) => r.email),
       );
       const loserEmails = db
-        .prepare('SELECT email FROM contact_emails WHERE contact_id = ?')
-        .all(loserId) as Array<{ email: string }>;
+        .prepare('SELECT email, label FROM contact_emails WHERE contact_id = ?')
+        .all(loserId) as Array<{ email: string; label: string | null }>;
       const maxEmailOrder = (
         db
           .prepare('SELECT MAX(sort_order) AS m FROM contact_emails WHERE contact_id = ?')
@@ -208,8 +261,8 @@ export function mergeContacts(
       for (const row of loserEmails) {
         if (!winnerEmails.has(row.email)) {
           db.prepare(
-            'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
-          ).run(uuidv4(), winnerId, row.email, emailOffset++);
+            'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.email, row.label, emailOffset++);
         }
       }
 

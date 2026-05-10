@@ -14,6 +14,12 @@ function reasonLabel(reason: DuplicatePair['reason']): string {
   return 'similar name';
 }
 
+function reasonDescription(reason: DuplicatePair['reason']): string {
+  if (reason === 'email') return 'These contacts share at least one email address.';
+  if (reason === 'phone') return 'These contacts share at least one phone number.';
+  return 'These contacts have very similar names and may be the same person.';
+}
+
 function ContactCard({ contact, other }: { contact: DedupContact; other: DedupContact }) {
   const namesDiffer = contact.name !== other.name;
   const orgsDiffer = contact.organization !== other.organization;
@@ -72,9 +78,17 @@ function ContactCard({ contact, other }: { contact: DedupContact; other: DedupCo
         </div>
       )}
 
-      <div className="dedup-field">
+      <div className="dedup-field dedup-field--projects">
         <span className="dedup-field-label">Projects</span>
-        <span className="dedup-field-value">{contact.projectCount}</span>
+        {(contact.projects ?? []).length === 0 ? (
+          <span className="dedup-field-value" style={{ color: 'var(--color-text-dim)' }}>none</span>
+        ) : (
+          <div>
+            {(contact.projects ?? []).map((p) => (
+              <div key={p} className={`dedup-field-value ${!(other.projects ?? []).includes(p) ? 'dedup-field-value--unique' : ''}`}>{p}</div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -105,6 +119,10 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
     strategy: 'keep' | 'merge' | 'skip',
   ) {
     if (strategy === 'skip') {
+      const pair = pairs[0];
+      if (pair) {
+        await window.sourcerer.mergeContacts({ winnerId: pair.a.id, loserId: pair.b.id, strategy: 'skip' });
+      }
       advance();
       return;
     }
@@ -141,14 +159,21 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="dedup-card" onClick={(e) => e.stopPropagation()}>
         <div className="dedup-header">
-          <span className="dedup-title">Possible duplicate</span>
-          <span className="dedup-reason">{reasonLabel(reason)}</span>
-          <span className="dedup-progress">
-            {index + 1} of {pairs.length}
-          </span>
-          <button className="ac-close" onClick={onClose}>
-            ×
-          </button>
+          <div className="dedup-header-left">
+            <div className="dedup-header-title-row">
+              <span className="dedup-title">Possible duplicate</span>
+              <span className="dedup-reason">{reasonLabel(reason)}</span>
+            </div>
+            <span className="dedup-reason-desc">{reasonDescription(reason)}</span>
+          </div>
+          <div className="dedup-header-right">
+            <span className="dedup-progress">
+              {index + 1} of {pairs.length}
+            </span>
+            <button className="ac-close" onClick={onClose}>
+              ×
+            </button>
+          </div>
         </div>
 
         <div className="dedup-body">

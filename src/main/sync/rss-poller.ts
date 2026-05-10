@@ -5,6 +5,35 @@ import { getDatabase, isDatabaseOpen } from '../database';
 
 const parser = new Parser({ timeout: 10000 });
 
+function cleanHeadline(raw: string): string {
+  return raw
+    .replace(/<[^>]*>/g, '')           // strip HTML tags
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+}
+
+function resolveUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    // Google Alerts redirect: google.com/url?url=...
+    if ((u.hostname === 'www.google.com' || u.hostname === 'google.com') && u.pathname === '/url') {
+      const dest = u.searchParams.get('url');
+      if (dest) return dest;
+    }
+    // Google News redirect: news.google.com/rss/articles/... — no readable dest, leave as-is
+    return raw;
+  } catch {
+    return raw;
+  }
+}
+
 export async function pollAllRss(): Promise<void> {
   if (!isDatabaseOpen()) return;
   const db = getDatabase();
@@ -28,17 +57,24 @@ export async function pollAllRss(): Promise<void> {
     const newCount = await pollOneFeed(feed.contact_id, feed.rss_url);
     if (newCount > 0) {
       anyNew = true;
-      if (alertNotificationsEnabled) {
-        const notif = new Notification({
-          title: `New mention: ${feed.contact_name}`,
-          body: newCount === 1 ? '1 new article' : `${newCount} new articles`,
-        });
-        notif.show();
+      if (alertNotificationsEnabled && Notification.isSupported()) {
+        try {
+          const notif = new Notification({
+            title: `New mention: ${feed.contact_name}`,
+            body: newCount === 1 ? '1 new hit' : `${newCount} new hits`,
+          });
+          notif.show();
+        } catch (err) {
+          console.error('[alerts] Failed to show notification:', err);
+        }
       }
     }
   }
 
   if (anyNew) emitMentionsUpdated();
+
+  // Stamp last fetch time
+  db.prepare('UPDATE users SET last_rss_fetched_at = ? WHERE id = 1').run(Math.floor(Date.now() / 1000));
 }
 
 export async function pollContactRss(contactId: string): Promise<void> {
@@ -69,8 +105,8 @@ async function pollOneFeed(contactId: string, rssUrl: string): Promise<number> {
         .get(guid, contactId);
       if (exists) continue;
 
-      const headline = item.title ?? 'Untitled';
-      const sourceUrl = item.link ?? '';
+      const headline = cleanHeadline(item.title ?? 'Untitled');
+      const sourceUrl = resolveUrl(item.link ?? '');
       const publishedAt = item.pubDate
         ? Math.floor(new Date(item.pubDate).getTime() / 1000)
         : null;

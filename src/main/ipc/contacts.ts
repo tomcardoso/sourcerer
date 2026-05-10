@@ -21,7 +21,7 @@ import type {
   PriorityOption,
   User,
 } from '@shared/types';
-import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb } from '../dedup';
+import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb, loadDismissedPairs, dismissPair } from '../dedup';
 import type { DuplicatePair } from '@shared/types';
 
 let cachedPairs: DuplicatePair[] = [];
@@ -47,7 +47,8 @@ function runDedupScan(): void {
   try {
     const db = getDatabase();
     const contacts = loadDedupContacts(db);
-    cachedPairs = findDuplicatePairs(contacts);
+    const dismissed = loadDismissedPairs(db);
+    cachedPairs = findDuplicatePairs(contacts, dismissed);
     const count = cachedPairs.length;
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('contacts:duplicates-updated', count);
@@ -130,7 +131,7 @@ export function registerContactHandlers(): void {
       updated_at: number;
     };
     const emails = db
-      .prepare('SELECT id, email, sort_order FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
+      .prepare('SELECT id, email, label, sort_order FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactEmail[];
     const phones = db
       .prepare('SELECT id, phone, label, sort_order FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
@@ -185,11 +186,13 @@ export function registerContactHandlers(): void {
         'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
       ).run(id, data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, now);
 
-      const emails = (data.emails ?? []).map(normalizeEmail).filter(Boolean);
-      emails.forEach((email, i) => {
+      const emails = (data.emails ?? [])
+        .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
+        .filter((e) => e.email);
+      emails.forEach((e, i) => {
         db.prepare(
-          'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
-        ).run(uuidv4(), id, email, i);
+          'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, e.email, e.label, i);
       });
 
       phones = (data.phones ?? [])
@@ -214,9 +217,12 @@ export function registerContactHandlers(): void {
     setImmediate(runDedupScan);
 
     // Trigger background Wayback saves for website links
-    const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
-    for (const link of websiteLinks) {
-      triggerWaybackSave(id, link.url.trim()).catch(() => {});
+    const { wayback_enabled } = db.prepare('SELECT wayback_enabled FROM users WHERE id = 1').get() as { wayback_enabled: number };
+    if (wayback_enabled) {
+      const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
+      for (const link of websiteLinks) {
+        triggerWaybackSave(id, link.url.trim()).catch(() => {});
+      }
     }
     return {
       id,
@@ -310,11 +316,13 @@ export function registerContactHandlers(): void {
       ).run(data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, data.id);
 
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
-      const emails = (data.emails ?? []).map(normalizeEmail).filter(Boolean);
-      emails.forEach((email, i) => {
+      const emails = (data.emails ?? [])
+        .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
+        .filter((e) => e.email);
+      emails.forEach((e, i) => {
         db.prepare(
-          'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, email, i);
+          'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, e.email, e.label, i);
       });
 
       db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
@@ -349,11 +357,14 @@ export function registerContactHandlers(): void {
     setImmediate(runDedupScan);
 
     // Trigger Wayback saves for newly added website URLs
-    const newWebsiteUrls = (data.links ?? [])
-      .filter((l) => l.type === 'website' && l.url.trim() && !existingWaybacks.has(l.url.trim()))
-      .map((l) => l.url.trim());
-    for (const url of newWebsiteUrls) {
-      triggerWaybackSave(data.id, url).catch(() => {});
+    const { wayback_enabled } = db.prepare('SELECT wayback_enabled FROM users WHERE id = 1').get() as { wayback_enabled: number };
+    if (wayback_enabled) {
+      const newWebsiteUrls = (data.links ?? [])
+        .filter((l) => l.type === 'website' && l.url.trim() && !existingWaybacks.has(l.url.trim()))
+        .map((l) => l.url.trim());
+      for (const url of newWebsiteUrls) {
+        triggerWaybackSave(data.id, url).catch(() => {});
+      }
     }
   });
 
@@ -563,14 +574,20 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:get-duplicates', (): DuplicatePair[] => {
     const db = getDatabase();
     const contacts = loadDedupContacts(db);
-    cachedPairs = findDuplicatePairs(contacts);
+    const dismissed = loadDismissedPairs(db);
+    cachedPairs = findDuplicatePairs(contacts, dismissed);
     return cachedPairs;
   });
 
   ipcMain.handle(
     'contacts:merge',
-    (_, { winnerId, loserId, strategy }: { winnerId: string; loserId: string; strategy: 'keep' | 'merge' }): void => {
-      mergeContactsDb(getDatabase(), winnerId, loserId, strategy);
+    (_, { winnerId, loserId, strategy }: { winnerId: string; loserId: string; strategy: 'keep' | 'merge' | 'skip' }): void => {
+      const db = getDatabase();
+      if (strategy === 'skip') {
+        dismissPair(db, winnerId, loserId);
+      } else {
+        mergeContactsDb(db, winnerId, loserId, strategy);
+      }
       setImmediate(runDedupScan);
     },
   );
