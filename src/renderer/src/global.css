@@ -132,9 +132,38 @@ body {
   font-family: var(--font);
   font-size: 14px;
   color: var(--color-text);
-  background: var(--color-bg);
+  background: var(--color-surface);
   -webkit-font-smoothing: antialiased;
   user-select: none;
+}
+
+/* ── Overlay scrollbars ─────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Redaction mode — Cmd/Ctrl+Shift+R toggles blur on sensitive content */
@@ -147,4 +176,13 @@ body.redacted .pt-log-reporter,
 body.redacted .sidebar-project-name {
   filter: blur(5px);
   user-select: none;
+}
+
+code {
+  font-family: var(--font-mono);
+  background: var(--color-surface-2);
+  padding: 2px 4px;
+  border-radius: 2px;
+  margin: 0 2px;
+  font-size: 13px;
 }
