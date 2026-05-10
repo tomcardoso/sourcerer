@@ -486,119 +486,109 @@ export default function ProjectView({ project, user, onProjectUpdated }: Props) 
     <>
     <div className="view">
       <div className="view-header">
-        <div className="view-header-row">
-        <div>
-          <p className="view-kicker">
-            {`Project · ${rows.length} source${rows.length !== 1 ? 's' : ''}`}
-          </p>
-          <h1 className="view-headline">
-            {project.name}
-            {project.is_shared === 1 && (
-              <span
-                className={`sync-badge ${isPendingWrites ? 'sync-badge-pending' : syncing ? 'sync-badge-syncing' : 'sync-badge-ok'}`}
-                title={
-                  syncing
-                    ? 'Syncing…'
-                    : isPendingWrites
-                      ? 'Pending sync — shared file unreachable'
-                      : 'Synced'
-                }
-              />
-            )}
-          </h1>
-          {project.description && <p className="view-subtitle">{project.description}</p>}
-        </div>
-        <div className="view-header-right">
-          {anyFilter && (
-            <button
-              className="clear-filters-btn"
-              onClick={() => {
-                setFilters(DEFAULT_FILTERS);
-                setOpenFilter(null);
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-          {project.is_shared === 0 && (
-            <button className="share-project-btn" onClick={handleConvertToShared}>
-              Share project…
-            </button>
-          )}
-          {project.is_shared === 1 && !confirmUnshare && (
-            <button className="btn-secondary" onClick={() => setConfirmUnshare(true)}>
-              Unshare…
-            </button>
-          )}
-          {confirmUnshare && (
-            <span className="inline-confirm">
-              Stop syncing this shared project?
-              <button className="inline-confirm-yes" onClick={handleUnshare}>Yes, unshare</button>
-              <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
-            </span>
-          )}
-          <button className="btn-secondary" onClick={() => setShowImportModal(true)}>
-            Import CSV…
-          </button>
-          <div className="export-menu-wrap" ref={exportMenuRef}>
-            <button
-              className="export-btn"
-              onClick={() => setShowExportMenu((v) => !v)}
-              disabled={exporting || rows.length === 0}
-              title="Export contacts"
-            >
-              {exporting ? 'Exporting…' : '↓ Export'}
-            </button>
-            {showExportMenu && (
-              <div className="export-menu">
-                <button className="export-menu-item" onClick={() => handleExport('full')}>
-                  <span className="export-menu-label">Full export</span>
-                  <span className="export-menu-desc">All fields including notes and interaction log</span>
-                </button>
-                <button className="export-menu-item" onClick={() => handleExport('sanitized')}>
-                  <span className="export-menu-label">Sanitized export</span>
-                  <span className="export-menu-desc">Omits notes and interaction log</span>
-                </button>
-                <button
-                  className="export-menu-item"
-                  onClick={() => {
-                    setShowExportMenu(false);
-                    window.sourcerer.exportVCardProject(project.id);
-                  }}
-                >
-                  <span className="export-menu-label">Export as vCard</span>
-                  <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
-                </button>
-              </div>
-            )}
-          </div>
+        <p className="view-kicker">
+          {`Project · ${rows.length} contact${rows.length !== 1 ? 's' : ''}`}
+        </p>
+        <h1 className="view-headline">
+          {project.name}
           {project.is_shared === 1 && (
-            <button
-              className="sync-now-btn"
-              onClick={handleSyncNow}
-              disabled={syncing}
-              title="Sync now"
-            >
-              {syncing ? 'Syncing…' : '↻ Sync'}
-            </button>
+            <span
+              className={`sync-badge ${isPendingWrites ? 'sync-badge-pending' : syncing ? 'sync-badge-syncing' : 'sync-badge-ok'}`}
+              title={
+                syncing
+                  ? 'Syncing…'
+                  : isPendingWrites
+                    ? 'Pending sync — shared file unreachable'
+                    : 'Synced'
+              }
+            />
           )}
-        </div>
-        </div>
+        </h1>
+        {project.description && <p className="view-subtitle">{project.description}</p>}
         <div className="view-rule-thick" />
         <div className="view-rule-thin" />
         <div className="project-meta-bar">
-          <span className="project-meta-item">
-            <span className="project-meta-label">Opened</span>
-            <span className="project-meta-value">{fmtOpened(project.created_at)}</span>
-          </span>
-          {project.is_shared === 1 && (
+          <div className="project-meta-left">
             <span className="project-meta-item">
-              <span className="project-meta-label">Last sync</span>
-              <span className="project-meta-value">
-                {lastSyncedAt ? fmtRelative(lastSyncedAt) : syncing ? 'syncing…' : '—'}
-              </span>
+              <span className="project-meta-label">Created</span>
+              <span className="project-meta-value">{fmtOpened(project.created_at)}</span>
             </span>
-          )}
+            {project.is_shared === 1 && (
+              <span className="project-meta-item">
+                <span className="project-meta-label">Last sync</span>
+                <span className="project-meta-value">
+                  {lastSyncedAt ? fmtRelative(lastSyncedAt) : syncing ? 'syncing…' : '—'}
+                </span>
+              </span>
+            )}
+            {anyFilter && (
+              <button
+                className="project-meta-action-btn project-meta-action-btn--active"
+                onClick={() => { setFilters(DEFAULT_FILTERS); setOpenFilter(null); }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+          <div className="project-meta-right">
+            {project.is_shared === 0 && (
+              <button className="project-meta-action-btn" onClick={handleConvertToShared}>
+                Share…
+              </button>
+            )}
+            {project.is_shared === 1 && !confirmUnshare && (
+              <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
+                Unshare…
+              </button>
+            )}
+            {confirmUnshare && (
+              <span className="inline-confirm">
+                Stop syncing?
+                <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
+                <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
+              </span>
+            )}
+            <button className="project-meta-action-btn" onClick={() => setShowImportModal(true)}>
+              Import CSV…
+            </button>
+            <div className="export-menu-wrap" ref={exportMenuRef}>
+              <button
+                className="project-meta-action-btn"
+                onClick={() => setShowExportMenu((v) => !v)}
+                disabled={exporting || rows.length === 0}
+              >
+                {exporting ? 'Exporting…' : '↓ Export'}
+              </button>
+              {showExportMenu && (
+                <div className="export-menu">
+                  <button className="export-menu-item" onClick={() => handleExport('full')}>
+                    <span className="export-menu-label">Full export</span>
+                    <span className="export-menu-desc">All fields including notes and interaction log</span>
+                  </button>
+                  <button className="export-menu-item" onClick={() => handleExport('sanitized')}>
+                    <span className="export-menu-label">Sanitized export</span>
+                    <span className="export-menu-desc">Omits notes and interaction log</span>
+                  </button>
+                  <button
+                    className="export-menu-item"
+                    onClick={() => { setShowExportMenu(false); window.sourcerer.exportVCardProject(project.id); }}
+                  >
+                    <span className="export-menu-label">Export as vCard</span>
+                    <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
+                  </button>
+                </div>
+              )}
+            </div>
+            {project.is_shared === 1 && (
+              <button
+                className="project-meta-action-btn"
+                onClick={handleSyncNow}
+                disabled={syncing}
+              >
+                {syncing ? 'Syncing…' : '↻ Sync'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
