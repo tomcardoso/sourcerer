@@ -98,6 +98,11 @@ export default function Sidebar({
         {/* Workspace nav */}
         <nav className="sidebar-nav">
 
+          <div className="sidebar-action-btns">
+            <button className="sidebar-action-btn" onClick={onAddContact}>+ Add contact</button>
+            <button className="sidebar-action-btn sidebar-action-btn--secondary" onClick={onImportCsv}>Import CSV…</button>
+          </div>
+
           <div className="sidebar-section-label">Workspace</div>
 
           <button
@@ -140,16 +145,6 @@ export default function Sidebar({
             <span className="sidebar-nav-indicator" />
             Search
             <span className="sidebar-search-hint"><span>⌘</span>K</span>
-          </button>
-
-          <div className="sidebar-section-label sidebar-section-label--actions">Actions</div>
-          <button className="sidebar-nav-item" onClick={onAddContact}>
-            <span className="sidebar-nav-indicator" />
-            Add contact
-          </button>
-          <button className="sidebar-nav-item" onClick={onImportCsv}>
-            <span className="sidebar-nav-indicator" />
-            Import contacts
           </button>
         </nav>
 
