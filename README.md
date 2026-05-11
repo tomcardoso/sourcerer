@@ -9,7 +9,8 @@ Source and contact management for journalists — local-first, encrypted, no clo
 - [What it does](#what-it-does)
 - [Features](#features)
 - [How it works](#how-it-works)
-- [Getting started](#getting-started)
+- [Installation](#installation)
+- [Getting started (development)](#getting-started-development)
 - [Security notes](#security-notes)
 - [License](#license)
 
@@ -73,7 +74,29 @@ Sourcerer is an Electron + React + TypeScript application built with [electron-v
 
 ---
 
-## Getting started
+## Installation
+
+Pre-built binaries for **macOS (Apple Silicon)** and **Windows (x64)** are published with each release.
+
+**[→ Download the latest release](https://github.com/tomcardoso/sourcerer/releases/latest)**
+
+> Linux is not currently distributed as a pre-built binary. See [Getting started (development)](#getting-started-development) to build from source.
+
+**macOS**
+
+1. Download `Sourcerer-<version>-arm64.dmg`.
+2. Open the `.dmg` and drag Sourcerer to your Applications folder.
+3. On first launch, macOS may block the app because it is not notarized. If you see a Gatekeeper prompt, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+
+**Windows**
+
+1. Download `Sourcerer Setup <version>.exe`.
+2. Run the installer. Windows SmartScreen may warn you the publisher is unknown — click **More info → Run anyway**.
+3. Sourcerer will be installed to your user profile and a Start Menu shortcut will be created.
+
+---
+
+## Getting started (development)
 
 **Prerequisites:** Node 20+, npm
 
