@@ -91,13 +91,13 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     const pensionId = uuidv4();
     const healthId = uuidv4();
 
-    stmts.insertProject.run(greenbeltId, 'Greenbelt Land Swap',
-      'Investigating the removal of lands from Ontario\'s Greenbelt, the approval process, and the developers and officials involved.',
+    stmts.insertProject.run(greenbeltId, 'Millgate Land Deal',
+      'Investigating the removal of protected lands from the provincial greenbelt, the approval process, and the developers and officials involved.',
       NOW);
-    stmts.insertProject.run(pensionId, 'Pension Fund Fraud',
-      'Tracking allegations of misappropriation within a major Canadian public pension fund, including offshore holding structures and regulatory blind spots.',
+    stmts.insertProject.run(pensionId, 'Clearwater Pension Inquiry',
+      'Tracking allegations of misappropriation within a major public pension fund, including offshore holding structures and regulatory blind spots.',
       NOW);
-    stmts.insertProject.run(healthId, 'Health System Failures',
+    stmts.insertProject.run(healthId, 'Health System Audit',
       'Documenting systemic failures across hospital staffing, drug approvals, and long-term care — and the government decisions that enabled them.',
       NOW);
 
@@ -170,7 +170,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     addMembership('Darnell Okafor', greenbeltId, me(), {
       theme: 'Whistleblower', priority: 'Critical', status: 'In dialogue',
     });
-    addMembership('Marcus Osei-Bonsu', greenbeltId, me(), {
+    addMembership('Marcus Owusu-Boateng', greenbeltId, me(), {
       theme: 'Government', priority: 'High', status: 'In dialogue',
     });
     addMembership('Sandra Woo-Patel', greenbeltId, me(), {
@@ -182,7 +182,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     addMembership('Ted Molnar', greenbeltId, me(), {
       theme: 'Politics', priority: 'Low', status: 'In dialogue',
     });
-    addMembership('Councillor Diane Fischetti', greenbeltId, SARAH, {
+    addMembership('Councillor Diane Ferreira', greenbeltId, SARAH, {
       theme: 'Municipal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Priya Subramaniam', greenbeltId, me(), {
@@ -352,10 +352,10 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       'Brief call. She is nervous about exposure — reminded her of our source protection practices. She will think about it.',
       9);
 
-    addLog('Marcus Osei-Bonsu', greenbeltId, me(),
+    addLog('Marcus Owusu-Boateng', greenbeltId, me(),
       'Background call via Signal. Confirmed the timeline of ministerial approvals. Will not go on record.',
       30);
-    addLog('Marcus Osei-Bonsu', greenbeltId, me(),
+    addLog('Marcus Owusu-Boateng', greenbeltId, me(),
       'Sent him the draft timeline for fact-checking. He marked two dates as incorrect.',
       11);
 
