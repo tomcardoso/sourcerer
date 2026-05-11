@@ -10,8 +10,13 @@ let activeKeyHex: string | null = null;
 function openRaw(dbPath: string, keyHex: string): Database.Database {
   const db = new Database(dbPath);
 
-  // cipher must be set before key for SQLCipher4 compatibility
+  // All cipher settings must be set before key pragma; these pin SQLCipher 4 parameters
+  // explicitly so behaviour doesn't change if library defaults are ever revised.
   db.pragma(`cipher='sqlcipher'`);
+  db.pragma('cipher_page_size=4096');
+  db.pragma('kdf_iter=256000');
+  db.pragma('cipher_hmac_algorithm=HMAC_SHA512');
+  db.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
   db.pragma(`key="x'${keyHex}'"`);
 
   // Verify the key is correct — wrong key throws "file is not a database"

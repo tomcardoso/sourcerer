@@ -27,9 +27,24 @@ export function registerUnlockHandlers(): void {
     }
 
     try {
-      const salt = await fs.readFile(saltPath);
-      const keyHex = await deriveKey(password, salt);
-      const db = unlockDatabase(dbPath, keyHex);
+      let salt = await fs.readFile(saltPath);
+      let keyHex = await deriveKey(password, salt);
+
+      // Recovery path: if a previous password change was interrupted after PRAGMA rekey
+      // but before the atomic rename, a .tmp salt file remains.  Try it as a fallback
+      // and, if it works, complete the rename so the state is fully consistent.
+      let db;
+      try {
+        db = unlockDatabase(dbPath, keyHex);
+      } catch {
+        const saltTmpPath = saltPath + '.tmp';
+        const tmpExists = await fs.access(saltTmpPath).then(() => true).catch(() => false);
+        if (!tmpExists) throw new Error('Incorrect password.');
+        salt = await fs.readFile(saltTmpPath);
+        keyHex = await deriveKey(password, salt);
+        db = unlockDatabase(dbPath, keyHex);
+        await fs.rename(saltTmpPath, saltPath);
+      }
 
       maybeRunDevSeeds(db);
 

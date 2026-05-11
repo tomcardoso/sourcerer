@@ -182,8 +182,8 @@ declare global {
       downloadSampleCsv: () => Promise<void>;
 
       // Backup
-      exportBackup: () => Promise<{ success: boolean; error?: string }>;
-      restoreBackup: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+      exportBackup: (password: string) => Promise<{ success: boolean; error?: string }>;
+      restoreBackup: (password: string) => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
 
       // Search
       searchGlobal: (query: string) => Promise<SearchResult[]>;

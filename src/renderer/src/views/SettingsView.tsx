@@ -67,7 +67,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   const [backingUp, setBackingUp] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
+  const [exportConfirm, setExportConfirm] = useState(false);
+  const [exportPassword, setExportPassword] = useState('');
   const [restoreConfirm, setRestoreConfirm] = useState(false);
+  const [restorePassword, setRestorePassword] = useState('');
   const [restoringBackup, setRestoringBackup] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
@@ -144,20 +147,28 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   }
 
   async function handleExportBackup() {
+    if (!exportPassword) return;
     setBackingUp(true);
     setBackupError(null);
-    const result = await window.sourcerer.exportBackup();
+    const result = await window.sourcerer.exportBackup(exportPassword);
     setBackingUp(false);
-    if (!result.success && result.error) setBackupError(result.error);
+    if (result.success) {
+      setExportConfirm(false);
+      setExportPassword('');
+    } else if (result.error) {
+      setBackupError(result.error);
+    }
   }
 
   async function handleRestoreBackup() {
+    if (!restorePassword) return;
     setRestoringBackup(true);
     setRestoreError(null);
-    const result = await window.sourcerer.restoreBackup();
+    const result = await window.sourcerer.restoreBackup(restorePassword);
     setRestoringBackup(false);
     if (result.canceled) {
       setRestoreConfirm(false);
+      setRestorePassword('');
       return;
     }
     if (!result.success) {
@@ -537,17 +548,50 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         {/* Backup */}
         <div className="sv-section">
           <div className="sv-section-title">Backup</div>
-          <div className="sv-field">
-            <div className="sv-backup-export-restore">
-              <div className="sv-hint">
-                Save your encrypted database and key file as a <code>.sourcerer-backup</code> file. Keep this somewhere safe — anyone with your master password can restore it.
+          {!exportConfirm ? (
+            <div className="sv-field">
+              <div className="sv-backup-export-restore">
+                <div className="sv-hint">
+                  Save your encrypted database as a <code>.sourcerer-backup</code> file. The backup is encrypted with your master password — only someone with your password can restore it.
+                </div>
+                <button className="sv-save-btn" onClick={() => { setExportConfirm(true); setBackupError(null); setExportPassword(''); }}>
+                  Export backup
+                </button>
               </div>
-              <button className="sv-save-btn" onClick={handleExportBackup} disabled={backingUp}>
-                {backingUp ? 'Exporting…' : 'Export backup'}
-              </button>
+            </div>
+          ) : (
+            <div className="sv-wipe-confirm">
+              <p className="sv-wipe-warning">
+                Enter your master password to encrypt the backup file.
+              </p>
+              <input
+                className="sv-input"
+                type="password"
+                placeholder="Master password"
+                value={exportPassword}
+                onChange={(e) => { setExportPassword(e.target.value); setBackupError(null); }}
+                autoComplete="current-password"
+                disabled={backingUp}
+              />
+              <div className="sv-wipe-row">
+                <button
+                  className="sv-wipe-confirm-btn"
+                  onClick={handleExportBackup}
+                  disabled={backingUp || !exportPassword}
+                >
+                  {backingUp ? 'Exporting…' : 'Export backup'}
+                </button>
+                <button
+                  className="sv-cancel-small-btn"
+                  onClick={() => { setExportConfirm(false); setExportPassword(''); setBackupError(null); }}
+                  disabled={backingUp}
+                >
+                  Cancel
+                </button>
+              </div>
               {backupError && <div className="sv-error-inline">{backupError}</div>}
             </div>
-          </div>
+          )}
           {!restoreConfirm ? (
             <div className="sv-field">
               <div>
@@ -556,7 +600,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 </div>
                 <button
                   className="sv-save-btn"
-                  onClick={() => { setRestoreConfirm(true); setRestoreError(null); }}
+                  onClick={() => { setRestoreConfirm(true); setRestoreError(null); setRestorePassword(''); }}
                 >
                   Restore from backup
                 </button>
@@ -567,19 +611,28 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             <div className="sv-wipe-confirm">
               <p className="sv-wipe-warning">
                 Restoring a backup will permanently overwrite your current database and cannot be undone.
-                A file picker will open — choose your <code>.sourcerer-backup</code> file to proceed.
+                Enter the master password used when the backup was created, then choose the file.
               </p>
+              <input
+                className="sv-input"
+                type="password"
+                placeholder="Backup password"
+                value={restorePassword}
+                onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
+                autoComplete="current-password"
+                disabled={restoringBackup}
+              />
               <div className="sv-wipe-row">
                 <button
                   className="sv-wipe-confirm-btn"
                   onClick={handleRestoreBackup}
-                  disabled={restoringBackup}
+                  disabled={restoringBackup || !restorePassword}
                 >
                   {restoringBackup ? 'Restoring…' : 'Choose backup file…'}
                 </button>
                 <button
                   className="sv-cancel-small-btn"
-                  onClick={() => { setRestoreConfirm(false); setRestoreError(null); }}
+                  onClick={() => { setRestoreConfirm(false); setRestorePassword(''); setRestoreError(null); }}
                   disabled={restoringBackup}
                 >
                   Cancel

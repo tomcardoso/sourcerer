@@ -196,10 +196,10 @@ const sourcererApi = {
   // Export
   exportProject: (projectId: string, mode: 'full' | 'sanitized'): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('export:project', { projectId, mode }),
-  exportBackup: (): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('backup:export'),
-  restoreBackup: (): Promise<{ success: boolean; canceled?: boolean; error?: string }> =>
-    ipcRenderer.invoke('backup:restore'),
+  exportBackup: (password: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('backup:export', { password }),
+  restoreBackup: (password: string): Promise<{ success: boolean; canceled?: boolean; error?: string }> =>
+    ipcRenderer.invoke('backup:restore', { password }),
   searchGlobal: (query: string): Promise<import('@shared/types').SearchResult[]> =>
     ipcRenderer.invoke('search:global', query),
   assignScreenshot: (data: { tempId: string; contactId: string }): Promise<{ success: boolean; error?: string }> =>

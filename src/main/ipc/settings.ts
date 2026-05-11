@@ -224,14 +224,20 @@ export function registerSettingsHandlers(): void {
         const newSalt = crypto.randomBytes(32);
         const newKeyHex = await deriveKey(newPassword, newSalt);
 
+        // Write the new salt to a temp path first so that if the process crashes
+        // between rekey and rename, unlock.ts can detect and recover the pending salt.
+        const saltTmpPath = saltPath + '.tmp';
+        await fs.writeFile(saltTmpPath, newSalt, { mode: 0o600 });
+
         // Rekey the active database connection in-place
         getDatabase().pragma(`rekey="x'${newKeyHex}'"`);
 
         // Update the in-memory key so screenshot encryption keeps working
         updateActiveKeyHex(newKeyHex);
 
-        // Persist the new salt so future unlocks use it
-        await fs.writeFile(saltPath, newSalt, { mode: 0o600 });
+        // Atomic rename completes the operation; if this fails the .tmp file
+        // serves as a recovery signal on the next unlock attempt.
+        await fs.rename(saltTmpPath, saltPath);
 
         return { success: true };
       } catch (err) {
