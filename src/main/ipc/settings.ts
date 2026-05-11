@@ -1,9 +1,10 @@
 import { ipcMain, app } from 'electron';
 import { promises as fs } from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getDatabase, closeDatabase } from '../database';
+import { getDatabase, closeDatabase, updateActiveKeyHex } from '../database';
 import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
@@ -220,14 +221,17 @@ export function registerSettingsHandlers(): void {
         testDb.close();
 
         // Derive new key with a fresh salt
-        const newSalt = crypto.randomBytes(16);
+        const newSalt = crypto.randomBytes(32);
         const newKeyHex = await deriveKey(newPassword, newSalt);
 
         // Rekey the active database connection in-place
         getDatabase().pragma(`rekey="x'${newKeyHex}'"`);
 
+        // Update the in-memory key so screenshot encryption keeps working
+        updateActiveKeyHex(newKeyHex);
+
         // Persist the new salt so future unlocks use it
-        await fs.writeFile(saltPath, newSalt);
+        await fs.writeFile(saltPath, newSalt, { mode: 0o600 });
 
         return { success: true };
       } catch (err) {
@@ -239,7 +243,7 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get-calendar-url', (): string => {
     const db = getDatabase();
     const { calendar_token } = db.prepare('SELECT calendar_token FROM users WHERE id = 1').get() as { calendar_token: string };
-    return `http://127.0.0.1:${PORT}/calendar/reminders.ics?token=${calendar_token}`;
+    return `http://127.0.0.1:27371/calendar/reminders.ics?token=${calendar_token}`;
   });
 
   ipcMain.handle('settings:regenerate-calendar-token', (): User => {
@@ -251,9 +255,34 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('settings:panic-wipe', async (): Promise<void> => {
     const { dbPath, saltPath } = getPaths();
+    const screenshotsPath = path.join(app.getPath('userData'), 'screenshots');
+
     closeDatabase();
-    await fs.unlink(dbPath).catch(() => {});
-    await fs.unlink(saltPath).catch(() => {});
+
+    // Overwrite sensitive files before unlinking so the data is not trivially
+    // recoverable from unallocated sectors.
+    async function secureDelete(filePath: string): Promise<void> {
+      try {
+        const stat = await fs.stat(filePath);
+        const fh = await fs.open(filePath, 'r+');
+        try {
+          await fh.write(crypto.randomBytes(stat.size), 0, stat.size, 0);
+          await fh.datasync();
+        } finally {
+          await fh.close();
+        }
+      } catch { /* file may not exist */ }
+      await fs.unlink(filePath).catch(() => {});
+    }
+
+    await secureDelete(dbPath);
+    await secureDelete(dbPath + '-wal');
+    await secureDelete(dbPath + '-shm');
+    await secureDelete(saltPath);
+
+    // Remove encrypted screenshots
+    await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
+
     app.quit();
   });
 }

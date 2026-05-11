@@ -183,7 +183,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     setSubmitting(true);
 
     const links = [
-      ...websites.filter((u) => u.trim()).map((url) => ({ type: 'website', url })),
+      ...websites.filter((u) => u.trim()).map((url) => ({ type: 'website' as const, url })),
       ...SOCIAL_TYPES.flatMap((type) =>
         socials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
       ),

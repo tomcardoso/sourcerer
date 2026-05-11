@@ -164,7 +164,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     const socialsByType = Object.fromEntries(
       SOCIAL_TYPES.map((type) => [
         type,
-        contact.links.filter((l) => l.type === type || (type === 'x' && l.type === 'twitter')).map((l) => l.url),
+        contact.links.filter((l) => l.type === type).map((l) => l.url),
       ]),
     ) as Record<SocialType, string[]>;
     setEditSocials(socialsByType);
@@ -225,7 +225,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         ...SOCIAL_TYPES.flatMap((type) =>
           editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
         ),
-        ...editWebsites.filter((u) => u.trim()).map((url) => ({ type: 'website', url })),
+        ...editWebsites.filter((u) => u.trim()).map((url) => ({ type: 'website' as const, url })),
       ];
       await window.sourcerer.updateContact({
         id: contact.id,

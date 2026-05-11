@@ -1,7 +1,10 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 import zlib from 'zlib';
 import { promisify } from 'util';
+import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths } from '../utils';
 import { closeDatabase } from '../database';
 import { stopPoller } from '../sync/poller';
@@ -57,6 +60,13 @@ export function registerBackupHandlers(): void {
     if (canceled || filePaths.length === 0) return { success: false, canceled: true };
 
     try {
+      // Reject suspiciously large files before buffering them in memory
+      const MAX_BACKUP_BYTES = 250 * 1024 * 1024;
+      const stat = await fs.stat(filePaths[0]);
+      if (stat.size > MAX_BACKUP_BYTES) {
+        return { success: false, error: 'Backup file is too large (max 250 MB).' };
+      }
+
       const compressed = await fs.readFile(filePaths[0]);
       const raw = await gunzip(compressed);
       const bundle = JSON.parse(raw.toString('utf-8'));
@@ -68,11 +78,33 @@ export function registerBackupHandlers(): void {
       const db = Buffer.from(bundle.db, 'base64');
       const salt = Buffer.from(bundle.salt, 'base64');
 
+      // Verify the restored DB can be opened with the bundled salt before
+      // overwriting the live installation.  We write to a temp file because
+      // better-sqlite3 requires a real path.
+      const tmpPath = path.join(os.tmpdir(), `sourcerer-restore-${Date.now()}.db`);
+      try {
+        await fs.writeFile(tmpPath, db, { mode: 0o600 });
+        const testDb = new Database(tmpPath);
+        testDb.pragma(`cipher='sqlcipher'`);
+        // We can't verify with the user's current password because the backup
+        // may have been created with a different one; just confirm it opens as
+        // a valid SQLite/SQLCipher container by reading its page count.
+        try {
+          testDb.pragma('page_count');
+        } catch {
+          testDb.close();
+          return { success: false, error: 'Backup contains an invalid or corrupted database.' };
+        }
+        testDb.close();
+      } finally {
+        await fs.unlink(tmpPath).catch(() => {});
+      }
+
       stopPoller();
       closeDatabase();
 
-      await fs.writeFile(dbPath, db);
-      await fs.writeFile(saltPath, salt);
+      await fs.writeFile(dbPath, db, { mode: 0o600 });
+      await fs.writeFile(saltPath, salt, { mode: 0o600 });
 
       if (win) {
         win.setResizable(false);

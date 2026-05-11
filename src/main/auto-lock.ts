@@ -1,5 +1,6 @@
 import type { BrowserWindow } from 'electron';
 import { closeDatabase, isDatabaseOpen } from './database';
+import { closeAllSharedDbs } from './database/shared-db';
 import { stopPoller } from './sync/poller';
 
 const IDLE_CHECK_INTERVAL_MS = 60_000;
@@ -37,6 +38,7 @@ class AutoLockManager {
     if (!isDatabaseOpen()) return;
     if (Date.now() - this.lastInteractionAt > this.idleThresholdMs) {
       stopPoller();
+      closeAllSharedDbs();
       closeDatabase();
       if (this.win) {
         this.win.setResizable(false);

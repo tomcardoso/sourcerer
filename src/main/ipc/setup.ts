@@ -23,9 +23,9 @@ export function registerSetupHandlers(): void {
     let dbCreated = false;
 
     try {
-      const salt = crypto.randomBytes(16);
+      const salt = crypto.randomBytes(32);
 
-      await fs.writeFile(saltPath, salt);
+      await fs.writeFile(saltPath, salt, { mode: 0o600 });
       saltWritten = true;
 
       const keyHex = await deriveKey(data.password, salt);
@@ -33,6 +33,8 @@ export function registerSetupHandlers(): void {
       const db = initDatabase(dbPath, keyHex);
       dbCreated = true;
 
+      // Restrict DB file permissions — better-sqlite3 creates the file itself
+      await fs.chmod(dbPath, 0o600).catch(() => {});
       const now = Math.floor(Date.now() / 1000);
       db.prepare(
         'INSERT INTO users (id, first_name, last_name, email, created_at, calendar_token) VALUES (?, ?, ?, ?, ?, ?)',

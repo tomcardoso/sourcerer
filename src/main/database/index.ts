@@ -66,6 +66,10 @@ export function getKeyHex(): string {
   return activeKeyHex;
 }
 
+export function updateActiveKeyHex(newKeyHex: string): void {
+  activeKeyHex = newKeyHex;
+}
+
 export function closeDatabase(): void {
   if (activeDb) {
     activeDb.close();

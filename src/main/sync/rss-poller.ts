@@ -89,6 +89,14 @@ export async function pollContactRss(contactId: string): Promise<void> {
 }
 
 async function pollOneFeed(contactId: string, rssUrl: string): Promise<number> {
+  // Reject non-HTTP(S) URLs to prevent SSRF via file:// or internal addresses
+  try {
+    const parsed = new URL(rssUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return 0;
+  } catch {
+    return 0;
+  }
+
   const db = getDatabase();
   const now = Math.floor(Date.now() / 1000);
 

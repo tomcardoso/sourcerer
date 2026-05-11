@@ -40,7 +40,7 @@ function createWindow(): BrowserWindow {
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -49,7 +49,14 @@ function createWindow(): BrowserWindow {
   win.on('ready-to-show', () => win.show());
 
   win.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    try {
+      const parsed = new URL(details.url);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:' || parsed.protocol === 'mailto:') {
+        shell.openExternal(details.url);
+      }
+    } catch {
+      // malformed URL — ignore
+    }
     return { action: 'deny' };
   });
 

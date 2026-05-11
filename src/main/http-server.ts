@@ -35,17 +35,32 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+function isExtensionOrigin(origin: string | undefined): boolean {
+  if (!origin) return false;
+  return origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://');
+}
+
+function setCorsForExtension(req: IncomingMessage, res: ServerResponse): void {
+  const origin = req.headers['origin'];
+  if (isExtensionOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin!);
+    res.setHeader('Access-Control-Allow-Headers', 'X-Sourcerer-Token, Content-Type, X-Tab-Url');
+    res.setHeader('Vary', 'Origin');
+  }
+}
+
 function handleRequest(req: IncomingMessage, res: ServerResponse): void {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'X-Sourcerer-Token, Content-Type');
+  const url = new URL(req.url ?? '/', `http://${HOST}`);
 
   if (req.method === 'OPTIONS') {
+    // Only answer preflight for extension origins
+    if (isExtensionOrigin(req.headers['origin'])) {
+      setCorsForExtension(req, res);
+    }
     res.writeHead(204);
     res.end();
     return;
   }
-
-  const url = new URL(req.url ?? '/', `http://${HOST}`);
 
   if (req.method === 'GET' && url.pathname === '/status') {
     json(res, 200, { running: true, locked: !isDatabaseOpen(), version: '1.0.0' });
@@ -62,6 +77,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'POST' && url.pathname === '/request-access') {
+    setCorsForExtension(req, res);
     if (accessState !== 'pending') {
       accessState = 'pending';
       sessionToken = null;
@@ -74,6 +90,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'GET' && url.pathname === '/access-status') {
+    setCorsForExtension(req, res);
     if (accessState === 'approved' && sessionToken) {
       json(res, 200, { status: 'approved', token: sessionToken });
     } else if (accessState === 'denied') {
@@ -111,6 +128,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   // All remaining routes require session token + unlocked state
+  setCorsForExtension(req, res);
   const incomingToken = req.headers['x-sourcerer-token'];
   if (!sessionToken || incomingToken !== sessionToken) {
     json(res, 401, { error: 'unauthorized' });
