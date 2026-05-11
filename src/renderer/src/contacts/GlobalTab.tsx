@@ -24,6 +24,19 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
 
 const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
 
+function isValidEmail(raw: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim());
+}
+
+function isValidUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 function DynamicList({
   values,
   placeholder,
@@ -60,7 +73,7 @@ function DynamicList({
             >×</button>
           </div>
           {v.trim() && warnings?.[v.trim()] && (
-            <div className="ac-collision-warn">Already on: <strong>{warnings[v.trim()]}</strong></div>
+            <div className="ac-collision-warn">{warnings[v.trim()]}</div>
           )}
         </div>
       ))}
@@ -91,10 +104,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const viewerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!viewingScreenshot) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setViewingScreenshot(null); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    if (viewingScreenshot) viewerRef.current?.focus();
   }, [viewingScreenshot]);
 
   // Edit form state
@@ -110,6 +120,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editRssUrl, setEditRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
+  const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
+  const [phoneFormatWarnings, setPhoneFormatWarnings] = useState<Record<string, true>>({});
+  const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
 
   useEffect(() => {
     window.sourcerer.getAlertRss(contact.id).then(setAlertRss);
@@ -159,11 +172,21 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditRssUrl(alertRss?.rss_url ?? '');
     setEmailCollisions({});
     setPhoneCollisions({});
+    setEmailFormatWarnings({});
+    setPhoneFormatWarnings({});
+    setUrlFormatWarnings({});
     setEditingAndNotify(true);
   }
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
+    const valid = isValidEmail(value);
+    setEmailFormatWarnings((prev) => {
+      const next = { ...prev };
+      if (!valid) next[value] = true; else delete next[value];
+      return next;
+    });
+    if (!valid) return;
     const result = await window.sourcerer.checkCollision({ emails: [value], phones: [], excludeId: contact.id });
     setEmailCollisions((prev) => {
       const next = { ...prev };
@@ -174,10 +197,18 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function checkPhoneBlur(value: string) {
     if (!value) return;
-    const result = await window.sourcerer.checkCollision({ emails: [], phones: [value], excludeId: contact.id });
+    const [isValid, collision] = await Promise.all([
+      window.sourcerer.validatePhone(value),
+      window.sourcerer.checkCollision({ emails: [], phones: [value], excludeId: contact.id }),
+    ]);
+    setPhoneFormatWarnings((prev) => {
+      const next = { ...prev };
+      if (!isValid) next[value] = true; else delete next[value];
+      return next;
+    });
     setPhoneCollisions((prev) => {
       const next = { ...prev };
-      if (result.phone[value]) next[value] = result.phone[value]; else delete next[value];
+      if (collision.phone[value]) next[value] = collision.phone[value]; else delete next[value];
       return next;
     });
   }
@@ -305,7 +336,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   onClick={() => setEditEmails(editEmails.filter((_, j) => j !== i))}
                 >×</button>
               </div>
-              {entry.email.trim() && emailCollisions[entry.email.trim()] && (
+              {entry.email.trim() && emailFormatWarnings[entry.email.trim()] && (
+                <div className="ac-collision-warn">
+                  ⚠ Invalid email address
+                </div>
+              )}
+              {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && emailCollisions[entry.email.trim()] && (
                 <div className="ac-collision-warn">
                   Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
                 </div>
@@ -355,7 +391,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   onClick={() => setEditPhones(editPhones.filter((_, j) => j !== i))}
                 >×</button>
               </div>
-              {entry.phone.trim() && phoneCollisions[entry.phone.trim()] && (
+              {entry.phone.trim() && phoneFormatWarnings[entry.phone.trim()] && (
+                <div className="ac-collision-warn">
+                  ⚠ Invalid phone number
+                </div>
+              )}
+              {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneCollisions[entry.phone.trim()] && (
                 <div className="ac-collision-warn">
                   Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
                 </div>
@@ -378,6 +419,20 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               values={editSocials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
+              onBlurItem={(val) => {
+                if (!val) return;
+                setUrlFormatWarnings((prev) => {
+                  const next = { ...prev };
+                  if (!isValidUrl(val)) next[val] = true; else delete next[val];
+                  return next;
+                });
+              }}
+              warnings={Object.fromEntries(
+                editSocials[type]
+                  .map((v) => v.trim())
+                  .filter((v) => v && urlFormatWarnings[v])
+                  .map((v) => [v, '⚠ Invalid URL'])
+              )}
             />
           </div>
         ))}
@@ -388,6 +443,20 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             values={editWebsites}
             placeholder="https://example.com"
             onChange={setEditWebsites}
+            onBlurItem={(val) => {
+              if (!val) return;
+              setUrlFormatWarnings((prev) => {
+                const next = { ...prev };
+                if (!isValidUrl(val)) next[val] = true; else delete next[val];
+                return next;
+              });
+            }}
+            warnings={Object.fromEntries(
+              editWebsites
+                .map((v) => v.trim())
+                .filter((v) => v && urlFormatWarnings[v])
+                .map((v) => [v, '⚠ Invalid URL'])
+            )}
           />
           <p className="ac-field-hint">Wayback Machine archiving can be enabled or disabled in Settings.</p>
         </div>
@@ -614,8 +683,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       {viewingScreenshot && screenshotImages[viewingScreenshot] && !screenshotImages[viewingScreenshot].startsWith('error:') && (
         <div
           ref={viewerRef}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}
+          tabIndex={-1}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000, outline: 'none' }}
           onClick={(e) => { if (e.target === viewerRef.current) setViewingScreenshot(null); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setViewingScreenshot(null); } }}
         >
           <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
             <img

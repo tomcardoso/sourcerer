@@ -18,7 +18,8 @@ export const LOCAL_SCHEMA_SQL = `
     alert_notifications_enabled   INTEGER NOT NULL DEFAULT 1,
     reminder_notifications_enabled INTEGER NOT NULL DEFAULT 1,
     rss_poll_interval_hours        INTEGER NOT NULL DEFAULT 6,
-    wayback_enabled                INTEGER NOT NULL DEFAULT 1
+    wayback_enabled                INTEGER NOT NULL DEFAULT 1,
+    last_rss_fetched_at            INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
@@ -67,17 +68,6 @@ export const LOCAL_SCHEMA_SQL = `
     synced_at  INTEGER
   );
 
-  CREATE TABLE IF NOT EXISTS contact_archives (
-    id              TEXT    PRIMARY KEY,
-    contact_id      TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-    url             TEXT    NOT NULL,
-    screenshot_path TEXT    NOT NULL,
-    wayback_url     TEXT,
-    wayback_status  TEXT    NOT NULL DEFAULT 'pending',
-    archived_at     INTEGER NOT NULL,
-    synced_at       INTEGER
-  );
-
   CREATE TABLE IF NOT EXISTS contact_alert_rss (
     id             TEXT    PRIMARY KEY,
     contact_id     TEXT    NOT NULL UNIQUE REFERENCES contacts(id) ON DELETE CASCADE,
@@ -108,6 +98,7 @@ export const LOCAL_SCHEMA_SQL = `
     shared_db_path       TEXT,
     shared_db_key        BLOB,
     shared_pending_writes INTEGER NOT NULL DEFAULT 0,
+    last_synced_at       INTEGER,
     created_at           INTEGER NOT NULL
   );
 
@@ -130,7 +121,7 @@ export const LOCAL_SCHEMA_SQL = `
     status                      TEXT,
     first_outreach_at           INTEGER,
     outreach_interval_days      INTEGER,
-    outreach_reminders_disabled INTEGER NOT NULL DEFAULT 0,
+    outreach_reminders_enabled  INTEGER NOT NULL DEFAULT 1,
     reporter_assigned_at        INTEGER,
     reporter_conflict           INTEGER NOT NULL DEFAULT 0,
     created_at                  INTEGER NOT NULL,
@@ -145,14 +136,6 @@ export const LOCAL_SCHEMA_SQL = `
     reporter_email TEXT NOT NULL,
     reporter_name  TEXT NOT NULL,
     UNIQUE(membership_id, reporter_email)
-  );
-
-  CREATE TABLE IF NOT EXISTS interview_dates (
-    id            TEXT    PRIMARY KEY,
-    membership_id TEXT    NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
-    interviewed_at INTEGER NOT NULL,
-    note          TEXT,
-    synced_at     INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS interaction_log_entries (
@@ -200,14 +183,6 @@ export const LOCAL_SCHEMA_SQL = `
     is_auto_outreach INTEGER NOT NULL DEFAULT 0,
     created_at       INTEGER NOT NULL,
     completed_at     INTEGER
-  );
-
-  CREATE TABLE IF NOT EXISTS audit_log (
-    id          TEXT    PRIMARY KEY,
-    event_type  TEXT    NOT NULL,
-    actor       TEXT,
-    occurred_at INTEGER NOT NULL,
-    details     TEXT
   );
 
   CREATE TABLE IF NOT EXISTS contact_screenshots (

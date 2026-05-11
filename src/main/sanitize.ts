@@ -5,11 +5,27 @@ export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
 
-export function normalizePhone(raw: string, defaultCountry: string = 'US'): string {
+export function validateEmail(raw: string): boolean {
   const trimmed = raw.trim();
-  if (!trimmed) return trimmed;
+  if (!trimmed) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed);
+}
+
+export function normalizePhone(raw: string, defaultCountry: string = 'US'): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry as CountryCode);
   if (parsed?.isValid()) return parsed.formatInternational();
-  // Fall back: return trimmed as-is if still unparseable
-  return trimmed;
+  return null;
+}
+
+export function validateUrl(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
 }

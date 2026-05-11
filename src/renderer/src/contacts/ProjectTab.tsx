@@ -16,19 +16,9 @@ interface Props {
   statusOptions: StatusOption[];
   priorityOptions: PriorityOption[];
   onMembershipUpdated: () => void;
-  currentUser?: { email: string; firstName: string; lastName: string } | null;
+  currentUser?: { email: string; firstName: string; lastName: string; outreachRemindersEnabled: boolean } | null;
 }
 
-
-function formatTimestamp(ts: number): string {
-  return new Date(ts * 1000).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function fmtLogDate(ts: number): string {
   const now = Math.floor(Date.now() / 1000);
@@ -58,7 +48,12 @@ function LogRow({ entry }: { entry: InteractionLogEntry }) {
 
 function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onClose: () => void }) {
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault(); // prevent ContactDetail's window handler from also closing the drawer
+        onClose();
+      }
+    }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
@@ -87,6 +82,7 @@ const LOG_PREVIEW = 3;
 function LogSection({ membership, onEntryAdded }: { membership: ContactProject; onEntryAdded?: () => void }) {
   const [entries, setEntries] = useState<InteractionLogEntry[]>([]);
   const [text, setText] = useState('');
+  const [logDate, setLogDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [adding, setAdding] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -94,6 +90,7 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
   useEffect(() => {
     setEntries([]);
     setText('');
+    setLogDate('');
     setAdding(false);
     window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
@@ -103,9 +100,12 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
     if (!body) return;
     setSubmitting(true);
     try {
-      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body);
-      setEntries((prev) => [...prev, entry]);
+      const [y, m, d] = logDate.split('-').map(Number);
+      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body, createdAt);
+      setEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
       setText('');
+      setLogDate('');
       setAdding(false);
       onEntryAdded?.();
     } finally {
@@ -113,6 +113,7 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
     }
   }
 
+  const today = new Date().toISOString().slice(0, 10);
   const preview = [...entries].reverse().slice(0, LOG_PREVIEW);
 
   return (
@@ -125,7 +126,10 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
               View all ({entries.length})
             </button>
           )}
-          <button className="pt-reminder-add-btn" onClick={() => setAdding((v) => !v)}>
+          <button className="pt-reminder-add-btn" onClick={() => {
+            if (!adding) setLogDate(today);
+            setAdding((v) => !v);
+          }}>
             {adding ? '× Cancel' : '+ Add'}
           </button>
         </div>
@@ -139,6 +143,16 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
 
       {adding && (
         <div className="pt-log-compose">
+          <div className="pt-log-date-row">
+            <label className="pt-log-date-label">Date</label>
+            <input
+              type="date"
+              className="pt-log-date-input"
+              value={logDate}
+              onChange={(e) => setLogDate(e.target.value)}
+              max={today}
+            />
+          </div>
           <textarea
             className="pt-log-input"
             placeholder="Log an interaction…"
@@ -151,10 +165,10 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
             }}
           />
           <div className="pt-reminder-form-actions">
-            <button className="pt-log-submit" onClick={handleSubmit} disabled={!text.trim() || submitting}>
+            <button className="pt-log-submit" onClick={handleSubmit} disabled={!text.trim() || !logDate || submitting}>
               {submitting ? 'Saving…' : 'Log'}
             </button>
-            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); }}>
+            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); setLogDate(''); }}>
               Cancel
             </button>
           </div>
@@ -274,10 +288,14 @@ function RemindersSection({
   contactId,
   projectId,
   refreshToken,
+  outreachEnabled,
+  contactOutreachEnabled,
 }: {
   contactId: string;
   projectId: string;
   refreshToken: number;
+  outreachEnabled: boolean;
+  contactOutreachEnabled: boolean;
 }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [completing, setCompleting] = useState<Set<string>>(new Set());
@@ -307,11 +325,6 @@ function RemindersSection({
     setDueDate('');
     setNote('');
     setAdding(false);
-  }
-
-  async function handleDelete(id: string) {
-    await window.sourcerer.deleteReminder(id);
-    setReminders((prev) => prev.filter((r) => r.id !== id));
   }
 
   function handleComplete(id: string) {
@@ -348,6 +361,8 @@ function RemindersSection({
       {reminders.map((r) => {
         const overdue = r.due_date < now;
         if (r.is_auto_outreach === 1) {
+          // Only show the auto-outreach overdue notice when global and per-contact reminders are both on
+          if (!outreachEnabled || !contactOutreachEnabled) return null;
           return (
             <div key={r.id} className="pt-reminder-row pt-reminder-row--auto">
               <div className="pt-reminder-row-date pt-reminder-row-date--overdue">Outreach overdue</div>
@@ -411,8 +426,8 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   const [localStatus, setLocalStatus] = useState<string>(membership?.status ?? '');
   const [localPriority, setLocalPriority] = useState<string>(membership?.priority ?? '');
   const [localTheme, setLocalTheme] = useState<string>(membership?.theme ?? '');
-  const [localOutreachDisabled, setLocalOutreachDisabled] = useState<boolean>(
-    membership?.outreach_reminders_disabled === 1,
+  const [localOutreachEnabled, setLocalOutreachEnabled] = useState<boolean>(
+    membership?.outreach_reminders_enabled !== 0,
   );
   const [localReporters, setLocalReporters] = useState<Array<{ email: string; name: string }>>(
     membership?.reporters ?? [],
@@ -427,7 +442,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalStatus(membership.status ?? '');
     setLocalPriority(membership.priority ?? '');
     setLocalTheme(membership.theme ?? '');
-    setLocalOutreachDisabled(membership.outreach_reminders_disabled === 1);
+    setLocalOutreachEnabled(membership.outreach_reminders_enabled !== 0);
     setLocalReporters(membership.reporters ?? []);
     setReporterQuery('');
     setReporterDropdownOpen(false);
@@ -462,18 +477,18 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     status?: string;
     priority?: string;
     theme?: string;
-    outreachDisabled?: boolean;
+    outreachEnabled?: boolean;
   }) {
     const status = (overrides.status ?? localStatus) || null;
     const priority = (overrides.priority ?? localPriority) || null;
     const theme = (overrides.theme ?? localTheme) || null;
-    const disabled = overrides.outreachDisabled !== undefined ? overrides.outreachDisabled : localOutreachDisabled;
+    const enabled = overrides.outreachEnabled !== undefined ? overrides.outreachEnabled : localOutreachEnabled;
     return window.sourcerer.updateMembership({
       membershipId: membership.membership_id,
       status,
       priority,
       theme,
-      outreachRemindersDisabled: disabled ? 1 : 0,
+      outreachRemindersEnabled: enabled ? 1 : 0,
     });
   }
 
@@ -488,9 +503,9 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     const opt = priorityOptions.find((p) => p.label === value);
     const shouldDisable = !value || !opt?.outreach_interval_days;
     if (shouldDisable) {
-      // Force toggle to OFF (visually reset) whenever priority has no interval
-      setLocalOutreachDisabled(false);
-      await membershipUpdate({ priority: value, outreachDisabled: false });
+      // Force toggle to ON (enabled) whenever priority has no interval
+      setLocalOutreachEnabled(true);
+      await membershipUpdate({ priority: value, outreachEnabled: true });
     } else {
       await membershipUpdate({ priority: value });
     }
@@ -504,9 +519,9 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     onMembershipUpdated();
   }
 
-  async function handleOutreachDisabledChange(disabled: boolean) {
-    setLocalOutreachDisabled(disabled);
-    await membershipUpdate({ outreachDisabled: disabled });
+  async function handleOutreachEnabledChange(enabled: boolean) {
+    setLocalOutreachEnabled(enabled);
+    await membershipUpdate({ outreachEnabled: enabled });
     onMembershipUpdated();
     setReminderRefresh((t) => t + 1);
   }
@@ -676,19 +691,22 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
             {(() => {
               const opt = localPriority ? priorityOptions.find((p) => p.label === localPriority) : undefined;
               const noReminders = !localPriority || !opt?.outreach_interval_days;
+              const globallyDisabled = !(currentUser?.outreachRemindersEnabled ?? true);
               return (
-              <div className={`pt-outreach-disable${noReminders ? ' pt-outreach-disable--no-priority' : ''}`}>
+              <div className={`pt-outreach-disable${noReminders || globallyDisabled ? ' pt-outreach-disable--no-priority' : ''}`}>
                 <button
                   type="button"
-                  className={`sv-toggle${localOutreachDisabled ? ' sv-toggle--on' : ''}`}
-                  onClick={() => handleOutreachDisabledChange(!localOutreachDisabled)}
-                  aria-pressed={localOutreachDisabled}
-                  disabled={noReminders}
+                  className={`sv-toggle${!localOutreachEnabled ? ' sv-toggle--on' : ''}`}
+                  onClick={() => handleOutreachEnabledChange(!localOutreachEnabled)}
+                  aria-pressed={!localOutreachEnabled}
+                  disabled={noReminders || globallyDisabled}
                 >
                   <span className="sv-toggle-knob" />
-                  <span className="sv-toggle-label">{localOutreachDisabled ? 'ON' : 'OFF'}</span>
+                  <span className="sv-toggle-label">{!localOutreachEnabled ? 'ON' : 'OFF'}</span>
                 </button>
-                {noReminders
+                {globallyDisabled
+                  ? <span className="sv-toggle-text pt-outreach-no-priority">Outreach reminders are off globally</span>
+                  : noReminders
                   ? <span className="sv-toggle-text pt-outreach-no-priority">
                       {!localPriority ? 'Set a priority to enable' : 'No interval set for this priority'}
                     </span>
@@ -707,7 +725,13 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         </div>
       </div>
 
-      <RemindersSection contactId={contact.id} projectId={membership.id} refreshToken={reminderRefresh} />
+      <RemindersSection
+        contactId={contact.id}
+        projectId={membership.id}
+        refreshToken={reminderRefresh}
+        outreachEnabled={currentUser?.outreachRemindersEnabled ?? true}
+        contactOutreachEnabled={localOutreachEnabled}
+      />
       <LogSection membership={membership} onEntryAdded={() => { onMembershipUpdated(); setReminderRefresh((t) => t + 1); }} />
       <ScratchpadSection membership={membership} contactId={contact.id} />
     </div>

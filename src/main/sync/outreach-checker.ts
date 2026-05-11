@@ -17,7 +17,7 @@ interface OutreachRow {
   last_contacted: number | null;
 }
 
-function nextWeekday(unixSeconds: number): number {
+export function nextWeekday(unixSeconds: number): number {
   const d = new Date(unixSeconds * 1000);
   const day = d.getUTCDay();
   if (day === 6) return unixSeconds + 2 * 86400; // Saturday → Monday
@@ -51,7 +51,7 @@ export function checkOutreachReminders(): void {
        JOIN projects p  ON p.id = pm.project_id
        LEFT JOIN priority_options po ON po.label = pm.priority
        LEFT JOIN interaction_log_entries ile ON ile.membership_id = pm.id
-       WHERE pm.outreach_reminders_disabled = 0
+       WHERE pm.outreach_reminders_enabled = 1
          AND COALESCE(pm.outreach_interval_days, po.outreach_interval_days) IS NOT NULL
        GROUP BY pm.id`,
     )

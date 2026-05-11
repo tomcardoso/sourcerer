@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult, User } from '@shared/types';
-import ImportCsvModal from './ImportCsvModal';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
-import ColumnHeader, {
-  TextFilter,
-  ToggleFilter,
-  PresetFilter,
-  MultiSelectFilter,
-} from './ColumnHeader';
+import ContactsTable, {
+  type ProjectFilters as Filters,
+  DEFAULT_PROJECT_FILTERS as DEFAULT_FILTERS,
+  isProjectFilterActive as isFilterActive,
+  type SortDir,
+  buildOrderMap,
+} from './ContactsTable';
 import './View.css';
 import './AllContacts.css';
 import './ProjectView.css';
@@ -30,38 +30,6 @@ type SortKey =
   | 'reporter'
   | 'date_first_contacted'
   | 'date_last_contacted';
-type SortDir = 'asc' | 'desc';
-type DatePreset = 'never' | 'contacted' | 'not_30' | 'not_90';
-
-interface Filters {
-  name: string;
-  organization: string;
-  theme: string;
-  notes: string;
-  email: string;
-  phone: string;
-  hasEmail: boolean | null;
-  hasPhone: boolean | null;
-  dateLastContacted: DatePreset | null;
-  status: string[];
-  priority: string[];
-  reporter: string[];
-}
-
-const DEFAULT_FILTERS: Filters = {
-  name: '',
-  organization: '',
-  theme: '',
-  notes: '',
-  email: '',
-  phone: '',
-  hasEmail: null,
-  hasPhone: null,
-  dateLastContacted: null,
-  status: [],
-  priority: [],
-  reporter: [],
-};
 
 function fmtOpened(ts: number): string {
   const d = new Date(ts * 1000);
@@ -77,33 +45,6 @@ function fmtRelative(ms: number): string {
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
   return `${Math.floor(secs / 86400)}d ago`;
-}
-
-function fmtDate(ts: number | null): string {
-  if (ts === null) return 'Never';
-  const d = new Date(ts * 1000);
-  const now = new Date();
-  if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function isFilterActive(f: Filters): boolean {
-  return (
-    f.name !== '' ||
-    f.organization !== '' ||
-    f.theme !== '' ||
-    f.notes !== '' ||
-    f.email !== '' ||
-    f.phone !== '' ||
-    f.hasEmail !== null ||
-    f.hasPhone !== null ||
-    f.dateLastContacted !== null ||
-    f.status.length > 0 ||
-    f.priority.length > 0 ||
-    f.reporter.length > 0
-  );
 }
 
 export default function ProjectView({ project, user, onProjectUpdated, refreshTrigger }: Props) {
@@ -346,7 +287,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     }
   }
 
-  function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+  function setFilter(key: string, value: unknown) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -354,23 +295,19 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     setOpenFilter((prev) => (prev === col ? null : col));
   }
 
-  function handleSort(key: SortKey) {
+  function handleSort(key: string) {
     setSort((prev) => {
       if (prev.key === key) {
-        if (prev.dir === 'asc') return { key, dir: 'desc' };
+        if (prev.dir === 'asc') return { key: key as SortKey, dir: 'desc' };
         return { key: null, dir: 'asc' };
       }
-      return { key, dir: 'asc' };
+      return { key: key as SortKey, dir: 'asc' };
     });
   }
 
-  // Build sort-order lookup maps for status/priority
-  const statusOrderMap = new Map<string, number>(
-    statusOptions.map((o, i) => [o.label, i]),
-  );
-  const priorityOrderMap = new Map<string, number>(
-    priorityOptions.map((o, i) => [o.label, i]),
-  );
+  // Build sort-order lookup maps for status/priority (used in sort logic below)
+  const statusOrderMap = buildOrderMap(statusOptions);
+  const priorityOrderMap = buildOrderMap(priorityOptions);
 
   const now = Math.floor(Date.now() / 1000);
   let displayed = rows;
@@ -470,12 +407,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     if (selectAllRef.current) selectAllRef.current.indeterminate = someChecked;
   }, [someChecked]);
 
-  // Build unique reporter options from loaded rows
+  // Pre-compute filter options from the unfiltered row set (not displayed)
   const reporterOptions = [
     ...new Map(rows.map((r) => [r.reporter_name, { value: r.reporter_name, label: r.reporter_name }])).values(),
   ].sort((a, b) => a.label.localeCompare(b.label));
 
-  // Build status/priority options including "—" for null if any row has null
   const hasNullStatus = rows.some((r) => r.status === null);
   const statusFilterOptions = [
     ...statusOptions.map((o) => ({ value: o.label, label: o.label })),
@@ -513,14 +449,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
   const isPendingWrites = project.is_shared === 1 && project.shared_pending_writes === 1;
   const anyFilter = isFilterActive(filters);
-  const sd = (key: SortKey) => (sort.key === key ? sort.dir : null);
-
-  const stalenessEnabled = user?.staleness_enabled !== 0;
-  const stalenessThresholdSecs = (user?.staleness_threshold_days ?? 90) * 86400;
-  function isStale(dateLastContacted: number | null): boolean {
-    if (!stalenessEnabled) return false;
-    return dateLastContacted === null || dateLastContacted < now - stalenessThresholdSecs;
-  }
 
   return (
     <>
@@ -750,300 +678,29 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
       <div className="contacts-body">
         <div className="contacts-table-area">
-          <table className="contacts-table">
-              <thead>
-                <tr>
-                  <th className="col-check">
-                    <input
-                      type="checkbox"
-                      ref={selectAllRef}
-                      checked={allChecked}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Name"
-                      sortDir={sd('name')}
-                      onSort={() => handleSort('name')}
-                      filterable
-                      filterActive={!!filters.name}
-                      filterOpen={openFilter === 'name'}
-                      onFilterToggle={() => toggleFilter('name')}
-                      filterContent={
-                        <TextFilter value={filters.name} onChange={(v) => setFilter('name', v)} />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Organization"
-                      sortDir={sd('organization')}
-                      onSort={() => handleSort('organization')}
-                      filterable
-                      filterActive={!!filters.organization}
-                      filterOpen={openFilter === 'organization'}
-                      onFilterToggle={() => toggleFilter('organization')}
-                      filterContent={
-                        <TextFilter
-                          value={filters.organization}
-                          onChange={(v) => setFilter('organization', v)}
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Theme"
-                      sortDir={sd('theme')}
-                      onSort={() => handleSort('theme')}
-                      filterable
-                      filterActive={!!filters.theme}
-                      filterOpen={openFilter === 'theme'}
-                      onFilterToggle={() => toggleFilter('theme')}
-                      filterContent={
-                        <TextFilter
-                          value={filters.theme}
-                          onChange={(v) => setFilter('theme', v)}
-                          placeholder="Theme contains…"
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Status"
-                      sortDir={sd('status')}
-                      onSort={() => handleSort('status')}
-                      filterable
-                      filterActive={filters.status.length > 0}
-                      filterOpen={openFilter === 'status'}
-                      onFilterToggle={() => toggleFilter('status')}
-                      filterContent={
-                        <MultiSelectFilter
-                          options={statusFilterOptions}
-                          selected={filters.status}
-                          onChange={(v) => setFilter('status', v)}
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Priority"
-                      sortDir={sd('priority')}
-                      onSort={() => handleSort('priority')}
-                      filterable
-                      filterActive={filters.priority.length > 0}
-                      filterOpen={openFilter === 'priority'}
-                      onFilterToggle={() => toggleFilter('priority')}
-                      filterContent={
-                        <MultiSelectFilter
-                          options={priorityFilterOptions}
-                          selected={filters.priority}
-                          onChange={(v) => setFilter('priority', v)}
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Reporter"
-                      sortDir={sd('reporter')}
-                      onSort={() => handleSort('reporter')}
-                      filterable={reporterOptions.length > 0}
-                      filterActive={filters.reporter.length > 0}
-                      filterOpen={openFilter === 'reporter'}
-                      onFilterToggle={() => toggleFilter('reporter')}
-                      filterContent={
-                        <MultiSelectFilter
-                          options={reporterOptions}
-                          selected={filters.reporter}
-                          onChange={(v) => setFilter('reporter', v)}
-                        />
-                      }
-                    />
-                  </th>
-                  <th className="col-compact">
-                    <ColumnHeader
-                      label="Email"
-                      filterable
-                      filterActive={!!filters.email || filters.hasEmail !== null}
-                      filterOpen={openFilter === 'email'}
-                      onFilterToggle={() => toggleFilter('email')}
-                      filterContent={
-                        <>
-                          <TextFilter
-                            value={filters.email}
-                            onChange={(v) => setFilter('email', v)}
-                            placeholder="Search email…"
-                          />
-                          <ToggleFilter
-                            value={filters.hasEmail}
-                            onChange={(v) => setFilter('hasEmail', v)}
-                            yesLabel="Has email"
-                          />
-                        </>
-                      }
-                    />
-                  </th>
-                  <th className="col-compact">
-                    <ColumnHeader
-                      label="Phone"
-                      filterable
-                      filterActive={!!filters.phone || filters.hasPhone !== null}
-                      filterOpen={openFilter === 'phone'}
-                      onFilterToggle={() => toggleFilter('phone')}
-                      filterContent={
-                        <>
-                          <TextFilter
-                            value={filters.phone}
-                            onChange={(v) => setFilter('phone', v)}
-                            placeholder="Search phone…"
-                          />
-                          <ToggleFilter
-                            value={filters.hasPhone}
-                            onChange={(v) => setFilter('hasPhone', v)}
-                            yesLabel="Has phone"
-                          />
-                        </>
-                      }
-                    />
-                  </th>
-                  <th className="col-compact">
-                    <ColumnHeader
-                      label="Notes"
-                      filterable
-                      filterActive={!!filters.notes}
-                      filterOpen={openFilter === 'notes'}
-                      onFilterToggle={() => toggleFilter('notes')}
-                      filterContent={
-                        <TextFilter
-                          value={filters.notes}
-                          onChange={(v) => setFilter('notes', v)}
-                          placeholder="Keyword in notes…"
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="First Contacted"
-                      sortDir={sd('date_first_contacted')}
-                      onSort={() => handleSort('date_first_contacted')}
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Last Contacted"
-                      sortDir={sd('date_last_contacted')}
-                      onSort={() => handleSort('date_last_contacted')}
-                      filterable
-                      filterActive={filters.dateLastContacted !== null}
-                      filterOpen={openFilter === 'date'}
-                      onFilterToggle={() => toggleFilter('date')}
-                      filterContent={
-                        <PresetFilter
-                          value={filters.dateLastContacted}
-                          onChange={(v) =>
-                            setFilter('dateLastContacted', v as Filters['dateLastContacted'])
-                          }
-                          options={[
-                            { value: null, label: 'Any time' },
-                            { value: 'contacted', label: 'Has been contacted' },
-                            { value: 'never', label: 'Never contacted' },
-                            { value: 'not_30', label: 'Not in 30 days' },
-                            { value: 'not_90', label: 'Not in 90 days' },
-                          ]}
-                        />
-                      }
-                    />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="contacts-no-results">
-                      No contacts in this project yet. Open a contact from All Contacts and add it to this project.
-                    </td>
-                  </tr>
-                ) : displayed.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="contacts-no-results">
-                      No contacts match the current filters.
-                    </td>
-                  </tr>
-                ) : null}
-                {displayed.map((r) => {
-                  const isMe = user?.email && r.reporter_email === user.email;
-                  return (
-                    <tr
-                      key={r.id}
-                      className={[
-                        selectedId === r.id ? 'selected' : '',
-                        checkedIds.has(r.id) ? 'checked' : '',
-                        isMe ? 'row row-mine' : 'row',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      onClick={() => { if (r.id === selectedId) { closeDetail(); } else { setSelectedId(r.id); } }}
-                    >
-                      <td className="contact-check-cell" onClick={(e) => toggleCheck(r.id, e)}>
-                        <input
-                          type="checkbox"
-                          checked={checkedIds.has(r.id)}
-                          onChange={() => {}}
-                        />
-                      </td>
-                      <td className="contact-name-cell">{r.name}</td>
-                      <td className="contact-org-cell">{r.organization ?? '—'}</td>
-                      <td className="contact-org-cell">
-                        {r.theme ?? <span className="contact-cell-muted">—</span>}
-                      </td>
-                      <td>{r.status ?? <span className="contact-cell-muted">—</span>}</td>
-                      <td>{r.priority ?? <span className="contact-cell-muted">—</span>}</td>
-                      <td className="contact-org-cell">{r.reporter_name}</td>
-                      <td className="contact-bool-cell">
-                        {r.has_email ? (
-                          <span className="contact-bool-yes">✓</span>
-                        ) : (
-                          <span className="contact-cell-muted">—</span>
-                        )}
-                      </td>
-                      <td className="contact-bool-cell">
-                        {r.has_phone ? (
-                          <span className="contact-bool-yes">✓</span>
-                        ) : (
-                          <span className="contact-cell-muted">—</span>
-                        )}
-                      </td>
-                      <td className="contact-bool-cell">
-                        {r.notes ? (
-                          <span className="contact-notes-icon">✎</span>
-                        ) : (
-                          <span className="contact-cell-muted">—</span>
-                        )}
-                      </td>
-                      <td className="contact-date-cell">
-                        {r.date_first_contacted === null ? (
-                          <span className="contact-cell-muted">—</span>
-                        ) : (
-                          fmtDate(r.date_first_contacted)
-                        )}
-                      </td>
-                      <td className={`contact-date-cell${isStale(r.date_last_contacted) ? ' contact-date-stale' : ''}`}>
-                        {r.date_last_contacted === null ? (
-                          <span className="contact-cell-muted">Never</span>
-                        ) : (
-                          fmtDate(r.date_last_contacted)
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <ContactsTable
+            mode="project"
+            rows={displayed}
+            totalCount={rows.length}
+            filters={filters}
+            setFilter={setFilter}
+            sort={sort}
+            onSort={handleSort}
+            openFilter={openFilter}
+            toggleFilter={toggleFilter}
+            checkedIds={checkedIds}
+            selectedId={selectedId}
+            onRowClick={(id) => { if (id === selectedId) { closeDetail(); } else { setSelectedId(id); } }}
+            onCheck={toggleCheck}
+            onCheckAll={toggleAll}
+            allChecked={allChecked}
+            selectAllRef={selectAllRef}
+            user={user}
+            statusFilterOptions={statusFilterOptions}
+            priorityFilterOptions={priorityFilterOptions}
+            reporterOptions={reporterOptions}
+            userEmail={user?.email}
+          />
         </div>
 
         {selectedId && checkedIds.size <= 1 && (

@@ -13,7 +13,7 @@ export interface SyncResult {
  *   - Contacts + their sub-tables (emails/phones/links/alert_rss): LWW by contact.updated_at.
  *     When shared contact is newer, replace the contact row AND all its sub-tables.
  *   - project_memberships: LWW by membership.updated_at.
- *   - contact_archives, contact_alert_mentions, interview_dates, interaction_log_entries:
+ *   - contact_alert_mentions, interaction_log_entries:
  *     append-only — insert rows not yet present locally.
  *
  * Push strategy:
@@ -33,11 +33,14 @@ export function syncProject(
       sharedDb.transaction(() => {
         pullContacts(localDb, sharedDb, now);
         pullMemberships(localDb, sharedDb, projectId, now);
-        pullAppendOnly(localDb, sharedDb, now);
+        pullAppendOnly(localDb, sharedDb);
       })();
 
-      const contactIds = getMemberContactIds(localDb, projectId);
-      const membershipIds = getMembershipIds(localDb, projectId);
+      const memberRows = localDb
+        .prepare('SELECT id, contact_id FROM project_memberships WHERE project_id = ?')
+        .all(projectId) as { id: string; contact_id: string }[];
+      const contactIds = memberRows.map((r) => r.contact_id);
+      const membershipIds = memberRows.map((r) => r.id);
 
       sharedDb.transaction(() => {
         pushContacts(localDb, sharedDb, contactIds, now);
@@ -64,7 +67,7 @@ export function syncProject(
 // ---------------------------------------------------------------------------
 
 function pullContacts(local: Database.Database, shared: Database.Database, now: number): void {
-  const sharedContacts = shared.prepare('SELECT * FROM contacts').all() as {
+  const sharedContacts = shared.prepare('SELECT id, name, organization, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
     organization: string | null;
@@ -73,12 +76,15 @@ function pullContacts(local: Database.Database, shared: Database.Database, now: 
     updated_at: number;
   }[];
 
-  for (const sc of sharedContacts) {
-    const lc = local.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(sc.id) as
-      | { updated_at: number }
-      | undefined;
+  const localMap = new Map<string, number>(
+    (local.prepare('SELECT id, updated_at FROM contacts').all() as { id: string; updated_at: number }[])
+      .map((r) => [r.id, r.updated_at]),
+  );
 
-    if (!lc || sc.updated_at > lc.updated_at) {
+  for (const sc of sharedContacts) {
+    const localUpdatedAt = localMap.get(sc.id);
+
+    if (localUpdatedAt === undefined || sc.updated_at > localUpdatedAt) {
       local
         .prepare(
           `INSERT INTO contacts (id, name, organization, notes, created_at, updated_at, synced_at)
@@ -164,9 +170,9 @@ function pullMemberships(
   projectId: string,
   now: number,
 ): void {
-  const CONFLICT_WINDOW_SECS = 24 * 3600; // 24-hour window for reporter conflict detection
+  const CONFLICT_WINDOW_SECS = 24 * 3600;
 
-  const sharedMemberships = shared.prepare('SELECT * FROM project_memberships').all() as {
+  const sharedMemberships = shared.prepare('SELECT id, contact_id, reporter_email, reporter_name, theme, priority, status, first_outreach_at, created_at, updated_at FROM project_memberships WHERE project_id = ?').all(projectId) as {
     id: string;
     contact_id: string;
     reporter_email: string;
@@ -179,13 +185,20 @@ function pullMemberships(
     updated_at: number;
   }[];
 
+  const localMembershipMap = new Map<string, { updated_at: number; reporter_email: string; reporter_assigned_at: number | null }>(
+    (local.prepare('SELECT id, updated_at, reporter_email, reporter_assigned_at FROM project_memberships WHERE project_id = ?').all(projectId) as { id: string; updated_at: number; reporter_email: string; reporter_assigned_at: number | null }[])
+      .map((r) => [r.id, r]),
+  );
+
+  const existingReporterEmails = new Set<string>(
+    (local.prepare('SELECT email FROM project_reporters WHERE project_id = ?').all(projectId) as { email: string }[])
+      .map((r) => r.email),
+  );
+
   for (const sm of sharedMemberships) {
-    const lm = local.prepare('SELECT updated_at, reporter_email, reporter_assigned_at FROM project_memberships WHERE id = ?').get(sm.id) as
-      | { updated_at: number; reporter_email: string; reporter_assigned_at: number | null }
-      | undefined;
+    const lm = localMembershipMap.get(sm.id);
 
     if (!lm || sm.updated_at > lm.updated_at) {
-      // Detect reporter conflict: sync is overwriting a recently-claimed local assignment
       const reporterChanging = lm && lm.reporter_email !== sm.reporter_email;
       const recentlyAssigned = lm?.reporter_assigned_at && (now - lm.reporter_assigned_at) < CONFLICT_WINDOW_SECS;
       const hasConflict = reporterChanging && recentlyAssigned ? 1 : 0;
@@ -220,16 +233,13 @@ function pullMemberships(
         );
     }
 
-    // Ensure reporter is tracked locally
-    const reporterExists = local
-      .prepare('SELECT id FROM project_reporters WHERE project_id = ? AND email = ?')
-      .get(projectId, sm.reporter_email);
-    if (!reporterExists) {
+    if (!existingReporterEmails.has(sm.reporter_email)) {
       local
         .prepare(
           'INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 0)',
         )
         .run(uuidv4(), projectId, sm.reporter_name, sm.reporter_email);
+      existingReporterEmails.add(sm.reporter_email);
     }
   }
 }
@@ -237,39 +247,7 @@ function pullMemberships(
 function pullAppendOnly(
   local: Database.Database,
   shared: Database.Database,
-  now: number,
 ): void {
-  // Archives — insert new, update wayback fields on existing
-  for (const sa of shared.prepare('SELECT * FROM contact_archives').all() as {
-    id: string;
-    contact_id: string;
-    url: string;
-    wayback_url: string | null;
-    wayback_status: string;
-    archived_at: number;
-  }[]) {
-    const exists = local.prepare('SELECT id FROM contact_archives WHERE id = ?').get(sa.id);
-    if (!exists) {
-      // Collaborator's archive: empty screenshot_path (file is local to whoever captured it)
-      local
-        .prepare(
-          `INSERT INTO contact_archives
-             (id, contact_id, url, screenshot_path, wayback_url, wayback_status, archived_at, synced_at)
-           VALUES (?, ?, ?, '', ?, ?, ?, ?)`,
-        )
-        .run(sa.id, sa.contact_id, sa.url, sa.wayback_url, sa.wayback_status, sa.archived_at, now);
-    } else {
-      // Propagate wayback updates from shared
-      local
-        .prepare(
-          `UPDATE contact_archives SET wayback_url = ?, wayback_status = ?
-           WHERE id = ? AND wayback_status = 'pending'`,
-        )
-        .run(sa.wayback_url, sa.wayback_status, sa.id);
-    }
-  }
-
-  // Alert mentions — insert new
   for (const sm of shared.prepare('SELECT * FROM contact_alert_mentions').all() as {
     id: string;
     contact_id: string;
@@ -298,23 +276,6 @@ function pullAppendOnly(
       );
   }
 
-  // Interview dates
-  for (const sd of shared.prepare('SELECT * FROM interview_dates').all() as {
-    id: string;
-    membership_id: string;
-    interviewed_at: number;
-    note: string | null;
-    created_at: number;
-  }[]) {
-    local
-      .prepare(
-        `INSERT OR IGNORE INTO interview_dates (id, membership_id, interviewed_at, note)
-         VALUES (?, ?, ?, ?)`,
-      )
-      .run(sd.id, sd.membership_id, sd.interviewed_at, sd.note);
-  }
-
-  // Interaction log entries
   for (const se of shared.prepare('SELECT * FROM interaction_log_entries').all() as {
     id: string;
     membership_id: string;
@@ -496,29 +457,6 @@ function pushAppendOnly(
   if (contactIds.length > 0) {
     const cPlaceholders = contactIds.map(() => '?').join(',');
 
-    // Archives
-    for (const a of local
-      .prepare(
-        `SELECT * FROM contact_archives WHERE contact_id IN (${cPlaceholders}) AND synced_at IS NULL`,
-      )
-      .all(...contactIds) as {
-      id: string;
-      contact_id: string;
-      url: string;
-      wayback_url: string | null;
-      wayback_status: string;
-      archived_at: number;
-    }[]) {
-      shared
-        .prepare(
-          `INSERT OR IGNORE INTO contact_archives
-             (id, contact_id, url, wayback_url, wayback_status, archived_at)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-        )
-        .run(a.id, a.contact_id, a.url, a.wayback_url, a.wayback_status, a.archived_at);
-      local.prepare('UPDATE contact_archives SET synced_at = ? WHERE id = ?').run(now, a.id);
-    }
-
     // Alert mentions
     for (const m of local
       .prepare(
@@ -558,25 +496,6 @@ function pushAppendOnly(
 
   if (membershipIds.length > 0) {
     const mPlaceholders = membershipIds.map(() => '?').join(',');
-
-    // Interview dates
-    for (const d of local
-      .prepare(
-        `SELECT * FROM interview_dates WHERE membership_id IN (${mPlaceholders}) AND synced_at IS NULL`,
-      )
-      .all(...membershipIds) as {
-      id: string;
-      membership_id: string;
-      interviewed_at: number;
-      note: string | null;
-    }[]) {
-      shared
-        .prepare(
-          'INSERT OR IGNORE INTO interview_dates (id, membership_id, interviewed_at, note) VALUES (?, ?, ?, ?)',
-        )
-        .run(d.id, d.membership_id, d.interviewed_at, d.note);
-      local.prepare('UPDATE interview_dates SET synced_at = ? WHERE id = ?').run(now, d.id);
-    }
 
     // Interaction log entries
     for (const e of local

@@ -1,12 +1,11 @@
-import { ipcMain } from 'electron';
+import { ipcMain, app } from 'electron';
 import { promises as fs } from 'fs';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getDatabase } from '../database';
+import { getDatabase, closeDatabase } from '../database';
 import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
-import { appendAuditLog } from './audit';
 import { setRssPollIntervalHours } from '../sync/poller';
 import type { User, StatusOption, PriorityOption } from '@shared/types';
 
@@ -231,9 +230,6 @@ export function registerSettingsHandlers(): void {
         // Persist the new salt so future unlocks use it
         await fs.writeFile(saltPath, newSalt);
 
-        const actor = (getDatabase().prepare('SELECT email FROM users WHERE id = 1').get() as { email: string } | undefined)?.email ?? null;
-        appendAuditLog('password_changed', actor);
-
         return { success: true };
       } catch (err) {
         return { success: false, error: err instanceof Error ? err.message : 'An unexpected error occurred.' };
@@ -252,5 +248,13 @@ export function registerSettingsHandlers(): void {
     const token = uuidv4();
     db.prepare('UPDATE users SET calendar_token = ? WHERE id = 1').run(token);
     return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
+  ipcMain.handle('settings:panic-wipe', async (): Promise<void> => {
+    const { dbPath, saltPath } = getPaths();
+    closeDatabase();
+    await fs.unlink(dbPath).catch(() => {});
+    await fs.unlink(saltPath).catch(() => {});
+    app.quit();
   });
 }

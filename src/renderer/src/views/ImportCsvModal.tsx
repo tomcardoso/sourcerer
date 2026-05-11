@@ -45,7 +45,7 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
           <div className="icm-col-group">
             <div className="icm-col-label">Contact</div>
             <div className="icm-col-tags">
-              {['Name', 'Organization', 'Notes', 'Email', 'Email 2', 'Phone', 'Phone 2',
+              {['Name', 'Organization', 'Notes', 'Email', 'Phone',
                 'LinkedIn', 'X', 'Website'].map((h) => (
                 <span key={h} className="icm-tag">{h}</span>
               ))}
@@ -62,8 +62,10 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
         </div>
 
         <p className="icm-collision-note">
-          Contacts with a matching name or email are skipped. Phone numbers and emails are
-          normalised on import.
+          To include multiple emails, phone numbers, or websites for a contact, separate them
+          with a semicolon in the cell (e.g. <code>alice@work.com; alice@home.com</code>).
+          Contacts with a matching name or email are skipped. Phone numbers are normalised to
+          international format on import.
         </p>
 
         <button

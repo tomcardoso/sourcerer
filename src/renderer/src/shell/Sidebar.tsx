@@ -15,6 +15,7 @@ interface Props {
   onNav: (nav: NavTarget) => void;
   unseenMentions: number;
   overdueReminders: number;
+  totalContacts: number;
   onSearchOpen: () => void;
   onProjectCreated: (project: Project) => void;
   onProjectCreatedShared: (project: Project, payload: string) => void;
@@ -32,6 +33,7 @@ export default function Sidebar({
   onNav,
   unseenMentions,
   overdueReminders,
+  totalContacts,
   onSearchOpen,
   onProjectCreated,
   onProjectCreatedShared,
@@ -92,7 +94,7 @@ export default function Sidebar({
 
         {/* Wordmark header */}
         <div className="sidebar-header">
-          <WordmarkLogo size={36} rules={false} className="sidebar-logo" />
+          <WordmarkLogo size={36} className="sidebar-logo" />
         </div>
 
         {/* Workspace nav */}
@@ -111,6 +113,9 @@ export default function Sidebar({
           >
             <span className="sidebar-nav-indicator" />
             All contacts
+            {totalContacts > 0 && (
+              <span className="sidebar-contact-count">{totalContacts}</span>
+            )}
           </button>
 
           <button

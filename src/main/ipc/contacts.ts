@@ -143,7 +143,7 @@ export function registerContactHandlers(): void {
       .prepare(
         `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
                 pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
-                pm.outreach_reminders_disabled, pm.reporter_conflict,
+                pm.outreach_reminders_enabled, pm.reporter_conflict,
                 (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
                  WHERE ile.membership_id = pm.id) AS first_log_at,
                 (SELECT MAX(ile.created_at) FROM interaction_log_entries ile
@@ -177,7 +177,7 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const id = uuidv4();
     const now = Math.floor(Date.now() / 1000);
-    const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
+    const { phone_country, wayback_enabled } = db.prepare('SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
     let phones: { phone: string; label: string | null }[] = [];
 
@@ -198,7 +198,7 @@ export function registerContactHandlers(): void {
       phones = (data.phones ?? [])
         .filter((p) => p.phone.trim())
         .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
-        .filter((p) => p.phone);
+        .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
       phones.forEach((p, i) => {
         db.prepare(
           'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
@@ -216,8 +216,6 @@ export function registerContactHandlers(): void {
     insert();
     setImmediate(runDedupScan);
 
-    // Trigger background Wayback saves for website links
-    const { wayback_enabled } = db.prepare('SELECT wayback_enabled FROM users WHERE id = 1').get() as { wayback_enabled: number };
     if (wayback_enabled) {
       const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
       for (const link of websiteLinks) {
@@ -241,7 +239,6 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
     getDatabase().prepare('DELETE FROM contacts WHERE id = ?').run(id);
-    setImmediate(runDedupScan);
   });
 
   ipcMain.handle(
@@ -302,7 +299,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:update', (_, data: UpdateContactInput): void => {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
-    const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
+    const { phone_country, wayback_enabled } = db.prepare('SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
     // Preserve existing website Wayback URLs before re-insert
     const existingWebsites = db
@@ -329,7 +326,7 @@ export function registerContactHandlers(): void {
       const phones = (data.phones ?? [])
         .filter((p) => p.phone.trim())
         .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
-        .filter((p) => p.phone);
+        .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
       phones.forEach((p, i) => {
         db.prepare(
           'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
@@ -356,8 +353,6 @@ export function registerContactHandlers(): void {
     run();
     setImmediate(runDedupScan);
 
-    // Trigger Wayback saves for newly added website URLs
-    const { wayback_enabled } = db.prepare('SELECT wayback_enabled FROM users WHERE id = 1').get() as { wayback_enabled: number };
     if (wayback_enabled) {
       const newWebsiteUrls = (data.links ?? [])
         .filter((l) => l.type === 'website' && l.url.trim() && !existingWaybacks.has(l.url.trim()))
@@ -372,19 +367,19 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     const db = getDatabase();
     const current = db
-      .prepare('SELECT reporter_email, outreach_reminders_disabled FROM project_memberships WHERE id = ?')
-      .get(data.membershipId) as { reporter_email: string; outreach_reminders_disabled: 0 | 1 } | undefined;
+      .prepare('SELECT reporter_email, outreach_reminders_enabled FROM project_memberships WHERE id = ?')
+      .get(data.membershipId) as { reporter_email: string; outreach_reminders_enabled: 0 | 1 } | undefined;
 
-    const newDisabled = data.outreachRemindersDisabled !== undefined
-      ? data.outreachRemindersDisabled
-      : (current?.outreach_reminders_disabled ?? 0);
+    const newEnabled = data.outreachRemindersEnabled !== undefined
+      ? data.outreachRemindersEnabled
+      : (current?.outreach_reminders_enabled ?? 1);
 
     const reporterChanging = data.reporterEmail !== undefined && data.reporterEmail !== current?.reporter_email;
 
     db.prepare(
       `UPDATE project_memberships
        SET status = ?, priority = ?, theme = ?,
-           outreach_reminders_disabled = ?,
+           outreach_reminders_enabled = ?,
            reporter_email = COALESCE(?, reporter_email),
            reporter_name  = COALESCE(?, reporter_name),
            reporter_assigned_at = CASE WHEN ? THEN ? ELSE reporter_assigned_at END,
@@ -395,7 +390,7 @@ export function registerContactHandlers(): void {
       data.status ?? null,
       data.priority ?? null,
       data.theme ?? null,
-      newDisabled,
+      newEnabled,
       data.reporterEmail ?? null,
       data.reporterName ?? null,
       reporterChanging ? 1 : 0, now,
@@ -404,7 +399,7 @@ export function registerContactHandlers(): void {
       data.membershipId,
     );
 
-    if (newDisabled === 1) {
+    if (newEnabled === 0) {
       db.prepare(
         `DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1`,
       ).run(data.membershipId);
@@ -436,15 +431,15 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle(
     'interaction-log:add',
-    (_, { membershipId, body }: { membershipId: string; body: string }): InteractionLogEntry => {
+    (_, { membershipId, body, createdAt }: { membershipId: string; body: string; createdAt?: number }): InteractionLogEntry => {
       const db = getDatabase();
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const id = uuidv4();
-      const now = Math.floor(Date.now() / 1000);
+      const ts = createdAt ?? Math.floor(Date.now() / 1000);
       const reporterName = `${user.first_name} ${user.last_name}`;
       db.prepare(
         'INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ).run(id, membershipId, user.email, reporterName, body.trim(), now);
+      ).run(id, membershipId, user.email, reporterName, body.trim(), ts);
       // Clear any auto-outreach calendar reminder — source is no longer overdue.
       db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1').run(membershipId);
       return {
@@ -453,10 +448,29 @@ export function registerContactHandlers(): void {
         reporter_email: user.email,
         reporter_name: reporterName,
         body: body.trim(),
-        created_at: now,
+        created_at: ts,
       };
     },
   );
+
+  ipcMain.handle('contacts:count', (): number => {
+    const row = getDatabase().prepare('SELECT COUNT(*) as n FROM contacts').get() as { n: number };
+    return row.n;
+  });
+
+  ipcMain.handle('contacts:interaction-count', (_, contactId: string): number => {
+    const row = getDatabase().prepare(
+      `SELECT COUNT(*) as n FROM interaction_log_entries ile
+       JOIN project_memberships pm ON pm.id = ile.membership_id
+       WHERE pm.contact_id = ?`,
+    ).get(contactId) as { n: number };
+    return row.n;
+  });
+
+  ipcMain.handle('contacts:validate-phone', (_, raw: string): boolean => {
+    const { phone_country } = getDatabase().prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
+    return normalizePhone(raw.trim(), phone_country) !== null;
+  });
 
   ipcMain.handle(
     'scratchpad:list',
@@ -551,6 +565,7 @@ export function registerContactHandlers(): void {
 
       for (const rawPhone of phones.filter(Boolean)) {
         const phone = normalizePhone(rawPhone, phone_country);
+        if (!phone) continue; // invalid phone number — skip collision check
         const row = excludeId
           ? (db
               .prepare(
@@ -572,10 +587,6 @@ export function registerContactHandlers(): void {
   );
 
   ipcMain.handle('contacts:get-duplicates', (): DuplicatePair[] => {
-    const db = getDatabase();
-    const contacts = loadDedupContacts(db);
-    const dismissed = loadDismissedPairs(db);
-    cachedPairs = findDuplicatePairs(contacts, dismissed);
     return cachedPairs;
   });
 

@@ -178,7 +178,7 @@ export default function Setup({ onComplete }: Props) {
 
           {error && <div className="setup-error">{error}</div>}
 
-          <button className="setup-submit" type="submit" disabled={submitting}>
+          <button className="setup-submit" type="submit" disabled={submitting || !form.acknowledgedNoRecovery}>
             {submitting ? 'Setting up…' : 'Create my vault'}
           </button>
         </form>

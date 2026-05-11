@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import type { DedupContact, DuplicatePair } from '@shared/types';
+import { normalizeEmail } from './sanitize';
 
 export function loadDedupContacts(db: Database.Database): DedupContact[] {
   const contacts = db
@@ -108,10 +109,6 @@ function jaroWinkler(a: string, b: string): number {
   return jaro + prefix * 0.1 * (1 - jaro);
 }
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
 // For matching purposes only — strips formatting to compare digit sequences
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, '');
@@ -127,8 +124,8 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
 
   const pairs: DuplicatePair[] = [];
   const pairedIds = new Set<string>();
+  const contactById = new Map<string, DedupContact>(contacts.map((c) => [c.id, c]));
 
-  // Pass 1: exact email signals (normalized)
   const emailIndex = new Map<string, string>();
   for (const c of contacts) {
     for (const email of c.emails) {
@@ -136,8 +133,7 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
       const existing = emailIndex.get(key);
       if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
         if (!isDismissed(existing, c.id)) {
-          const a = contacts.find((x) => x.id === existing)!;
-          pairs.push({ a, b: c, reason: 'email' });
+          pairs.push({ a: contactById.get(existing)!, b: c, reason: 'email' });
           pairedIds.add(existing);
           pairedIds.add(c.id);
         }
@@ -147,7 +143,6 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
     }
   }
 
-  // Pass 1b: exact phone signals (normalized)
   const phoneIndex = new Map<string, string>();
   for (const c of contacts) {
     for (const phone of c.phones) {
@@ -156,8 +151,7 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
       const existing = phoneIndex.get(key);
       if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
         if (!isDismissed(existing, c.id)) {
-          const a = contacts.find((x) => x.id === existing)!;
-          pairs.push({ a, b: c, reason: 'phone' });
+          pairs.push({ a: contactById.get(existing)!, b: c, reason: 'phone' });
           pairedIds.add(existing);
           pairedIds.add(c.id);
         }
@@ -167,18 +161,16 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
     }
   }
 
-  // Pass 2: fuzzy name matching over unpaired contacts
   const unpaired = contacts.filter((c) => !pairedIds.has(c.id));
+  const unpairedLower = unpaired.map((c) => c.name.toLowerCase());
   for (let i = 0; i < unpaired.length; i++) {
     for (let j = i + 1; j < unpaired.length; j++) {
-      const a = unpaired[i];
-      const b = unpaired[j];
-      if (pairedIds.has(a.id) || pairedIds.has(b.id)) continue;
-      if (isDismissed(a.id, b.id)) continue;
-      if (jaroWinkler(a.name, b.name) >= 0.95) {
-        pairs.push({ a, b, reason: 'name' });
-        pairedIds.add(a.id);
-        pairedIds.add(b.id);
+      if (pairedIds.has(unpaired[i].id) || pairedIds.has(unpaired[j].id)) continue;
+      if (isDismissed(unpaired[i].id, unpaired[j].id)) continue;
+      if (jaroWinkler(unpairedLower[i], unpairedLower[j]) >= 0.95) {
+        pairs.push({ a: unpaired[i], b: unpaired[j], reason: 'name' });
+        pairedIds.add(unpaired[i].id);
+        pairedIds.add(unpaired[j].id);
       }
     }
   }
@@ -241,7 +233,6 @@ export function mergeContacts(
         winnerId,
       );
 
-      // Copy unique emails from loser to winner
       const winnerEmails = new Set<string>(
         (
           db
@@ -266,7 +257,6 @@ export function mergeContacts(
         }
       }
 
-      // Copy unique phones from loser to winner (including label)
       const winnerPhones = new Set<string>(
         (
           db
@@ -291,7 +281,6 @@ export function mergeContacts(
         }
       }
 
-      // Copy unique links from loser to winner
       const winnerUrls = new Set<string>(
         (
           db
@@ -317,7 +306,6 @@ export function mergeContacts(
       }
     }
 
-    // Reassign project memberships
     const loserMemberships = db
       .prepare('SELECT id, project_id FROM project_memberships WHERE contact_id = ?')
       .all(loserId) as Array<{ id: string; project_id: string }>;
@@ -328,7 +316,6 @@ export function mergeContacts(
         .get(winnerId, membership.project_id) as { id: string } | undefined;
 
       if (winnerMembership) {
-        // Move loser's interaction logs to winner's membership, then delete loser's membership
         db.prepare(
           'UPDATE interaction_log_entries SET membership_id = ? WHERE membership_id = ?',
         ).run(winnerMembership.id, membership.id);
@@ -341,14 +328,12 @@ export function mergeContacts(
       }
     }
 
-    // Reassign scratchpad drafts and reminders
     db.prepare('UPDATE message_scratchpad_drafts SET contact_id = ? WHERE contact_id = ?').run(
       winnerId,
       loserId,
     );
     db.prepare('UPDATE reminders SET contact_id = ? WHERE contact_id = ?').run(winnerId, loserId);
 
-    // Keep winner's alert RSS; copy loser's only if winner has none
     const winnerRss = db
       .prepare('SELECT id FROM contact_alert_rss WHERE contact_id = ?')
       .get(winnerId);
@@ -359,7 +344,6 @@ export function mergeContacts(
       );
     }
 
-    // Delete loser — cascades remaining child rows
     db.prepare('DELETE FROM contacts WHERE id = ?').run(loserId);
   });
 

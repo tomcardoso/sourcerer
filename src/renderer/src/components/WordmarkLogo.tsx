@@ -26,11 +26,10 @@ const VB_H = 64
 interface Props {
   compact?: boolean
   size?: number
-  rules?: boolean
   className?: string
 }
 
-export function WordmarkLogo({ compact = false, size, rules, className }: Props) {
+export function WordmarkLogo({ compact = false, size, className }: Props) {
   // ── Compact: ink square icon (dock / taskbar / app icon) ──────────────────
   if (compact) {
     const dim = size ?? 64

@@ -17,6 +17,19 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
   facebook:  { label: 'Facebook',   placeholder: 'https://facebook.com/…' },
 };
 
+function isValidEmail(raw: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim());
+}
+
+function isValidUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 function DynamicList({
   label,
   values,
@@ -55,7 +68,7 @@ function DynamicList({
             )}
           </div>
           {val.trim() && warnings?.[val.trim()] && (
-            <div className="ac-collision-warn">Already on: <strong>{warnings[val.trim()]}</strong></div>
+            <div className="ac-collision-warn">{warnings[val.trim()]}</div>
           )}
         </div>
       ))}
@@ -79,6 +92,9 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
+  const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
+  const [phoneFormatWarnings, setPhoneFormatWarnings] = useState<Record<string, true>>({});
+  const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [projectQuery, setProjectQuery] = useState('');
@@ -122,6 +138,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
+    const valid = isValidEmail(value);
+    setEmailFormatWarnings((prev) => {
+      const next = { ...prev };
+      if (!valid) next[value] = true; else delete next[value];
+      return next;
+    });
+    if (!valid) return;
     const result = await window.sourcerer.checkCollision({ emails: [value], phones: [] });
     setEmailCollisions((prev) => {
       const next = { ...prev };
@@ -133,10 +156,18 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
   async function checkPhoneBlur(value: string) {
     if (!value) return;
-    const result = await window.sourcerer.checkCollision({ emails: [], phones: [value] });
+    const [isValid, collision] = await Promise.all([
+      window.sourcerer.validatePhone(value),
+      window.sourcerer.checkCollision({ emails: [], phones: [value] }),
+    ]);
+    setPhoneFormatWarnings((prev) => {
+      const next = { ...prev };
+      if (!isValid) next[value] = true; else delete next[value];
+      return next;
+    });
     setPhoneCollisions((prev) => {
       const next = { ...prev };
-      if (result.phone[value]) next[value] = result.phone[value];
+      if (collision.phone[value]) next[value] = collision.phone[value];
       else delete next[value];
       return next;
     });
@@ -243,7 +274,12 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     >×</button>
                   )}
                 </div>
-                {entry.email.trim() && emailCollisions[entry.email.trim()] && (
+                {entry.email.trim() && emailFormatWarnings[entry.email.trim()] && (
+                  <div className="ac-collision-warn">
+                    ⚠ Invalid email address
+                  </div>
+                )}
+                {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && emailCollisions[entry.email.trim()] && (
                   <div className="ac-collision-warn">
                     Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
                   </div>
@@ -284,7 +320,12 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     >×</button>
                   )}
                 </div>
-                {entry.phone.trim() && phoneCollisions[entry.phone.trim()] && (
+                {entry.phone.trim() && phoneFormatWarnings[entry.phone.trim()] && (
+                  <div className="ac-collision-warn">
+                    ⚠ Invalid phone number
+                  </div>
+                )}
+                {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneCollisions[entry.phone.trim()] && (
                   <div className="ac-collision-warn">
                     Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
                   </div>
@@ -305,6 +346,17 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             values={websites}
             placeholder="https://example.com"
             onChange={setWebsites}
+            onBlurItem={(val) => {
+              if (!val) return;
+              setUrlFormatWarnings((prev) => {
+                const next = { ...prev };
+                if (!isValidUrl(val)) next[val] = true; else delete next[val];
+                return next;
+              });
+            }}
+            warnings={Object.fromEntries(
+              websites.map((v) => v.trim()).filter((v) => v && urlFormatWarnings[v]).map((v) => [v, '⚠ Invalid URL'])
+            )}
           />
 
           {SOCIAL_TYPES.map((type) => (
@@ -314,6 +366,17 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               values={socials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
+              onBlurItem={(val) => {
+                if (!val) return;
+                setUrlFormatWarnings((prev) => {
+                  const next = { ...prev };
+                  if (!isValidUrl(val)) next[val] = true; else delete next[val];
+                  return next;
+                });
+              }}
+              warnings={Object.fromEntries(
+                socials[type].map((v) => v.trim()).filter((v) => v && urlFormatWarnings[v]).map((v) => [v, '⚠ Invalid URL'])
+              )}
             />
           ))}
 

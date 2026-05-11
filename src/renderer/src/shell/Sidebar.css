@@ -153,6 +153,16 @@
   color: var(--color-text-muted);
 }
 
+/* Contact count next to All contacts */
+.sidebar-contact-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+}
+
 /* "N Overdue" amber label */
 .sidebar-overdue-label {
   font-family: var(--font-mono);
@@ -175,7 +185,7 @@
 }
 
 .sidebar-search-hint span {
-  font-size: 10px;
+  font-size: 11.5px; /* this is an exception to the app's typography rules */
 }
 
 /* ── Projects section ─────────────────────────────── */

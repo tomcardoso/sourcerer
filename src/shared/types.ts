@@ -98,7 +98,7 @@ export interface ContactProject {
   date_last_contacted: number | null;
   reporter_name: string;
   reporter_email: string;
-  outreach_reminders_disabled: 0 | 1;
+  outreach_reminders_enabled: 0 | 1;
   reporter_conflict: 0 | 1;
   reporters: Array<{ email: string; name: string }>;
 }
@@ -146,7 +146,7 @@ export interface UpdateMembershipInput {
   status?: string | null;
   priority?: string | null;
   theme?: string | null;
-  outreachRemindersDisabled?: 0 | 1;
+  outreachRemindersEnabled?: 0 | 1;
   reporterEmail?: string;
   reporterName?: string;
   clearConflict?: boolean;

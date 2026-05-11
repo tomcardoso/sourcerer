@@ -121,8 +121,12 @@ const sourcererApi = {
   // Interaction log
   listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
     ipcRenderer.invoke('interaction-log:list', membershipId),
-  addInteractionLogEntry: (membershipId: string, body: string): Promise<InteractionLogEntry> =>
-    ipcRenderer.invoke('interaction-log:add', { membershipId, body }),
+  addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number): Promise<InteractionLogEntry> =>
+    ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt }),
+  getContactCount: (): Promise<number> => ipcRenderer.invoke('contacts:count'),
+  getContactInteractionCount: (contactId: string): Promise<number> =>
+    ipcRenderer.invoke('contacts:interaction-count', contactId),
+  validatePhone: (raw: string): Promise<boolean> => ipcRenderer.invoke('contacts:validate-phone', raw),
 
   // Scratchpad
   listScratchpad: (contactId: string, projectId: string): Promise<ScratchpadDraft[]> =>

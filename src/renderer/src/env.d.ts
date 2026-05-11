@@ -87,7 +87,10 @@ declare global {
 
       // Interaction log
       listInteractionLog: (membershipId: string) => Promise<InteractionLogEntry[]>;
-      addInteractionLogEntry: (membershipId: string, body: string) => Promise<InteractionLogEntry>;
+      addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number) => Promise<InteractionLogEntry>;
+      getContactCount: () => Promise<number>;
+      getContactInteractionCount: (contactId: string) => Promise<number>;
+      validatePhone: (raw: string) => Promise<boolean>;
 
       // Scratchpad
       listScratchpad: (contactId: string, projectId: string) => Promise<ScratchpadDraft[]>;

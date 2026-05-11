@@ -2,61 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ContactListItem, DuplicatePair, Project, User } from '@shared/types';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
-import ColumnHeader, { TextFilter, ToggleFilter, PresetFilter } from './ColumnHeader';
+import ContactsTable, {
+  type AllContactsFilters as Filters,
+  DEFAULT_ALL_CONTACTS_FILTERS as DEFAULT_FILTERS,
+  isAllContactsFilterActive as isFilterActive,
+  type SortDir,
+} from './ContactsTable';
 import './View.css';
 import './AllContacts.css';
 
 type SortKey = 'name' | 'organization' | 'date_first_contacted' | 'date_last_contacted';
-type SortDir = 'asc' | 'desc';
-type DatePreset = 'never' | 'contacted' | 'not_30' | 'not_90';
-
-interface Filters {
-  name: string;
-  organization: string;
-  notes: string;
-  email: string;
-  phone: string;
-  hasEmail: boolean | null;
-  hasPhone: boolean | null;
-  dateLastContacted: DatePreset | null;
-  project: string | null; // project ID, or '__none__' for contacts with no project
-}
-
-const DEFAULT_FILTERS: Filters = {
-  name: '',
-  organization: '',
-  notes: '',
-  email: '',
-  phone: '',
-  hasEmail: null,
-  hasPhone: null,
-  dateLastContacted: null,
-  project: null,
-};
-
-function fmtDate(ts: number | null): string {
-  if (ts === null) return 'Never';
-  const d = new Date(ts * 1000);
-  const now = new Date();
-  if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function isFilterActive(f: Filters): boolean {
-  return (
-    f.name !== '' ||
-    f.organization !== '' ||
-    f.notes !== '' ||
-    f.email !== '' ||
-    f.phone !== '' ||
-    f.hasEmail !== null ||
-    f.hasPhone !== null ||
-    f.dateLastContacted !== null ||
-    f.project !== null
-  );
-}
 
 interface Props {
   projects: Project[];
@@ -161,7 +116,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     setExporting(false);
   }
 
-  function setFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+  function setFilter(key: string, value: unknown) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -169,13 +124,13 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     setOpenFilter((prev) => (prev === col ? null : col));
   }
 
-  function handleSort(key: SortKey) {
+  function handleSort(key: string) {
     setSort((prev) => {
       if (prev.key === key) {
-        if (prev.dir === 'asc') return { key, dir: 'desc' };
+        if (prev.dir === 'asc') return { key: key as SortKey, dir: 'desc' };
         return { key: null, dir: 'asc' };
       }
-      return { key, dir: 'asc' };
+      return { key: key as SortKey, dir: 'asc' };
     });
   }
 
@@ -322,15 +277,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     setDetailId(null);
   }
 
-  const sd = (key: SortKey) => (sort.key === key ? sort.dir : null);
   const anyFilter = isFilterActive(filters);
-
-  const stalenessEnabled = user?.staleness_enabled !== 0;
-  const stalenessThresholdSecs = (user?.staleness_threshold_days ?? 90) * 86400;
-  function isStale(dateLastContacted: number | null): boolean {
-    if (!stalenessEnabled) return false;
-    return dateLastContacted === null || dateLastContacted < now - stalenessThresholdSecs;
-  }
 
   return (
     <div className="view">
@@ -459,247 +406,26 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
 
       <div className={`contacts-body${detailId && checkedIds.size <= 1 ? ' contacts-body--detail-open' : ''}`}>
         <div className="contacts-table-area">
-          <table className="contacts-table">
-              <thead>
-                <tr>
-                  <th className="col-check">
-                    <input
-                      type="checkbox"
-                      ref={selectAllRef}
-                      checked={allChecked}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Name"
-                      sortDir={sd('name')}
-                      onSort={() => handleSort('name')}
-                      filterable
-                      filterActive={!!filters.name}
-                      filterOpen={openFilter === 'name'}
-                      onFilterToggle={() => toggleFilter('name')}
-                      filterContent={
-                        <TextFilter value={filters.name} onChange={(v) => setFilter('name', v)} />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Organization"
-                      sortDir={sd('organization')}
-                      onSort={() => handleSort('organization')}
-                      filterable
-                      filterActive={!!filters.organization}
-                      filterOpen={openFilter === 'organization'}
-                      onFilterToggle={() => toggleFilter('organization')}
-                      filterContent={
-                        <TextFilter
-                          value={filters.organization}
-                          onChange={(v) => setFilter('organization', v)}
-                        />
-                      }
-                    />
-                  </th>
-                  <th className="col-compact">
-                    <ColumnHeader
-                      label="Email"
-                      filterable
-                      filterActive={!!filters.email || filters.hasEmail !== null}
-                      filterOpen={openFilter === 'email'}
-                      onFilterToggle={() => toggleFilter('email')}
-                      filterContent={
-                        <>
-                          <TextFilter
-                            value={filters.email}
-                            onChange={(v) => setFilter('email', v)}
-                            placeholder="Search email…"
-                          />
-                          <ToggleFilter
-                            value={filters.hasEmail}
-                            onChange={(v) => setFilter('hasEmail', v)}
-                            yesLabel="Has email"
-                          />
-                        </>
-                      }
-                    />
-                  </th>
-                  <th className="col-compact">
-                    <ColumnHeader
-                      label="Phone"
-                      filterable
-                      filterActive={!!filters.phone || filters.hasPhone !== null}
-                      filterOpen={openFilter === 'phone'}
-                      onFilterToggle={() => toggleFilter('phone')}
-                      filterContent={
-                        <>
-                          <TextFilter
-                            value={filters.phone}
-                            onChange={(v) => setFilter('phone', v)}
-                            placeholder="Search phone…"
-                          />
-                          <ToggleFilter
-                            value={filters.hasPhone}
-                            onChange={(v) => setFilter('hasPhone', v)}
-                            yesLabel="Has phone"
-                          />
-                        </>
-                      }
-                    />
-                  </th>
-                  <th className="col-compact">
-                    <ColumnHeader
-                      label="Notes"
-                      filterable
-                      filterActive={!!filters.notes}
-                      filterOpen={openFilter === 'notes'}
-                      onFilterToggle={() => toggleFilter('notes')}
-                      filterContent={
-                        <TextFilter
-                          value={filters.notes}
-                          onChange={(v) => setFilter('notes', v)}
-                          placeholder="Keyword in notes…"
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="First Contacted"
-                      sortDir={sd('date_first_contacted')}
-                      onSort={() => handleSort('date_first_contacted')}
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Last Contacted"
-                      sortDir={sd('date_last_contacted')}
-                      onSort={() => handleSort('date_last_contacted')}
-                      filterable
-                      filterActive={filters.dateLastContacted !== null}
-                      filterOpen={openFilter === 'date'}
-                      onFilterToggle={() => toggleFilter('date')}
-                      filterContent={
-                        <PresetFilter
-                          value={filters.dateLastContacted}
-                          onChange={(v) =>
-                            setFilter('dateLastContacted', v as Filters['dateLastContacted'])
-                          }
-                          options={[
-                            { value: null, label: 'Any time' },
-                            { value: 'contacted', label: 'Has been contacted' },
-                            { value: 'never', label: 'Never contacted' },
-                            { value: 'not_30', label: 'Not in 30 days' },
-                            { value: 'not_90', label: 'Not in 90 days' },
-                          ]}
-                        />
-                      }
-                    />
-                  </th>
-                  <th>
-                    <ColumnHeader
-                      label="Projects"
-                      filterable
-                      filterActive={filters.project !== null}
-                      filterOpen={openFilter === 'project'}
-                      onFilterToggle={() => toggleFilter('project')}
-                      filterContent={
-                        <PresetFilter
-                          value={filters.project}
-                          onChange={(v) => setFilter('project', v)}
-                          options={[
-                            { value: null, label: 'All projects' },
-                            { value: '__none__', label: 'No project' },
-                            ...projects.map((p) => ({ value: p.id, label: p.name })),
-                          ]}
-                        />
-                      }
-                    />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {contacts.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="contacts-no-results">
-                      No contacts yet. Add your first contact to get started.
-                    </td>
-                  </tr>
-                ) : displayed.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="contacts-no-results">
-                      No contacts match the current filters.
-                    </td>
-                  </tr>
-                ) : displayed.map((c) => (
-                  <tr
-                    key={c.id}
-                    className={[
-                      detailId === c.id ? 'selected' : '',
-                      checkedIds.has(c.id) ? 'checked' : '',
-                      'row'
-                    ].filter(Boolean).join(' ')}
-                    onClick={() => { if (c.id === detailId) { closeDetail(); } else { setDetailId(c.id); } }}
-                  >
-                    <td className="contact-check-cell" onClick={(e) => toggleCheck(c.id, e)}>
-                      <input
-                        type="checkbox"
-                        checked={checkedIds.has(c.id)}
-                        onChange={() => {}}
-                      />
-                    </td>
-                    <td className="contact-name-cell">{c.name}</td>
-                    <td className="contact-org-cell">{c.organization ?? '—'}</td>
-                    <td className="contact-bool-cell">
-                      {c.has_email ? (
-                        <span className="contact-bool-yes">✓</span>
-                      ) : (
-                        <span className="contact-cell-muted">—</span>
-                      )}
-                    </td>
-                    <td className="contact-bool-cell">
-                      {c.has_phone ? (
-                        <span className="contact-bool-yes">✓</span>
-                      ) : (
-                        <span className="contact-cell-muted">—</span>
-                      )}
-                    </td>
-                    <td className="contact-bool-cell">
-                      {c.notes ? (
-                        <span className="contact-notes-icon">✎</span>
-                      ) : (
-                        <span className="contact-cell-muted">—</span>
-                      )}
-                    </td>
-                    <td className="contact-date-cell">
-                      {c.date_first_contacted === null ? (
-                        <span className="contact-cell-muted">—</span>
-                      ) : (
-                        fmtDate(c.date_first_contacted)
-                      )}
-                    </td>
-                    <td className={`contact-date-cell${isStale(c.date_last_contacted) ? ' contact-date-stale' : ''}`}>
-                      {c.date_last_contacted === null ? (
-                        <span className="contact-cell-muted">Never</span>
-                      ) : (
-                        fmtDate(c.date_last_contacted)
-                      )}
-                    </td>
-                    <td className="contact-projects-cell">
-                      {c.projects.length === 0 ? (
-                        <span className="contact-no-projects">—</span>
-                      ) : (
-                        c.projects.map((p) => (
-                          <span key={p.id} className="project-tag">
-                            {p.name}
-                          </span>
-                        ))
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <ContactsTable
+            mode="all"
+            rows={displayed}
+            totalCount={contacts.length}
+            filters={filters}
+            setFilter={setFilter}
+            sort={sort}
+            onSort={handleSort}
+            openFilter={openFilter}
+            toggleFilter={toggleFilter}
+            checkedIds={checkedIds}
+            selectedId={detailId}
+            onRowClick={(id) => { if (id === detailId) { closeDetail(); } else { setDetailId(id); } }}
+            onCheck={toggleCheck}
+            onCheckAll={toggleAll}
+            allChecked={allChecked}
+            selectAllRef={selectAllRef}
+            user={user}
+            projects={projects}
+          />
         </div>
       </div>
 

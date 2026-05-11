@@ -30,6 +30,7 @@ export default function AppShell() {
   } | null>(null);
   const [unseenMentions, setUnseenMentions] = useState(0);
   const [overdueReminders, setOverdueReminders] = useState(0);
+  const [totalContacts, setTotalContacts] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -41,6 +42,7 @@ export default function AppShell() {
     window.sourcerer.getUser().then(setUser);
     window.sourcerer.listProjects().then(setProjects);
     window.sourcerer.getUnseenMentionCount().then(setUnseenMentions);
+    window.sourcerer.getContactCount().then(setTotalContacts);
     refreshOverdue();
   }, []);
 
@@ -133,6 +135,7 @@ export default function AppShell() {
         onNav={setNav}
         unseenMentions={unseenMentions}
         overdueReminders={overdueReminders}
+        totalContacts={totalContacts}
         onSearchOpen={() => setSearchOpen(true)}
         onProjectCreated={handleProjectCreated}
         onProjectCreatedShared={handleProjectCreatedShared}
@@ -191,6 +194,7 @@ export default function AppShell() {
             setShowAddContact(false);
             setNav({ view: 'all-contacts' });
             setOpenContactId(contact.id);
+            window.sourcerer.getContactCount().then(setTotalContacts);
           }}
           onCancel={() => setShowAddContact(false)}
         />
@@ -203,6 +207,7 @@ export default function AppShell() {
             setShowImportCsv(false);
             setImportResult(result);
             setImportRefreshTrigger((n) => n + 1);
+            window.sourcerer.getContactCount().then(setTotalContacts);
           }}
           onClose={() => setShowImportCsv(false)}
         />

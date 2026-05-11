@@ -15,7 +15,6 @@ import { registerExportHandlers } from './ipc/export';
 import { registerAlertHandlers } from './ipc/alerts';
 import { registerReminderHandlers } from './ipc/reminders';
 import { registerImportHandlers } from './ipc/import';
-import { registerAuditHandlers } from './ipc/audit';
 import { registerBackupHandlers } from './ipc/backup';
 import { registerScreenshotHandlers } from './ipc/screenshots';
 import { registerSearchHandlers } from './ipc/search';
@@ -31,7 +30,7 @@ function createWindow(): BrowserWindow {
   );
   const win = new BrowserWindow({
     width: 560,
-    height: 720,
+    height: 820,
     show: false,
     resizable: false,
     center: true,
@@ -78,7 +77,6 @@ app.whenReady().then(() => {
   registerAlertHandlers();
   registerReminderHandlers();
   registerImportHandlers();
-  registerAuditHandlers();
   registerBackupHandlers();
   registerScreenshotHandlers();
   registerSearchHandlers();

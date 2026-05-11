@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ContactDetail as ContactDetailType, Project, StatusOption, PriorityOption, User } from '@shared/types';
 import GlobalTab from './GlobalTab';
 import ProjectTab from './ProjectTab';
@@ -23,14 +23,25 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('global');
   const [isEditing, setIsEditing] = useState(false);
+  const [interactionCount, setInteractionCount] = useState<number | null>(null);
+
+  // Keep stable refs so the event listener never needs to re-register
+  const onCloseRef = useRef(onClose);
+  const isEditingRef = useRef(isEditing);
+  onCloseRef.current = onClose;
+  isEditingRef.current = isEditing;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isEditing) onClose();
+      // e.defaultPrevented lets inner overlays (screenshot viewer, log modal)
+      // signal that they already handled this Escape, so we don't close the drawer too.
+      if (e.key === 'Escape' && !isEditingRef.current && !e.defaultPrevented) {
+        onCloseRef.current();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, isEditing]);
+  }, []); // stable — only registers once per mount
 
   const reload = useCallback(() => {
     window.sourcerer.getContact(contactId).then(setContact);
@@ -39,10 +50,12 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   useEffect(() => {
     setContact(null);
     setActiveTab('global');
+    setInteractionCount(null);
     reload();
     window.sourcerer.listProjects().then(setAllProjects);
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
+    window.sourcerer.getContactInteractionCount(contactId).then(setInteractionCount);
   }, [contactId, reload]);
 
   const hasProjects = (contact?.projects.length ?? 0) > 0;
@@ -63,7 +76,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
           {contact ? (
             <>
               <div className="view-kicker">
-                Hello world  ·
+                {interactionCount !== null && interactionCount > 0
+                  ? `${interactionCount} interaction${interactionCount !== 1 ? 's' : ''} · `
+                  : ''}
+                Added {new Date(contact.created_at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
               </div>
               <h2 className="detail-name">{contact.name}</h2>
               {contact.organization && (
@@ -115,7 +131,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               statusOptions={statusOptions}
               priorityOptions={priorityOptions}
               onMembershipUpdated={handleMembershipChanged}
-              currentUser={user ? { email: user.email, firstName: user.first_name, lastName: user.last_name } : null}
+              currentUser={user ? { email: user.email, firstName: user.first_name, lastName: user.last_name, outreachRemindersEnabled: user.outreach_reminders_enabled !== 0 } : null}
             />
           )}
         </>

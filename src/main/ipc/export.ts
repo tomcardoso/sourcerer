@@ -12,7 +12,6 @@ interface ExportRow {
   Facebook: string;
   Instagram: string;
   X: string;
-  Lawsuits: string;
   'Other links': string;
   Notes: string;
   Reporter: string;
@@ -20,7 +19,6 @@ interface ExportRow {
   Priority: string;
   Status: string;
   'First outreach': string;
-  'Interview dates': string;
   'Interaction log': string;
 }
 
@@ -112,20 +110,6 @@ export function registerExportHandlers(): void {
             .map((l) => l.url)
             .join('; ');
 
-        const interviewDates =
-          (
-            db
-              .prepare(
-                `SELECT id.interviewed_at FROM interview_dates id
-                 JOIN project_memberships pm ON pm.id = id.membership_id
-                 WHERE pm.id = ?
-                 ORDER BY id.interviewed_at ASC`,
-              )
-              .all(m.membership_id) as { interviewed_at: number }[]
-          )
-            .map((r) => new Date(r.interviewed_at * 1000).toLocaleDateString())
-            .join('; ') || '';
-
         let interactionLog = '';
         if (mode === 'full') {
           interactionLog = (
@@ -156,7 +140,6 @@ export function registerExportHandlers(): void {
           Facebook: byType('facebook'),
           Instagram: byType('instagram'),
           X: byType('x'),
-          Lawsuits: byType('lawsuit'),
           'Other links': byType('other'),
           Notes: mode === 'full' ? (m.notes ?? '') : '',
           Reporter: m.reporter_name,
@@ -166,7 +149,6 @@ export function registerExportHandlers(): void {
           'First outreach': m.first_log_at
             ? new Date(m.first_log_at * 1000).toLocaleDateString()
             : '',
-          'Interview dates': interviewDates,
           'Interaction log': interactionLog,
         });
       }
