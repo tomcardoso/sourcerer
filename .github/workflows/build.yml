@@ -1,0 +1,59 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            dist_script: dist:mac
+            artifact_glob: dist-electron/*.dmg
+          - os: windows-latest
+            dist_script: dist:win
+            artifact_glob: dist-electron/*.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Rebuild native modules for Electron
+        run: npm run rebuild
+
+      - name: Build app (electron-vite)
+        run: npm run build
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: npm run dist:mac
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: npm run dist:win
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_glob }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

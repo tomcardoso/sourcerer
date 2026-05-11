@@ -9,8 +9,11 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "package": "npm run build && electron-builder",
     "rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers,argon2",
+    "rebuild:node": "npm rebuild better-sqlite3-multiple-ciphers argon2",
+    "dist:mac": "electron-builder --mac --arm64",
+    "dist:win": "electron-builder --win --x64",
+    "dist": "electron-builder",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -46,29 +49,56 @@
   "build": {
     "appId": "com.sourcerer.app",
     "productName": "Sourcerer",
+    "npmRebuild": false,
     "directories": {
-      "output": "dist"
+      "buildResources": "build",
+      "output": "dist-electron"
     },
     "files": [
       "out/**/*",
-      "node_modules/**/*"
+      "!out/**/*.map",
+      "!out/main/database/dev-seeds-contacts-*.js",
+      "node_modules/**/*",
+      "!node_modules/.cache/**/*",
+      "!node_modules/.bin/**/*",
+      "!**/node_modules/*/test{,s}/**",
+      "!**/node_modules/*/{CHANGELOG.md,readme.md,README.md,LICENSE.md}"
     ],
     "asarUnpack": [
       "node_modules/better-sqlite3-multiple-ciphers/**/*",
       "node_modules/argon2/**/*"
     ],
     "mac": {
-      "icon": "build/icon.icns",
-      "target": "dmg",
-      "category": "public.app-category.productivity"
+      "icon": "build/icons/1024x1024.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "dmg": {
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
     },
     "win": {
-      "icon": "build/icon.ico",
-      "target": "nsis"
+      "icon": "build/icons/256x256.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
     },
-    "linux": {
-      "icon": "build/icons/",
-      "target": "AppImage"
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }
