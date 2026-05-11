@@ -163,7 +163,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       stmts.insertReminder.run(uuidv4(), cid(contactName), projectId, membId, NOW + daysFromNow * DAY, note, NOW);
     }
 
-    // ── Greenbelt Land Swap memberships ──────────────────────────────────────
+    // ── Millgate Land Deal memberships ───────────────────────────────────────
     addMembership('Catherine Mwangi', greenbeltId, me(), {
       theme: 'Whistleblower', priority: 'Critical', status: 'Contacted, no reply',
     });
@@ -370,7 +370,8 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       'First call after she moved to Prospect Advisory. She confirmed the memo exists and that she signed it. Will not hand it over directly.',
       35);
     addLog('Eunice Addo-Yeboah', pensionId, me(),
-      'Second call — she described the contents in detail. Enough to corroborate the OSC filing.',
+      'Second call — she described the contents in detail. Enough to corroborate the securities commission filing.',
+
       19);
     addLog('Eunice Addo-Yeboah', pensionId, me(),
       "Her lawyer has asked us to pause direct contact for two weeks. Respect the ask.",
@@ -387,7 +388,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       "In-person at her office. Explained the trust structure using a whiteboard — we photographed it.",
       22);
     addLog('Ngozi Okafor-Ellis', pensionId, me(),
-      'She flagged a discrepancy in the OSC timeline we had. Updated our reconstruction accordingly.',
+      'She flagged a discrepancy in the securities commission timeline we had. Updated our reconstruction accordingly.',
       8);
 
     addLog('Rupert Ainsworth', pensionId, me(),
@@ -402,7 +403,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       'She shared the suppressed report methodology — not the findings. Enough to know what to request via ATIP.',
       25);
     addLog('Dr. Ananya Krishnamurthy', healthId, me(),
-      'PHO legal counsel has been in touch with her. She is cautious but still willing to talk.',
+      'Agency legal counsel has been in touch with her. She is cautious but still willing to talk.',
       12);
     addLog('Dr. Ananya Krishnamurthy', healthId, me(),
       'Quick message — she confirmed the lead author on the 2023 report. New name to pursue.',
@@ -440,7 +441,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     addReminder('Sen. (ret.) Gérald Marquette', pensionId, 2,
       'Confirm he received the briefing notes and whether he stands by the key passage.');
     addReminder('Dr. Ananya Krishnamurthy', healthId, 1,
-      'Check in — PHO counsel may have issued guidance that affects what she can share.');
+      'Check in — agency counsel may have issued guidance that affects what she can share.');
     addReminder('Theresa Ouellet-Gauvin', healthId, 10,
       'Complete cross-reference of falsified staffing records against her redacted report.');
   });
