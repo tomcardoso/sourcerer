@@ -81,3 +81,18 @@ export function closeDatabase(): void {
 export function isDatabaseOpen(): boolean {
   return activeDb !== null;
 }
+
+/**
+ * Safely run a single DDL migration statement against an open database.
+ * Errors are silently swallowed so that idempotent statements like
+ * `ALTER TABLE … ADD COLUMN` don't abort startup when already applied.
+ * Always use `CREATE TABLE IF NOT EXISTS` in the main schema SQL for new
+ * tables; reserve this helper for additive changes to existing databases.
+ */
+export function tryMigrate(db: Database.Database, sql: string): void {
+  try {
+    db.exec(sql);
+  } catch {
+    // migration already applied or not applicable — safe to ignore
+  }
+}

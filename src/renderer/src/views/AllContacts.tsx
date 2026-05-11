@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContactListItem, DuplicatePair, Project, User } from '@shared/types';
+import { useClickOutside } from '../hooks/useClickOutside';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
 import ContactsTable, {
@@ -74,41 +75,10 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     });
   }, []);
 
-  useEffect(() => {
-    if (!bulkProjectMenuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (bulkProjectMenuRef.current && !bulkProjectMenuRef.current.contains(e.target as Node)) {
-        setBulkProjectMenuOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setBulkProjectMenuOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [bulkProjectMenuOpen]);
-
-  useEffect(() => {
-    if (!showExportMenu) return;
-    function handleClick(e: MouseEvent) {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
-        setShowExportMenu(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setShowExportMenu(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showExportMenu]);
+  const handleCloseBulkProjectMenu = useCallback(() => setBulkProjectMenuOpen(false), []);
+  const handleCloseExportMenu = useCallback(() => setShowExportMenu(false), []);
+  useClickOutside(bulkProjectMenuRef, handleCloseBulkProjectMenu, { isOpen: bulkProjectMenuOpen });
+  useClickOutside(exportMenuRef, handleCloseExportMenu, { isOpen: showExportMenu });
 
   async function handleExportAll() {
     setShowExportMenu(false);

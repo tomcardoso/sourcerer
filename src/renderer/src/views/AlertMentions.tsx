@@ -1,20 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ContactAlertMention } from '@shared/types';
+import { fmtDateRelative as fmtDate } from '../utils/fmtDate';
 import './View.css';
 import './AlertMentions.css';
-
-function fmtDate(ts: number | null, fetched: number): string {
-  const d = new Date((ts ?? fetched) * 1000);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 function hostname(url: string): string {
   try {

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { fmtDateFull } from '../utils/fmtDate';
+import { useClickOutside } from '../hooks/useClickOutside';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -459,17 +461,14 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     });
   }, [membership?.id, currentUser]);
 
-  useEffect(() => {
-    if (!reporterDropdownOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (reporterWrapRef.current && !reporterWrapRef.current.contains(e.target as Node)) {
-        setReporterDropdownOpen(false);
-        setReporterQuery('');
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [reporterDropdownOpen]);
+  const handleCloseReporterDropdown = useCallback(() => {
+    setReporterDropdownOpen(false);
+    setReporterQuery('');
+  }, []);
+  useClickOutside(reporterWrapRef, handleCloseReporterDropdown, {
+    isOpen: reporterDropdownOpen,
+    escapeKey: false,
+  });
 
   if (!membership) return null;
 
@@ -666,22 +665,14 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         <div className="pt-field">
           <label className="pt-label">First outreach</label>
           <span className="pt-readonly-date">
-            {membership.first_log_at
-              ? new Date(membership.first_log_at * 1000).toLocaleDateString(undefined, {
-                  month: 'short', day: 'numeric', year: 'numeric',
-                })
-              : '—'}
+            {fmtDateFull(membership.first_log_at ?? null)}
           </span>
         </div>
 
         <div className="pt-field">
           <label className="pt-label">Last contacted</label>
           <span className="pt-readonly-date">
-            {membership.date_last_contacted
-              ? new Date(membership.date_last_contacted * 1000).toLocaleDateString(undefined, {
-                  month: 'short', day: 'numeric', year: 'numeric',
-                })
-              : '—'}
+            {fmtDateFull(membership.date_last_contacted ?? null)}
           </span>
         </div>
 

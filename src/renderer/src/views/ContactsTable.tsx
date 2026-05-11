@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import { fmtDate } from '../utils/fmtDate';
 import type {
   ContactListItem,
   ProjectContactRow,
@@ -97,16 +98,6 @@ export function isProjectFilterActive(f: ProjectFilters): boolean {
     f.priority.length > 0 ||
     f.reporter.length > 0
   );
-}
-
-export function fmtDate(ts: number | null): string {
-  if (ts === null) return 'Never';
-  const d = new Date(ts * 1000);
-  const now = new Date();
-  if (d.getFullYear() === now.getFullYear()) {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // Build status/priority sort-order lookup maps from options arrays

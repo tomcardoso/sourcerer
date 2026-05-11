@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ContactDetail as ContactDetailType, Project, StatusOption, PriorityOption, User } from '@shared/types';
+import { fmtDateFull } from '../utils/fmtDate';
 import GlobalTab from './GlobalTab';
 import ProjectTab from './ProjectTab';
 import '../views/View.css';
@@ -79,7 +80,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
                 {interactionCount !== null && interactionCount > 0
                   ? `${interactionCount} interaction${interactionCount !== 1 ? 's' : ''} · `
                   : ''}
-                Added {new Date(contact.created_at * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                Added {fmtDateFull(contact.created_at)}
               </div>
               <h2 className="detail-name">{contact.name}</h2>
               {contact.organization && (

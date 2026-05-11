@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react';
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
+import { useClickOutside } from '../hooks/useClickOutside';
 import './AddContactModal.css';
 
 interface Props {
@@ -112,15 +113,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     window.sourcerer.listProjects().then(setProjects);
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (projectWrapRef.current && !projectWrapRef.current.contains(e.target as Node)) {
-        setProjectDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const handleCloseProjectDropdown = useCallback(() => setProjectDropdownOpen(false), []);
+  useClickOutside(projectWrapRef, handleCloseProjectDropdown, { escapeKey: false });
 
   const filteredProjects = projects.filter(
     (p) => !selectedProjectIds.has(p.id) && p.name.toLowerCase().includes(projectQuery.toLowerCase()),

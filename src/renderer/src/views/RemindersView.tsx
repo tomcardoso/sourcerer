@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Reminder, User } from '@shared/types';
+import { fmtDateFull } from '../utils/fmtDate';
 import ContactDetail from '../contacts/ContactDetail';
 import './View.css';
 import './RemindersView.css';
@@ -64,8 +65,7 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
 type TypeFilter = 'all' | 'outreach' | 'manual';
 
 function fmtDueDate(ts: number): string {
-  const d = new Date(ts * 1000);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return fmtDateFull(ts);
 }
 
 function relDays(ts: number): number {
