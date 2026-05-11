@@ -172,6 +172,34 @@
       color: var(--text-muted);
     }
 
+    /* Screenshot */
+    .screenshot-section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .screenshot-frame {
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      display: inline-block;
+      line-height: 0;
+    }
+
+    .screenshot-frame img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .screenshot-caption {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-top: 14px;
+    }
+
     @media (max-width: 600px) {
       .features-grid {
         grid-template-columns: 1fr;
@@ -200,6 +228,16 @@
       </p>
     </div>
   </header>
+
+  <section class="screenshot-section">
+    <div class="container">
+      <p class="section-label">The app</p>
+      <div class="screenshot-frame">
+        <img src="screenshot.png" alt="Sourcerer — project view showing contacts, statuses, and interaction log" width="820" />
+      </div>
+      <p class="screenshot-caption">Project view</p>
+    </div>
+  </section>
 
   <section class="features-section">
     <div class="container">
