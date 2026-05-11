@@ -19,6 +19,8 @@ jobs:
             artifact_glob: dist-electron/*.exe
 
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
