@@ -11,6 +11,13 @@ function screenshotsDir(): string {
   return path.join(app.getPath('userData'), 'screenshots');
 }
 
+function safeScreenshotPath(fileName: string): string {
+  const dir = path.resolve(screenshotsDir());
+  const resolved = path.resolve(path.join(dir, fileName));
+  if (!resolved.startsWith(dir + path.sep)) throw new Error('Invalid screenshot path.');
+  return resolved;
+}
+
 function encryptBuffer(data: Buffer, keyHex: string): { encrypted: Buffer; iv: string } {
   const key = Buffer.from(keyHex, 'hex');
   const iv = randomBytes(12);
@@ -91,7 +98,7 @@ export function registerScreenshotHandlers(): void {
           .get(screenshotId) as { file_path: string; iv: string } | undefined;
         if (!row) return { error: 'Not found.' };
 
-        const filePath = path.join(screenshotsDir(), row.file_path);
+        const filePath = safeScreenshotPath(row.file_path);
         const encrypted = await fs.readFile(filePath);
         const keyHex = getKeyHex();
         const decrypted = decryptBuffer(encrypted, keyHex, row.iv);
@@ -117,7 +124,7 @@ export function registerScreenshotHandlers(): void {
           .get(screenshotId) as { file_path: string; iv: string; captured_at: number; contact_name: string } | undefined;
         if (!row) return { success: false, error: 'Not found.' };
 
-        const encrypted = await fs.readFile(path.join(screenshotsDir(), row.file_path));
+        const encrypted = await fs.readFile(safeScreenshotPath(row.file_path));
         const decrypted = decryptBuffer(encrypted, getKeyHex(), row.iv);
         const ext = detectMimeType(decrypted) === 'image/png' ? 'png' : 'jpg';
         const d = new Date(row.captured_at * 1000);
@@ -149,7 +156,7 @@ export function registerScreenshotHandlers(): void {
         .get(screenshotId) as { file_path: string } | undefined;
       db.prepare('DELETE FROM contact_screenshots WHERE id = ?').run(screenshotId);
       if (row) {
-        await fs.unlink(path.join(screenshotsDir(), row.file_path)).catch(() => {});
+        await fs.unlink(safeScreenshotPath(row.file_path)).catch(() => {});
       }
     },
   );

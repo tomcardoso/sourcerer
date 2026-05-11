@@ -9,6 +9,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths, deriveKey } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
 import { stopPoller } from '../sync/poller';
+import { clearExtensionSession } from '../http-server';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -163,6 +164,7 @@ export function registerBackupHandlers(): void {
         }
 
         stopPoller();
+        clearExtensionSession();
         closeDatabase();
 
         await fs.writeFile(dbPath, dbBuf, { mode: 0o600 });

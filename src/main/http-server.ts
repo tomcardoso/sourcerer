@@ -1,5 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
 
@@ -28,6 +28,11 @@ export function approveExtensionAccess(): void {
 export function denyExtensionAccess(): void {
   accessState = 'idle';
   sessionToken = null;
+}
+
+export function clearExtensionSession(): void {
+  sessionToken = null;
+  accessState = 'idle';
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -77,6 +82,11 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'POST' && url.pathname === '/request-access') {
+    if (!isExtensionOrigin(req.headers['origin'])) {
+      res.writeHead(403);
+      res.end();
+      return;
+    }
     setCorsForExtension(req, res);
     if (accessState !== 'pending') {
       accessState = 'pending';
@@ -117,7 +127,9 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     const user = db
       .prepare('SELECT calendar_token FROM users WHERE id = 1')
       .get() as { calendar_token: string } | undefined;
-    if (!user || tokenParam !== user.calendar_token) {
+    const tokenBuf = Buffer.from(tokenParam);
+    const storedBuf = Buffer.from(user?.calendar_token ?? '');
+    if (!user || tokenBuf.length !== storedBuf.length || !timingSafeEqual(tokenBuf, storedBuf)) {
       res.writeHead(401);
       res.end('Unauthorized');
       return;
@@ -265,6 +277,7 @@ function toIcalDate(unixSeconds: number): string {
 function icalEscape(str: string): string {
   return str
     .replace(/\\/g, '\\\\')
+    .replace(/\r/g, '')
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
     .replace(/\n/g, '\\n');

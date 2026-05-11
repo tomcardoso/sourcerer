@@ -209,6 +209,10 @@ export function registerSettingsHandlers(): void {
 
         const testDb = new Database(dbPath);
         testDb.pragma(`cipher='sqlcipher'`);
+        testDb.pragma('cipher_page_size=4096');
+        testDb.pragma('kdf_iter=256000');
+        testDb.pragma('cipher_hmac_algorithm=HMAC_SHA512');
+        testDb.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
         testDb.pragma(`key="x'${currentKeyHex}'"`);
         try {
           // pragma('user_version') doesn't force a page decrypt; an actual
