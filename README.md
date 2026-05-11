@@ -1,8 +1,17 @@
 # Sourcerer
 
-Source and contact management for investigative journalists — local-first, encrypted, no cloud.
+Source and contact management for journalists — local-first, encrypted, no cloud.
 
 ![screenshot](docs/screenshot.png)
+
+---
+
+- [What it does](#what-it-does)
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Getting started](#getting-started)
+- [Security notes](#security-notes)
+- [License](#license)
 
 ---
 
@@ -31,8 +40,8 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 - Multiple reporters per project; conflict detection when the same contact is assigned to two reporters
 
 **Outreach**
-- Priority levels (Critical → Monitor-only) with configurable per-priority reminder intervals
-- Status workflow: Not yet contacted → Contacted, no reply → In dialogue → Interview arranged → Interviewed (off/on-record) → Declined / Ghosted / Do not contact
+- Priority levels: Critical, High, Medium, Low, Monitor-only — each with a fixed reminder interval
+- Status workflow: Not yet contacted → Contacted, no reply → In dialogue → Interview arranged → Interviewed (off/on-record) → Declined / Declined, door open / Referred to comms / Ghosted / Do not contact
 - Interaction log per source per project
 - Manual reminders with due dates and notes
 
@@ -69,7 +78,7 @@ Sourcerer is an Electron + React + TypeScript application built with [electron-v
 **Prerequisites:** Node 20+, npm
 
 ```bash
-git clone https://github.com/your-org/sourcerer.git
+git clone https://github.com/tomcardoso/sourcerer.git
 cd sourcerer
 npm install
 npm run rebuild   # compiles native SQLite and Argon2 modules for Electron
@@ -99,81 +108,3 @@ npm run rebuild        # restore Electron-targeted binaries before npm run dev
 ## License
 
 AGPL-3.0 — see [LICENSE](LICENSE).
-
-## Tech stack
-
-| Layer | Technology |
-|---|---|
-| Desktop framework | Electron (macOS 12+, Windows 10/11) |
-| UI | React + TypeScript (electron-vite) |
-| Database | SQLite via `better-sqlite3-multiple-ciphers` (SQLCipher) |
-| Key derivation | Argon2id (m=65536, t=3, p=1, 32-byte key) |
-| Build / package | electron-vite + electron-builder |
-
----
-
-## Setup
-
-Native modules (SQLCipher, Argon2) must be compiled against Electron's Node.js runtime, not the system Node. Run these once after cloning:
-
-```bash
-npm install --ignore-scripts
-node node_modules/electron/install.js
-./node_modules/.bin/electron-rebuild -f -w better-sqlite3-multiple-ciphers,argon2
-```
-
-> **After any `npm install` that touches native modules**, re-run the `electron-rebuild` line above.
-
-### Prerequisites
-
-- Node.js 20+
-- macOS: Xcode Command Line Tools (`xcode-select --install`)
-- Python 3 (required by native module build tooling)
-
----
-
-## Development
-
-```bash
-npm run dev
-```
-
-Launches the app with hot-reload. On first launch you'll be prompted to create a name, email, and master password. This derives the encryption key and initialises the local database.
-
-In dev mode, a set of realistic seed contacts and projects is loaded automatically on first unlock so you have something to work with immediately.
-
-```bash
-npm run typecheck   # type-check without building
-npm run build       # compile only
-npm run package     # compile + create distributable
-```
-
----
-
-## Data storage
-
-All data lives locally in Electron's `userData` directory (typically `~/Library/Application Support/sourcerer` on macOS):
-
-| File | Purpose |
-|---|---|
-| `sourcerer.db` | SQLCipher-encrypted SQLite database |
-| `sourcerer.salt` | Argon2id salt — not secret, but must not be deleted |
-
-**The master password is never stored.** Losing it means permanent loss of access to the database — there is no recovery mechanism.
-
----
-
-## Local HTTP server
-
-When the app is running, a local server listens on `127.0.0.1:27371`. This powers:
-
-- **Browser extension API** — session-token-protected endpoints for reading contacts and logging interactions. The extension must request access; the app shows an approval prompt before issuing a token.
-- **iCal feed** — `GET /calendar/reminders.ics?token=<calendar_token>` returns a VCALENDAR of upcoming reminders. The calendar token is persistent (survives restarts) and can be regenerated from Settings.
-
-The server only binds to loopback — it is not accessible from the network.
-
----
-
-## Collaboration
-
-Sourcerer supports optional file-based collaboration: point two installs at the same SQLCipher file in a shared folder (Dropbox, OneDrive) and they sync automatically every two minutes. Sync is last-write-wins on `updated_at` timestamps. The message scratchpad is never synced.
