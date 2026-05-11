@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security — Sourcerer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a class="nav-wordmark" href="index.html" aria-label="Sourcerer home">
+        <svg viewBox="0 0 270 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <text x="0" y="56" font-family="Spectral, Georgia, 'Times New Roman', serif" font-weight="700" font-size="56" letter-spacing="-1" fill="#1a1815">Sourcerer</text>
+          <g transform="translate(250, 17)" fill="#e8a840">
+            <path d="M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 L 7.2 7.2 Z" />
+          </g>
+        </svg>
+      </a>
+      <div class="nav-links">
+        <a href="guide.html">User guide</a>
+        <a href="security.html" class="active">Security</a>
+        <a href="https://github.com/tomcardoso/sourcerer" class="nav-github">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Security</h1>
+      <p>How Sourcerer protects your data — and what it doesn't protect against.</p>
+    </div>
+  </div>
+
+  <div class="guide-wrap">
+    <div class="container">
+      <div class="guide-layout">
+
+        <!-- Sticky TOC -->
+        <aside class="guide-toc">
+          <p class="toc-label">Contents</p>
+          <ol class="toc-list">
+            <li><a href="#encryption">Encryption model</a></li>
+            <li><a href="#password">Your password</a></li>
+            <li><a href="#what-is-encrypted">What is encrypted</a></li>
+            <li><a href="#what-is-not">What is not protected</a></li>
+            <li><a href="#network">Network traffic</a></li>
+            <li><a href="#http-server">Local HTTP server</a></li>
+            <li><a href="#panic-wipe">Panic wipe</a></li>
+            <li><a href="#backups">Backups</a></li>
+            <li><a href="#source-code">Open source</a></li>
+          </ol>
+        </aside>
+
+        <!-- Main content -->
+        <div class="guide-content">
+
+          <section id="encryption">
+            <h2>Encryption model</h2>
+            <p>All Sourcerer data is stored in a single SQLite database encrypted with <a href="https://www.zetetic.net/sqlcipher/">SQLCipher</a>, an open-source extension that provides transparent, full-database AES-256-CBC encryption.</p>
+            <p>The encryption key is never stored anywhere — it is derived from your master password each time you unlock the app using <strong>Argon2id</strong>, a memory-hard key derivation function designed to be expensive to brute-force.</p>
+
+            <h3>Key derivation parameters</h3>
+            <table class="data-table">
+              <thead>
+                <tr><th>Parameter</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Algorithm</td><td>Argon2id</td></tr>
+                <tr><td>Memory cost</td><td>64 MB (65536 KiB)</td></tr>
+                <tr><td>Time cost</td><td>3 iterations</td></tr>
+                <tr><td>Parallelism</td><td>1 thread</td></tr>
+                <tr><td>Output key length</td><td>32 bytes (256 bits)</td></tr>
+                <tr><td>Salt length</td><td>32 bytes, randomly generated at setup</td></tr>
+              </tbody>
+            </table>
+            <p>The salt is stored in a separate file (<code>sourcerer.salt</code>) alongside the database. The salt is not secret — its purpose is to ensure that the same password cannot produce the same key on a different machine — but it must not be deleted. Without the salt, the database cannot be opened even with the correct password.</p>
+          </section>
+
+          <section id="password">
+            <h2>Your master password</h2>
+            <p>The master password is <strong>never stored, hashed for storage, or transmitted anywhere</strong>. It exists only in memory during the unlock process, long enough to derive the key. After that it is gone.</p>
+            <p>There is no password reset, recovery code, or backdoor. If you forget your password, your data is permanently inaccessible. This is by design — any recovery mechanism would be a potential attack surface.</p>
+
+            <h3>Choosing a good password</h3>
+            <p>A passphrase — four or more random, unrelated words — provides excellent security and is significantly easier to remember than a complex string of characters. The memory cost of Argon2id means that even a moderately long passphrase is extremely difficult to attack offline.</p>
+            <p>Avoid passwords derived from personal information (birthdays, names, addresses) that an adversary who knows you could guess.</p>
+          </section>
+
+          <section id="what-is-encrypted">
+            <h2>What is encrypted</h2>
+            <p>The following are encrypted at rest:</p>
+            <ul>
+              <li>The SQLite database — all contacts, projects, interactions, reminders, alerts, and settings</li>
+              <li>Screenshots captured by the Chrome extension, stored encrypted alongside the database</li>
+            </ul>
+            <p>Encryption is full-database: SQLCipher encrypts every page of the SQLite file, including table structure, indexes, and all data.</p>
+          </section>
+
+          <section id="what-is-not">
+            <h2>What is not protected</h2>
+            <p>Sourcerer does not protect against every threat. Being honest about its limitations is important.</p>
+
+            <h3>Local access</h3>
+            <p>If someone has physical or remote access to your unlocked computer, they can read the Sourcerer database while it is open in memory. Encryption at rest protects the files on disk, not data in a running process.</p>
+            <p>Auto-lock reduces this window — set a short timeout if you work in shared spaces. The panic wipe is available for extreme situations.</p>
+
+            <h3>The salt file</h3>
+            <p>The file <code>sourcerer.salt</code> is stored unencrypted alongside the database. It is not secret (the salt is not a key), but it must not be deleted. Consider backing it up with the same care as the database file.</p>
+
+            <h3>File metadata</h3>
+            <p>The operating system can see that the database file exists, its size, and its modification timestamps — even though it cannot read the contents. If the existence of the file itself is sensitive, consider full-disk encryption at the OS level (FileVault on macOS, BitLocker on Windows).</p>
+
+            <h3>Memory</h3>
+            <p>While the app is unlocked, decrypted data is held in memory. This is unavoidable for any application. Modern OS memory management means sensitive data may remain in swap or memory dumps after the app is closed. Auto-lock clears the key from memory on idle.</p>
+
+            <h3>Backups in insecure locations</h3>
+            <p>Backup files exported from Sourcerer are encrypted with the same password as the original database. However, if you copy a backup to an unencrypted cloud drive, USB stick, or email attachment, the encrypted file could be exfiltrated and subjected to offline password attacks. Store backups carefully.</p>
+
+            <h3>What Sourcerer is not</h3>
+            <p>Sourcerer is not a communications tool. It does not provide secure messaging, end-to-end encrypted email, or any kind of anonymity network. It protects data at rest on your local machine — nothing more.</p>
+          </section>
+
+          <section id="network">
+            <h2>Network traffic</h2>
+            <p>Sourcerer makes <strong>no telemetry or analytics requests of any kind</strong>. There are no analytics libraries, no crash reporting, and no usage tracking.</p>
+            <p>The only outbound network connections the app initiates are:</p>
+            <ul>
+              <li><strong>RSS feeds</strong> — only for feeds you have explicitly attached to a contact. Sourcerer fetches these feeds from wherever they are hosted.</li>
+              <li><strong>Wayback Machine API</strong> — only when you explicitly trigger a snapshot from the Alerts view.</li>
+            </ul>
+            <p>There are no other outbound connections. The app does not phone home, check for updates automatically, or communicate with any Sourcerer-operated server.</p>
+          </section>
+
+          <section id="http-server">
+            <h2>Local HTTP server</h2>
+            <p>When Sourcerer is running and unlocked, it starts a small HTTP server bound to <code>127.0.0.1:27371</code>. This server powers two features:</p>
+            <ul>
+              <li><strong>Chrome extension</strong> — the extension sends screenshots and reads contact data through this server</li>
+              <li><strong>iCal calendar feed</strong> — reminders can be subscribed to by any calendar app via a local URL</li>
+            </ul>
+            <p>The server is bound exclusively to the loopback interface (<code>127.0.0.1</code>). It is not accessible from any other machine on the network, and cannot be reached from the internet.</p>
+
+            <h3>Extension authentication</h3>
+            <p>Before the Chrome extension can connect, you must explicitly approve it in the app. Sourcerer then issues a session token to the extension. Every request the extension makes must include this token. The token is regenerated each time the extension reconnects.</p>
+
+            <h3>Calendar token</h3>
+            <p>The calendar feed URL includes a persistent token. Anyone with this URL can read your upcoming reminders (but not your contacts, notes, or any other data). If you believe the URL has been compromised, regenerate the token from Settings — the old URL will immediately stop working.</p>
+
+            <h3>CORS</h3>
+            <p>Cross-Origin Resource Sharing headers are set to allow requests only from the extension's own origin. Web pages cannot make requests to the local server.</p>
+          </section>
+
+          <section id="panic-wipe">
+            <h2>Panic wipe</h2>
+            <p>The panic wipe is a single-action, immediate, irreversible destruction of all Sourcerer data on the machine. It deletes:</p>
+            <ul>
+              <li>The encrypted database file and its WAL and SHM journal files</li>
+              <li>The salt file (<code>sourcerer.salt</code>)</li>
+              <li>All screenshots stored by the Chrome extension</li>
+            </ul>
+            <p>Files are overwritten before deletion where possible, making forensic recovery harder (though not impossible on SSDs, which manage writes at the firmware level).</p>
+            <div class="warn">
+              <strong>Panic wipe has no undo.</strong> There is no confirmation prompt. Use it only when you need data gone immediately. Backups stored elsewhere are not affected — but without the salt file, those backups cannot be opened either unless you have kept a copy of the salt separately.
+            </div>
+          </section>
+
+          <section id="backups">
+            <h2>Backups</h2>
+            <p>Backup files produced by Sourcerer are standard SQLCipher-encrypted SQLite databases. They are as secure as the live database — anyone who obtains the file still needs the correct password to open it.</p>
+            <p>A few things to keep in mind:</p>
+            <ul>
+              <li>The backup uses the password that was active <em>at the time the backup was made</em>. If you change your password after taking a backup, the backup can still only be opened with the old password.</li>
+              <li>Sourcerer validates the backup file before restoring it, to guard against accidental selection of the wrong file. Files larger than 250 MB are rejected.</li>
+              <li>The backup does not include the salt file. If you are archiving a backup for long-term storage, also keep a copy of <code>sourcerer.salt</code> from that machine — without it, the backup cannot be opened.</li>
+            </ul>
+            <p>For maximum safety, store backups on encrypted media separate from the main machine.</p>
+          </section>
+
+          <section id="source-code">
+            <h2>Open source</h2>
+            <p>Sourcerer is open source under the AGPL-3.0 licence. The full source code is available at <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a>.</p>
+            <p>Security claims in this document can be verified by reading the code. The key derivation and encryption logic lives in <code>src/main/ipc/setup.ts</code>, <code>src/main/ipc/unlock.ts</code>, and <code>src/main/database/index.ts</code>. The panic wipe is in <code>src/main/ipc/settings.ts</code>.</p>
+            <p>If you find a security vulnerability, please report it responsibly via GitHub rather than disclosing it publicly.</p>
+          </section>
+
+        </div><!-- /.guide-content -->
+      </div><!-- /.guide-layout -->
+    </div><!-- /.container -->
+  </div><!-- /.guide-wrap -->
+
+  <footer>
+    <div class="container">
+      <p class="footer-text">AGPL-3.0 &mdash; open source &mdash; <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>

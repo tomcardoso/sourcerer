@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User guide — Sourcerer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a class="nav-wordmark" href="index.html" aria-label="Sourcerer home">
+        <svg viewBox="0 0 270 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <text x="0" y="56" font-family="Spectral, Georgia, 'Times New Roman', serif" font-weight="700" font-size="56" letter-spacing="-1" fill="#1a1815">Sourcerer</text>
+          <g transform="translate(250, 17)" fill="#e8a840">
+            <path d="M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 L 7.2 7.2 Z" />
+          </g>
+        </svg>
+      </a>
+      <div class="nav-links">
+        <a href="guide.html" class="active">User guide</a>
+        <a href="security.html">Security</a>
+        <a href="https://github.com/tomcardoso/sourcerer" class="nav-github">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>User guide</h1>
+      <p>A full walkthrough of every feature — from first launch to advanced collaboration.</p>
+    </div>
+  </div>
+
+  <div class="guide-wrap">
+    <div class="container">
+      <div class="guide-layout">
+
+        <!-- Sticky TOC -->
+        <aside class="guide-toc">
+          <p class="toc-label">Contents</p>
+          <ol class="toc-list">
+            <li><a href="#getting-started">Getting started</a></li>
+            <li><a href="#contacts">Your contacts</a></li>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#outreach">Outreach</a></li>
+            <li><a href="#alerts">Alerts</a></li>
+            <li><a href="#import-export">Import &amp; export</a></li>
+            <li><a href="#extension">Chrome extension</a></li>
+            <li><a href="#settings">Settings</a></li>
+            <li><a href="#collaboration">Collaboration</a></li>
+          </ol>
+        </aside>
+
+        <!-- Main content -->
+        <div class="guide-content">
+
+          <section id="getting-started">
+            <h2>Getting started</h2>
+
+            <h3>Installation</h3>
+            <p>Pre-built installers for macOS (Apple Silicon) and Windows (x64) are available on the <a href="https://github.com/tomcardoso/sourcerer/releases/latest">releases page</a>. Download the <code>.dmg</code> (macOS) or <code>.exe</code> (Windows) and follow the standard installation steps for your platform.</p>
+            <p>On macOS, if Gatekeeper blocks the app because it is not notarized, open <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>. On Windows, SmartScreen may warn you about an unknown publisher — click <strong>More info → Run anyway</strong>.</p>
+
+            <h3>First launch</h3>
+            <p>The first time you open Sourcerer, you will see a setup screen asking for three things:</p>
+            <ul>
+              <li><strong>Your name</strong> — used to attribute interactions and project membership</li>
+              <li><strong>Email address</strong> — used as your identity in shared projects</li>
+              <li><strong>Master password</strong> — used to derive the encryption key</li>
+            </ul>
+            <div class="warn">
+              <strong>The master password cannot be recovered.</strong> There is no reset mechanism and no fallback. If you forget it, your data is gone. Choose a passphrase — four or more random words are easier to remember and just as strong as a complex string.
+            </div>
+            <p>After setup, Sourcerer creates an encrypted SQLite database in your system's application data folder (<code>~/Library/Application Support/sourcerer</code> on macOS). Everything you store from that point is encrypted on disk.</p>
+
+            <h3>Unlocking</h3>
+            <p>Every time you open Sourcerer, you will be prompted for your master password. The app derives the encryption key fresh each time — the key is never stored anywhere. If the password is wrong, the database cannot be opened.</p>
+            <p>The app can be set to lock automatically after a period of inactivity. See <a href="#settings">Settings</a> for details.</p>
+          </section>
+
+          <section id="contacts">
+            <h2>Your contacts</h2>
+
+            <h3>Adding a contact</h3>
+            <p>Click <strong>New contact</strong> from the contacts view or from within a project. The minimum required field is a name. All other fields are optional but useful for outreach tracking and deduplication.</p>
+
+            <h3>Contact fields</h3>
+            <p>Each contact can hold:</p>
+            <ul>
+              <li><strong>Name</strong> and <strong>organisation</strong></li>
+              <li><strong>Notes</strong> — a freeform scratchpad, not shared in sanitised exports</li>
+              <li><strong>Email addresses</strong> — as many as needed; mark one as primary</li>
+              <li><strong>Phone numbers</strong> — with labels (mobile, work, etc.)</li>
+              <li><strong>Links</strong> — LinkedIn, X, Instagram, Facebook, personal website, or a custom label</li>
+            </ul>
+
+            <h3>Staleness indicator</h3>
+            <p>Contacts you have not touched in a configurable number of days are flagged with a visual indicator in the contacts list. The threshold is set in <a href="#settings">Settings</a>. This is useful for keeping a source list warm — especially contacts you are not actively working but want to stay in periodic touch with.</p>
+
+            <h3>Duplicate detection</h3>
+            <p>Sourcerer continuously checks for likely-duplicate contacts using fuzzy name matching and exact email and phone signals. When duplicates are found, a badge appears in the contacts view.</p>
+            <p>Clicking the badge opens the deduplication panel, which shows each suspected pair side-by-side. For each pair you can:</p>
+            <ul>
+              <li><strong>Merge</strong> — choose which record to keep as primary. The other record's emails, phones, links, project memberships, and interactions are moved to the surviving contact, then the duplicate is deleted.</li>
+              <li><strong>Dismiss</strong> — mark the pair as intentionally distinct (two people with the same name, for instance).</li>
+            </ul>
+          </section>
+
+          <section id="projects">
+            <h2>Projects</h2>
+
+            <h3>What is a project?</h3>
+            <p>A project groups contacts for a specific story, investigation, or beat. Each contact can belong to multiple projects simultaneously, and each project membership is tracked independently — with its own status, priority, reporter, notes, and interaction log.</p>
+
+            <h3>Creating a project</h3>
+            <p>Click <strong>New project</strong> in the sidebar. Give it a name. That is all you need to get started.</p>
+
+            <h3>Adding sources to a project</h3>
+            <p>From inside a project, use <strong>Add contact</strong> to add an existing contact or create a new one. You can also add contacts to a project from the global contacts view using the bulk-select checkbox menu.</p>
+
+            <h3>Per-project fields</h3>
+            <p>Every contact in a project has its own separate fields, independent of any other project:</p>
+            <ul>
+              <li><strong>Status</strong> — where you are in the outreach process (see <a href="#outreach">Outreach</a>)</li>
+              <li><strong>Priority</strong> — how urgently you want to reach this contact</li>
+              <li><strong>Theme</strong> — a freeform label for grouping (e.g. "Government", "Industry source")</li>
+              <li><strong>Reporter</strong> — which reporter owns this relationship in this project</li>
+              <li><strong>Outreach enabled</strong> — toggle to include or exclude from reminder tracking</li>
+            </ul>
+
+            <h3>Reporter attribution</h3>
+            <p>Multiple reporters can be assigned to the same contact within a project (e.g. if two reporters are jointly working a source). If the same contact is independently assigned to two reporters who are not collaborating, a conflict indicator will appear to flag the overlap.</p>
+
+            <h3>Shared projects</h3>
+            <p>See <a href="#collaboration">Collaboration</a> for details on shared projects.</p>
+          </section>
+
+          <section id="outreach">
+            <h2>Outreach</h2>
+
+            <h3>Status workflow</h3>
+            <p>Each contact in a project has a status that tracks where you are in the outreach process. The available statuses are:</p>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Not yet contacted</td><td>Default. No outreach has been made.</td></tr>
+                <tr><td>Contacted, no reply</td><td>You have reached out but received no response.</td></tr>
+                <tr><td>In dialogue</td><td>An exchange is ongoing.</td></tr>
+                <tr><td>Interview arranged</td><td>A meeting or call is scheduled.</td></tr>
+                <tr><td>Interviewed, off-record</td><td>Interview completed, not for attribution.</td></tr>
+                <tr><td>Interviewed, on-record</td><td>Interview completed, for attribution.</td></tr>
+                <tr><td>Declined</td><td>Contact has declined to participate.</td></tr>
+                <tr><td>Declined, door open</td><td>Declined for now but may reconsider.</td></tr>
+                <tr><td>Referred to comms</td><td>Contact has directed you to a press or communications office.</td></tr>
+                <tr><td>Ghosted</td><td>Contact stopped responding after initial engagement.</td></tr>
+                <tr><td>Do not contact</td><td>Contact has asked not to be reached out to again.</td></tr>
+              </tbody>
+            </table>
+
+            <h3>Priority and reminder intervals</h3>
+            <p>Priority controls how frequently Sourcerer reminds you to follow up on a contact. The intervals are fixed:</p>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>Reminder interval</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Critical</td><td>Every 7 days</td></tr>
+                <tr><td>High</td><td>Every 14 days</td></tr>
+                <tr><td>Medium</td><td>Every 28 days</td></tr>
+                <tr><td>Low</td><td>Every 60 days</td></tr>
+                <tr><td>Monitor-only</td><td>No automatic reminder</td></tr>
+              </tbody>
+            </table>
+            <p>Reminders appear in the <strong>Reminders</strong> view. You can also subscribe to them as a calendar feed — see <a href="#settings">Settings</a>.</p>
+
+            <h3>Logging interactions</h3>
+            <p>Each project membership has an interaction log. Every entry records the date, which reporter made the contact, and a freeform note. The log is included in full exports but stripped from sanitised exports.</p>
+            <p>The interaction log is also used to calculate the <em>last contacted</em> date, which drives the staleness indicator and reminder schedule.</p>
+
+            <h3>Manual reminders</h3>
+            <p>In addition to automatic priority-based reminders, you can set a manual reminder on any contact in any project. A manual reminder has a due date and an optional note. Manual reminders appear in the Reminders view alongside automatic ones.</p>
+          </section>
+
+          <section id="alerts">
+            <h2>Alerts</h2>
+
+            <h3>RSS feed monitoring</h3>
+            <p>You can attach one or more RSS feeds to any contact. Sourcerer polls these feeds in the background while the app is open and surfaces new articles in the <strong>Alerts</strong> view, linked to the corresponding contact. This is useful for tracking press coverage of sources — for example, a Google News alert RSS feed for a person's name.</p>
+            <p>To add a feed, open a contact's detail panel and add a feed URL in the Alerts section.</p>
+
+            <h3>The Alerts view</h3>
+            <p>The Alerts view shows all recent mentions across all your contacts, sorted by recency. Each item shows the article title, publication date, the source it is linked to, and the feed it came from.</p>
+
+            <h3>Wayback Machine snapshots</h3>
+            <p>When saving a link in the alerts view, you can optionally trigger a Wayback Machine snapshot. This archives the page at the Internet Archive so you have a permanent record even if the original URL disappears.</p>
+          </section>
+
+          <section id="import-export">
+            <h2>Import &amp; export</h2>
+
+            <h3>Importing from CSV</h3>
+            <p>You can import contacts from a CSV file. The only required column is <strong>Name</strong>. Other supported columns include: <code>Organization</code>, <code>Notes</code>, <code>Email</code>, <code>Phone</code>, <code>LinkedIn</code>, <code>Website</code>, and others.</p>
+            <p>For fields that can hold multiple values (emails, phones, websites), use semicolons to separate values within a single cell:</p>
+            <div class="note">
+              <strong>Example:</strong> A cell in the Email column reading <code>alice@example.com;alice@work.com</code> will create two email addresses on the imported contact.
+            </div>
+            <p>On import you can choose whether to add contacts to a specific project, and set a default status for all imported contacts.</p>
+
+            <h3>Exporting contacts</h3>
+            <p>Contacts can be exported from the global contacts view or from within a project. Three formats are available:</p>
+            <ul>
+              <li><strong>CSV</strong> — one row per contact, with interaction logs as a newline-separated field</li>
+              <li><strong>Excel (.xlsx)</strong> — same structure as CSV, formatted for spreadsheet apps</li>
+              <li><strong>vCard (.vcf)</strong> — standard contact format, importable into address book apps</li>
+            </ul>
+
+            <h3>Sanitised export</h3>
+            <p>The sanitised export mode strips <strong>notes</strong> and the <strong>interaction log</strong> from every contact. Use this when sharing a contact list with someone who should not see reporter notes or the history of outreach attempts.</p>
+          </section>
+
+          <section id="extension">
+            <h2>Chrome extension</h2>
+
+            <h3>Installation</h3>
+            <p>The extension is not published to the Chrome Web Store — it is loaded manually from the <code>extension/</code> folder in the Sourcerer repository.</p>
+            <ol>
+              <li>Open Chrome and go to <code>chrome://extensions</code></li>
+              <li>Enable <strong>Developer mode</strong> (toggle in the top-right corner)</li>
+              <li>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder</li>
+            </ol>
+            <p>The extension works with any Chromium-based browser (Chrome, Edge, Brave, Arc).</p>
+
+            <h3>Approving the extension</h3>
+            <p>The first time you attempt to capture a screenshot, Sourcerer will show an approval prompt asking you to confirm that the extension should be allowed to connect. Click <strong>Approve</strong>. This issues a session token to the extension. Approval persists until the app is reinstalled or the token is manually revoked.</p>
+
+            <h3>Taking a screenshot</h3>
+            <p>Navigate to any page in Chrome, click the Sourcerer extension icon, choose the contact you want to link the screenshot to, then click <strong>Capture</strong>. The full page is captured and sent to the app, where it is stored encrypted alongside the database.</p>
+            <p>Screenshots are visible in the contact's detail panel.</p>
+          </section>
+
+          <section id="settings">
+            <h2>Settings</h2>
+
+            <h3>Changing your master password</h3>
+            <p>Sourcerer re-encrypts the database key with the new password. Your data is not re-encrypted from scratch — only the key wrapper changes. You will need to use the new password on all machines that share the same database file.</p>
+
+            <h3>Auto-lock</h3>
+            <p>Set a timeout (in minutes) after which Sourcerer will lock itself if no interaction is detected. Set to zero to disable auto-lock. When locked, the encryption key is cleared from memory and you must re-enter your password to continue.</p>
+
+            <h3>Staleness threshold</h3>
+            <p>Configure how many days of inactivity cause a contact to be flagged as stale. The default is 30 days.</p>
+
+            <h3>Panic wipe</h3>
+            <p>The panic wipe button immediately and irreversibly destroys:</p>
+            <ul>
+              <li>The encrypted database and its WAL/journal files</li>
+              <li>The salt file</li>
+              <li>All stored screenshots</li>
+            </ul>
+            <div class="warn">
+              <strong>This cannot be undone.</strong> There is no confirmation delay. If you have a backup, it will not be affected — but without the salt file, the backup cannot be opened either. Only use panic wipe when you need the data gone immediately.
+            </div>
+
+            <h3>Backup and restore</h3>
+            <p>The backup function exports an encrypted copy of your database. The backup uses the same master password as the current database. Store backups somewhere separate from the live database — on an encrypted external drive or in a password-protected archive.</p>
+            <p>To restore, select a backup file. Sourcerer will validate the backup before overwriting the live database. The backup must have been made with the same password (or a password you still know).</p>
+            <div class="note">
+              <strong>Backup size limit:</strong> Sourcerer will not restore a backup file larger than 250 MB, as a safeguard against accidentally selecting the wrong file.
+            </div>
+
+            <h3>Calendar feed</h3>
+            <p>Sourcerer can expose your upcoming reminders as an iCal feed, which you can subscribe to from any calendar app (Apple Calendar, Google Calendar, Outlook). Copy the calendar URL from Settings and paste it into your calendar app's "Subscribe to calendar" dialog. The feed URL contains a token — if you believe it has been compromised, click <strong>Regenerate token</strong> to invalidate the old URL.</p>
+          </section>
+
+          <section id="collaboration">
+            <h2>Collaboration</h2>
+
+            <h3>How shared projects work</h3>
+            <p>Sourcerer supports lightweight file-based collaboration. A shared project is simply a second SQLCipher database file stored somewhere two or more people can access — a shared Dropbox folder, a team OneDrive, or a network drive.</p>
+            <p>Each person points their Sourcerer installation at the same file using <strong>Join shared project</strong>. Everyone who accesses the file needs the same master password that was used when it was created.</p>
+
+            <h3>Sync behaviour</h3>
+            <p>Sourcerer polls the shared file every two minutes. Changes are merged on a last-write-wins basis using <code>updated_at</code> timestamps — if two people update the same contact record at almost the same time, whichever save happened last will win.</p>
+            <p>Because sync is file-based, it only works when both users are online and the shared folder is in sync. If the cloud folder is paused or offline, changes will not propagate until connectivity is restored.</p>
+
+            <h3>What is and isn't synced</h3>
+            <p>All project data is synced: contact memberships, status, priority, reporter attribution, themes, interaction logs, and reminders.</p>
+            <div class="note">
+              <strong>Not synced:</strong> The per-contact notes scratchpad (global notes on a contact, outside of project context) is local to each installation and is never written to the shared file.
+            </div>
+
+            <h3>Caveats</h3>
+            <ul>
+              <li>There is no live conflict resolution UI — last-write-wins is silent.</li>
+              <li>Deleting a contact or project in one installation will propagate to others on the next sync cycle.</li>
+              <li>The shared database file is encrypted with SQLCipher — anyone who gains access to the file still needs the password to read it.</li>
+            </ul>
+          </section>
+
+        </div><!-- /.guide-content -->
+      </div><!-- /.guide-layout -->
+    </div><!-- /.container -->
+  </div><!-- /.guide-wrap -->
+
+  <footer>
+    <div class="container">
+      <p class="footer-text">AGPL-3.0 &mdash; open source &mdash; <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>

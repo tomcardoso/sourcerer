@@ -7,286 +7,321 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    :root {
-      --bg:           #faf9f5;
-      --surface:      #f3f1ea;
-      --surface2:     #eceadf;
-      --text:         #1a1815;
-      --text-muted:   #5b5750;
-      --border:       rgba(26, 24, 21, 0.14);
-      --border-strong: rgba(26, 24, 21, 0.28);
-      --accent:       #c87a1a;
-      --amber:        #e8a840;
-    }
-
-    html, body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Spectral', Georgia, serif;
-      font-size: 14px;
-      line-height: 1.65;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    /* Layout */
-    .container {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 32px;
-    }
-
-    /* Header */
-    header {
-      border-bottom: 1px solid var(--border-strong);
-      padding: 80px 0 64px;
-    }
-
-    .wordmark {
-      font-family: 'Spectral', serif;
-      font-weight: 600;
-      font-size: 52px;
-      letter-spacing: -0.01em;
-      line-height: 1;
-      color: var(--text);
-      margin-bottom: 16px;
-    }
-
-    .subhead {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-muted);
-      margin-bottom: 32px;
-    }
-
-    .lede {
-      font-size: 17px;
-      font-weight: 300;
-      max-width: 560px;
-      color: var(--text);
-      line-height: 1.7;
-    }
-
-    .lede strong {
-      font-weight: 500;
-    }
-
-    /* Features */
-    .features-section {
-      padding: 64px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .section-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      color: var(--text-muted);
-      margin-bottom: 36px;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0;
-      border-top: 1px solid var(--border);
-      border-left: 1px solid var(--border);
-    }
-
-    .feature {
-      padding: 28px 24px;
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-    }
-
-    .feature-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }
-
-    .feature-desc {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-
-    /* CTA */
-    .cta-section {
-      padding: 64px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .btn-github {
-      display: inline-block;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: #faf9f5;
-      background: #1a1815;
-      border: none;
-      border-radius: 0;
-      padding: 13px 28px;
-      text-decoration: none;
-      transition: background 0.15s;
-    }
-
-    .btn-github:hover {
-      background: #2e2b27;
-      text-decoration: none;
-    }
-
-    /* Footer */
-    footer {
-      padding: 32px 0 48px;
-    }
-
-    .footer-text {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-muted);
-    }
-
-    /* Screenshot */
-    .screenshot-section {
-      padding: 64px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .screenshot-frame {
-      border: 1px solid var(--border-strong);
-      background: var(--surface);
-      display: inline-block;
-      line-height: 0;
-    }
-
-    .screenshot-frame img {
-      display: block;
-      max-width: 100%;
-      height: auto;
-    }
-
-    .screenshot-caption {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-muted);
-      margin-top: 14px;
-    }
-
-    @media (max-width: 600px) {
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .wordmark {
-        font-size: 40px;
-      }
-
-      .lede {
-        font-size: 15px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <header>
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a class="nav-wordmark" href="index.html" aria-label="Sourcerer home">
+        <svg viewBox="0 0 270 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <text x="0" y="56" font-family="Spectral, Georgia, 'Times New Roman', serif" font-weight="700" font-size="56" letter-spacing="-1" fill="#1a1815">Sourcerer</text>
+          <g transform="translate(250, 17)" fill="#e8a840">
+            <path d="M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 L 7.2 7.2 Z" />
+          </g>
+        </svg>
+      </a>
+      <div class="nav-links">
+        <a href="guide.html">User guide</a>
+        <a href="security.html">Security</a>
+        <a href="https://github.com/tomcardoso/sourcerer" class="nav-github">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
     <div class="container">
-      <h1 class="wordmark">Sourcerer</h1>
-      <p class="subhead">Source management for investigative journalists</p>
+      <a class="hero-wordmark" href="index.html" aria-label="Sourcerer">
+        <svg viewBox="0 0 270 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <text x="0" y="56" font-family="Spectral, Georgia, 'Times New Roman', serif" font-weight="700" font-size="56" letter-spacing="-1" fill="#1a1815">Sourcerer</text>
+          <g transform="translate(250, 17)" fill="#e8a840">
+            <path d="M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 L 7.2 7.2 Z" />
+          </g>
+        </svg>
+      </a>
+      <p class="subhead">Contact management for journalists and researchers</p>
       <p class="lede">
-        All your contacts, projects, and outreach history — <strong>encrypted on your own machine</strong>.
-        No cloud, no accounts, no telemetry. Built for reporters who need to protect their sources.
-        Unlock with a master password; everything else stays local.
+        Your contacts, outreach history, and source relationships —
+        <strong>encrypted on your own machine</strong>, never in a cloud, never seen by anyone else.
+        Built for the specific way investigative reporters actually work.
       </p>
+      <div class="hero-cta">
+        <a class="btn-github" href="https://github.com/tomcardoso/sourcerer/releases/latest">Download latest release</a>
+        <a class="btn-secondary" href="guide.html">Read the user guide</a>
+      </div>
     </div>
   </header>
 
-  <section class="screenshot-section">
+  <!-- Problem statement -->
+  <section class="pitch-section">
     <div class="container">
-      <p class="section-label">The app</p>
-      <div class="screenshot-frame">
-        <img src="screenshot.png" alt="Sourcerer — general view showing contacts" width="820" />
-      </div>
-      <p class="screenshot-caption">Contacts view</p>
-    </div>
-  </section>
-
-  <section class="features-section">
-    <div class="container">
-      <p class="section-label">Features</p>
-      <div class="features-grid">
-
-        <div class="feature">
-          <p class="feature-label">Encrypted at rest</p>
-          <p class="feature-desc">AES-256 via SQLCipher. The key is derived fresh on each unlock with Argon2id and never written to disk.</p>
+      <div class="pitch-grid">
+        <h2 class="pitch-headline">Your contacts deserve better than a spreadsheet.</h2>
+        <div class="pitch-body">
+          <p>Journalists and researchers build careers on relationships. But most teams track sources in shared spreadsheets, personal address books, or nowhere at all — systems that offer no encryption, no access control, and no record of who contacted whom and when.</p>
+          <p>Sourcerer is purpose-built for this work. It keeps a full encrypted history of every interaction, every outreach attempt, and every status change — so nothing slips through the cracks on a long investigation, and nothing leaks when it shouldn't.</p>
+          <p><strong>No server. No subscription. No company holding your source list.</strong> The database lives on your machine, encrypted with a key that only you have.</p>
         </div>
-
-        <div class="feature">
-          <p class="feature-label">Project workspaces</p>
-          <p class="feature-desc">Organise sources into local or shared projects with per-contact status, priority, and reporter attribution.</p>
-        </div>
-
-        <div class="feature">
-          <p class="feature-label">Outreach tracking</p>
-          <p class="feature-desc">Log every call, email, and meeting. Configurable reminders and staleness indicators keep nothing slipping.</p>
-        </div>
-
-        <div class="feature">
-          <p class="feature-label">Deduplication</p>
-          <p class="feature-desc">Fuzzy name matching and exact email/phone signals surface duplicate contacts for one-click side-by-side merging.</p>
-        </div>
-
-        <div class="feature">
-          <p class="feature-label">Chrome extension</p>
-          <p class="feature-desc">Capture full-page screenshots from any tab and link them to a source record, stored encrypted alongside the database.</p>
-        </div>
-
-        <div class="feature">
-          <p class="feature-label">Import &amp; export</p>
-          <p class="feature-desc">Import from CSV with semicolon multi-value fields. Export to CSV, Excel, or vCard — with an optional sanitised mode.</p>
-        </div>
-
       </div>
     </div>
   </section>
 
+  <!-- Screenshot carousel -->
+  <section class="carousel-section">
+    <div class="carousel-wrap">
+      <div class="carousel" id="carousel">
+
+        <div class="carousel-track-outer">
+          <button class="carousel-arrow carousel-arrow-prev" id="carousel-prev" aria-label="Previous" disabled>&#8592;</button>
+          <button class="carousel-arrow carousel-arrow-next" id="carousel-next" aria-label="Next">&#8594;</button>
+          <div class="carousel-track" id="carousel-track">
+
+            <!-- Slide 1: Contacts view -->
+            <div class="carousel-slide">
+              <img src="screenshot.png" alt="Sourcerer — contacts view showing source list with project memberships" />
+            </div>
+
+            <!-- Slide 2: Contact detail & interaction log -->
+            <div class="carousel-slide">
+              <div class="carousel-placeholder">
+                <div class="carousel-placeholder-inner">
+                  <p class="carousel-placeholder-label">Screenshot coming soon</p>
+                  <p class="carousel-placeholder-title">Contact detail &amp; interaction log</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 3: placeholder — Reminders -->
+            <div class="carousel-slide">
+              <div class="carousel-placeholder">
+                <div class="carousel-placeholder-inner">
+                  <p class="carousel-placeholder-label">Screenshot coming soon</p>
+                  <p class="carousel-placeholder-title">Reminders</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 4: placeholder — Mentions / alerts -->
+            <div class="carousel-slide">
+              <div class="carousel-placeholder">
+                <div class="carousel-placeholder-inner">
+                  <p class="carousel-placeholder-label">Screenshot coming soon</p>
+                  <p class="carousel-placeholder-title">Mentions &amp; alerts</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Slide 5: placeholder — Shared project -->
+            <div class="carousel-slide">
+              <div class="carousel-placeholder">
+                <div class="carousel-placeholder-inner">
+                  <p class="carousel-placeholder-label">Screenshot coming soon</p>
+                  <p class="carousel-placeholder-title">Shared projects</p>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /.carousel-track -->
+        </div><!-- /.carousel-track-outer -->
+
+        <div class="carousel-nav">
+          <div>
+            <p class="carousel-caption" id="carousel-caption"><em>Contacts view</em></p>
+            <p class="carousel-note">All names and details shown are fictional and generated for demonstration purposes only.</p>
+          </div>
+          <div class="carousel-controls">
+              <div class="carousel-dots" id="carousel-dots">
+                <button class="carousel-dot active" data-index="0" aria-label="Slide 1"></button>
+                <button class="carousel-dot" data-index="1" aria-label="Slide 2"></button>
+                <button class="carousel-dot" data-index="2" aria-label="Slide 3"></button>
+                <button class="carousel-dot" data-index="3" aria-label="Slide 4"></button>
+                <button class="carousel-dot" data-index="4" aria-label="Slide 5"></button>
+              </div>
+            </div>
+        </div>
+
+      </div><!-- /.carousel -->
+    </div><!-- /.carousel-wrap -->
+  </section>
+
+  <script>
+    (function () {
+      var captions = [
+        'Contacts view',
+        'Contact detail \u0026 interaction log',
+        'Reminders',
+        'Mentions \u0026 alerts',
+        'Shared project',
+      ];
+      var track     = document.getElementById('carousel-track');
+      var captionEl = document.getElementById('carousel-caption');
+      var dots      = document.querySelectorAll('.carousel-dot');
+      var prevBtn   = document.getElementById('carousel-prev');
+      var nextBtn   = document.getElementById('carousel-next');
+      var current   = 0;
+      var total     = captions.length;
+
+      function goTo(n) {
+        current = Math.max(0, Math.min(n, total - 1));
+        track.style.transform = 'translateX(-' + (current * 100) + '%)';
+        captionEl.innerHTML = '<em>' + captions[current] + '</em>';
+        dots.forEach(function (d, i) { d.classList.toggle('active', i === current); });
+        prevBtn.disabled = current === 0;
+        nextBtn.disabled = current === total - 1;
+      }
+
+      prevBtn.addEventListener('click', function () { goTo(current - 1); });
+      nextBtn.addEventListener('click', function () { goTo(current + 1); });
+      dots.forEach(function (d) {
+        d.addEventListener('click', function () { goTo(parseInt(d.dataset.index, 10)); });
+      });
+
+      // Keyboard
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft')  goTo(current - 1);
+        if (e.key === 'ArrowRight') goTo(current + 1);
+      });
+
+      // Touch / mouse swipe
+      var outer    = track.parentElement;
+      var startX   = null;
+      var dragging = false;
+
+      outer.addEventListener('mousedown',  function (e) { startX = e.clientX; dragging = true; });
+      outer.addEventListener('touchstart', function (e) { startX = e.touches[0].clientX; }, { passive: true });
+
+      outer.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        e.preventDefault();
+      });
+
+      outer.addEventListener('mouseup', function (e) {
+        if (!dragging || startX === null) return;
+        var diff = startX - e.clientX;
+        if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
+        dragging = false;
+        startX = null;
+      });
+      outer.addEventListener('mouseleave', function () { dragging = false; startX = null; });
+
+      outer.addEventListener('touchend', function (e) {
+        if (startX === null) return;
+        var diff = startX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 40) goTo(diff > 0 ? current + 1 : current - 1);
+        startX = null;
+      });
+    })();
+  </script>
+
+  <!-- Feature detail rows -->
+  <section class="feature-detail-section">
+    <div class="container">
+
+      <div class="feature-row">
+        <p class="feature-row-label">Encrypted at rest</p>
+        <div class="feature-row-body">
+          <h3>Your source list stays yours</h3>
+          <p>The entire database is encrypted with AES-256 via SQLCipher. The key is derived fresh from your master password on every unlock using Argon2id — a memory-hard algorithm that makes brute-force attacks expensive. The key is never stored anywhere. If someone seizes your laptop, the database is unreadable without your password.</p>
+        </div>
+      </div>
+
+      <div class="feature-row">
+        <p class="feature-row-label">Projects &amp; outreach</p>
+        <div class="feature-row-body">
+          <h3>Manage sources story by story</h3>
+          <p>Organise contacts into projects — one per investigation or beat. Each contact can belong to multiple projects simultaneously, with its own status, priority, reporter attribution, and interaction log per project. A full status workflow tracks the arc from first approach through interview, decline, or ghosting. Configurable reminders ensure nothing goes cold without you knowing.</p>
+        </div>
+      </div>
+
+      <div class="feature-row">
+        <p class="feature-row-label">Team collaboration</p>
+        <div class="feature-row-body">
+          <h3>Share without a server</h3>
+          <p>Point two Sourcerer installations at the same encrypted database file on a shared drive — Dropbox, OneDrive, or a network folder. Both users work from the same source list, with changes syncing automatically every two minutes. The shared file is encrypted with the same SQLCipher key; anyone who obtains it still can't read it without the password.</p>
+        </div>
+      </div>
+
+      <div class="feature-row">
+        <p class="feature-row-label">Alerts</p>
+        <div class="feature-row-body">
+          <h3>Track coverage automatically</h3>
+          <p>Attach RSS feeds to any contact — news alerts, press release feeds, social media aggregators. Sourcerer polls them in the background and surfaces new mentions in a unified alerts view, linked to the relevant contact. Never miss a development on a key source between check-ins.</p>
+        </div>
+      </div>
+
+      <div class="feature-row">
+        <p class="feature-row-label">Chrome extension</p>
+        <div class="feature-row-body">
+          <h3>Capture pages, not screenshots</h3>
+          <p>The Sourcerer browser extension captures full-page screenshots from any tab and sends them directly to the app, where they are stored encrypted alongside the database. Link a screenshot to a contact record in seconds — no cloud upload, no third-party storage, no unencrypted files on disk.</p>
+        </div>
+      </div>
+
+      <div class="feature-row">
+        <p class="feature-row-label">Import &amp; export</p>
+        <div class="feature-row-body">
+          <h3>Move data in and out cleanly</h3>
+          <p>Import contacts from any CSV file, including multi-value fields (semicolons separate multiple emails or phones per cell). Export to CSV, Excel, or vCard. A sanitised export mode strips notes and interaction logs so you can safely share a contact list without revealing reporter notes or outreach history.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Security strip -->
+  <section class="security-section">
+    <div class="container">
+      <p class="section-label">Security at a glance</p>
+      <div class="security-grid">
+        <div class="security-item">
+          <p class="security-item-label">Encryption</p>
+          <p class="security-item-value">AES-256-CBC<br>SQLCipher</p>
+        </div>
+        <div class="security-item">
+          <p class="security-item-label">Key derivation</p>
+          <p class="security-item-value">Argon2id<br>64 MB · 3 iterations</p>
+        </div>
+        <div class="security-item">
+          <p class="security-item-label">Password storage</p>
+          <p class="security-item-value">Never stored,<br>never transmitted</p>
+        </div>
+        <div class="security-item">
+          <p class="security-item-label">Cloud sync</p>
+          <p class="security-item-value">None — fully<br>local by default</p>
+        </div>
+        <div class="security-item">
+          <p class="security-item-label">Telemetry</p>
+          <p class="security-item-value">None. Zero<br>outbound calls.</p>
+        </div>
+        <div class="security-item">
+          <p class="security-item-label">Source code</p>
+          <p class="security-item-value">Open source<br>AGPL-3.0</p>
+        </div>
+      </div>
+      <p style="margin-top: 24px; font-size: 13.5px; color: var(--text-muted);">
+        <a href="security.html">Read the full security overview →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
   <section class="cta-section">
     <div class="container">
-      <a class="btn-github" href="https://github.com/tomcardoso/sourcerer">View on GitHub</a>
+      <p class="section-label">Get started</p>
+      <p style="font-size: 17px; font-weight: 300; max-width: 500px; margin-bottom: 28px; line-height: 1.7; color: var(--text-muted);">
+        Pre-built for macOS (Apple Silicon) and Windows (x64). Free and open source.
+      </p>
+      <div class="cta-row">
+        <a class="btn-github" href="https://github.com/tomcardoso/sourcerer/releases/latest">Download latest release</a>
+        <a class="btn-secondary" href="guide.html">User guide</a>
+        <a class="btn-secondary" href="https://github.com/tomcardoso/sourcerer">View source ↗</a>
+      </div>
     </div>
   </section>
 
   <footer>
     <div class="container">
-      <p class="footer-text">AGPL-3.0 &mdash; open source</p>
+      <p class="footer-text">AGPL-3.0 &mdash; open source &mdash; <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a></p>
     </div>
   </footer>
 
