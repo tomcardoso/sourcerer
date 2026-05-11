@@ -4,6 +4,8 @@ Source and contact management for journalists — local-first, encrypted, no clo
 
 ![screenshot](docs/screenshot.png)
 
+_All names and details in the screenshot are fictional and generated for demonstration purposes only._
+
 ---
 
 - [What it does](#what-it-does)
