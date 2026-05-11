@@ -171,6 +171,7 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
         pairs.push({ a: unpaired[i], b: unpaired[j], reason: 'name' });
         pairedIds.add(unpaired[i].id);
         pairedIds.add(unpaired[j].id);
+        break;
       }
     }
   }
@@ -192,7 +193,7 @@ export function loadDismissedPairs(db: Database.Database): Set<string> {
 export function dismissPair(db: Database.Database, aId: string, bId: string): void {
   db.prepare(
     'INSERT OR IGNORE INTO dedup_dismissed_pairs (contact_a_id, contact_b_id, dismissed_at) VALUES (?, ?, ?)',
-  ).run(aId, bId, Date.now());
+  ).run(aId, bId, Math.floor(Date.now() / 1000));
 }
 
 export function mergeContacts(

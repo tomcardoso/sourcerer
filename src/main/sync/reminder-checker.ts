@@ -29,7 +29,7 @@ export function checkReminders(): void {
        FROM reminders r
        JOIN contacts c ON c.id = r.contact_id
        JOIN projects p ON p.id = r.project_id
-       WHERE r.due_date <= ? AND r.is_auto_outreach = 0`,
+       WHERE r.due_date <= ? AND r.is_auto_outreach = 0 AND r.completed_at IS NULL`,
     )
     .all(now) as DueReminder[];
 

@@ -77,59 +77,47 @@ export function registerExportHandlers(): void {
         notes: string | null;
       }[];
 
+      const contactIds = memberships.map((m) => m.contact_id);
+      const membershipIds = memberships.map((m) => m.membership_id);
+      const ph = (arr: unknown[]) => arr.map(() => '?').join(',');
+
+      const bulkEmails = contactIds.length
+        ? (db.prepare(`SELECT contact_id, email FROM contact_emails WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; email: string }[])
+        : [];
+      const emailsByContact = new Map<string, string[]>();
+      for (const r of bulkEmails) { const a = emailsByContact.get(r.contact_id) ?? []; a.push(r.email); emailsByContact.set(r.contact_id, a); }
+
+      const bulkPhones = contactIds.length
+        ? (db.prepare(`SELECT contact_id, phone FROM contact_phones WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; phone: string }[])
+        : [];
+      const phonesByContact = new Map<string, string[]>();
+      for (const r of bulkPhones) { const a = phonesByContact.get(r.contact_id) ?? []; a.push(r.phone); phonesByContact.set(r.contact_id, a); }
+
+      const bulkLinks = contactIds.length
+        ? (db.prepare(`SELECT contact_id, type, url FROM contact_links WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; type: string; url: string }[])
+        : [];
+      const linksByContact = new Map<string, { type: string; url: string }[]>();
+      for (const r of bulkLinks) { const a = linksByContact.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksByContact.set(r.contact_id, a); }
+
+      const bulkLogs: { membership_id: string; reporter_name: string; body: string; created_at: number }[] =
+        mode === 'full' && membershipIds.length
+          ? (db.prepare(`SELECT membership_id, reporter_name, body, created_at FROM interaction_log_entries WHERE membership_id IN (${ph(membershipIds)}) ORDER BY created_at ASC`).all(...membershipIds) as { membership_id: string; reporter_name: string; body: string; created_at: number }[])
+          : [];
+      const logsByMembership = new Map<string, { reporter_name: string; body: string; created_at: number }[]>();
+      for (const r of bulkLogs) { const a = logsByMembership.get(r.membership_id) ?? []; a.push(r); logsByMembership.set(r.membership_id, a); }
+
       const rows: ExportRow[] = [];
 
       for (const m of memberships) {
-        const emails = (
-          db
-            .prepare(
-              'SELECT email FROM contact_emails WHERE contact_id = ? ORDER BY sort_order',
-            )
-            .all(m.contact_id) as { email: string }[]
-        )
-          .map((r) => r.email)
-          .join('; ');
-
-        const phones = (
-          db
-            .prepare(
-              'SELECT phone FROM contact_phones WHERE contact_id = ? ORDER BY sort_order',
-            )
-            .all(m.contact_id) as { phone: string }[]
-        )
-          .map((r) => r.phone)
-          .join('; ');
-
-        const links = db
-          .prepare('SELECT type, url FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
-          .all(m.contact_id) as { type: string; url: string }[];
-
-        const byType = (type: string) =>
-          links
-            .filter((l) => l.type === type)
-            .map((l) => l.url)
-            .join('; ');
-
-        let interactionLog = '';
-        if (mode === 'full') {
-          interactionLog = (
-            db
-              .prepare(
-                `SELECT reporter_name, body, created_at FROM interaction_log_entries
-                 WHERE membership_id = ? ORDER BY created_at ASC`,
-              )
-              .all(m.membership_id) as {
-              reporter_name: string;
-              body: string;
-              created_at: number;
-            }[]
-          )
-            .map(
-              (e) =>
-                `[${new Date(e.created_at * 1000).toLocaleDateString()} — ${e.reporter_name}] ${e.body}`,
-            )
-            .join('\n');
-        }
+        const emails = (emailsByContact.get(m.contact_id) ?? []).join('; ');
+        const phones = (phonesByContact.get(m.contact_id) ?? []).join('; ');
+        const links = linksByContact.get(m.contact_id) ?? [];
+        const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+        const interactionLog = mode === 'full'
+          ? (logsByMembership.get(m.membership_id) ?? [])
+              .map((e) => `[${new Date(e.created_at * 1000).toLocaleDateString()} — ${e.reporter_name}] ${e.body}`)
+              .join('\n')
+          : '';
 
         rows.push({
           Name: m.name,
@@ -193,17 +181,28 @@ export function registerExportHandlers(): void {
         .prepare('SELECT id, name, organization, notes FROM contacts ORDER BY name COLLATE NOCASE')
         .all() as { id: string; name: string; organization: string | null; notes: string | null }[];
 
-      const rows: { Name: string; Organization: string; Emails: string; Phones: string; Notes: string }[] = [];
+      const allContactIds = contacts.map((c) => c.id);
+      const ph2 = (arr: unknown[]) => arr.map(() => '?').join(',');
 
-      for (const c of contacts) {
-        const emails = (
-          db.prepare('SELECT email FROM contact_emails WHERE contact_id = ? ORDER BY sort_order').all(c.id) as { email: string }[]
-        ).map((r) => r.email).join('; ');
-        const phones = (
-          db.prepare('SELECT phone FROM contact_phones WHERE contact_id = ? ORDER BY sort_order').all(c.id) as { phone: string }[]
-        ).map((r) => r.phone).join('; ');
-        rows.push({ Name: c.name, Organization: c.organization ?? '', Emails: emails, Phones: phones, Notes: c.notes ?? '' });
-      }
+      const allEmails2 = allContactIds.length
+        ? (db.prepare(`SELECT contact_id, email FROM contact_emails WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; email: string }[])
+        : [];
+      const emailsById = new Map<string, string[]>();
+      for (const r of allEmails2) { const a = emailsById.get(r.contact_id) ?? []; a.push(r.email); emailsById.set(r.contact_id, a); }
+
+      const allPhones2 = allContactIds.length
+        ? (db.prepare(`SELECT contact_id, phone FROM contact_phones WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; phone: string }[])
+        : [];
+      const phonesById = new Map<string, string[]>();
+      for (const r of allPhones2) { const a = phonesById.get(r.contact_id) ?? []; a.push(r.phone); phonesById.set(r.contact_id, a); }
+
+      const rows: { Name: string; Organization: string; Emails: string; Phones: string; Notes: string }[] = contacts.map((c) => ({
+        Name: c.name,
+        Organization: c.organization ?? '',
+        Emails: (emailsById.get(c.id) ?? []).join('; '),
+        Phones: (phonesById.get(c.id) ?? []).join('; '),
+        Notes: c.notes ?? '',
+      }));
 
       try {
         const ws = utils.json_to_sheet(rows);

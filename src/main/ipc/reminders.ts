@@ -56,6 +56,7 @@ export function registerReminderHandlers(): void {
       }: { contactId: string; projectId: string; dueDate: number; note?: string },
     ): Reminder => {
       const db = getDatabase();
+      if (!Number.isFinite(dueDate) || dueDate <= 0) throw new Error('invalid due_date');
       const id = uuidv4();
       const now = Math.floor(Date.now() / 1000);
       db.prepare(

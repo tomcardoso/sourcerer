@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContactListItem, DuplicatePair, Project, User } from '@shared/types';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
@@ -70,6 +70,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   useEffect(() => {
     return window.sourcerer.onDuplicatePairsUpdated((count) => {
       setDupCount(count);
+      window.sourcerer.getDuplicatePairs().then((pairs) => setDupPairs(pairs));
     });
   }, []);
 
@@ -134,79 +135,83 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     });
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  let displayed = contacts;
+  const displayed = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    let result = contacts;
 
-  if (filters.name) {
-    const q = filters.name.toLowerCase();
-    displayed = displayed.filter((c) => c.name.toLowerCase().includes(q));
-  }
-  if (filters.organization) {
-    const q = filters.organization.toLowerCase();
-    displayed = displayed.filter((c) => (c.organization ?? '').toLowerCase().includes(q));
-  }
-  if (filters.notes) {
-    const q = filters.notes.toLowerCase();
-    displayed = displayed.filter((c) => (c.notes ?? '').toLowerCase().includes(q));
-  }
-  if (filters.email) {
-    const q = filters.email.toLowerCase();
-    displayed = displayed.filter((c) => (c.emails_raw ?? '').toLowerCase().includes(q));
-  }
-  if (filters.phone) {
-    const q = filters.phone.toLowerCase();
-    displayed = displayed.filter((c) => (c.phones_raw ?? '').toLowerCase().includes(q));
-  }
-  if (filters.hasEmail !== null) {
-    displayed = displayed.filter((c) => (filters.hasEmail ? c.has_email === 1 : c.has_email === 0));
-  }
-  if (filters.hasPhone !== null) {
-    displayed = displayed.filter((c) => (filters.hasPhone ? c.has_phone === 1 : c.has_phone === 0));
-  }
-  if (filters.dateLastContacted === 'never') {
-    displayed = displayed.filter((c) => c.date_last_contacted === null);
-  } else if (filters.dateLastContacted === 'contacted') {
-    displayed = displayed.filter((c) => c.date_last_contacted !== null);
-  } else if (filters.dateLastContacted === 'not_30') {
-    displayed = displayed.filter(
-      (c) => c.date_last_contacted === null || c.date_last_contacted < now - 30 * 86400,
-    );
-  } else if (filters.dateLastContacted === 'not_90') {
-    displayed = displayed.filter(
-      (c) => c.date_last_contacted === null || c.date_last_contacted < now - 90 * 86400,
-    );
-  }
+    if (filters.name) {
+      const q = filters.name.toLowerCase();
+      result = result.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    if (filters.organization) {
+      const q = filters.organization.toLowerCase();
+      result = result.filter((c) => (c.organization ?? '').toLowerCase().includes(q));
+    }
+    if (filters.notes) {
+      const q = filters.notes.toLowerCase();
+      result = result.filter((c) => (c.notes ?? '').toLowerCase().includes(q));
+    }
+    if (filters.email) {
+      const q = filters.email.toLowerCase();
+      result = result.filter((c) => (c.emails_raw ?? '').toLowerCase().includes(q));
+    }
+    if (filters.phone) {
+      const q = filters.phone.toLowerCase();
+      result = result.filter((c) => (c.phones_raw ?? '').toLowerCase().includes(q));
+    }
+    if (filters.hasEmail !== null) {
+      result = result.filter((c) => (filters.hasEmail ? c.has_email === 1 : c.has_email === 0));
+    }
+    if (filters.hasPhone !== null) {
+      result = result.filter((c) => (filters.hasPhone ? c.has_phone === 1 : c.has_phone === 0));
+    }
+    if (filters.dateLastContacted === 'never') {
+      result = result.filter((c) => c.date_last_contacted === null);
+    } else if (filters.dateLastContacted === 'contacted') {
+      result = result.filter((c) => c.date_last_contacted !== null);
+    } else if (filters.dateLastContacted === 'not_30') {
+      result = result.filter(
+        (c) => c.date_last_contacted === null || c.date_last_contacted < now - 30 * 86400,
+      );
+    } else if (filters.dateLastContacted === 'not_90') {
+      result = result.filter(
+        (c) => c.date_last_contacted === null || c.date_last_contacted < now - 90 * 86400,
+      );
+    }
 
-  if (filters.project === '__none__') {
-    displayed = displayed.filter((c) => c.projects.length === 0);
-  } else if (filters.project !== null) {
-    displayed = displayed.filter((c) => c.projects.some((p) => p.id === filters.project));
-  }
+    if (filters.project === '__none__') {
+      result = result.filter((c) => c.projects.length === 0);
+    } else if (filters.project !== null) {
+      result = result.filter((c) => c.projects.some((p) => p.id === filters.project));
+    }
 
-  if (sort.key) {
-    const dir = sort.dir === 'asc' ? 1 : -1;
-    displayed = [...displayed].sort((a, b) => {
-      let cmp = 0;
-      if (sort.key === 'name') {
-        cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-      } else if (sort.key === 'organization') {
-        cmp = (a.organization ?? '').localeCompare(b.organization ?? '', undefined, {
-          sensitivity: 'base',
-        });
-      } else if (sort.key === 'date_first_contacted') {
-        if (a.date_first_contacted === null && b.date_first_contacted === null) cmp = 0;
-        else if (a.date_first_contacted === null) cmp = 1;
-        else if (b.date_first_contacted === null) cmp = -1;
-        else cmp = a.date_first_contacted - b.date_first_contacted;
-      } else if (sort.key === 'date_last_contacted') {
-        if (a.date_last_contacted === null && b.date_last_contacted === null) cmp = 0;
-        else if (a.date_last_contacted === null) cmp = 1;
-        else if (b.date_last_contacted === null) cmp = -1;
-        else cmp = a.date_last_contacted - b.date_last_contacted;
-      }
-      return cmp * dir;
-    });
-  }
+    if (sort.key) {
+      const dir = sort.dir === 'asc' ? 1 : -1;
+      result = [...result].sort((a, b) => {
+        let cmp = 0;
+        if (sort.key === 'name') {
+          cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        } else if (sort.key === 'organization') {
+          cmp = (a.organization ?? '').localeCompare(b.organization ?? '', undefined, {
+            sensitivity: 'base',
+          });
+        } else if (sort.key === 'date_first_contacted') {
+          if (a.date_first_contacted === null && b.date_first_contacted === null) cmp = 0;
+          else if (a.date_first_contacted === null) cmp = 1;
+          else if (b.date_first_contacted === null) cmp = -1;
+          else cmp = a.date_first_contacted - b.date_first_contacted;
+        } else if (sort.key === 'date_last_contacted') {
+          if (a.date_last_contacted === null && b.date_last_contacted === null) cmp = 0;
+          else if (a.date_last_contacted === null) cmp = 1;
+          else if (b.date_last_contacted === null) cmp = -1;
+          else cmp = a.date_last_contacted - b.date_last_contacted;
+        }
+        return cmp * dir;
+      });
+    }
+
+    return result;
+  }, [contacts, filters, sort]);
 
   // Bulk selection derived state
   const checkedCount = checkedIds.size;

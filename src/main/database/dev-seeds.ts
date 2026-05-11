@@ -49,7 +49,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
         `INSERT INTO contact_links (id, contact_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)`,
       ),
       insertProject: db.prepare(
-        `INSERT INTO projects (id, name, is_shared, created_at) VALUES (?, ?, 0, ?)`,
+        `INSERT INTO projects (id, name, description, is_shared, created_at) VALUES (?, ?, ?, 0, ?)`,
       ),
       insertReporter: db.prepare(
         `INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, ?)`,
@@ -91,9 +91,15 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     const pensionId = uuidv4();
     const healthId = uuidv4();
 
-    stmts.insertProject.run(greenbeltId, 'Greenbelt Land Swap', NOW);
-    stmts.insertProject.run(pensionId, 'Pension Fund Fraud', NOW);
-    stmts.insertProject.run(healthId, 'Health System Failures', NOW);
+    stmts.insertProject.run(greenbeltId, 'Greenbelt Land Swap',
+      'Investigating the removal of lands from Ontario\'s Greenbelt, the approval process, and the developers and officials involved.',
+      NOW);
+    stmts.insertProject.run(pensionId, 'Pension Fund Fraud',
+      'Tracking allegations of misappropriation within a major Canadian public pension fund, including offshore holding structures and regulatory blind spots.',
+      NOW);
+    stmts.insertProject.run(healthId, 'Health System Failures',
+      'Documenting systemic failures across hospital staffing, drug approvals, and long-term care — and the government decisions that enabled them.',
+      NOW);
 
     const SARAH = { name: 'Sarah Chen', email: 'sarah.chen@newsroom.ca' };
     const MARCUS = { name: 'Marcus Webb', email: 'marcus.webb@newsroom.ca' };
@@ -124,8 +130,8 @@ export function seedDevData(db: Database.Database, email: string, name: string):
         reporter.name,
         reporter.email,
         opts.theme ?? null,
-        opts.priority ?? 'Monitor',
-        opts.status ?? 'Not contacted',
+        opts.priority ?? 'Monitor-only',
+        opts.status ?? 'Not yet contacted',
         NOW,
         NOW,
       );
@@ -159,7 +165,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
 
     // ── Greenbelt Land Swap memberships ──────────────────────────────────────
     addMembership('Catherine Mwangi', greenbeltId, me(), {
-      theme: 'Whistleblower', priority: 'Critical', status: 'Awaiting response',
+      theme: 'Whistleblower', priority: 'Critical', status: 'Contacted, no reply',
     });
     addMembership('Darnell Okafor', greenbeltId, me(), {
       theme: 'Whistleblower', priority: 'Critical', status: 'In dialogue',
@@ -168,55 +174,55 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       theme: 'Government', priority: 'High', status: 'In dialogue',
     });
     addMembership('Sandra Woo-Patel', greenbeltId, me(), {
-      theme: 'Private equity', priority: 'High', status: 'Not contacted',
+      theme: 'Private equity', priority: 'High', status: 'Not yet contacted',
     });
     addMembership('Vivienne Tran', greenbeltId, me(), {
-      theme: 'Legal', priority: 'Medium', status: 'Not contacted',
+      theme: 'Legal', priority: 'Medium', status: 'Not yet contacted',
     });
     addMembership('Ted Molnar', greenbeltId, me(), {
       theme: 'Politics', priority: 'Low', status: 'In dialogue',
     });
     addMembership('Councillor Diane Fischetti', greenbeltId, SARAH, {
-      theme: 'Municipal', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Municipal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Priya Subramaniam', greenbeltId, me(), {
-      theme: 'Media', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Media', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Gordon Whitfield', greenbeltId, me(), {
-      theme: 'Finance', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Renata Filipowicz', greenbeltId, SARAH, {
-      theme: 'Government', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Government', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Sylvie Archambault', greenbeltId, me(), {
-      theme: 'Labour', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Labour', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Hamish Blackwood', greenbeltId, SARAH, {
-      theme: 'Legal', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Sergeant Félicia Comeau', greenbeltId, me(), {
-      theme: 'Law enforcement', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Law enforcement', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Magistrate Thomas Dunmore-Baines', greenbeltId, me(), {
-      theme: 'Legal', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Dr. Jean-Paul Hébert', greenbeltId, SARAH, {
-      theme: 'Expert', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Expert', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Dominique Paquin-Sévigny', greenbeltId, me(), {
-      theme: 'Developer', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Developer', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Rowena Bautista-Cruz', greenbeltId, SARAH, {
-      theme: 'Legal', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Michael Clarke', greenbeltId, me(), {
-      theme: 'PR / comms', priority: 'Monitor', status: 'Not contacted',
+      theme: 'PR / comms', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Sandra Hutchings-Bell', greenbeltId, SARAH, {
-      theme: 'Legal', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Zach Pendergast', greenbeltId, me(), {
-      theme: 'Media', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Media', priority: 'Monitor-only', status: 'Not yet contacted',
     });
 
     // ── Pension Fund Fraud memberships ───────────────────────────────────────
@@ -230,7 +236,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       theme: 'Legal', priority: 'High', status: 'In dialogue',
     });
     addMembership('Deputy Commissioner Harlan Bryce', pensionId, MARCUS, {
-      theme: 'Law enforcement', priority: 'Medium', status: 'Awaiting response',
+      theme: 'Law enforcement', priority: 'Medium', status: 'Contacted, no reply',
     });
     addMembership('Rupert Ainsworth', pensionId, me(), {
       theme: 'Media', priority: 'Medium', status: 'In dialogue',
@@ -239,46 +245,46 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       theme: 'Finance', priority: 'Low', status: 'In dialogue',
     });
     addMembership('Philip Gauthier-Lessard', pensionId, me(), {
-      theme: 'Finance', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Randall Chu-Nakamura', pensionId, MARCUS, {
-      theme: 'Private equity', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Private equity', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Tyler Deschênes', pensionId, me(), {
-      theme: 'Private equity', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Private equity', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Desmond Asamoah-Frimpong', pensionId, MARCUS, {
-      theme: 'Real estate', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Real estate', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Emil Rosenqvist', pensionId, me(), {
-      theme: 'International', priority: 'Monitor', status: 'Awaiting response',
+      theme: 'International', priority: 'Monitor-only', status: 'Contacted, no reply',
     });
     addMembership('Priscilla Nakagawa', pensionId, MARCUS, {
-      theme: 'International', priority: 'Monitor', status: 'In dialogue',
+      theme: 'International', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Callum Forsythe', pensionId, me(), {
-      theme: 'Finance', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Cynthia Drayton', pensionId, MARCUS, {
-      theme: 'Finance', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Luca Borromeo', pensionId, me(), {
-      theme: 'Finance', priority: 'Monitor', status: 'Awaiting response',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Contacted, no reply',
     });
     addMembership('Petra Vogelsang', pensionId, MARCUS, {
-      theme: 'International', priority: 'Monitor', status: 'Awaiting response',
+      theme: 'International', priority: 'Monitor-only', status: 'Contacted, no reply',
     });
     addMembership('Hendrik van der Merwe', pensionId, me(), {
-      theme: 'Finance', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Jocelyn Paré-Vachon', pensionId, MARCUS, {
-      theme: 'Legal', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Carlo Desjardins', pensionId, me(), {
-      theme: 'Finance', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Oksana Petrenko', pensionId, MARCUS, {
-      theme: 'Civil society', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Civil society', priority: 'Monitor-only', status: 'Not yet contacted',
     });
 
     // ── Health System Failures memberships ───────────────────────────────────
@@ -295,37 +301,37 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       theme: 'Expert', priority: 'Medium', status: 'In dialogue',
     });
     addMembership('Kevin Stelmach', healthId, me(), {
-      theme: 'Labour', priority: 'Low', status: 'Not contacted',
+      theme: 'Labour', priority: 'Low', status: 'Not yet contacted',
     });
     addMembership('Bertrand Lacombe', healthId, SARAH, {
-      theme: 'Labour', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Labour', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Dr. Susan Whitmore-Haig', healthId, me(), {
-      theme: 'Medical / science', priority: 'Monitor', status: 'Awaiting response',
+      theme: 'Medical / science', priority: 'Monitor-only', status: 'Contacted, no reply',
     });
     addMembership('Dr. Felicity Okonkwo', healthId, SARAH, {
-      theme: 'Medical / science', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Medical / science', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership("Dr. Bridget O'Halloran", healthId, me(), {
-      theme: 'Government', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Government', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Carolyn Varga-Steele', healthId, MARCUS, {
-      theme: 'Industry', priority: 'Monitor', status: 'Awaiting response',
+      theme: 'Industry', priority: 'Monitor-only', status: 'Contacted, no reply',
     });
     addMembership('Chantal Beaubien', healthId, me(), {
-      theme: 'Industry', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Industry', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Finlay Drummond', healthId, SARAH, {
-      theme: 'Civil society', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Civil society', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Chief Medical Officer Dr. Farrukh Tashkentov', healthId, me(), {
-      theme: 'Government', priority: 'Monitor', status: 'Not contacted',
+      theme: 'Government', priority: 'Monitor-only', status: 'Not yet contacted',
     });
     addMembership('Kwame Asante-Mensah', healthId, MARCUS, {
-      theme: 'Whistleblower', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Whistleblower', priority: 'Monitor-only', status: 'In dialogue',
     });
     addMembership('Antoine Durocher', healthId, SARAH, {
-      theme: 'Media', priority: 'Monitor', status: 'In dialogue',
+      theme: 'Media', priority: 'Monitor-only', status: 'In dialogue',
     });
 
     // ── Interaction logs ─────────────────────────────────────────────────────

@@ -193,4 +193,15 @@ export const LOCAL_SCHEMA_SQL = `
     iv          TEXT    NOT NULL,
     captured_at INTEGER NOT NULL
   );
+
+  CREATE INDEX IF NOT EXISTS idx_contact_emails_contact_id        ON contact_emails(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_contact_phones_contact_id        ON contact_phones(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_contact_links_contact_id         ON contact_links(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_id    ON interaction_log_entries(membership_id);
+  CREATE INDEX IF NOT EXISTS idx_project_memberships_contact_id   ON project_memberships(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_project_memberships_project_id   ON project_memberships(project_id);
+  CREATE INDEX IF NOT EXISTS idx_reminders_membership_id          ON reminders(membership_id);
+  CREATE INDEX IF NOT EXISTS idx_reminders_contact_id             ON reminders(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_alert_mentions_contact_id        ON contact_alert_mentions(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_alert_mentions_seen_dismissed    ON contact_alert_mentions(seen, dismissed);
 `;

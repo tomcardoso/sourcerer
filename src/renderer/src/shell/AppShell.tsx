@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ImportResult, Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
 import SearchModal from './SearchModal';
@@ -38,13 +38,19 @@ export default function AppShell() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
 
+  const refreshOverdue = useCallback(async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const all = await window.sourcerer.listAllReminders();
+    setOverdueReminders(all.filter((r) => r.due_date < now).length);
+  }, []);
+
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
     window.sourcerer.listProjects().then(setProjects);
     window.sourcerer.getUnseenMentionCount().then(setUnseenMentions);
     window.sourcerer.getContactCount().then(setTotalContacts);
     refreshOverdue();
-  }, []);
+  }, [refreshOverdue]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -60,12 +66,6 @@ export default function AppShell() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  async function refreshOverdue() {
-    const now = Math.floor(Date.now() / 1000);
-    const all = await window.sourcerer.listAllReminders();
-    setOverdueReminders(all.filter((r) => r.due_date < now).length);
-  }
 
   // Refresh unseen count when new mentions arrive
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function AppShell() {
 
   useEffect(() => {
     return window.sourcerer.onRemindersChanged(refreshOverdue);
-  }, []);
+  }, [refreshOverdue]);
 
   function handleProjectCreated(project: Project) {
     setProjects((prev) => [...prev, project]);

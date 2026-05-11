@@ -143,6 +143,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
       const buf = Buffer.concat(chunks);
       const tempId = randomBytes(16).toString('hex');
       pendingScreenshots.set(tempId, { buf, tabUrl });
+      setTimeout(() => pendingScreenshots.delete(tempId), 300_000);
       const win = BrowserWindow.getAllWindows()[0];
       if (win) {
         win.show();

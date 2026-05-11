@@ -79,7 +79,7 @@ export interface ContactPhone {
 
 export interface ContactLink {
   id: string;
-  type: string;
+  type: 'linkedin' | 'x' | 'instagram' | 'facebook' | 'website' | 'other';
   label: string | null;
   url: string;
   wayback_url: string | null;
@@ -117,7 +117,7 @@ export interface ContactDetail {
 }
 
 export interface ContactLinkInput {
-  type: string;
+  type: 'linkedin' | 'x' | 'instagram' | 'facebook' | 'website' | 'other';
   url: string;
   label?: string;
 }

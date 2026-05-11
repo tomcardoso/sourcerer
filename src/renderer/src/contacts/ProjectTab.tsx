@@ -97,7 +97,7 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
 
   async function handleSubmit() {
     const body = text.trim();
-    if (!body) return;
+    if (!body || !logDate) return;
     setSubmitting(true);
     try {
       const [y, m, d] = logDate.split('-').map(Number);

@@ -25,6 +25,7 @@ import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb
 import type { DuplicatePair } from '@shared/types';
 
 let cachedPairs: DuplicatePair[] = [];
+let dedupScanTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function triggerWaybackSave(contactId: string, url: string): Promise<void> {
   try {
@@ -44,18 +45,22 @@ async function triggerWaybackSave(contactId: string, url: string): Promise<void>
 }
 
 function runDedupScan(): void {
-  try {
-    const db = getDatabase();
-    const contacts = loadDedupContacts(db);
-    const dismissed = loadDismissedPairs(db);
-    cachedPairs = findDuplicatePairs(contacts, dismissed);
-    const count = cachedPairs.length;
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send('contacts:duplicates-updated', count);
+  if (dedupScanTimer) clearTimeout(dedupScanTimer);
+  dedupScanTimer = setTimeout(() => {
+    dedupScanTimer = null;
+    try {
+      const db = getDatabase();
+      const contacts = loadDedupContacts(db);
+      const dismissed = loadDismissedPairs(db);
+      cachedPairs = findDuplicatePairs(contacts, dismissed);
+      const count = cachedPairs.length;
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('contacts:duplicates-updated', count);
+      }
+    } catch {
+      // DB not open yet — scan will run on next contact change
     }
-  } catch {
-    // DB not open yet — scan will run on next contact change
-  }
+  }, 500);
 }
 
 export function registerContactHandlers(): void {
@@ -122,14 +127,17 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:get', (_, id: string): ContactDetail => {
     const db = getDatabase();
-    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id) as {
+    const contact = db
+      .prepare('SELECT id, name, organization, notes, created_at, updated_at FROM contacts WHERE id = ?')
+      .get(id) as {
       id: string;
       name: string;
       organization: string | null;
       notes: string | null;
       created_at: number;
       updated_at: number;
-    };
+    } | undefined;
+    if (!contact) throw new Error(`Contact not found: ${id}`);
     const emails = db
       .prepare('SELECT id, email, label, sort_order FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactEmail[];
@@ -214,7 +222,7 @@ export function registerContactHandlers(): void {
     });
 
     insert();
-    setImmediate(runDedupScan);
+    runDedupScan();
 
     if (wayback_enabled) {
       const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
@@ -231,8 +239,8 @@ export function registerContactHandlers(): void {
       has_phone: phones.length > 0 ? 1 : 0,
       date_first_contacted: null,
       date_last_contacted: null,
-      emails_raw: (data.emails ?? []).filter(Boolean).join(' ') || null,
-      phones_raw: phones.length > 0 ? phones.join(' ') : null,
+      emails_raw: (data.emails ?? []).map((e) => normalizeEmail(e.email)).filter(Boolean).join(' ') || null,
+      phones_raw: phones.length > 0 ? phones.map((p) => p.phone).join(' ') : null,
       projects: [],
     };
   });
@@ -351,7 +359,7 @@ export function registerContactHandlers(): void {
       }
     });
     run();
-    setImmediate(runDedupScan);
+    runDedupScan();
 
     if (wayback_enabled) {
       const newWebsiteUrls = (data.links ?? [])
@@ -411,13 +419,16 @@ export function registerContactHandlers(): void {
     'memberships:set-reporters',
     (_, { membershipId, reporters }: { membershipId: string; reporters: Array<{ email: string; name: string }> }): void => {
       const db = getDatabase();
-      db.prepare('DELETE FROM membership_reporters WHERE membership_id = ?').run(membershipId);
-      const insert = db.prepare(
-        'INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name) VALUES (lower(hex(randomblob(16))), ?, ?, ?)',
+      const deleteReporters = db.prepare('DELETE FROM membership_reporters WHERE membership_id = ?');
+      const insertReporter = db.prepare(
+        'INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name) VALUES (?, ?, ?, ?)',
       );
-      for (const r of reporters) {
-        insert.run(membershipId, r.email, r.name);
-      }
+      db.transaction(() => {
+        deleteReporters.run(membershipId);
+        for (const r of reporters) {
+          insertReporter.run(uuidv4(), membershipId, r.email, r.name);
+        }
+      })();
     },
   );
 
@@ -436,6 +447,7 @@ export function registerContactHandlers(): void {
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const id = uuidv4();
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
+      if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
       db.prepare(
         'INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -545,40 +557,37 @@ export function registerContactHandlers(): void {
         phone: {},
       };
 
+      const stmtEmailWithExclude = db.prepare(
+        `SELECT c.name FROM contact_emails ce JOIN contacts c ON c.id = ce.contact_id
+         WHERE ce.email = ? AND ce.contact_id != ? LIMIT 1`,
+      );
+      const stmtEmail = db.prepare(
+        `SELECT c.name FROM contact_emails ce JOIN contacts c ON c.id = ce.contact_id
+         WHERE ce.email = ? LIMIT 1`,
+      );
+      const stmtPhoneWithExclude = db.prepare(
+        `SELECT c.name FROM contact_phones cp JOIN contacts c ON c.id = cp.contact_id
+         WHERE cp.phone = ? AND cp.contact_id != ? LIMIT 1`,
+      );
+      const stmtPhone = db.prepare(
+        `SELECT c.name FROM contact_phones cp JOIN contacts c ON c.id = cp.contact_id
+         WHERE cp.phone = ? LIMIT 1`,
+      );
+
       for (const rawEmail of emails.filter(Boolean)) {
         const email = normalizeEmail(rawEmail);
         const row = excludeId
-          ? (db
-              .prepare(
-                `SELECT c.name FROM contact_emails ce JOIN contacts c ON c.id = ce.contact_id
-                 WHERE ce.email = ? AND ce.contact_id != ? LIMIT 1`,
-              )
-              .get(email, excludeId) as { name: string } | undefined)
-          : (db
-              .prepare(
-                `SELECT c.name FROM contact_emails ce JOIN contacts c ON c.id = ce.contact_id
-                 WHERE ce.email = ? LIMIT 1`,
-              )
-              .get(email) as { name: string } | undefined);
+          ? (stmtEmailWithExclude.get(email, excludeId) as { name: string } | undefined)
+          : (stmtEmail.get(email) as { name: string } | undefined);
         if (row) result.email[rawEmail] = row.name;
       }
 
       for (const rawPhone of phones.filter(Boolean)) {
         const phone = normalizePhone(rawPhone, phone_country);
-        if (!phone) continue; // invalid phone number — skip collision check
+        if (!phone) continue;
         const row = excludeId
-          ? (db
-              .prepare(
-                `SELECT c.name FROM contact_phones cp JOIN contacts c ON c.id = cp.contact_id
-                 WHERE cp.phone = ? AND cp.contact_id != ? LIMIT 1`,
-              )
-              .get(phone, excludeId) as { name: string } | undefined)
-          : (db
-              .prepare(
-                `SELECT c.name FROM contact_phones cp JOIN contacts c ON c.id = cp.contact_id
-                 WHERE cp.phone = ? LIMIT 1`,
-              )
-              .get(phone) as { name: string } | undefined);
+          ? (stmtPhoneWithExclude.get(phone, excludeId) as { name: string } | undefined)
+          : (stmtPhone.get(phone) as { name: string } | undefined);
         if (row) result.phone[rawPhone] = row.name;
       }
 

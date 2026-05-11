@@ -9,16 +9,15 @@ import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
 import type { User, StatusOption, PriorityOption } from '@shared/types';
 
-const PORT = 27371;
-
 function reorder(
   table: 'status_options' | 'priority_options',
   id: string,
   direction: 'up' | 'down',
 ): void {
+  const tableStr = table === 'status_options' ? 'status_options' : 'priority_options';
   const db = getDatabase();
   const all = db
-    .prepare(`SELECT id, sort_order FROM ${table} ORDER BY sort_order ASC`)
+    .prepare(`SELECT id, sort_order FROM ${tableStr} ORDER BY sort_order ASC`)
     .all() as { id: string; sort_order: number }[];
   const idx = all.findIndex((r) => r.id === id);
   if (idx === -1) return;
@@ -29,7 +28,7 @@ function reorder(
   const reordered = [...all];
   [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
 
-  const stmt = db.prepare(`UPDATE ${table} SET sort_order = ? WHERE id = ?`);
+  const stmt = db.prepare(`UPDATE ${tableStr} SET sort_order = ? WHERE id = ?`);
   const run = db.transaction(() => {
     reordered.forEach((row, i) => stmt.run(i, row.id));
   });

@@ -3,13 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_STATUSES = [
   'Not yet contacted',
-  'Outreach attempted, no response',
+  'Contacted, no reply',
+  'In dialogue',
+  'Interview arranged',
+  'Interviewed, off-record',
+  'Interviewed, on-record',
   'Declined',
-  'Declined, door left open',
-  'Referred to communications',
-  'Agreed, not yet scheduled',
-  'Interviewed off-record',
-  'Interviewed on-record',
+  'Declined, door open',
+  'Referred to comms',
   'Ghosted',
   'Do not contact',
 ];

@@ -102,6 +102,24 @@ export function processImportRows(
   const skipped: ImportResult['skipped'] = [];
   let imported = 0;
 
+  const stmtContact = db.prepare(
+    'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+  );
+  const stmtEmail = db.prepare(
+    'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
+  );
+  const stmtPhone = db.prepare(
+    'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
+  );
+  const stmtLink = db.prepare(
+    'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+  );
+  const stmtMembership = db.prepare(
+    `INSERT INTO project_memberships
+       (id, contact_id, project_id, reporter_email, reporter_name, theme, status, priority, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+
   const run = db.transaction(() => {
     for (const row of rows.slice(1)) {
       const get = (name: string) => (col(name) >= 0 ? (row[col(name)] ?? '').trim() : '');
@@ -132,21 +150,15 @@ export function processImportRows(
       const id = uuidv4();
       const now = Math.floor(Date.now() / 1000);
 
-      db.prepare(
-        'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ).run(id, name, get('organization') || null, get('notes') || null, now, now);
+      stmtContact.run(id, name, get('organization') || null, get('notes') || null, now, now);
 
       emails.forEach((email, i) => {
-        db.prepare(
-          'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)',
-        ).run(uuidv4(), id, email, i);
+        stmtEmail.run(uuidv4(), id, email, i);
         existingEmails.add(email.toLowerCase());
       });
 
       phones.forEach((phone, i) => {
-        db.prepare(
-          'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
-        ).run(uuidv4(), id, phone, i);
+        stmtPhone.run(uuidv4(), id, phone, i);
       });
 
       const links: { type: string; url: string }[] = [];
@@ -158,19 +170,13 @@ export function processImportRows(
         links.push({ type: 'website', url });
       });
       links.forEach((link, i) => {
-        db.prepare(
-          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-        ).run(uuidv4(), id, link.type, null, link.url, i);
+        stmtLink.run(uuidv4(), id, link.type, null, link.url, i);
       });
 
       if (projectId) {
         const rawStatus = get('status');
         const rawPriority = get('priority');
-        db.prepare(
-          `INSERT INTO project_memberships
-             (id, contact_id, project_id, reporter_email, reporter_name, theme, status, priority, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        ).run(
+        stmtMembership.run(
           uuidv4(),
           id,
           projectId,

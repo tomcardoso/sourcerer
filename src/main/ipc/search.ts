@@ -6,7 +6,8 @@ export function registerSearchHandlers(): void {
   ipcMain.handle('search:global', (_e, query: string): SearchResult[] => {
     if (!query.trim()) return [];
     const db = getDatabase();
-    const pattern = `%${query.trim()}%`;
+    const escaped = query.trim().replace(/[%_\\]/g, '\\$&');
+    const pattern = `%${escaped}%`;
 
     const contacts = db
       .prepare(
@@ -14,8 +15,8 @@ export function registerSearchHandlers(): void {
          FROM contacts c
          LEFT JOIN contact_emails ce ON ce.contact_id = c.id
          LEFT JOIN contact_phones cp ON cp.contact_id = c.id
-         WHERE c.name LIKE ? OR c.organization LIKE ? OR c.notes LIKE ?
-            OR ce.email LIKE ? OR cp.phone LIKE ?
+         WHERE c.name LIKE ? ESCAPE '\\' OR c.organization LIKE ? ESCAPE '\\' OR c.notes LIKE ? ESCAPE '\\'
+            OR ce.email LIKE ? ESCAPE '\\' OR cp.phone LIKE ? ESCAPE '\\'
          ORDER BY c.name COLLATE NOCASE
          LIMIT 15`,
       )
@@ -27,7 +28,7 @@ export function registerSearchHandlers(): void {
 
     const projects = db
       .prepare(
-        `SELECT id, name FROM projects WHERE name LIKE ?
+        `SELECT id, name FROM projects WHERE name LIKE ? ESCAPE '\\'
          ORDER BY name COLLATE NOCASE LIMIT 5`,
       )
       .all(pattern) as Array<{ id: string; name: string }>;
