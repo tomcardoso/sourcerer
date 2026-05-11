@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sourcerer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg:           #faf9f5;
+      --surface:      #f3f1ea;
+      --surface2:     #eceadf;
+      --text:         #1a1815;
+      --text-muted:   #5b5750;
+      --border:       rgba(26, 24, 21, 0.14);
+      --border-strong: rgba(26, 24, 21, 0.28);
+      --accent:       #c87a1a;
+      --amber:        #e8a840;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Spectral', Georgia, serif;
+      font-size: 14px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border-strong);
+      padding: 80px 0 64px;
+    }
+
+    .wordmark {
+      font-family: 'Spectral', serif;
+      font-weight: 600;
+      font-size: 52px;
+      letter-spacing: -0.01em;
+      line-height: 1;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .subhead {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .lede {
+      font-size: 17px;
+      font-weight: 300;
+      max-width: 560px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .lede strong {
+      font-weight: 500;
+    }
+
+    /* Features */
+    .features-section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+    }
+
+    .feature {
+      padding: 28px 24px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .feature-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* CTA */
+    .cta-section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn-github {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #faf9f5;
+      background: #1a1815;
+      border: none;
+      border-radius: 0;
+      padding: 13px 28px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+
+    .btn-github:hover {
+      background: #2e2b27;
+      text-decoration: none;
+    }
+
+    /* Footer */
+    footer {
+      padding: 32px 0 48px;
+    }
+
+    .footer-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 600px) {
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .wordmark {
+        font-size: 40px;
+      }
+
+      .lede {
+        font-size: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container">
+      <h1 class="wordmark">Sourcerer</h1>
+      <p class="subhead">Source management for investigative journalists</p>
+      <p class="lede">
+        All your contacts, projects, and outreach history — <strong>encrypted on your own machine</strong>.
+        No cloud, no accounts, no telemetry. Built for reporters who need to protect their sources.
+        Unlock with a master password; everything else stays local.
+      </p>
+    </div>
+  </header>
+
+  <section class="features-section">
+    <div class="container">
+      <p class="section-label">Features</p>
+      <div class="features-grid">
+
+        <div class="feature">
+          <p class="feature-label">Encrypted at rest</p>
+          <p class="feature-desc">AES-256 via SQLCipher. The key is derived fresh on each unlock with Argon2id and never written to disk.</p>
+        </div>
+
+        <div class="feature">
+          <p class="feature-label">Project workspaces</p>
+          <p class="feature-desc">Organise sources into local or shared projects with per-contact status, priority, and reporter attribution.</p>
+        </div>
+
+        <div class="feature">
+          <p class="feature-label">Outreach tracking</p>
+          <p class="feature-desc">Log every call, email, and meeting. Configurable reminders and staleness indicators keep nothing slipping.</p>
+        </div>
+
+        <div class="feature">
+          <p class="feature-label">Deduplication</p>
+          <p class="feature-desc">Fuzzy name matching and exact email/phone signals surface duplicate contacts for one-click side-by-side merging.</p>
+        </div>
+
+        <div class="feature">
+          <p class="feature-label">Chrome extension</p>
+          <p class="feature-desc">Capture full-page screenshots from any tab and link them to a source record, stored encrypted alongside the database.</p>
+        </div>
+
+        <div class="feature">
+          <p class="feature-label">Import &amp; export</p>
+          <p class="feature-desc">Import from CSV with semicolon multi-value fields. Export to CSV, Excel, or vCard — with an optional sanitised mode.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <div class="container">
+      <a class="btn-github" href="https://github.com/tomcardoso/sourcerer">View on GitHub</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p class="footer-text">AGPL-3.0 &mdash; open source</p>
+    </div>
+  </footer>
+
+</body>
+</html>
