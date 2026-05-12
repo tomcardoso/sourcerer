@@ -15,6 +15,7 @@
     "rebuild:node": "npm rebuild better-sqlite3-multiple-ciphers argon2",
     "dist:mac": "electron-builder --mac --arm64",
     "dist:win": "electron-builder --win --x64",
+    "dist:linux": "electron-builder --linux --x64",
     "dist": "electron-builder",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -101,6 +102,16 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "icon": "build/icons/1024x1024.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Utility"
     }
   }
 }

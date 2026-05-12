@@ -1,8 +1,8 @@
 # Sourcerer
 
-Source and contact management for journalists — local-first, encrypted, no cloud.
+Source and contact management for journalists and researchers — local-first, encrypted, no cloud.
 
-![screenshot](docs/screenshot.png)
+![screenshot](docs/img/screenshot.png)
 
 _All names and details in the screenshot are fictional and generated for demonstration purposes only._
 
@@ -78,11 +78,9 @@ Sourcerer is an Electron + React + TypeScript application built with [electron-v
 
 ## Installation
 
-Pre-built binaries for **macOS (Apple Silicon)** and **Windows (x64)** are published with each release.
+Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux (x64)** are published with each release.
 
 **[→ Download the latest release](https://github.com/tomcardoso/sourcerer/releases/latest)**
-
-> Linux is not currently distributed as a pre-built binary. See [Getting started (development)](#getting-started-development) to build from source.
 
 **macOS**
 
@@ -95,6 +93,14 @@ Pre-built binaries for **macOS (Apple Silicon)** and **Windows (x64)** are publi
 1. Download `Sourcerer Setup <version>.exe`.
 2. Run the installer. Windows SmartScreen may warn you the publisher is unknown — click **More info → Run anyway**.
 3. Sourcerer will be installed to your user profile and a Start Menu shortcut will be created.
+
+**Linux**
+
+1. Download `Sourcerer-<version>.AppImage`.
+2. Make it executable: `chmod +x Sourcerer-*.AppImage`
+3. Run it: `./Sourcerer-*.AppImage`
+
+No installation required. The AppImage runs on any x64 Linux distribution with glibc 2.17+ (Ubuntu 18.04+, Fedora 27+, Debian 9+, and equivalents).
 
 ---
 
