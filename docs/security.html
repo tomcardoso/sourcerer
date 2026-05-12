@@ -165,18 +165,18 @@
             </ul>
             <p>Files are overwritten before deletion where possible, making forensic recovery harder (though not impossible on SSDs, which manage writes at the firmware level).</p>
             <div class="warn">
-              <strong>Panic wipe has no undo.</strong> There is no confirmation prompt. Use it only when you need data gone immediately. Backups stored elsewhere are not affected — but without the salt file, those backups cannot be opened either unless you have kept a copy of the salt separately.
+              <strong>Panic wipe has no undo.</strong> There is no confirmation prompt. Use it only when you need data gone immediately. Backups stored elsewhere are not affected — the backup file is self-contained and can be restored using only your password.
             </div>
           </section>
 
           <section id="backups">
             <h2>Backups</h2>
-            <p>Backup files produced by Sourcerer are standard SQLCipher-encrypted SQLite databases. They are as secure as the live database — anyone who obtains the file still needs the correct password to open it.</p>
+            <p>Backup files produced by Sourcerer are AES-256-GCM encrypted bundles. They contain the database and its salt, compressed and encrypted with a key derived from your password using Argon2id. Anyone who obtains the file still needs the correct password to open it.</p>
             <p>A few things to keep in mind:</p>
             <ul>
               <li>The backup uses the password that was active <em>at the time the backup was made</em>. If you change your password after taking a backup, the backup can still only be opened with the old password.</li>
               <li>Sourcerer validates the backup file before restoring it, to guard against accidental selection of the wrong file. Files larger than 250 MB are rejected.</li>
-              <li>The backup does not include the salt file. If you are archiving a backup for long-term storage, also keep a copy of <code>sourcerer.salt</code> from that machine — without it, the backup cannot be opened.</li>
+              <li>The backup is self-contained — the database salt is embedded inside the encrypted backup file. You do not need to keep a separate copy of <code>sourcerer.salt</code> to restore from a backup.</li>
             </ul>
             <p>For maximum safety, store backups on encrypted media separate from the main machine.</p>
           </section>
