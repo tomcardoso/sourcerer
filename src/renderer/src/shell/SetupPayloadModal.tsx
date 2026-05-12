@@ -36,7 +36,7 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
   return (
     <div className="modal-overlay" onClick={onDone}>
       <div className="modal-card setup-payload-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Share "{projectName}"</h2>
+        <h2 className="modal-title">Share “{projectName}”</h2>
         <p className="setup-payload-intro">
           Share the link below with your collaborators out-of-band (e.g., via Signal). They'll paste
           it into Sourcerer to join the project.

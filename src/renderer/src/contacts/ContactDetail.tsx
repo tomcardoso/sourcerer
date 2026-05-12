@@ -77,10 +77,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
           {contact ? (
             <>
               <div className="view-kicker">
-                {interactionCount !== null && interactionCount > 0
-                  ? `${interactionCount} interaction${interactionCount !== 1 ? 's' : ''} · `
-                  : ''}
                 Added {fmtDateFull(contact.created_at)}
+                {interactionCount !== null && interactionCount > 0
+                  ? ` · ${interactionCount} interaction${interactionCount !== 1 ? 's' : ''}`
+                  : ''}
               </div>
               <h2 className="detail-name">{contact.name}</h2>
               {contact.organization && (
