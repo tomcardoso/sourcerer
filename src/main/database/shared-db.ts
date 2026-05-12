@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { SHARED_SCHEMA_SQL } from './shared-schema';
 
@@ -23,7 +24,15 @@ export function createSharedDb(
   keyHex: string,
   projectId: string,
 ): Database.Database {
-  const db = openRaw(filePath, keyHex);
+  // Remove any pre-existing file so we always start with a fresh database.
+  // (openRaw's user_version validation is for opening existing files; a new
+  // random key will never match whatever encryption an existing file has.)
+  try { fs.unlinkSync(filePath); } catch { /* file doesn't exist — fine */ }
+  const db = new Database(filePath);
+  db.pragma(`cipher='sqlcipher'`);
+  db.pragma(`key="x'${keyHex}'"`);
+  db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
   db.exec(SHARED_SCHEMA_SQL);
   connections.set(projectId, db);
   return db;

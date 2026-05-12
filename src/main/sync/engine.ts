@@ -172,7 +172,9 @@ function pullMemberships(
 ): void {
   const CONFLICT_WINDOW_SECS = 24 * 3600;
 
-  const sharedMemberships = shared.prepare('SELECT id, contact_id, reporter_email, reporter_name, theme, priority, status, first_outreach_at, created_at, updated_at FROM project_memberships WHERE project_id = ?').all(projectId) as {
+  // The shared file is a single-project file — project_memberships has no
+  // project_id column; all rows belong to the one project.
+  const sharedMemberships = shared.prepare('SELECT id, contact_id, reporter_email, reporter_name, theme, priority, status, first_outreach_at, created_at, updated_at FROM project_memberships').all() as {
     id: string;
     contact_id: string;
     reporter_email: string;
