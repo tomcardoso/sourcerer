@@ -151,7 +151,7 @@
 }
 
 .project-meta-left .project-meta-item--field {
-  margin-right: 20px;
+  margin-right: 10px;
 }
 
 .project-meta-left .project-meta-item--btn {
@@ -224,6 +224,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
+  letter-spacing: 0.16em;
   color: var(--color-primary);
   margin-left: 3px;
 }

@@ -204,7 +204,6 @@
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  /* background: var(--color-surface-2); */
   color: var(--color-text-muted);
   padding: 2px 6px;
   white-space: nowrap;
@@ -244,9 +243,9 @@
   padding: 0 8px;
   border: 1px solid var(--color-border);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
   background: none;
@@ -696,8 +695,9 @@
   background: none;
   border: none;
   border-bottom: 1px solid var(--color-border);
-  font-size: 13px;
-  font-family: var(--font-serif);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
   letter-spacing: normal;
   color: var(--color-text);
   cursor: pointer;
@@ -803,7 +803,7 @@
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -811,6 +811,7 @@
 .pt-log-date-input {
   font-family: var(--font-mono);
   font-size: 11px;
+  letter-spacing: 0.14em;
   padding: 3px 6px;
   border: 1px solid var(--color-border);
   background: var(--color-bg);
@@ -1073,11 +1074,12 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   color: var(--color-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 96px;
+  text-transform: uppercase;
 }
 
 .pt-reminder-row-date--overdue {
@@ -1086,8 +1088,12 @@
 
 .pt-reminder-row-note {
   flex: 1;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text);
+}
+
+.pt-reminder-row-hint {
+  color: var(--color-text-muted)
 }
 
 .pt-reminder-check {
@@ -1202,9 +1208,9 @@
   background: none;
   border: 1px solid var(--color-border);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   padding: 2px 8px;

@@ -27,15 +27,15 @@ function ContactCard({ contact, other }: { contact: DedupContact; other: DedupCo
 
   return (
     <div className="dedup-contact-card">
-      <div className={`dedup-field ${namesDiffer ? 'dedup-field--diff' : ''}`}>
+      <div className="dedup-field">
         <span className="dedup-field-label">Name</span>
-        <span className="dedup-field-value">{contact.name}</span>
+        <span className={`dedup-field-value ${namesDiffer ? 'dedup-field-value--unique' : ''}`}>{contact.name}</span>
       </div>
 
       {(contact.organization || other.organization) && (
-        <div className={`dedup-field ${orgsDiffer ? 'dedup-field--diff' : ''}`}>
+        <div className="dedup-field">
           <span className="dedup-field-label">Org</span>
-          <span className="dedup-field-value">{contact.organization || '—'}</span>
+          <span className={`dedup-field-value ${orgsDiffer ? 'dedup-field-value--unique' : ''}`}>{contact.organization || '—'}</span>
         </div>
       )}
 
@@ -72,9 +72,9 @@ function ContactCard({ contact, other }: { contact: DedupContact; other: DedupCo
       )}
 
       {(contact.notes || other.notes) && (
-        <div className={`dedup-field ${notesDiffer ? 'dedup-field--diff' : ''}`}>
+        <div className="dedup-field">
           <span className="dedup-field-label">Notes</span>
-          <span className="dedup-field-value dedup-notes">{contact.notes || '—'}</span>
+          <span className={`dedup-field-value dedup-notes ${notesDiffer ? 'dedup-field-value--unique' : ''}`}>{contact.notes || '—'}</span>
         </div>
       )}
 

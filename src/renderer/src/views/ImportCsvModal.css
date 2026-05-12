@@ -89,7 +89,7 @@
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.14em;
   font-family: var(--font-mono);
 }
 

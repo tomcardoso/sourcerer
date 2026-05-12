@@ -39,13 +39,12 @@
 }
 
 .dedup-reason-desc {
-  font-family: var(--font-serif);
-  font-size: 13px;
-  color: var(--color-text-muted);
+  font-size: 14px;
+  color: var(--color-text);
 }
 
 .dedup-title {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--color-text);
 }
@@ -85,9 +84,9 @@
 
 .dedup-col-header {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin-bottom: 10px;
@@ -106,11 +105,6 @@
   margin-bottom: 8px;
   padding: 4px 6px;
   border-radius: 0;
-}
-
-.dedup-field--diff {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
 }
 
 .dedup-field-label {

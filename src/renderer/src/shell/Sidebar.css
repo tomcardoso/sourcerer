@@ -67,7 +67,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   text-align: left;
   cursor: pointer;
@@ -150,6 +150,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.14em;
   color: var(--color-text-muted);
 }
 
@@ -159,7 +160,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.16em;
   color: var(--color-text-dim);
 }
 
@@ -181,7 +182,7 @@
   font-family: var(--font-mono);
   font-size: 12px;
   opacity: 0.55;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.10em;
 }
 
 .sidebar-search-hint span {
@@ -319,6 +320,7 @@
   display: block;
   font-size: 12px;
   font-family: var(--font-mono);
+  letter-spacing: 0.10em;
   margin-bottom: 6px;
   overflow: hidden;
 }
@@ -337,7 +339,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -422,7 +424,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.16em;
   display: flex;
   align-items: center;
   justify-content: center;
