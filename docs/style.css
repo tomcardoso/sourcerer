@@ -443,6 +443,7 @@ header.hero {
   background: var(--surface);
   line-height: 0;
   position: relative; /* for overlaid arrows */
+  border-radius: 12px;
 }
 
 /* Overlaid arrow buttons */

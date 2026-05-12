@@ -2,7 +2,7 @@
 
 Source and contact management for journalists and researchers — local-first, encrypted, no cloud.
 
-![screenshot](docs/img/screenshot.png)
+![screenshot](docs/img/contact-details-2.png)
 
 _All names and details in the screenshot are fictional and generated for demonstration purposes only._
 
