@@ -87,12 +87,12 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     const cid = (n: string) => idByName.get(n)!;
 
     // ── Projects ─────────────────────────────────────────────────────────────
-    const greenbeltId = uuidv4();
+    const millgateId = uuidv4();
     const pensionId = uuidv4();
     const healthId = uuidv4();
 
-    stmts.insertProject.run(greenbeltId, 'Millgate Land Deal',
-      'Investigating the removal of protected lands from the provincial greenbelt, the approval process, and the developers and officials involved.',
+    stmts.insertProject.run(millgateId, 'Millgate Land Deal',
+      'Investigating the removal of protected lands from a local marshland, the approval process, and the developers and officials involved.',
       NOW);
     stmts.insertProject.run(pensionId, 'Clearwater Pension Inquiry',
       'Tracking allegations of misappropriation within a major public pension fund, including offshore holding structures and regulatory blind spots.',
@@ -104,8 +104,8 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     const SARAH = { name: 'Sarah Chen', email: 'sarah.chen@newsroom.ca' };
     const MARCUS = { name: 'Marcus Webb', email: 'marcus.webb@newsroom.ca' };
 
-    stmts.insertReporter.run(uuidv4(), greenbeltId, name, email, 1);
-    stmts.insertReporter.run(uuidv4(), greenbeltId, SARAH.name, SARAH.email, 0);
+    stmts.insertReporter.run(uuidv4(), millgateId, name, email, 1);
+    stmts.insertReporter.run(uuidv4(), millgateId, SARAH.name, SARAH.email, 0);
     stmts.insertReporter.run(uuidv4(), pensionId, name, email, 1);
     stmts.insertReporter.run(uuidv4(), pensionId, MARCUS.name, MARCUS.email, 0);
     stmts.insertReporter.run(uuidv4(), healthId, name, email, 1);
@@ -164,64 +164,64 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     }
 
     // ── Millgate Land Deal memberships ───────────────────────────────────────
-    addMembership('Catherine Mwangi', greenbeltId, me(), {
+    addMembership('Catherine Mwangi', millgateId, me(), {
       theme: 'Whistleblower', priority: 'Critical', status: 'Contacted, no reply',
     });
-    addMembership('Darnell Okafor', greenbeltId, me(), {
+    addMembership('Darnell Okafor', millgateId, me(), {
       theme: 'Whistleblower', priority: 'Critical', status: 'In dialogue',
     });
-    addMembership('Marcus Owusu-Boateng', greenbeltId, me(), {
+    addMembership('Marcus Owusu-Boateng', millgateId, me(), {
       theme: 'Government', priority: 'High', status: 'In dialogue',
     });
-    addMembership('Sandra Woo-Patel', greenbeltId, me(), {
+    addMembership('Sandra Woo-Patel', millgateId, me(), {
       theme: 'Private equity', priority: 'High', status: 'Not yet contacted',
     });
-    addMembership('Vivienne Tran', greenbeltId, me(), {
+    addMembership('Vivienne Tran', millgateId, me(), {
       theme: 'Legal', priority: 'Medium', status: 'Not yet contacted',
     });
-    addMembership('Ted Molnar', greenbeltId, me(), {
+    addMembership('Ted Molnar', millgateId, me(), {
       theme: 'Politics', priority: 'Low', status: 'In dialogue',
     });
-    addMembership('Councillor Diane Ferreira', greenbeltId, SARAH, {
+    addMembership('Councillor Diane Ferreira', millgateId, SARAH, {
       theme: 'Municipal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Priya Subramaniam', greenbeltId, me(), {
+    addMembership('Priya Subramaniam', millgateId, me(), {
       theme: 'Media', priority: 'Monitor-only', status: 'In dialogue',
     });
-    addMembership('Gordon Whitfield', greenbeltId, me(), {
+    addMembership('Gordon Whitfield', millgateId, me(), {
       theme: 'Finance', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Renata Filipowicz', greenbeltId, SARAH, {
+    addMembership('Renata Filipowicz', millgateId, SARAH, {
       theme: 'Government', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Sylvie Archambault', greenbeltId, me(), {
+    addMembership('Sylvie Archambault', millgateId, me(), {
       theme: 'Labour', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Hamish Blackwood', greenbeltId, SARAH, {
+    addMembership('Hamish Blackwood', millgateId, SARAH, {
       theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Sergeant Félicia Comeau', greenbeltId, me(), {
+    addMembership('Sergeant Félicia Comeau', millgateId, me(), {
       theme: 'Law enforcement', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Magistrate Thomas Dunmore-Baines', greenbeltId, me(), {
+    addMembership('Magistrate Thomas Dunmore-Baines', millgateId, me(), {
       theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Dr. Jean-Paul Hébert', greenbeltId, SARAH, {
+    addMembership('Dr. Jean-Paul Hébert', millgateId, SARAH, {
       theme: 'Expert', priority: 'Monitor-only', status: 'In dialogue',
     });
-    addMembership('Dominique Paquin-Sévigny', greenbeltId, me(), {
+    addMembership('Dominique Paquin-Sévigny', millgateId, me(), {
       theme: 'Developer', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Rowena Bautista-Cruz', greenbeltId, SARAH, {
+    addMembership('Rowena Bautista-Cruz', millgateId, SARAH, {
       theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Michael Clarke', greenbeltId, me(), {
+    addMembership('Michael Clarke', millgateId, me(), {
       theme: 'PR / comms', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Sandra Hutchings-Bell', greenbeltId, SARAH, {
+    addMembership('Sandra Hutchings-Bell', millgateId, SARAH, {
       theme: 'Legal', priority: 'Monitor-only', status: 'Not yet contacted',
     });
-    addMembership('Zach Pendergast', greenbeltId, me(), {
+    addMembership('Zach Pendergast', millgateId, me(), {
       theme: 'Media', priority: 'Monitor-only', status: 'Not yet contacted',
     });
 
@@ -335,34 +335,34 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     });
 
     // ── Interaction logs ─────────────────────────────────────────────────────
-    addLog('Darnell Okafor', greenbeltId, me(),
+    addLog('Darnell Okafor', millgateId, me(),
       'Made initial contact through intermediary. Confirmed willingness to speak. Agreed to Signal only — no email.',
       21);
-    addLog('Darnell Okafor', greenbeltId, me(),
+    addLog('Darnell Okafor', millgateId, me(),
       'One-hour call via Signal. He described the document destruction sequence in detail. Cross-referencing his account against the audit trail now.',
       14);
-    addLog('Darnell Okafor', greenbeltId, me(),
+    addLog('Darnell Okafor', millgateId, me(),
       'Follow-up message — he is consulting a lawyer before sharing the handwritten notes. Said two weeks.',
       6);
 
-    addLog('Catherine Mwangi', greenbeltId, me(),
+    addLog('Catherine Mwangi', millgateId, me(),
       'Sent secure form link. She confirmed receipt but has not submitted anything yet.',
       18);
-    addLog('Catherine Mwangi', greenbeltId, me(),
+    addLog('Catherine Mwangi', millgateId, me(),
       'Brief call. She is nervous about exposure — reminded her of our source protection practices. She will think about it.',
       9);
 
-    addLog('Marcus Owusu-Boateng', greenbeltId, me(),
+    addLog('Marcus Owusu-Boateng', millgateId, me(),
       'Background call via Signal. Confirmed the timeline of ministerial approvals. Will not go on record.',
       30);
-    addLog('Marcus Owusu-Boateng', greenbeltId, me(),
+    addLog('Marcus Owusu-Boateng', millgateId, me(),
       'Sent him the draft timeline for fact-checking. He marked two dates as incorrect.',
       11);
 
-    addLog('Ted Molnar', greenbeltId, me(),
+    addLog('Ted Molnar', millgateId, me(),
       "Shared three pages of opposition research — useful for names but nothing we didn't already have.",
       45);
-    addLog('Ted Molnar', greenbeltId, me(),
+    addLog('Ted Molnar', millgateId, me(),
       'Follow-up email — asked about the zoning amendments. No reply yet.',
       20);
 
@@ -432,9 +432,9 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       50);
 
     // ── Manual reminders ─────────────────────────────────────────────────────
-    addReminder('Catherine Mwangi', greenbeltId, 5,
+    addReminder('Catherine Mwangi', millgateId, 5,
       'Follow up on secure-form submission — has she had a chance to upload the documents?');
-    addReminder('Darnell Okafor', greenbeltId, 3,
+    addReminder('Darnell Okafor', millgateId, 3,
       'Check in on legal review of handwritten notes — two-week window he mentioned is almost up.');
     addReminder('Eunice Addo-Yeboah', pensionId, 14,
       'Resume contact after lawyer-requested pause — confirm she is still willing to proceed.');
