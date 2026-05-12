@@ -368,7 +368,7 @@ function RemindersSection({
           return (
             <div key={r.id} className="pt-reminder-row pt-reminder-row--auto">
               <div className="pt-reminder-row-date pt-reminder-row-date--overdue">Outreach overdue</div>
-              <div className="pt-reminder-row-note">Log an interaction to clear this.</div>
+              <div className="pt-reminder-row-note pt-reminder-row-hint">Log an interaction to clear this.</div>
             </div>
           );
         }
@@ -643,6 +643,11 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
                 value={reporterQuery}
                 onChange={(e) => { setReporterQuery(e.target.value); setReporterDropdownOpen(true); }}
                 onFocus={() => setReporterDropdownOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Backspace' && reporterQuery === '' && localReporters.length > 0) {
+                    removeReporter(localReporters[localReporters.length - 1].email);
+                  }
+                }}
                 placeholder={localReporters.length === 0 ? 'Assign reporters…' : ''}
               />
             </div>
