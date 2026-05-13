@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './App.css';
 import Setup from './screens/Setup';
 import Unlock from './screens/Unlock';
 import AppShell from './shell/AppShell';
@@ -41,35 +42,14 @@ export default function App() {
   }
 
   const extensionModal = showExtensionApproval ? (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.55)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-      }}
-    >
-      <div
-        style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 10,
-          padding: '28px 24px 20px',
-          width: 340,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        }}
-      >
-        <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 600 }}>
-          Browser extension requesting access
-        </h3>
-        <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+    <div className="ext-approval-overlay">
+      <div className="ext-approval-card">
+        <h3>Browser extension requesting access</h3>
+        <p>
           The Sourcerer browser extension wants to connect to this app. Approve only if you
           just triggered this from the extension.
         </p>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div className="ext-approval-actions">
           <button className="modal-btn-cancel" onClick={handleDeny}>
             Deny
           </button>

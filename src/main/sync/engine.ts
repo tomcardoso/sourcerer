@@ -238,7 +238,7 @@ function pullMemberships(
     if (!existingReporterEmails.has(sm.reporter_email)) {
       local
         .prepare(
-          'INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 0)',
+          'INSERT OR IGNORE INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 0)',
         )
         .run(uuidv4(), projectId, sm.reporter_name, sm.reporter_email);
       existingReporterEmails.add(sm.reporter_email);

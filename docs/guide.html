@@ -234,6 +234,8 @@
           <section id="extension">
             <h2>Chrome extension</h2>
 
+            <p>The Sourcerer browser extension lets you capture full-page screenshots, save selected text as contact fields, and add new contacts — all without leaving your browser. See the <a href="extension.html">extension guide</a> for full details.</p>
+
             <h3>Installation</h3>
             <p>The extension is not published to the Chrome Web Store — it is loaded manually from the <code>extension/</code> folder in the Sourcerer repository.</p>
             <ol>
@@ -243,12 +245,16 @@
             </ol>
             <p>The extension works with any Chromium-based browser (Chrome, Edge, Brave, Arc).</p>
 
-            <h3>Approving the extension</h3>
-            <p>The first time you attempt to capture a screenshot, Sourcerer will show an approval prompt asking you to confirm that the extension should be allowed to connect. Click <strong>Approve</strong>. This issues a session token to the extension. Approval persists until the app is reinstalled or the token is manually revoked.</p>
+            <h3>Connecting</h3>
+            <p>Click the Sourcerer icon in the browser toolbar. If this is your first time, click <strong>Connect to Sourcerer</strong> — an approval prompt will appear in the app. Click <strong>Approve</strong>. The session token persists until the app is reinstalled or you revoke it manually.</p>
 
-            <h3>Taking a screenshot</h3>
-            <p>Navigate to any page in Chrome, click the Sourcerer extension icon, choose the contact you want to link the screenshot to, then click <strong>Capture</strong>. The full page is captured and sent to the app, where it is stored encrypted alongside the database.</p>
-            <p>Screenshots are visible in the contact's detail panel.</p>
+            <h3>What you can do</h3>
+            <ul>
+              <li><strong>Save screenshot</strong> — captures the full current page and queues it for assignment to a contact in the app.</li>
+              <li><strong>Save selection to contact</strong> — select text on any page first, then open the popup. You can save it as an email, phone number, or note on any existing contact.</li>
+              <li><strong>New contact</strong> — create a contact directly from the popup without switching to the app.</li>
+              <li><strong>Right-click menu</strong> — select text on any page, right-click, and choose <em>Save to Sourcerer</em> to go straight to the save or new-contact screen.</li>
+            </ul>
           </section>
 
           <section id="settings">

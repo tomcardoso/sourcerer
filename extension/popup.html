@@ -4,61 +4,397 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sourcerer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #faf9f5;
+      --surface:       #f3f1ea;
+      --surface2:      #eceadf;
+      --text:          #1a1815;
+      --text-muted:    #5b5750;
+      --text-dim:      #8a857c;
+      --border:        rgba(26,24,21,0.14);
+      --border-strong: rgba(26,24,21,0.28);
+      --primary:       #c87a1a;
+      --amber:         #e8a840;
+      --danger:        #b91c1c;
+      --ok:            #3a7a48;
+      --font-serif:    'Spectral', Georgia, serif;
+      --font-mono:     'JetBrains Mono', monospace;
+    }
+
+    /* All elements default to serif; buttons & inputs get mono */
+    * { font-family: var(--font-serif); }
+    button, input, select, [role="button"] {
+      font-family: var(--font-mono);
+      border-radius: 0 !important;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
-      background: #1a1a1a;
-      color: #e8e8e8;
-      width: 280px;
-      padding: 16px;
-    }
-    h1 {
+      background: var(--bg);
+      color: var(--text);
+      width: 360px;
       font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-bottom: 12px;
-      color: #fff;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
     }
-    #status {
-      font-size: 12px;
-      color: #888;
+
+    /* ── Header ─────────────────────────────────────── */
+    .popup-header {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .popup-help-link {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-decoration: none;
+    }
+    .popup-help-link:hover { color: var(--primary); }
+
+    /* ── Shared screen shell ─────────────────────────── */
+    .screen { padding: 14px 16px 18px; }
+    .screen.hidden { display: none; }
+
+    /* ── Intro text (main screen) ────────────────────── */
+    .screen-intro {
+      font-size: 14px;
+      font-family: var(--font-serif);
+      color: var(--text);
+      line-height: 1.5;
       margin-bottom: 14px;
-      min-height: 16px;
     }
-    #status.ok { color: #6bcf7f; }
-    #status.err { color: #f87272; }
-    button {
+
+    /* ── Status line ─────────────────────────────────── */
+    #status {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.10em;
+      color: var(--text-muted);
+      min-height: 16px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      text-transform: uppercase;
+    }
+    #status.ok  { color: var(--ok); }
+    #status.err { color: var(--danger); }
+
+    /* ── Main screen buttons ─────────────────────────── */
+    .btn-main {
+      display: block;
       width: 100%;
-      padding: 9px 14px;
+      height: 34px;
+      padding: 0 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-bottom: 8px;
       border: none;
-      border-radius: 6px;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .btn-main:last-of-type { margin-bottom: 0; }
+    .btn-main:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-main--primary {
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+    }
+    .btn-main--primary:not(:disabled):hover { background: var(--text-muted); }
+
+    .btn-main--secondary {
+      background: none;
+      color: var(--text);
+      border: 1px solid var(--border-strong) !important;
+    }
+    .btn-main--secondary:not(:disabled):hover {
+      background: var(--surface);
+      border-color: var(--text) !important;
+    }
+
+    /* ── Back button ─────────────────────────────────── */
+    .btn-back {
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+      margin-bottom: 14px;
+      display: inline-block;
+    }
+    .btn-back:hover { color: var(--text); }
+
+    /* ── Screen heading ──────────────────────────────── */
+    .screen-heading {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      margin-bottom: 14px;
+      line-height: 1.15;
+    }
+
+    /* ── Field label ─────────────────────────────────── */
+    .field-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    /* ── Text preview (selected text) ────────────────── */
+    .field-preview {
+      font-family: var(--font-serif);
+      font-size: 13px;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    /* ── Field type selector ─────────────────────────── */
+    .field-type-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .field-type-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .field-type-select {
+      flex: 1;
+      height: 34px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-family: var(--font-serif);
       font-size: 13px;
       font-weight: 500;
+      color: var(--text);
+      outline: none;
+    }
+    .field-type-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(200,122,26,0.15); }
+
+    /* ── Search input ────────────────────────────────── */
+    .search-input {
+      display: block;
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-family: var(--font-serif);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      margin-bottom: 6px;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(200,122,26,0.15); }
+    .search-input::placeholder { color: var(--text-dim); }
+
+    /* ── Contact list ────────────────────────────────── */
+    .contact-list {
+      max-height: 164px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .contact-list:empty { display: none; }
+
+    .contact-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      padding: 7px 10px;
       cursor: pointer;
-      transition: opacity 0.15s;
+      font-family: var(--font-serif);
+      letter-spacing: normal;
+      text-transform: none;
     }
-    button:disabled { opacity: 0.45; cursor: default; }
-    #btn-capture {
-      background: #4f8ef7;
-      color: #fff;
+    .contact-item:last-child { border-bottom: none; }
+    .contact-item:hover { background: var(--surface); }
+    .contact-item.selected { background: rgba(200,122,26,0.1); }
+
+    .contact-item-name {
+      display: block;
+      font-family: var(--font-serif);
+      font-size: 12px;
+      color: var(--text);
     }
-    #btn-capture:not(:disabled):hover { opacity: 0.85; }
-    #btn-connect {
-      background: #333;
-      color: #e8e8e8;
-      border: 1px solid #444;
+    .contact-item-org {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
     }
-    #btn-connect:not(:disabled):hover { background: #3a3a3a; }
+
+    /* ── Form inputs (add contact screen) ────────────── */
+    .form-input {
+      display: block;
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-family: var(--font-serif);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      margin-bottom: 8px;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(200,122,26,0.15); }
+    .form-input::placeholder { color: var(--text-dim); }
+
+    /* ── Screen action button ────────────────────────── */
+    .btn-action {
+      display: block;
+      width: 100%;
+      height: 34px;
+      padding: 0 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      transition: background 0.12s;
+      margin-top: 4px;
+    }
+    .btn-action:not(:disabled):hover { background: var(--text-muted); }
+    .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Screen status/error ─────────────────────────── */
+    .screen-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.10em;
+      margin-top: 10px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .screen-status:empty { margin-top: 0; }
+    .screen-status.ok  { color: var(--ok); }
+    .screen-status.err { color: var(--danger); }
+
+    /* ── Divider ─────────────────────────────────────── */
+    .screen-rule {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 0;
+    }
+
     .hidden { display: none !important; }
+
+    /* ── Scrollbar ───────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; }
+    *:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
   </style>
 </head>
 <body>
-  <h1>Sourcerer</h1>
-  <div id="status">Checking…</div>
-  <button id="btn-capture" class="hidden" disabled>Capture screenshot</button>
-  <button id="btn-connect" class="hidden">Connect to Sourcerer</button>
+  <!-- Always-visible header with wordmark + help link -->
+  <div class="popup-header">
+    <svg height="24" viewBox="0 0 270 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sourcerer">
+      <text x="0" y="56" font-family="Spectral, Georgia, 'Times New Roman', serif" font-weight="700" font-size="56" letter-spacing="-1" fill="#1a1815">Sourcerer</text>
+      <g transform="translate(250,17)" fill="#e8a840">
+        <path d="M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 L 7.2 7.2 Z"/>
+      </g>
+    </svg>
+    <a class="popup-help-link" href="https://tomcardoso.github.io/sourcerer/extension.html" target="_blank" rel="noopener">Guide ↗</a>
+  </div>
+
+  <!-- Screen: main -->
+  <div id="screen-main" class="screen">
+    <p class="screen-intro">Capture the current tab or save selected text and contacts directly to your vault.</p>
+    <div id="status">Checking…</div>
+    <button id="btn-capture"     class="btn-main btn-main--primary hidden" disabled>Save screenshot</button>
+    <button id="btn-save-field"  class="btn-main btn-main--secondary hidden">Save selection to contact</button>
+    <button id="btn-new-contact" class="btn-main btn-main--secondary hidden">New contact</button>
+    <div>
+      <button id="btn-connect"   class="btn-main btn-main--secondary hidden">Connect to Sourcerer</button>
+    </div>
+  </div>
+
+  <!-- Screen: save selection to contact -->
+  <div id="screen-field" class="screen hidden">
+    <button class="btn-back" id="btn-field-back">← Back</button>
+    <p class="screen-heading">Save selection</p>
+    <span class="field-label">Selected text</span>
+    <div id="field-preview" class="field-preview"></div>
+    <div class="field-type-row">
+      <span class="field-type-label">Save as</span>
+      <select id="field-type" class="field-type-select">
+        <option value="email">Email</option>
+        <option value="phone">Phone</option>
+        <option value="note">Note</option>
+      </select>
+    </div>
+    <input id="field-search" class="search-input" placeholder="Search contacts…" />
+    <div id="field-list" class="contact-list"></div>
+    <button id="btn-field-assign" class="btn-action" disabled>Save to contact</button>
+    <div id="field-status" class="screen-status"></div>
+  </div>
+
+  <!-- Screen: new contact -->
+  <div id="screen-contact" class="screen hidden">
+    <button class="btn-back" id="btn-contact-back">← Back</button>
+    <p class="screen-heading">New contact</p>
+    <input id="contact-name"  class="form-input" placeholder="Name *" />
+    <input id="contact-org"   class="form-input" placeholder="Organization" />
+    <input id="contact-email" class="form-input" placeholder="Email" />
+    <input id="contact-phone" class="form-input" placeholder="Phone" />
+    <button id="btn-contact-save" class="btn-action">Add contact</button>
+    <div id="contact-status" class="screen-status"></div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

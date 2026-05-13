@@ -67,7 +67,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
     const rows = getDatabase()
       .prepare(
-        `SELECT c.id, c.name, c.organization, c.notes,
+        `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
                 pm.project_id, p.name AS project_name,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
@@ -91,6 +91,7 @@ export function registerContactHandlers(): void {
       name: string;
       organization: string | null;
       notes: string | null;
+      created_at: number;
       has_email: 0 | 1;
       has_phone: 0 | 1;
       emails_raw: string | null;
@@ -109,6 +110,7 @@ export function registerContactHandlers(): void {
           name: row.name,
           organization: row.organization,
           notes: row.notes,
+          created_at: row.created_at,
           has_email: row.has_email,
           has_phone: row.has_phone,
           emails_raw: row.emails_raw,
@@ -235,6 +237,7 @@ export function registerContactHandlers(): void {
       name: data.name.trim(),
       organization: data.organization?.trim() || null,
       notes: data.notes?.trim() || null,
+      created_at: now,
       has_email: (data.emails?.length ?? 0) > 0 ? 1 : 0,
       has_phone: phones.length > 0 ? 1 : 0,
       date_first_contacted: null,
@@ -288,7 +291,8 @@ export function registerContactHandlers(): void {
     return getDatabase()
       .prepare(
         `SELECT c.id, c.name, c.organization, c.notes,
-                pm.id AS membership_id, pm.reporter_name, pm.reporter_email,
+                pm.id AS membership_id, pm.created_at AS membership_created_at,
+                pm.reporter_name, pm.reporter_email,
                 pm.theme, pm.priority, pm.status,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,

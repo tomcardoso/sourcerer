@@ -12,7 +12,7 @@ import ContactsTable, {
 import './View.css';
 import './AllContacts.css';
 
-type SortKey = 'name' | 'organization' | 'date_first_contacted' | 'date_last_contacted';
+type SortKey = 'name' | 'organization' | 'date_first_contacted' | 'date_last_contacted' | 'created_at';
 
 interface Props {
   projects: Project[];
@@ -149,6 +149,16 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
       );
     }
 
+    if (filters.dateAddedFrom) {
+      const from = Math.floor(new Date(filters.dateAddedFrom).getTime() / 1000);
+      result = result.filter((c) => c.created_at >= from);
+    }
+    if (filters.dateAddedTo) {
+      // include the full "to" day by adding 86399 seconds
+      const to = Math.floor(new Date(filters.dateAddedTo).getTime() / 1000) + 86399;
+      result = result.filter((c) => c.created_at <= to);
+    }
+
     if (filters.project === '__none__') {
       result = result.filter((c) => c.projects.length === 0);
     } else if (filters.project !== null) {
@@ -175,6 +185,8 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
           else if (a.date_last_contacted === null) cmp = 1;
           else if (b.date_last_contacted === null) cmp = -1;
           else cmp = a.date_last_contacted - b.date_last_contacted;
+        } else if (sort.key === 'created_at') {
+          cmp = a.created_at - b.created_at;
         }
         return cmp * dir;
       });

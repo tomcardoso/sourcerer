@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project } from '@shared/types';
 import './AddContactModal.css';
 import './ContactDetail.css';
@@ -12,7 +13,7 @@ interface Props {
   onEditingChange?: (editing: boolean) => void;
 }
 
-const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
+const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other social'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
 
 const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
@@ -20,6 +21,7 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
   x:         { label: 'X / Twitter', placeholder: 'https://x.com/…' },
   instagram: { label: 'Instagram',   placeholder: 'https://instagram.com/…' },
   facebook:  { label: 'Facebook',    placeholder: 'https://facebook.com/…' },
+  'other social':  { label: 'Other social',    placeholder: 'https://…' },
 };
 
 const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
@@ -101,10 +103,17 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
   const [hoveredScreenshotId, setHoveredScreenshotId] = useState<string | null>(null);
   const [confirmDeleteScreenshotId, setConfirmDeleteScreenshotId] = useState<string | null>(null);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'actual'>('fit');
   const viewerRef = useRef<HTMLDivElement>(null);
+  const imageAreaRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
   useEffect(() => {
-    if (viewingScreenshot) viewerRef.current?.focus();
+    if (viewingScreenshot) {
+      viewerRef.current?.focus();
+      setZoomMode('fit');
+    }
   }, [viewingScreenshot]);
 
   // Edit form state
@@ -114,7 +123,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editEmails, setEditEmails] = useState<Array<{ email: string; label: string }>>([]);
   const [editPhones, setEditPhones] = useState<Array<{ phone: string; label: string }>>([]);
   const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
-    linkedin: [], x: [], instagram: [], facebook: [],
+    linkedin: [], x: [], instagram: [], facebook: [], 'other social': [],
   });
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [editRssUrl, setEditRssUrl] = useState('');
@@ -136,6 +145,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       }
     });
   }, [contact.id]);
+
+  useEffect(() => {
+    for (const s of screenshots) {
+      loadScreenshotImage(s.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenshots]);
 
   async function loadScreenshotImage(id: string) {
     if (screenshotImages[id]) return;
@@ -284,7 +300,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     return (
       <div className="detail-body">
         <div className="detail-edit-actions-top">
-          <button className="detail-save-btn" onClick={handleSave} disabled={saving || !editName.trim()}>
+          <button className="detail-save-btn" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
             {saving ? 'Saving…' : 'Save'}
           </button>
           <button className="detail-cancel-btn" onClick={() => setEditingAndNotify(false)} disabled={saving}>
@@ -680,42 +696,87 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
       )}
 
-      {viewingScreenshot && screenshotImages[viewingScreenshot] && !screenshotImages[viewingScreenshot].startsWith('error:') && (
+      {viewingScreenshot && screenshotImages[viewingScreenshot] && !screenshotImages[viewingScreenshot].startsWith('error:') && createPortal(
         <div
           ref={viewerRef}
+          className="sv-overlay"
           tabIndex={-1}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000, outline: 'none' }}
-          onClick={(e) => { if (e.target === viewerRef.current) setViewingScreenshot(null); }}
           onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setViewingScreenshot(null); } }}
         >
-          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <img
-              src={screenshotImages[viewingScreenshot]}
-              style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 6, display: 'block' }}
-              alt="screenshot"
-            />
-            <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => window.sourcerer.saveScreenshot(viewingScreenshot)}
-                style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
-              >Download</button>
-              <button
-                onClick={() => handleDeleteScreenshot(viewingScreenshot)}
-                style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
-              >Delete</button>
-              <button
-                onClick={() => setViewingScreenshot(null)}
-                style={{ background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}
-              >Close</button>
-            </div>
-            {screenshots.find((s) => s.id === viewingScreenshot)?.tab_url && (
-              <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: '4px 8px', fontSize: 11, color: '#ccc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {screenshots.find((s) => s.id === viewingScreenshot)?.tab_url}
+          <div className="sv-toolbar" onClick={(e) => e.stopPropagation()}>
+            <span className="sv-toolbar-url">
+              {screenshots.find((s) => s.id === viewingScreenshot)?.tab_url ?? ''}
+            </span>
+            {(() => {
+              const shot = screenshots.find((s) => s.id === viewingScreenshot);
+              return shot ? (
+                <span className="sv-toolbar-date">
+                  {new Date(shot.captured_at * 1000).toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: 'numeric', minute: '2-digit', second: '2-digit',
+                  })}
+                </span>
+              ) : null;
+            })()}
+            <div className="sv-toolbar-actions">
+              <div className="sv-zoom-toggle">
+                <button
+                  className={`sv-zoom-btn${zoomMode === 'fit' ? ' sv-zoom-btn--active' : ''}`}
+                  onClick={() => setZoomMode('fit')}
+                >Fit</button>
+                <button
+                  className={`sv-zoom-btn${zoomMode === 'actual' ? ' sv-zoom-btn--active' : ''}`}
+                  onClick={() => setZoomMode('actual')}
+                >1:1</button>
               </div>
-            )}
+              <button className="sv-action-btn" onClick={() => window.sourcerer.saveScreenshot(viewingScreenshot)}>Download</button>
+              <button className="sv-action-btn sv-action-btn--danger" onClick={() => handleDeleteScreenshot(viewingScreenshot)}>Delete</button>
+              <button className="sv-action-btn" onClick={() => setViewingScreenshot(null)}>Close</button>
+            </div>
+          </div>
+          <div
+            ref={imageAreaRef}
+            className={`sv-image-area${zoomMode === 'actual' ? ' sv-image-area--actual' : ' sv-image-area--fit'}`}
+            onClick={(e) => {
+              if (zoomMode === 'fit' && e.target === imageAreaRef.current) setViewingScreenshot(null);
+            }}
+            onMouseDown={(e) => {
+              if (zoomMode !== 'actual' || !imageAreaRef.current) return;
+              isDragging.current = true;
+              dragStart.current = {
+                x: e.clientX,
+                y: e.clientY,
+                scrollLeft: imageAreaRef.current.scrollLeft,
+                scrollTop: imageAreaRef.current.scrollTop,
+              };
+            }}
+            onMouseMove={(e) => {
+              if (!isDragging.current || !imageAreaRef.current) return;
+              e.preventDefault();
+              imageAreaRef.current.scrollLeft = dragStart.current.scrollLeft - (e.clientX - dragStart.current.x);
+              imageAreaRef.current.scrollTop = dragStart.current.scrollTop - (e.clientY - dragStart.current.y);
+            }}
+            onMouseUp={() => { isDragging.current = false; }}
+            onMouseLeave={() => { isDragging.current = false; }}
+          >
+            <img
+              className="sv-image"
+              src={screenshotImages[viewingScreenshot]}
+              alt="screenshot"
+              draggable={false}
+              style={{ cursor: zoomMode === 'fit' ? 'zoom-in' : 'zoom-out' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (zoomMode === 'fit') {
+                  setZoomMode('actual');
+                } else {
+                  setZoomMode('fit');
+                }
+              }}
+            />
           </div>
         </div>
-      )}
+      , document.body)}
 
       <div className="detail-section detail-danger-zone">
         {confirmDelete ? (

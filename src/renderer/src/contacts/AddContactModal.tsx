@@ -443,7 +443,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             <button
               type="submit"
               className="modal-btn-create"
-              disabled={!name.trim() || submitting}
+              disabled={!name.trim() || submitting || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}
             >
               {submitting ? 'Saving…' : 'Add contact'}
             </button>

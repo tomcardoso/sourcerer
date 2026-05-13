@@ -30,7 +30,8 @@ type SortKey =
   | 'priority'
   | 'reporter'
   | 'date_first_contacted'
-  | 'date_last_contacted';
+  | 'date_last_contacted'
+  | 'membership_created_at';
 
 function fmtOpened(ts: number): string {
   const d = new Date(ts * 1000);
@@ -341,6 +342,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       (r) => r.date_last_contacted === null || r.date_last_contacted < now - 90 * 86400,
     );
   }
+  if (filters.dateAddedFrom) {
+    const from = Math.floor(new Date(filters.dateAddedFrom).getTime() / 1000);
+    displayed = displayed.filter((r) => r.membership_created_at >= from);
+  }
+  if (filters.dateAddedTo) {
+    const to = Math.floor(new Date(filters.dateAddedTo).getTime() / 1000) + 86399;
+    displayed = displayed.filter((r) => r.membership_created_at <= to);
+  }
   if (filters.status.length > 0) {
     displayed = displayed.filter((r) => filters.status.includes(r.status ?? ''));
   }
@@ -381,6 +390,8 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
         else if (a.date_last_contacted === null) cmp = 1;
         else if (b.date_last_contacted === null) cmp = -1;
         else cmp = a.date_last_contacted - b.date_last_contacted;
+      } else if (sort.key === 'membership_created_at') {
+        cmp = a.membership_created_at - b.membership_created_at;
       }
       return cmp * dir;
     });

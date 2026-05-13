@@ -1,9 +1,15 @@
 const BASE = 'http://127.0.0.1:27371';
 const TOKEN_KEY = 'sourcererToken';
 
-const statusEl = document.getElementById('status');
+const statusEl   = document.getElementById('status');
 const btnCapture = document.getElementById('btn-capture');
 const btnConnect = document.getElementById('btn-connect');
+
+// Screen management
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
 
 function setStatus(msg, type) {
   statusEl.textContent = msg;
@@ -67,6 +73,51 @@ async function pollAccessStatus() {
   });
 }
 
+// ── New: read text selected on the active tab ─────────────────────────────
+async function getPageSelection(tabId) {
+  try {
+    const [r] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => window.getSelection()?.toString().trim() ?? '',
+    });
+    return r?.result ?? '';
+  } catch { return ''; }
+}
+
+// ── New: fetch all contacts from the local server ─────────────────────────
+async function fetchContacts(token) {
+  const r = await fetch(`${BASE}/contacts`, {
+    headers: { 'X-Sourcerer-Token': token },
+    signal: AbortSignal.timeout(4000),
+  });
+  const data = await r.json();
+  return data.contacts ?? [];
+}
+
+// ── New: add a field to an existing contact ───────────────────────────────
+async function addContactField(token, contactId, fieldType, value) {
+  const r = await fetch(`${BASE}/contact-field`, {
+    method: 'POST',
+    headers: { 'X-Sourcerer-Token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contactId, fieldType, value }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!r.ok) throw new Error(`Server error ${r.status}`);
+}
+
+// ── New: create a new contact ─────────────────────────────────────────────
+async function createContact(token, fields) {
+  const r = await fetch(`${BASE}/contacts`, {
+    method: 'POST',
+    headers: { 'X-Sourcerer-Token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!r.ok) throw new Error(`Server error ${r.status}`);
+  return r.json();
+}
+
+
 async function captureFullPage(tabId, onProgress) {
   // Inject once to find + cache the real scroll container, then return metrics
   const [metricsResult] = await chrome.scripting.executeScript({
@@ -113,15 +164,23 @@ async function captureFullPage(tabId, onProgress) {
   if (!metricsResult?.result) throw new Error('Could not read page dimensions — try reloading the tab.');
   const { totalHeight, origScrollTop, dpr,
           scrollElLeft, scrollElTop, scrollElWidth, scrollElHeight } = metricsResult.result;
-  const totalSteps = Math.ceil(totalHeight / scrollElHeight);
+
+  // Guard band: for non-first strips we scroll back this many px so the top
+  // of the captured viewport overlaps with content already committed to the
+  // canvas. Those top pixels are then discarded when compositing, which
+  // eliminates any fixed/sticky overlay (e.g. LinkedIn's compact profile bar)
+  // that appears after a scroll — regardless of CSS specificity or React
+  // re-render timing — because we simply never use those pixels.
+  const GUARD = 80; // px — must be larger than the tallest sticky bar you expect
+  const effectiveStep = scrollElHeight - GUARD;
+  const totalSteps = 1 + Math.ceil(Math.max(0, totalHeight - scrollElHeight) / effectiveStep);
 
   onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
   await new Promise(r => setTimeout(r, 600));
 
-  // Inject a stylesheet + class to hide fixed/sticky elements.
-  // Using a CSS class (not inline style) survives React re-renders because React
-  // doesn't manage classes it didn't add. The RAF wait ensures the browser has
-  // repainted with the elements hidden before we start capturing.
+  // Best-effort: hide fixed/sticky elements that exist at capture start.
+  // This still helps on most sites. For sites like LinkedIn where elements
+  // appear dynamically and override our CSS, the guard band is the backstop.
   await chrome.scripting.executeScript({
     target: { tabId },
     func: () => {
@@ -130,106 +189,88 @@ async function captureFullPage(tabId, onProgress) {
       style.textContent = '.__srcHide{display:none!important}';
       document.head.appendChild(style);
       window.__srcHidden = [];
-
-      function srcHide(el) {
-        if (!el.classList.contains('__srcHide')) {
+      for (const el of document.querySelectorAll('*')) {
+        const pos = getComputedStyle(el).position;
+        if ((pos === 'fixed' || pos === 'sticky') && !el.classList.contains('__srcHide')) {
           window.__srcHidden.push(el);
           el.classList.add('__srcHide');
         }
       }
-
-      for (const el of document.querySelectorAll('*')) {
-        const pos = getComputedStyle(el).position;
-        if (pos === 'fixed' || pos === 'sticky') srcHide(el);
-      }
-
-      // Watch for elements added or modified after scroll (e.g. LinkedIn's compact
-      // profile bar, which appears after the first scroll via a class change)
-      window.__srcObserver = new MutationObserver((mutations) => {
-        for (const m of mutations) {
-          if (m.type === 'childList') {
-            for (const node of m.addedNodes) {
-              if (node.nodeType !== 1) continue;
-              const pos = getComputedStyle(node).position;
-              if (pos === 'fixed' || pos === 'sticky') srcHide(node);
-              for (const el of node.querySelectorAll('*')) {
-                const p = getComputedStyle(el).position;
-                if (p === 'fixed' || p === 'sticky') srcHide(el);
-              }
-            }
-          } else if (m.type === 'attributes') {
-            const el = m.target;
-            const pos = getComputedStyle(el).position;
-            if (pos === 'fixed' || pos === 'sticky') srcHide(el);
-          }
-        }
-      });
-      window.__srcObserver.observe(document.body, {
-        childList: true, subtree: true,
-        attributes: true, attributeFilter: ['class', 'style'],
-      });
-
       return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     },
   });
 
+  // Cap output at 1× logical resolution regardless of display DPR so the
+  // encoded JPEG stays well under the server's upload limit even on Retina displays.
+  const outDpr = Math.min(dpr, 1);
   const canvas = new OffscreenCanvas(
-    Math.round(scrollElWidth * dpr),
-    Math.round(totalHeight * dpr),
+    Math.round(scrollElWidth * outDpr),
+    Math.round(totalHeight * outDpr),
   );
   const ctx = canvas.getContext('2d');
 
   try {
     let step = 0;
-    for (let y = 0; y < totalHeight; y += scrollElHeight) {
+    let canvasY = 0;
+    while (canvasY < totalHeight) {
       step++;
       onProgress(`Capturing… (${step}/${totalSteps})`);
 
-      const actualY = Math.min(y, totalHeight - scrollElHeight);
-      // Scroll and wait for two animation frames so the browser has repainted
-      // (and any React scroll-handler re-renders have settled) before capturing.
+      const isFirst = step === 1;
+      // For non-first strips, scroll back GUARD px so the guard band overlaps
+      // the content already written by the previous strip.
+      const scrollTo = isFirst ? 0 : canvasY - GUARD;
+      // Clamp to prevent scrolling past the bottom.
+      const actualScrollTo = Math.min(scrollTo, Math.max(0, totalHeight - scrollElHeight));
+      // How much the clamp shifted us — adjusts srcY for the last strip.
+      const scrollClamp = scrollTo - actualScrollTo;
+
       await chrome.scripting.executeScript({
         target: { tabId },
         func: (scrollY) => {
           (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = scrollY;
-          // Two RAFs: first lets scroll handlers + MutationObserver fire and hide
-          // any newly fixed/sticky elements; second ensures the browser has repainted.
           return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         },
-        args: [actualY],
+        args: [actualScrollTo],
       });
 
       const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'jpeg', quality: 88 });
       const bitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
 
-      // Crop each captured viewport strip to the scroll container's bounds.
-      // For document-level scrollers scrollElLeft/Top are 0 and scrollElWidth/Height
-      // equal the viewport, so this degrades gracefully to the original behaviour.
+      // For non-first strips: skip the top (GUARD + scrollClamp) pixels of the
+      // captured viewport. Those pixels either contain a fixed/sticky overlay or
+      // duplicate content already on the canvas from the previous strip.
+      const topSkip = isFirst ? 0 : GUARD + scrollClamp;
+      const availH = totalHeight - canvasY;
+      const usedH = Math.min(scrollElHeight - topSkip, availH);
+
       const srcX = Math.round(scrollElLeft * dpr);
-      const srcY = Math.round((scrollElTop + (y - actualY)) * dpr);
-      const dstY = Math.round(y * dpr);
-      const w    = Math.round(scrollElWidth * dpr);
-      const h    = Math.round(Math.min(scrollElHeight, totalHeight - y) * dpr);
-      ctx.drawImage(bitmap, srcX, srcY, w, h, 0, dstY, w, h);
+      const srcY = Math.round((scrollElTop + topSkip) * dpr);
+      const srcW = Math.round(scrollElWidth * dpr);
+      const srcH = Math.round(usedH * dpr);
+      const dstY = Math.round(canvasY * outDpr);
+      const dstW = Math.round(scrollElWidth * outDpr);
+      const dstH = Math.round(usedH * outDpr);
+      ctx.drawImage(bitmap, srcX, srcY, srcW, srcH, 0, dstY, dstW, dstH);
       bitmap.close();
+
+      canvasY += isFirst ? scrollElHeight : effectiveStep;
     }
   } finally {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: (origY) => {
-        window.__srcObserver?.disconnect();
         for (const el of (window.__srcHidden || [])) el.classList.remove('__srcHide');
         document.getElementById('__srcCapStyle')?.remove();
         (window.__srcEl || document.scrollingElement || document.documentElement).scrollTop = origY;
         delete window.__srcEl;
         delete window.__srcHidden;
-        delete window.__srcObserver;
       },
       args: [origScrollTop],
     });
   }
 
-  return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
+  return canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
 }
 
 async function captureAndSend(token) {
@@ -281,6 +322,222 @@ function wireCapture(token) {
   };
 }
 
+async function wireConnected(token) {
+  setStatus('Connected · Sourcerer is running', 'ok');
+
+  // Screenshot
+  wireCapture(token);
+
+  // New contact screen
+  const btnNewContact = document.getElementById('btn-new-contact');
+  show(btnNewContact);
+  document.getElementById('btn-contact-back').onclick = () => showScreen('screen-main');
+  btnNewContact.onclick = () => {
+    document.getElementById('contact-name').value = '';
+    document.getElementById('contact-org').value  = '';
+    document.getElementById('contact-email').value = '';
+    document.getElementById('contact-phone').value = '';
+    const st = document.getElementById('contact-status');
+    st.textContent = ''; st.className = 'screen-status';
+    document.getElementById('btn-contact-save').disabled = false;
+    showScreen('screen-contact');
+    setTimeout(() => document.getElementById('contact-name').focus(), 50);
+  };
+  document.getElementById('btn-contact-save').onclick = async () => {
+    const name  = document.getElementById('contact-name').value.trim();
+    const org   = document.getElementById('contact-org').value.trim();
+    const email = document.getElementById('contact-email').value.trim();
+    const phone = document.getElementById('contact-phone').value.trim();
+    const st = document.getElementById('contact-status');
+    if (!name) { st.textContent = 'Name is required.'; st.className = 'screen-status err'; return; }
+    document.getElementById('btn-contact-save').disabled = true;
+    st.textContent = 'Saving…'; st.className = 'screen-status';
+    try {
+      await createContact(token, { name, organization: org || undefined, email: email || undefined, phone: phone || undefined });
+      st.textContent = '✓ Contact added.'; st.className = 'screen-status ok';
+      setTimeout(() => showScreen('screen-main'), 1400);
+    } catch (err) {
+      st.textContent = `Error: ${err.message}`; st.className = 'screen-status err';
+      document.getElementById('btn-contact-save').disabled = false;
+    }
+  };
+
+  // Selection-based field save — prefer pending context menu selection over active-tab selection
+  try {
+    // Check for a selection stored by the background service worker (context menu click)
+    const stored = await chrome.storage.session.get('pendingContextSelection');
+    const pending = stored.pendingContextSelection ?? null;
+    if (pending) await chrome.storage.session.remove('pendingContextSelection');
+
+    // If context menu said "Add as new contact", go straight to that screen
+    if (pending?.action === 'contact') {
+      document.getElementById('contact-name').value  = pending.text.slice(0, 120);
+      document.getElementById('contact-org').value   = '';
+      document.getElementById('contact-email').value = '';
+      document.getElementById('contact-phone').value = '';
+      const st = document.getElementById('contact-status');
+      st.textContent = ''; st.className = 'screen-status';
+      document.getElementById('btn-contact-save').disabled = false;
+      showScreen('screen-contact');
+      setTimeout(() => document.getElementById('contact-name').focus(), 50);
+      return;
+    }
+
+    let selection = pending?.text ?? '';
+    let initialFieldType = pending?.action ?? 'note'; // 'email' | 'phone' | 'note'
+
+    if (!selection) {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (tab?.id == null) return;
+      selection = await getPageSelection(tab.id);
+      initialFieldType = 'note';
+    }
+
+    if (!selection) return;
+
+    const btnSaveField = document.getElementById('btn-save-field');
+    show(btnSaveField);
+    document.getElementById('field-preview').textContent =
+      selection.length > 160 ? selection.slice(0, 160) + '…' : selection;
+    document.getElementById('field-type').value = initialFieldType;
+
+    // If triggered from context menu, jump straight to the field screen
+    if (pending) {
+      let allContacts = [];
+      let selectedContactId = null;
+
+      function renderFieldListCtx(query) {
+        const list = document.getElementById('field-list');
+        const matches = query
+          ? allContacts.filter((c) =>
+              c.name.toLowerCase().includes(query.toLowerCase()) ||
+              (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
+          : allContacts;
+        list.innerHTML = '';
+        matches.slice(0, 40).forEach((c) => {
+          const btn = document.createElement('button');
+          btn.className = 'contact-item';
+          btn.dataset.id = c.id;
+          const nameEl = document.createElement('span');
+          nameEl.className = 'contact-item-name';
+          nameEl.textContent = c.name;
+          btn.appendChild(nameEl);
+          if (c.organization) {
+            const orgEl = document.createElement('span');
+            orgEl.className = 'contact-item-org';
+            orgEl.textContent = c.organization;
+            btn.appendChild(orgEl);
+          }
+          btn.onclick = () => {
+            list.querySelectorAll('.contact-item').forEach((b) => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedContactId = c.id;
+            document.getElementById('btn-field-assign').disabled = false;
+          };
+          list.appendChild(btn);
+        });
+      }
+
+      document.getElementById('btn-field-back').onclick = () => showScreen('screen-main');
+      document.getElementById('btn-field-assign').disabled = true;
+      const st = document.getElementById('field-status');
+      st.textContent = 'Loading contacts…'; st.className = 'screen-status';
+      showScreen('screen-field');
+      try { allContacts = await fetchContacts(token); } catch {}
+      st.textContent = '';
+      renderFieldListCtx('');
+      document.getElementById('field-search').oninput = (e) => renderFieldListCtx(e.target.value);
+      setTimeout(() => document.getElementById('field-search').focus(), 50);
+
+      document.getElementById('btn-field-assign').onclick = async () => {
+        if (!selectedContactId) return;
+        const fieldType = document.getElementById('field-type').value;
+        document.getElementById('btn-field-assign').disabled = true;
+        st.textContent = 'Saving…'; st.className = 'screen-status';
+        try {
+          await addContactField(token, selectedContactId, fieldType, selection);
+          st.textContent = '✓ Saved.'; st.className = 'screen-status ok';
+          setTimeout(() => showScreen('screen-main'), 1400);
+        } catch (err) {
+          st.textContent = `Error: ${err.message}`; st.className = 'screen-status err';
+          document.getElementById('btn-field-assign').disabled = false;
+        }
+      };
+      return;
+    }
+
+    let allContacts = [];
+    let selectedContactId = null;
+
+    function renderFieldList(query) {
+      const list = document.getElementById('field-list');
+      const matches = query
+        ? allContacts.filter((c) =>
+            c.name.toLowerCase().includes(query.toLowerCase()) ||
+            (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
+        : allContacts;
+      list.innerHTML = '';
+      matches.slice(0, 40).forEach((c) => {
+        const btn = document.createElement('button');
+        btn.className = 'contact-item';
+        btn.dataset.id = c.id;
+        const nameEl = document.createElement('span');
+        nameEl.className = 'contact-item-name';
+        nameEl.textContent = c.name;
+        btn.appendChild(nameEl);
+        if (c.organization) {
+          const orgEl = document.createElement('span');
+          orgEl.className = 'contact-item-org';
+          orgEl.textContent = c.organization;
+          btn.appendChild(orgEl);
+        }
+        btn.onclick = () => {
+          document.querySelectorAll('.contact-item').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedContactId = c.id;
+          document.getElementById('btn-field-assign').disabled = false;
+        };
+        list.appendChild(btn);
+      });
+    }
+
+    document.getElementById('btn-field-back').onclick = () => showScreen('screen-main');
+
+    btnSaveField.onclick = async () => {
+      selectedContactId = null;
+      document.getElementById('btn-field-assign').disabled = true;
+      const st = document.getElementById('field-status');
+      st.textContent = ''; st.className = 'screen-status';
+      document.getElementById('field-search').value = '';
+      if (!allContacts.length) {
+        st.textContent = 'Loading contacts…';
+        try { allContacts = await fetchContacts(token); } catch {}
+        st.textContent = '';
+      }
+      renderFieldList('');
+      document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value);
+      showScreen('screen-field');
+      setTimeout(() => document.getElementById('field-search').focus(), 50);
+    };
+
+    document.getElementById('btn-field-assign').onclick = async () => {
+      if (!selectedContactId) return;
+      const fieldType = document.getElementById('field-type').value;
+      const st = document.getElementById('field-status');
+      document.getElementById('btn-field-assign').disabled = true;
+      st.textContent = 'Saving…'; st.className = 'screen-status';
+      try {
+        await addContactField(token, selectedContactId, fieldType, selection);
+        st.textContent = '✓ Saved.'; st.className = 'screen-status ok';
+        setTimeout(() => showScreen('screen-main'), 1400);
+      } catch (err) {
+        st.textContent = `Error: ${err.message}`; st.className = 'screen-status err';
+        document.getElementById('btn-field-assign').disabled = false;
+      }
+    };
+  } catch {}
+}
+
 async function init() {
   let appStatus;
   try {
@@ -305,8 +562,7 @@ async function init() {
   }
 
   if (token) {
-    setStatus('Connected', 'ok');
-    wireCapture(token);
+    await wireConnected(token);
     return;
   }
 
@@ -323,8 +579,7 @@ async function init() {
       if (newToken) {
         await saveToken(newToken);
         hide(btnConnect);
-        setStatus('Connected', 'ok');
-        wireCapture(newToken);
+        await wireConnected(newToken);
       } else {
         setStatus('Access denied or timed out.', 'err');
         btnConnect.disabled = false;

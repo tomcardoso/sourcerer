@@ -107,7 +107,8 @@ export const LOCAL_SCHEMA_SQL = `
     project_id TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name       TEXT    NOT NULL,
     email      TEXT    NOT NULL,
-    is_self    INTEGER NOT NULL DEFAULT 0
+    is_self    INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(project_id, email)
   );
 
   CREATE TABLE IF NOT EXISTS project_memberships (

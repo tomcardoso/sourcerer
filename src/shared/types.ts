@@ -54,6 +54,7 @@ export interface ContactListItem {
   name: string;
   organization: string | null;
   notes: string | null;
+  created_at: number;
   has_email: 0 | 1;
   has_phone: 0 | 1;
   emails_raw: string | null;
@@ -198,6 +199,7 @@ export interface ProjectContactRow {
   date_first_contacted: number | null;
   date_last_contacted: number | null;
   membership_id: string;
+  membership_created_at: number;
   reporter_name: string;
   reporter_email: string;
   theme: string | null;

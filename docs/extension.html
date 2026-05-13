@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browser extension — Sourcerer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a class="nav-wordmark" href="index.html" aria-label="Sourcerer home">
+        <svg viewBox="0 0 270 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
+          <text x="0" y="56" font-family="Spectral, Georgia, 'Times New Roman', serif" font-weight="700" font-size="56" letter-spacing="-1" fill="#1a1815">Sourcerer</text>
+          <g transform="translate(250, 17)" fill="#e8a840">
+            <path d="M 9 0 L 10.8 7.2 L 18 9 L 10.8 10.8 L 9 18 L 7.2 10.8 L 0 9 L 7.2 7.2 Z" />
+          </g>
+        </svg>
+      </a>
+      <div class="nav-links">
+        <a href="guide.html">User guide</a>
+        <a href="security.html">Security</a>
+        <a href="https://github.com/tomcardoso/sourcerer" class="nav-github">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Browser extension</h1>
+      <p>Capture pages, save selected text, and add contacts — without leaving your browser.</p>
+    </div>
+  </div>
+
+  <div class="guide-wrap">
+    <div class="container">
+      <div class="guide-layout">
+
+        <!-- Sticky TOC -->
+        <aside class="guide-toc">
+          <p class="toc-label">Contents</p>
+          <ol class="toc-list">
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#connecting">Connecting</a></li>
+            <li><a href="#screenshot">Screenshots</a></li>
+            <li><a href="#save-selection">Save selection</a></li>
+            <li><a href="#new-contact">New contact</a></li>
+            <li><a href="#right-click">Right-click menu</a></li>
+            <li><a href="#security">Security</a></li>
+          </ol>
+        </aside>
+
+        <!-- Main content -->
+        <div class="guide-content">
+
+          <section id="installation">
+            <h2>Installation</h2>
+            <p>The extension is not published to the Chrome Web Store. It is loaded manually from the <code>extension/</code> folder inside the Sourcerer repository.</p>
+            <ol>
+              <li>Open Chrome (or any Chromium-based browser: Edge, Brave, Arc) and navigate to <code>chrome://extensions</code>.</li>
+              <li>Enable <strong>Developer mode</strong> using the toggle in the top-right corner.</li>
+              <li>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder.</li>
+              <li>The Sourcerer icon will appear in your browser toolbar. Pin it for easy access.</li>
+            </ol>
+            <div class="note">
+              Firefox is not currently supported. The full-page screenshot feature relies on <code>OffscreenCanvas</code>, which is not available in Firefox extension popup scripts.
+            </div>
+          </section>
+
+          <section id="connecting">
+            <h2>Connecting to the app</h2>
+            <p>The extension communicates with the Sourcerer desktop app over a local HTTP server on <code>127.0.0.1:27371</code>. The app must be open and unlocked for any feature to work.</p>
+            <p>The first time you open the popup, click <strong>Connect to Sourcerer</strong>. An approval prompt will appear in the app — click <strong>Approve</strong>. This issues a session token to the extension. The token is stored in the browser's session storage and persists until you close the browser or the app is reinstalled.</p>
+            <p>If the app is locked, the popup will tell you. Unlock it first, then try again.</p>
+          </section>
+
+          <section id="screenshot">
+            <h2>Saving a screenshot</h2>
+            <p>Navigate to any page, open the popup, and click <strong>Save screenshot</strong>. The extension captures the full page — scrolling through it automatically to stitch together sections taller than the viewport — and sends the result to the app.</p>
+            <p>Once received, a modal appears in the app asking you to assign the screenshot to a contact. Screenshots are stored encrypted alongside the database and are visible in the contact's detail panel.</p>
+            <p>Pages with very heavy fixed or sticky elements (sticky headers, cookie banners) are handled automatically — they are hidden during capture and restored afterward.</p>
+          </section>
+
+          <section id="save-selection">
+            <h2>Saving selected text to a contact</h2>
+            <p>Select any text on a page — an email address, phone number, a note — then open the Sourcerer popup. If a selection is detected, a <strong>Save selection to contact</strong> button appears.</p>
+            <ol>
+              <li>Click the button. The selected text is shown in a preview.</li>
+              <li>Choose what type of field to save it as: <em>Email</em>, <em>Phone</em>, or <em>Note</em>.</li>
+              <li>Search for the contact you want to attach it to and click their name.</li>
+              <li>Click <strong>Save to contact</strong>. The field is added immediately.</li>
+            </ol>
+            <p>Notes are appended to the contact's existing notes with a blank line separator, so previous notes are never overwritten.</p>
+          </section>
+
+          <section id="new-contact">
+            <h2>Adding a new contact</h2>
+            <p>Click <strong>New contact</strong> in the popup. Fill in the name (required), organisation, email, and phone fields, then click <strong>Add contact</strong>. The contact is created in your encrypted local database immediately.</p>
+            <p>You can then open the app to add more details, link to a project, or take a screenshot.</p>
+          </section>
+
+          <section id="right-click">
+            <h2>Right-click menu</h2>
+            <p>You do not need to open the popup first. Select text on any page, right-click, and look for <strong>Save to Sourcerer</strong> in the context menu. Four sub-options are available:</p>
+            <ul>
+              <li><strong>Save as email</strong> — adds the selection as an email address on a contact you choose.</li>
+              <li><strong>Save as phone</strong> — adds the selection as a phone number.</li>
+              <li><strong>Save as note</strong> — appends the selection to a contact's notes.</li>
+              <li><strong>Add as new contact</strong> — opens the new contact screen with the selected text pre-filled in the Name field.</li>
+            </ul>
+            <p>On Chrome 127 and later the popup opens automatically after you choose an option. On older versions, click the extension icon to open it manually — the action will be queued and waiting.</p>
+          </section>
+
+          <section id="security">
+            <h2>Security</h2>
+            <p>The extension can only communicate with <code>127.0.0.1:27371</code>. All requests are authenticated with a session token issued by the app and stored only in the browser's session storage — it is cleared when the browser closes.</p>
+            <p>The local HTTP server only accepts requests that carry a valid <code>X-Sourcerer-Token</code> header and originate from a <code>chrome-extension://</code> or <code>moz-extension://</code> origin. Ordinary web pages cannot reach the server.</p>
+            <p>No data is sent to any external server. Screenshots, contacts, and fields go directly into the encrypted local database. The extension has no network permissions beyond <code>127.0.0.1:27371</code>.</p>
+          </section>
+
+        </div><!-- /.guide-content -->
+      </div><!-- /.guide-layout -->
+    </div><!-- /.container -->
+  </div><!-- /.guide-wrap -->
+
+  <footer>
+    <div class="container">
+      <p class="footer-text">AGPL-3.0 &mdash; open source &mdash; <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a></p>
+    </div>
+  </footer>
+
+</body>
+</html>

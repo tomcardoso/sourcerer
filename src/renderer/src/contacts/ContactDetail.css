@@ -1223,3 +1223,146 @@
   background: var(--color-surface);
   color: var(--color-text);
 }
+
+/* ── Screenshot viewer (portal-rendered, full-app overlay) ──────────────── */
+.sv-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  z-index: 9000;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.sv-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sv-toolbar-url {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.10em;
+  padding-left: 76px; /* clear macOS traffic lights */
+}
+
+.sv-toolbar-date {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.10em;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+
+.sv-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.sv-zoom-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sv-zoom-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: background 0.1s, color 0.1s;
+}
+
+.sv-zoom-btn--active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.sv-action-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.75);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: background 0.1s, color 0.1s;
+}
+
+.sv-action-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.sv-action-btn--danger:hover {
+  background: rgba(200, 40, 40, 0.55);
+  border-color: rgba(200, 40, 40, 0.4);
+}
+
+.sv-image-area {
+  flex: 1;
+  min-height: 0;
+}
+
+.sv-image-area--fit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: default;
+}
+
+.sv-image-area--fit .sv-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
+}
+
+.sv-image-area--actual {
+  overflow: auto;
+  cursor: grab;
+  padding: 0;
+}
+
+.sv-image-area--actual:active {
+  cursor: grabbing;
+}
+
+.sv-image-area--actual .sv-image {
+  display: block;
+  max-width: none;
+  border-radius: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}

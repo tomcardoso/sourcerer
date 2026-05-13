@@ -24,6 +24,8 @@ export interface AllContactsFilters {
   hasEmail: boolean | null;
   hasPhone: boolean | null;
   dateLastContacted: DatePreset | null;
+  dateAddedFrom: string; // ISO date string YYYY-MM-DD
+  dateAddedTo: string;   // ISO date string YYYY-MM-DD
   project: string | null;
 }
 
@@ -37,6 +39,8 @@ export interface ProjectFilters {
   hasEmail: boolean | null;
   hasPhone: boolean | null;
   dateLastContacted: DatePreset | null;
+  dateAddedFrom: string;
+  dateAddedTo: string;
   status: string[];
   priority: string[];
   reporter: string[];
@@ -51,6 +55,8 @@ export const DEFAULT_ALL_CONTACTS_FILTERS: AllContactsFilters = {
   hasEmail: null,
   hasPhone: null,
   dateLastContacted: null,
+  dateAddedFrom: '',
+  dateAddedTo: '',
   project: null,
 };
 
@@ -64,6 +70,8 @@ export const DEFAULT_PROJECT_FILTERS: ProjectFilters = {
   hasEmail: null,
   hasPhone: null,
   dateLastContacted: null,
+  dateAddedFrom: '',
+  dateAddedTo: '',
   status: [],
   priority: [],
   reporter: [],
@@ -79,6 +87,8 @@ export function isAllContactsFilterActive(f: AllContactsFilters): boolean {
     f.hasEmail !== null ||
     f.hasPhone !== null ||
     f.dateLastContacted !== null ||
+    f.dateAddedFrom !== '' ||
+    f.dateAddedTo !== '' ||
     f.project !== null
   );
 }
@@ -94,6 +104,8 @@ export function isProjectFilterActive(f: ProjectFilters): boolean {
     f.hasEmail !== null ||
     f.hasPhone !== null ||
     f.dateLastContacted !== null ||
+    f.dateAddedFrom !== '' ||
+    f.dateAddedTo !== '' ||
     f.status.length > 0 ||
     f.priority.length > 0 ||
     f.reporter.length > 0
@@ -203,7 +215,7 @@ export default function ContactsTable(props: ContactsTableProps) {
   }
 
   const sd = (key: string) => (sort.key === key ? sort.dir : null);
-  const colSpan = isProject ? 12 : 9;
+  const colSpan = isProject ? 13 : 10;
 
   return (
     <table className="contacts-table">
@@ -341,6 +353,39 @@ export default function ContactsTable(props: ContactsTableProps) {
             </th>
           )}
 
+          {/* ── Project-only: Date Added to project ── */}
+          {isProject && (
+            <th>
+              <ColumnHeader
+                label="Date Added"
+                sortDir={sd('membership_created_at')}
+                onSort={() => onSort('membership_created_at')}
+                filterable
+                filterActive={!!(pf?.dateAddedFrom || pf?.dateAddedTo)}
+                filterOpen={openFilter === 'date_added'}
+                onFilterToggle={() => toggleFilter('date_added')}
+                filterContent={
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>From</label>
+                    <input
+                      type="date"
+                      value={pf?.dateAddedFrom ?? ''}
+                      onChange={(e) => setFilter('dateAddedFrom', e.target.value)}
+                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                    />
+                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>To</label>
+                    <input
+                      type="date"
+                      value={pf?.dateAddedTo ?? ''}
+                      onChange={(e) => setFilter('dateAddedTo', e.target.value)}
+                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+                }
+              />
+            </th>
+          )}
+
           {/* ── Shared: Email ── */}
           <th className="col-compact">
             <ColumnHeader
@@ -438,6 +483,39 @@ export default function ContactsTable(props: ContactsTableProps) {
             />
           </th>
 
+          {/* ── AllContacts-only: Date Added ── */}
+          {!isProject && (
+            <th>
+              <ColumnHeader
+                label="Date Added"
+                sortDir={sd('created_at')}
+                onSort={() => onSort('created_at')}
+                filterable
+                filterActive={!!(af?.dateAddedFrom || af?.dateAddedTo)}
+                filterOpen={openFilter === 'date_added'}
+                onFilterToggle={() => toggleFilter('date_added')}
+                filterContent={
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>From</label>
+                    <input
+                      type="date"
+                      value={af?.dateAddedFrom ?? ''}
+                      onChange={(e) => setFilter('dateAddedFrom', e.target.value)}
+                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                    />
+                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>To</label>
+                    <input
+                      type="date"
+                      value={af?.dateAddedTo ?? ''}
+                      onChange={(e) => setFilter('dateAddedTo', e.target.value)}
+                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                    />
+                  </div>
+                }
+              />
+            </th>
+          )}
+
           {/* ── AllContacts-only: Projects ── */}
           {!isProject && (
             <th>
@@ -520,6 +598,13 @@ export default function ContactsTable(props: ContactsTableProps) {
                   <td className="contact-org-cell">{pr?.reporter_name}</td>
                 )}
 
+                {/* Project-only: Date Added */}
+                {isProject && (
+                  <td className="contact-date-cell">
+                    {fmtDate((pr as ProjectContactRow).membership_created_at)}
+                  </td>
+                )}
+
                 {/* Shared cells */}
                 <td className="contact-bool-cell">
                   {row.has_email ? (
@@ -558,6 +643,13 @@ export default function ContactsTable(props: ContactsTableProps) {
                     fmtDate(row.date_last_contacted)
                   )}
                 </td>
+
+                {/* AllContacts-only: Date Added */}
+                {!isProject && (
+                  <td className="contact-date-cell">
+                    {fmtDate((ar as ContactListItem).created_at)}
+                  </td>
+                )}
 
                 {/* AllContacts-only: Projects */}
                 {!isProject && (
