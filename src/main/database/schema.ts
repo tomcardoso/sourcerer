@@ -178,7 +178,7 @@ export const LOCAL_SCHEMA_SQL = `
     id               TEXT    PRIMARY KEY,
     contact_id       TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     project_id       TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    membership_id    TEXT,
+    membership_id    TEXT    REFERENCES project_memberships(id) ON DELETE CASCADE,
     due_date         INTEGER NOT NULL,
     note             TEXT,
     is_auto_outreach INTEGER NOT NULL DEFAULT 0,
@@ -196,13 +196,17 @@ export const LOCAL_SCHEMA_SQL = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_contact_emails_contact_id        ON contact_emails(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_emails_contact_email  ON contact_emails(contact_id, email);
   CREATE INDEX IF NOT EXISTS idx_contact_phones_contact_id        ON contact_phones(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_phones_contact_phone  ON contact_phones(contact_id, phone);
   CREATE INDEX IF NOT EXISTS idx_contact_links_contact_id         ON contact_links(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_contact_screenshots_contact_id   ON contact_screenshots(contact_id);
   CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_id    ON interaction_log_entries(membership_id);
   CREATE INDEX IF NOT EXISTS idx_project_memberships_contact_id   ON project_memberships(contact_id);
   CREATE INDEX IF NOT EXISTS idx_project_memberships_project_id   ON project_memberships(project_id);
   CREATE INDEX IF NOT EXISTS idx_reminders_membership_id          ON reminders(membership_id);
   CREATE INDEX IF NOT EXISTS idx_reminders_contact_id             ON reminders(contact_id);
   CREATE INDEX IF NOT EXISTS idx_alert_mentions_contact_id        ON contact_alert_mentions(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_mentions_contact_guid   ON contact_alert_mentions(contact_id, guid);
   CREATE INDEX IF NOT EXISTS idx_alert_mentions_seen_dismissed    ON contact_alert_mentions(seen, dismissed);
 `;

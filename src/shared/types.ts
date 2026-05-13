@@ -36,7 +36,9 @@ export interface User {
   last_name: string;
   email: string;
   created_at: number;
-  calendar_token: string;
+  /** Not returned by app:get-user or settings:regenerate-calendar-token;
+   *  exposed only via the settings:get-calendar-url handler. */
+  calendar_token?: string;
   idle_timeout_seconds: number;
   phone_country: string;
   outreach_reminders_enabled: 0 | 1;

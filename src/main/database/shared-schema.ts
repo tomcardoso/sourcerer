@@ -41,15 +41,6 @@ export const SHARED_SCHEMA_SQL = `
     sort_order INTEGER NOT NULL DEFAULT 0
   );
 
-  CREATE TABLE IF NOT EXISTS contact_archives (
-    id             TEXT    PRIMARY KEY,
-    contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-    url            TEXT    NOT NULL,
-    wayback_url    TEXT,
-    wayback_status TEXT    NOT NULL DEFAULT 'pending',
-    archived_at    INTEGER NOT NULL
-  );
-
   CREATE TABLE IF NOT EXISTS contact_alert_rss (
     id             TEXT    PRIMARY KEY,
     contact_id     TEXT    NOT NULL UNIQUE REFERENCES contacts(id) ON DELETE CASCADE,
@@ -80,14 +71,6 @@ export const SHARED_SCHEMA_SQL = `
     first_outreach_at INTEGER,
     created_at        INTEGER NOT NULL,
     updated_at        INTEGER NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS interview_dates (
-    id             TEXT    PRIMARY KEY,
-    membership_id  TEXT    NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
-    interviewed_at INTEGER NOT NULL,
-    note           TEXT,
-    created_at     INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS interaction_log_entries (

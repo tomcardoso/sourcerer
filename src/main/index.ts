@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, nativeImage } from 'electron';
+import { app, BrowserWindow, Menu, shell, nativeImage } from 'electron';
 
 app.name = 'Sourcerer';
 import { join } from 'path';
@@ -71,7 +71,82 @@ function createWindow(): BrowserWindow {
   return win;
 }
 
+function buildMenu(): void {
+  app.setAboutPanelOptions({
+    applicationName: 'Sourcerer',
+    applicationVersion: app.getVersion(),
+    website: 'https://github.com/tomcardoso/sourcerer',
+    copyright: `© ${new Date().getFullYear()} Tom Cardoso. AGPL-3.0.`,
+  });
+
+  const isMac = process.platform === 'darwin';
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    // macOS app menu (Sourcerer > About, Hide, Quit, etc.)
+    ...(isMac
+      ? [{
+          label: app.name,
+          submenu: [
+            { role: 'about' as const },
+            { type: 'separator' as const },
+            { role: 'hide' as const },
+            { role: 'hideOthers' as const },
+            { role: 'unhide' as const },
+            { type: 'separator' as const },
+            { role: 'quit' as const },
+          ],
+        }]
+      : []),
+    // Edit (standard system shortcuts — copy/paste work without this on macOS
+    // but Windows/Linux need it explicitly)
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' as const },
+        { role: 'redo' as const },
+        { type: 'separator' as const },
+        { role: 'cut' as const },
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        { role: 'selectAll' as const },
+      ],
+    },
+    // Help
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'User guide',
+          click: () => shell.openExternal('https://tomcardoso.github.io/sourcerer/guide.html'),
+        },
+        {
+          label: 'Browser extension',
+          click: () => shell.openExternal('https://tomcardoso.github.io/sourcerer/extension.html'),
+        },
+        { type: 'separator' as const },
+        {
+          label: 'GitHub repository',
+          click: () => shell.openExternal('https://github.com/tomcardoso/sourcerer'),
+        },
+        {
+          label: 'Report an issue',
+          click: () => shell.openExternal('https://github.com/tomcardoso/sourcerer/issues'),
+        },
+        ...(!isMac
+          ? [
+              { type: 'separator' as const },
+              { role: 'about' as const },
+            ]
+          : []),
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(() => {
+  buildMenu();
   registerSetupHandlers();
   registerUnlockHandlers();
   registerProjectHandlers();

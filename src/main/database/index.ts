@@ -38,6 +38,8 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
   const db = openRaw(dbPath, keyHex);
   db.exec(LOCAL_SCHEMA_SQL);
   seedDefaults(db);
+  // Schema is already current — stamp version so migrations are skipped on next unlock.
+  db.pragma(`user_version = ${DB_VERSION}`);
   activeDb = db;
   activeKeyHex = keyHex;
   return db;
@@ -56,6 +58,7 @@ export function maybeRunDevSeeds(db: Database.Database): void {
 /** Subsequent unlocks: open existing encrypted DB + set active connection. */
 export function unlockDatabase(dbPath: string, keyHex: string): Database.Database {
   const db = openRaw(dbPath, keyHex);
+  runMigrations(db);
   activeDb = db;
   activeKeyHex = keyHex;
   return db;
@@ -87,17 +90,26 @@ export function isDatabaseOpen(): boolean {
   return activeDb !== null;
 }
 
+// Increment this when adding a new migration block below.
+const DB_VERSION = 1;
+
 /**
- * Safely run a single DDL migration statement against an open database.
- * Errors are silently swallowed so that idempotent statements like
- * `ALTER TABLE … ADD COLUMN` don't abort startup when already applied.
- * Always use `CREATE TABLE IF NOT EXISTS` in the main schema SQL for new
- * tables; reserve this helper for additive changes to existing databases.
+ * Runs schema migrations against an existing database using user_version as
+ * the migration counter. Each numbered block is applied exactly once.
+ * New databases skip all migrations because initDatabase stamps user_version
+ * to DB_VERSION immediately after running the full schema SQL.
+ *
+ * To add a migration:
+ *   1. Increment DB_VERSION.
+ *   2. Add an `if (version < N) { ... db.pragma('user_version = N'); }` block below.
+ *   3. Update schema.ts so brand-new databases already include the change.
  */
-export function tryMigrate(db: Database.Database, sql: string): void {
-  try {
-    db.exec(sql);
-  } catch {
-    // migration already applied or not applicable — safe to ignore
-  }
+/** Exported for test instrumentation only; callers should use unlockDatabase. */
+export function runMigrations(db: Database.Database): void {
+  const version = db.pragma('user_version', { simple: true }) as number;
+  if (version >= DB_VERSION) return;
+
+  // No migration blocks yet — all changes prior to v1 are baked into the
+  // initial schema, so existing pre-production databases can be recreated.
+  db.pragma('user_version = 1');
 }

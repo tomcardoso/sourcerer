@@ -502,7 +502,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         <div className="sv-section">
           <div className="sv-section-title">Website archiving</div>
           <p className="sv-hint">
-            When enabled, Sourcerer automatically submits website URLs to the Internet Archive (Wayback Machine) when you add or update a contact.
+            When enabled, adding or updating a contact&apos;s website URL sends that URL to the
+            Internet Archive (archive.org) as an outbound network request. This creates a public
+            snapshot of the page but discloses the URL to a third party.
           </p>
           <Toggle
             checked={waybackEnabled}

@@ -2,8 +2,10 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
+import { normalizeEmail, normalizePhone } from './sanitize';
 
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
+const MAX_PENDING_SCREENSHOTS = 20;
 const pendingScreenshots = new Map<string, { buf: Buffer; tabUrl: string | null }>();
 
 export function consumePendingScreenshot(tempId: string): { buf: Buffer; tabUrl: string | null } | null {
@@ -76,6 +78,8 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     return;
   }
 
+  // /focus is intentionally unauthenticated — it only raises the app window
+  // and does not expose or mutate any user data.
   if (req.method === 'POST' && url.pathname === '/focus') {
     const win = BrowserWindow.getAllWindows()[0];
     if (win) { win.show(); win.focus(); }
@@ -169,6 +173,10 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         json(res, 413, { error: 'too_large' });
         return;
       }
+      if (pendingScreenshots.size >= MAX_PENDING_SCREENSHOTS) {
+        json(res, 429, { error: 'too_many_pending' });
+        return;
+      }
       const buf = Buffer.concat(chunks);
       const tempId = randomBytes(16).toString('hex');
       pendingScreenshots.set(tempId, { buf, tabUrl });
@@ -230,6 +238,9 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
           return;
         }
         const db = getDatabase();
+        const { phone_country: phoneCountry = 'US' } = db
+          .prepare('SELECT phone_country FROM users WHERE id = 1')
+          .get() as { phone_country: string };
         const contactId = randomUUID();
         const now = Math.floor(Date.now() / 1000);
         db.prepare(
@@ -238,12 +249,13 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         if ((email as string | undefined)?.trim()) {
           db.prepare(
             'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, 0)'
-          ).run(randomUUID(), contactId, (email as string).trim());
+          ).run(randomUUID(), contactId, normalizeEmail((email as string).trim()));
         }
         if ((phone as string | undefined)?.trim()) {
+          const rawPhone = (phone as string).trim();
           db.prepare(
             'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, 0)'
-          ).run(randomUUID(), contactId, (phone as string).trim());
+          ).run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone);
         }
         json(res, 200, { id: contactId, name: name.trim() });
       } catch (err) {
@@ -266,13 +278,17 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         const db = getDatabase();
         const contact = db.prepare('SELECT id FROM contacts WHERE id = ?').get(contactId) as { id: string } | undefined;
         if (!contact) { json(res, 404, { error: 'contact_not_found' }); return; }
+        const { phone_country: phoneCountry = 'US' } = db
+          .prepare('SELECT phone_country FROM users WHERE id = 1')
+          .get() as { phone_country: string };
         const now = Math.floor(Date.now() / 1000);
         if (fieldType === 'email') {
           const row = db.prepare('SELECT MAX(sort_order) AS m FROM contact_emails WHERE contact_id = ?').get(contactId) as { m: number | null };
-          db.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)').run(randomUUID(), contactId, value.trim(), (row.m ?? -1) + 1);
+          db.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)').run(randomUUID(), contactId, normalizeEmail(value.trim()), (row.m ?? -1) + 1);
         } else if (fieldType === 'phone') {
+          const rawPhone = value.trim();
           const row = db.prepare('SELECT MAX(sort_order) AS m FROM contact_phones WHERE contact_id = ?').get(contactId) as { m: number | null };
-          db.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)').run(randomUUID(), contactId, value.trim(), (row.m ?? -1) + 1);
+          db.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)').run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone, (row.m ?? -1) + 1);
         } else if (fieldType === 'note') {
           const existing = (db.prepare('SELECT notes FROM contacts WHERE id = ?').get(contactId) as { notes: string | null }).notes;
           const updated = existing ? `${existing}\n\n${value.trim()}` : value.trim();

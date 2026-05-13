@@ -61,8 +61,9 @@ function insertUser(
     `INSERT INTO users
        (id, first_name, last_name, email, created_at, calendar_token,
         outreach_reminders_enabled, outreach_require_interaction)
-     VALUES (1, 'Test', 'User', 'test@test.com', ?, 'tok', ?, ?)`,
+     VALUES (1, 'Test', 'User', ?, ?, 'tok', ?, ?)`,
   ).run(
+    TEST_REPORTER.email,
     now,
     overrides.outreach_reminders_enabled ?? 1,
     overrides.outreach_require_interaction ?? 0,

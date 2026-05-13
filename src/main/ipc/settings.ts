@@ -260,7 +260,15 @@ export function registerSettingsHandlers(): void {
     const db = getDatabase();
     const token = uuidv4();
     db.prepare('UPDATE users SET calendar_token = ? WHERE id = 1').run(token);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db
+      .prepare(
+        `SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled
+         FROM users WHERE id = 1`,
+      )
+      .get() as User;
   });
 
   ipcMain.handle('settings:panic-wipe', async (): Promise<void> => {

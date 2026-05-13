@@ -26,7 +26,8 @@ export function registerBackupHandlers(): void {
       // Verify the supplied password matches the active key before we encrypt the backup.
       const dbSalt = await fs.readFile(saltPath);
       const verifyKeyHex = await deriveKey(password, dbSalt);
-      if (verifyKeyHex !== getKeyHex()) {
+      // Use timingSafeEqual to avoid leaking key material via comparison timing.
+      if (!crypto.timingSafeEqual(Buffer.from(verifyKeyHex, 'hex'), Buffer.from(getKeyHex(), 'hex'))) {
         return { success: false, error: 'Incorrect password.' };
       }
 

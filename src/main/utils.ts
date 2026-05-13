@@ -11,6 +11,9 @@ export function getPaths(): { dbPath: string; saltPath: string } {
 }
 
 export async function deriveKey(password: string, salt: Buffer): Promise<string> {
+  // Argon2id parameters: 64 MiB memory (well above OWASP's 19 MiB minimum),
+  // 3 time iterations, parallelism 1. These were chosen to keep unlock latency
+  // under ~1 s on a 2020-era laptop while remaining costly to brute-force.
   const rawKey = await argon2.hash(password, {
     type: argon2.argon2id,
     memoryCost: 65536,
