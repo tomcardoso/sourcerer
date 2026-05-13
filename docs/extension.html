@@ -59,16 +59,24 @@
 
           <section id="installation">
             <h2>Installation</h2>
-            <p>The extension is not published to the Chrome Web Store. It is loaded manually from the <code>extension/</code> folder inside the Sourcerer repository.</p>
+            <p>The extension is not published to the Chrome Web Store or the Firefox Add-ons site. It is loaded manually from the <code>extension/</code> folder inside the Sourcerer repository.</p>
+
+            <h3>Chrome, Edge, Brave, Arc</h3>
             <ol>
-              <li>Open Chrome (or any Chromium-based browser: Edge, Brave, Arc) and navigate to <code>chrome://extensions</code>.</li>
+              <li>Navigate to <code>chrome://extensions</code>.</li>
               <li>Enable <strong>Developer mode</strong> using the toggle in the top-right corner.</li>
               <li>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder.</li>
               <li>The Sourcerer icon will appear in your browser toolbar. Pin it for easy access.</li>
             </ol>
-            <div class="note">
-              Firefox is not currently supported. The full-page screenshot feature relies on <code>OffscreenCanvas</code>, which is not available in Firefox extension popup scripts.
-            </div>
+
+            <h3>Firefox (128 or later)</h3>
+            <p>Firefox requires a separate manifest. For temporary installation during development:</p>
+            <ol>
+              <li>Navigate to <code>about:debugging#/runtime/this-firefox</code>.</li>
+              <li>Click <strong>Load Temporary Add-on…</strong></li>
+              <li>Select the <code>extension/manifest.firefox.json</code> file.</li>
+            </ol>
+            <p>Temporary add-ons are removed when Firefox is closed. For a permanent installation, build the signed Firefox package with <code>npm run build:extension</code> and install the resulting <code>.zip</code> via <code>about:addons</code>, or load it in Firefox Developer Edition where signature checks can be disabled.</p>
           </section>
 
           <section id="connecting">

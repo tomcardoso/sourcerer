@@ -111,6 +111,7 @@
 
 .ac-dynamic-row {
   display: flex;
+  align-items: center;
   gap: 6px;
   margin-bottom: 6px;
 }
@@ -120,16 +121,26 @@
 }
 
 .ac-remove {
-  width: 28px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
   background: none;
   border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 16px;
+  color: var(--color-text-dim);
+  font-size: 0; /* hide any text content; glyph rendered via ::after */
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ac-remove::after {
+  content: '✕';
+  font-size: 13px;
+  font-family: var(--font-mono);
+  line-height: 1;
+  display: block;
+  transform: translateY(-0.5px); /* optical vertical correction */
 }
 
 .ac-remove:hover {
@@ -224,6 +235,18 @@
 }
 
 .ac-phone-row .ac-input {
+  width: 100%;
+}
+
+.ac-other-social-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ac-other-social-row .ac-input {
   width: 100%;
 }
 

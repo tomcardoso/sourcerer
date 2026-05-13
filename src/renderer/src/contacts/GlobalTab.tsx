@@ -13,21 +13,40 @@ interface Props {
   onEditingChange?: (editing: boolean) => void;
 }
 
-const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other social'] as const;
+const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
+
+const NON_OTHER_SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
+type NonOtherSocialType = (typeof NON_OTHER_SOCIAL_TYPES)[number];
 
 const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
   linkedin:  { label: 'LinkedIn',    placeholder: 'https://linkedin.com/in/…' },
   x:         { label: 'X / Twitter', placeholder: 'https://x.com/…' },
   instagram: { label: 'Instagram',   placeholder: 'https://instagram.com/…' },
   facebook:  { label: 'Facebook',    placeholder: 'https://facebook.com/…' },
-  'other social':  { label: 'Other social',    placeholder: 'https://…' },
+  'other':  { label: 'Other social',    placeholder: 'https://…' },
 };
 
 const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
 
 function isValidEmail(raw: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim());
+}
+
+// Allowed phone chars: digits, +, -, (, ), ., whitespace, and extension
+// notation letters (e, x, t for "ext", # for US-style extensions).
+function hasDisallowedPhoneChars(raw: string): boolean {
+  return /[^0-9+\-(). \t#extEXT]/.test(raw);
+}
+
+const OTHER_LABEL_MAX = 40;
+
+function sanitizeOtherLabel(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\s+/g, ' ')            // collapse whitespace runs
+    .replace(/[\x00-\x1f\x7f]/g, '') // strip control characters
+    .slice(0, OTHER_LABEL_MAX);
 }
 
 function isValidUrl(raw: string): boolean {
@@ -43,12 +62,14 @@ function DynamicList({
   values,
   placeholder,
   onChange,
+  onChangeItem,
   onBlurItem,
   warnings,
 }: {
   values: string[];
   placeholder: string;
   onChange: (vals: string[]) => void;
+  onChangeItem?: (oldVal: string, newVal: string) => void;
   onBlurItem?: (value: string) => void;
   warnings?: Record<string, string>;
 }) {
@@ -62,6 +83,7 @@ function DynamicList({
               value={v}
               placeholder={placeholder}
               onChange={(e) => {
+                onChangeItem?.(v.trim(), e.target.value.trim());
                 const next = [...values];
                 next[i] = e.target.value;
                 onChange(next);
@@ -72,7 +94,7 @@ function DynamicList({
               className="ac-remove"
               type="button"
               onClick={() => onChange(values.filter((_, j) => j !== i))}
-            >×</button>
+            ></button>
           </div>
           {v.trim() && warnings?.[v.trim()] && (
             <div className="ac-collision-warn">{warnings[v.trim()]}</div>
@@ -122,9 +144,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editNotes, setEditNotes] = useState('');
   const [editEmails, setEditEmails] = useState<Array<{ email: string; label: string }>>([]);
   const [editPhones, setEditPhones] = useState<Array<{ phone: string; label: string }>>([]);
-  const [editSocials, setEditSocials] = useState<Record<SocialType, string[]>>({
-    linkedin: [], x: [], instagram: [], facebook: [], 'other social': [],
+  const [editSocials, setEditSocials] = useState<Record<NonOtherSocialType, string[]>>({
+    linkedin: [], x: [], instagram: [], facebook: [],
   });
+  const [editOtherSocials, setEditOtherSocials] = useState<Array<{ url: string; label: string }>>([]);
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [editRssUrl, setEditRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
@@ -178,12 +201,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditEmails(contact.emails.map((e) => ({ email: e.email, label: e.label ?? '' })));
     setEditPhones(contact.phones.map((p) => ({ phone: p.phone, label: p.label ?? '' })));
     const socialsByType = Object.fromEntries(
-      SOCIAL_TYPES.map((type) => [
+      NON_OTHER_SOCIAL_TYPES.map((type) => [
         type,
         contact.links.filter((l) => l.type === type).map((l) => l.url),
       ]),
-    ) as Record<SocialType, string[]>;
+    ) as Record<NonOtherSocialType, string[]>;
     setEditSocials(socialsByType);
+    setEditOtherSocials(
+      contact.links.filter((l) => l.type === 'other').map((l) => ({ url: l.url, label: l.label ?? '' })),
+    );
     setEditWebsites(contact.links.filter((l) => l.type === 'website').map((l) => l.url));
     setEditRssUrl(alertRss?.rss_url ?? '');
     setEmailCollisions({});
@@ -229,7 +255,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     });
   }
 
-  function setSocial(type: SocialType, values: string[]) {
+  function setSocial(type: NonOtherSocialType, values: string[]) {
     setEditSocials((prev) => ({ ...prev, [type]: values }));
   }
 
@@ -238,9 +264,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setSaving(true);
     try {
       const links = [
-        ...SOCIAL_TYPES.flatMap((type) =>
+        ...NON_OTHER_SOCIAL_TYPES.flatMap((type) =>
           editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
         ),
+        ...editOtherSocials
+          .filter((e) => e.url.trim())
+          .map((e) => {
+            const label = sanitizeOtherLabel(e.label);
+            return { type: 'other' as const, url: e.url, ...(label ? { label } : {}) };
+          }),
         ...editWebsites.filter((u) => u.trim()).map((url) => ({ type: 'website' as const, url })),
       ];
       await window.sourcerer.updateContact({
@@ -299,15 +331,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   if (editing) {
     return (
       <div className="detail-body">
-        <div className="detail-edit-actions-top">
-          <button className="detail-save-btn" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button className="detail-cancel-btn" onClick={() => setEditingAndNotify(false)} disabled={saving}>
-            Cancel
-          </button>
-        </div>
-
         <div className="ac-field">
           <label className="ac-label">Name <span className="ac-required">*</span></label>
           <input className="ac-input" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
@@ -329,9 +352,26 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   placeholder="email@example.com"
                   disabled={saving}
                   onChange={(e) => {
+                    const prev = entry.email.trim();
                     const next = [...editEmails];
                     next[i] = { ...next[i], email: e.target.value };
                     setEditEmails(next);
+                    // Clear any stale warning keyed to the old value so the
+                    // save button doesn't stay locked after the user edits the field.
+                    if (prev) {
+                      setEmailFormatWarnings((w) => {
+                        if (!w[prev]) return w;
+                        const updated = { ...w };
+                        delete updated[prev];
+                        return updated;
+                      });
+                      setEmailCollisions((c) => {
+                        if (!c[prev]) return c;
+                        const updated = { ...c };
+                        delete updated[prev];
+                        return updated;
+                      });
+                    }
                   }}
                   onBlur={() => checkEmailBlur(entry.email.trim())}
                 />
@@ -350,7 +390,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   className="ac-remove"
                   type="button"
                   onClick={() => setEditEmails(editEmails.filter((_, j) => j !== i))}
-                >×</button>
+                ></button>
               </div>
               {entry.email.trim() && emailFormatWarnings[entry.email.trim()] && (
                 <div className="ac-collision-warn">
@@ -384,9 +424,24 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   placeholder="+1 555 000 0000"
                   disabled={saving}
                   onChange={(e) => {
+                    const prev = entry.phone.trim();
                     const next = [...editPhones];
                     next[i] = { ...next[i], phone: e.target.value };
                     setEditPhones(next);
+                    const newVal = e.target.value.trim();
+                    if (prev && prev !== newVal) {
+                      setPhoneFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
+                      setPhoneCollisions((c) => { if (!c[prev]) return c; const u = { ...c }; delete u[prev]; return u; });
+                    }
+                    if (newVal) {
+                      setPhoneFormatWarnings((w) => {
+                        const bad = hasDisallowedPhoneChars(newVal);
+                        if (bad === !!w[newVal]) return w;
+                        const u = { ...w };
+                        if (bad) u[newVal] = true; else delete u[newVal];
+                        return u;
+                      });
+                    }
                   }}
                   onBlur={() => checkPhoneBlur(entry.phone.trim())}
                 />
@@ -405,11 +460,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   className="ac-remove"
                   type="button"
                   onClick={() => setEditPhones(editPhones.filter((_, j) => j !== i))}
-                >×</button>
+                ></button>
               </div>
               {entry.phone.trim() && phoneFormatWarnings[entry.phone.trim()] && (
                 <div className="ac-collision-warn">
-                  ⚠ Invalid phone number
+                  {hasDisallowedPhoneChars(entry.phone.trim())
+                    ? '⚠ Phone contains invalid characters'
+                    : '⚠ Invalid phone number'}
                 </div>
               )}
               {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneCollisions[entry.phone.trim()] && (
@@ -428,13 +485,17 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </button>
         </div>
 
-        {SOCIAL_TYPES.map((type) => (
+        {NON_OTHER_SOCIAL_TYPES.map((type) => (
           <div key={type} className="ac-field">
             <label className="ac-label">{SOCIAL_META[type].label}</label>
             <DynamicList
               values={editSocials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
+              onChangeItem={(oldVal) => {
+                if (!oldVal) return;
+                setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
+              }}
               onBlurItem={(val) => {
                 if (!val) return;
                 setUrlFormatWarnings((prev) => {
@@ -454,11 +515,79 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         ))}
 
         <div className="ac-field">
+          <label className="ac-label">Other social</label>
+          {editOtherSocials.map((entry, i) => (
+            <div key={i}>
+              <div className="ac-other-social-row">
+                <input
+                  className="ac-input"
+                  value={entry.label}
+                  placeholder="Platform (e.g. TikTok)"
+                  maxLength={OTHER_LABEL_MAX}
+                  onChange={(e) => {
+                    const next = [...editOtherSocials];
+                    next[i] = { ...next[i], label: e.target.value };
+                    setEditOtherSocials(next);
+                  }}
+                  onBlur={(e) => {
+                    const next = [...editOtherSocials];
+                    next[i] = { ...next[i], label: sanitizeOtherLabel(e.target.value) };
+                    setEditOtherSocials(next);
+                  }}
+                />
+                <input
+                  className="ac-input"
+                  value={entry.url}
+                  placeholder="https://…"
+                  onChange={(e) => {
+                    const prev = entry.url.trim();
+                    const next = [...editOtherSocials];
+                    next[i] = { ...next[i], url: e.target.value };
+                    setEditOtherSocials(next);
+                    if (prev) {
+                      setUrlFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
+                    }
+                  }}
+                  onBlur={() => {
+                    const val = entry.url.trim();
+                    if (!val) return;
+                    setUrlFormatWarnings((prev) => {
+                      const next = { ...prev };
+                      if (!isValidUrl(val)) next[val] = true; else delete next[val];
+                      return next;
+                    });
+                  }}
+                />
+                <button
+                  className="ac-remove"
+                  type="button"
+                  onClick={() => setEditOtherSocials(editOtherSocials.filter((_, j) => j !== i))}
+                ></button>
+              </div>
+              {entry.url.trim() && urlFormatWarnings[entry.url.trim()] && (
+                <div className="ac-collision-warn">⚠ Invalid URL</div>
+              )}
+            </div>
+          ))}
+          <button
+            className="ac-add-row"
+            type="button"
+            onClick={() => setEditOtherSocials([...editOtherSocials, { url: '', label: '' }])}
+          >
+            + Add
+          </button>
+        </div>
+
+        <div className="ac-field">
           <label className="ac-label">Website</label>
           <DynamicList
             values={editWebsites}
             placeholder="https://example.com"
             onChange={setEditWebsites}
+            onChangeItem={(oldVal) => {
+              if (!oldVal) return;
+              setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
+            }}
             onBlurItem={(val) => {
               if (!val) return;
               setUrlFormatWarnings((prev) => {
@@ -501,6 +630,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
           </p>
         </div>
+
+        <div className="detail-edit-actions-bottom">
+          <button className="detail-save-btn" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button className="detail-cancel-btn" onClick={() => setEditingAndNotify(false)} disabled={saving}>
+            Cancel
+          </button>
+        </div>
       </div>
     );
   }
@@ -538,7 +676,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             <div className="detail-section-label">{SOCIAL_META[type].label}</div>
             {socialLinks[type].map((l) => (
               <a key={l.id} href={l.url} className="detail-link" onClick={(e) => { e.preventDefault(); window.open(l.url); }}>
-                {l.url}
+                {type === 'other' && l.label ? l.label : l.url}
               </a>
             ))}
           </div>

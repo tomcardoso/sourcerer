@@ -31,11 +31,18 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
+// Allowed phone chars: digits, +, -, (, ), ., whitespace, and extension
+// notation letters (e, x, t for "ext", # for US-style extensions).
+function hasDisallowedPhoneChars(raw: string): boolean {
+  return /[^0-9+\-(). \t#extEXT]/.test(raw);
+}
+
 function DynamicList({
   label,
   values,
   placeholder,
   onChange,
+  onChangeItem,
   onBlurItem,
   warnings,
 }: {
@@ -43,6 +50,7 @@ function DynamicList({
   values: string[];
   placeholder: string;
   onChange: (values: string[]) => void;
+  onChangeItem?: (oldVal: string, newVal: string) => void;
   onBlurItem?: (value: string) => void;
   warnings?: Record<string, string>;
 }) {
@@ -57,7 +65,10 @@ function DynamicList({
               type="text"
               value={val}
               placeholder={placeholder}
-              onChange={(e) => onChange(values.map((v, j) => (j === i ? e.target.value : v)))}
+              onChange={(e) => {
+                onChangeItem?.(val.trim(), e.target.value.trim());
+                onChange(values.map((v, j) => (j === i ? e.target.value : v)));
+              }}
               onBlur={() => onBlurItem?.(val.trim())}
             />
             {values.length > 1 && (
@@ -65,7 +76,7 @@ function DynamicList({
                 type="button"
                 className="ac-remove"
                 onClick={() => onChange(values.filter((_, j) => j !== i))}
-              >×</button>
+              ></button>
             )}
           </div>
           {val.trim() && warnings?.[val.trim()] && (
@@ -248,7 +259,14 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     type="email"
                     value={entry.email}
                     placeholder="email@example.com"
-                    onChange={(e) => setEmails(emails.map((em, j) => j === i ? { ...em, email: e.target.value } : em))}
+                    onChange={(e) => {
+                      const prev = entry.email.trim();
+                      setEmails(emails.map((em, j) => j === i ? { ...em, email: e.target.value } : em));
+                      if (prev) {
+                        setEmailFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
+                        setEmailCollisions((c) => { if (!c[prev]) return c; const u = { ...c }; delete u[prev]; return u; });
+                      }
+                    }}
                     onBlur={() => checkEmailBlur(entry.email.trim())}
                     disabled={submitting}
                   />
@@ -265,7 +283,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                       type="button"
                       className="ac-remove"
                       onClick={() => setEmails(emails.filter((_, j) => j !== i))}
-                    >×</button>
+                    ></button>
                   )}
                 </div>
                 {entry.email.trim() && emailFormatWarnings[entry.email.trim()] && (
@@ -294,7 +312,24 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     type="text"
                     value={entry.phone}
                     placeholder="+1 555 000 0000"
-                    onChange={(e) => setPhones(phones.map((p, j) => j === i ? { ...p, phone: e.target.value } : p))}
+                    onChange={(e) => {
+                      const prev = entry.phone.trim();
+                      const newVal = e.target.value.trim();
+                      setPhones(phones.map((p, j) => j === i ? { ...p, phone: e.target.value } : p));
+                      if (prev && prev !== newVal) {
+                        setPhoneFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
+                        setPhoneCollisions((c) => { if (!c[prev]) return c; const u = { ...c }; delete u[prev]; return u; });
+                      }
+                      if (newVal) {
+                        setPhoneFormatWarnings((w) => {
+                          const bad = hasDisallowedPhoneChars(newVal);
+                          if (bad === !!w[newVal]) return w;
+                          const u = { ...w };
+                          if (bad) u[newVal] = true; else delete u[newVal];
+                          return u;
+                        });
+                      }
+                    }}
                     onBlur={() => checkPhoneBlur(entry.phone.trim())}
                     disabled={submitting}
                   />
@@ -311,12 +346,14 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                       type="button"
                       className="ac-remove"
                       onClick={() => setPhones(phones.filter((_, j) => j !== i))}
-                    >×</button>
+                    ></button>
                   )}
                 </div>
                 {entry.phone.trim() && phoneFormatWarnings[entry.phone.trim()] && (
                   <div className="ac-collision-warn">
-                    ⚠ Invalid phone number
+                    {hasDisallowedPhoneChars(entry.phone.trim())
+                      ? '⚠ Phone contains invalid characters'
+                      : '⚠ Invalid phone number'}
                   </div>
                 )}
                 {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneCollisions[entry.phone.trim()] && (
@@ -340,6 +377,10 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             values={websites}
             placeholder="https://example.com"
             onChange={setWebsites}
+            onChangeItem={(oldVal) => {
+              if (!oldVal) return;
+              setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
+            }}
             onBlurItem={(val) => {
               if (!val) return;
               setUrlFormatWarnings((prev) => {
@@ -360,6 +401,10 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               values={socials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
+              onChangeItem={(oldVal) => {
+                if (!oldVal) return;
+                setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
+              }}
               onBlurItem={(val) => {
                 if (!val) return;
                 setUrlFormatWarnings((prev) => {

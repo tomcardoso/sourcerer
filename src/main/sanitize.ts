@@ -15,7 +15,10 @@ export function normalizePhone(raw: string, defaultCountry: string = 'US'): stri
   const trimmed = raw.trim();
   if (!trimmed) return null;
   const parsed = parsePhoneNumberFromString(trimmed, defaultCountry as CountryCode);
-  if (parsed?.isValid()) return parsed.formatInternational();
+  if (parsed?.isValid()) {
+    const base = parsed.formatInternational();
+    return parsed.ext ? `${base} ext. ${parsed.ext}` : base;
+  }
   return null;
 }
 

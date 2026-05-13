@@ -6,6 +6,7 @@
   "author": "Tom Cardoso",
   "main": "out/main/index.js",
   "scripts": {
+    "build:extension": "node scripts/build-extension.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -80,9 +81,9 @@
         }
       ],
       "category": "public.app-category.productivity",
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "identity": null
+      "afterSign": "build/notarize.mjs"
     },
     "dmg": {
       "contents": [

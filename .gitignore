@@ -1,6 +1,7 @@
 node_modules/
 out/
 dist/
+dist-extension/
 .DS_Store
 *.salt
 *.db

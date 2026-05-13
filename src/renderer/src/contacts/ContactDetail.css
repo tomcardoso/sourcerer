@@ -446,11 +446,13 @@
   color: var(--color-text);
 }
 
-/* Edit mode top action bar */
-.detail-edit-actions-top {
+/* Edit mode bottom action bar */
+.detail-edit-actions-bottom {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
 }
 
 .detail-save-btn {

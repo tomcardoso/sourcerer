@@ -50,7 +50,7 @@
             <li><a href="#outreach">Outreach</a></li>
             <li><a href="#alerts">Alerts</a></li>
             <li><a href="#import-export">Import &amp; export</a></li>
-            <li><a href="#extension">Chrome extension</a></li>
+            <li><a href="#extension">Browser extension</a></li>
             <li><a href="#settings">Settings</a></li>
             <li><a href="#collaboration">Collaboration</a></li>
           </ol>
@@ -95,7 +95,7 @@
               <li><strong>Name</strong> and <strong>organisation</strong></li>
               <li><strong>Notes</strong> — a freeform scratchpad, not shared in sanitised exports</li>
               <li><strong>Email addresses</strong> — as many as needed; mark one as primary</li>
-              <li><strong>Phone numbers</strong> — with labels (mobile, work, etc.)</li>
+              <li><strong>Phone numbers</strong> — with labels (mobile, work, etc.); extensions are preserved (e.g., <code>+1 202 456 1111 ext. 567</code>)</li>
               <li><strong>Links</strong> — LinkedIn, X, Instagram, Facebook, personal website, or a custom label</li>
             </ul>
 
@@ -232,18 +232,18 @@
           </section>
 
           <section id="extension">
-            <h2>Chrome extension</h2>
+            <h2>Browser extension</h2>
 
-            <p>The Sourcerer browser extension lets you capture full-page screenshots, save selected text as contact fields, and add new contacts — all without leaving your browser. See the <a href="extension.html">extension guide</a> for full details.</p>
+            <p>The Sourcerer browser extension lets you capture full-page screenshots, save selected text as contact fields, and add new contacts — all without leaving your browser. It works in Chrome, Edge, Brave, Arc, and Firefox. See the <a href="extension.html">extension guide</a> for full details.</p>
 
             <h3>Installation</h3>
-            <p>The extension is not published to the Chrome Web Store — it is loaded manually from the <code>extension/</code> folder in the Sourcerer repository.</p>
+            <p><strong>Chrome / Edge / Brave / Arc:</strong> load it from the <code>extension/</code> folder in the Sourcerer repository.</p>
             <ol>
-              <li>Open Chrome and go to <code>chrome://extensions</code></li>
+              <li>Go to <code>chrome://extensions</code></li>
               <li>Enable <strong>Developer mode</strong> (toggle in the top-right corner)</li>
               <li>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder</li>
             </ol>
-            <p>The extension works with any Chromium-based browser (Chrome, Edge, Brave, Arc).</p>
+            <p><strong>Firefox:</strong> go to <code>about:debugging#/runtime/this-firefox</code>, click <strong>Load Temporary Add-on</strong>, and select <code>extension/manifest.firefox.json</code>. See the <a href="extension.html">extension guide</a> for permanent installation options.</p>
 
             <h3>Connecting</h3>
             <p>Click the Sourcerer icon in the browser toolbar. If this is your first time, click <strong>Connect to Sourcerer</strong> — an approval prompt will appear in the app. Click <strong>Approve</strong>. The session token persists until the app is reinstalled or you revoke it manually.</p>

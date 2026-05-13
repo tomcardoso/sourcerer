@@ -101,6 +101,11 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'GET' && url.pathname === '/access-status') {
+    if (!isExtensionOrigin(req.headers['origin'])) {
+      res.writeHead(403);
+      res.end();
+      return;
+    }
     setCorsForExtension(req, res);
     if (accessState === 'approved' && sessionToken) {
       json(res, 200, { status: 'approved', token: sessionToken });

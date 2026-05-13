@@ -105,6 +105,18 @@ describe('normalizePhone', () => {
     expect(withUS).not.toBeNull();
     expect(withCA).not.toBeNull();
   });
+
+  it('preserves an extension in the output', () => {
+    const result = normalizePhone('+1 202 456 1111 ext. 567', 'US');
+    expect(result).not.toBeNull();
+    expect(result).toContain('ext. 567');
+  });
+
+  it('parses x-style extension notation', () => {
+    const result = normalizePhone('+1 202 456 1111 x567', 'US');
+    expect(result).not.toBeNull();
+    expect(result).toContain('ext. 567');
+  });
 });
 
 describe('validateUrl', () => {
