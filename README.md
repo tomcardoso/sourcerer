@@ -86,7 +86,7 @@ Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux
 
 1. Download `Sourcerer-<version>-arm64.dmg`.
 2. Open the `.dmg` and drag Sourcerer to your Applications folder.
-3. On first launch, macOS may block the app because it is not notarized. If you see a Gatekeeper prompt, open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+3. On first launch, macOS may prompt you to confirm you want to open the app. Click **Open**.
 
 **Windows**
 

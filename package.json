@@ -14,7 +14,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers,argon2",
+  "rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers,argon2",
     "rebuild:node": "npm rebuild better-sqlite3-multiple-ciphers argon2",
     "dist:mac": "electron-builder --mac --arm64",
     "dist:win": "electron-builder --win --x64",
