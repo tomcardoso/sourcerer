@@ -54,6 +54,7 @@
     "appId": "com.sourcerer.app",
     "productName": "Sourcerer",
     "npmRebuild": false,
+    "afterSign": "build/notarize.mjs",
     "directories": {
       "buildResources": "build",
       "output": "dist-electron"
@@ -82,8 +83,7 @@
       ],
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "afterSign": "build/notarize.mjs"
+      "gatekeeperAssess": false
     },
     "dmg": {
       "contents": [
