@@ -20,6 +20,7 @@
     "dist:win": "electron-builder --win --x64",
     "dist:linux": "electron-builder --linux --x64",
     "dist": "electron-builder",
+    "pretest": "npm run rebuild:node",
     "test": "vitest run",
     "test:watch": "vitest"
   },
