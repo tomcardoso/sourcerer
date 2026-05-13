@@ -62,8 +62,11 @@ jobs:
           echo "$APPLE_CERTIFICATE" | base64 --decode -o $RUNNER_TEMP/cert.p12
           security import $RUNNER_TEMP/cert.p12 -k $KEYCHAIN_PATH \
             -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security list-keychains -d user -s $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" $KEYCHAIN_PATH
+          # Include the build keychain alongside the default keychains so
+          # codesign can find both the signing cert and the Apple CA chain.
+          security list-keychains -d user -s $KEYCHAIN_PATH \
+            $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" $KEYCHAIN_PATH
 
       - name: Package (macOS)
         if: runner.os == 'macOS'

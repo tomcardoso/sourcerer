@@ -40,15 +40,18 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-function isExtensionOrigin(origin: string | undefined): boolean {
-  if (!origin) return false;
-  return origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://');
+function isExtensionOrigin(origin: string | undefined, referer: string | undefined): boolean {
+  const check = (s: string | undefined) =>
+    !!s && (s.startsWith('chrome-extension://') || s.startsWith('moz-extension://'));
+  return check(origin) || check(referer);
 }
 
 function setCorsForExtension(req: IncomingMessage, res: ServerResponse): void {
   const origin = req.headers['origin'];
-  if (isExtensionOrigin(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin!);
+  const referer = req.headers['referer'];
+  if (isExtensionOrigin(origin, referer)) {
+    const allowOrigin = origin ?? referer!.split('/').slice(0, 3).join('/');
+    res.setHeader('Access-Control-Allow-Origin', allowOrigin);
     res.setHeader('Access-Control-Allow-Headers', 'X-Sourcerer-Token, Content-Type, X-Tab-Url');
     res.setHeader('Vary', 'Origin');
   }
@@ -59,7 +62,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
 
   if (req.method === 'OPTIONS') {
     // Only answer preflight for extension origins
-    if (isExtensionOrigin(req.headers['origin'])) {
+    if (isExtensionOrigin(req.headers['origin'], req.headers['referer'])) {
       setCorsForExtension(req, res);
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     }
@@ -83,11 +86,6 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'POST' && url.pathname === '/request-access') {
-    if (!isExtensionOrigin(req.headers['origin'])) {
-      res.writeHead(403);
-      res.end();
-      return;
-    }
     setCorsForExtension(req, res);
     if (accessState !== 'pending') {
       accessState = 'pending';
@@ -101,11 +99,6 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'GET' && url.pathname === '/access-status') {
-    if (!isExtensionOrigin(req.headers['origin'])) {
-      res.writeHead(403);
-      res.end();
-      return;
-    }
     setCorsForExtension(req, res);
     if (accessState === 'approved' && sessionToken) {
       json(res, 200, { status: 'approved', token: sessionToken });
