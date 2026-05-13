@@ -71,7 +71,8 @@ describe('dismissPair', () => {
 
     dismissPair(db, a, b);
     const set = loadDismissedPairs(db);
-    expect(set.has(`${a}|${b}`)).toBe(true);
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    expect(set.has(`${lo}|${hi}`)).toBe(true);
   });
 
   it('is idempotent (INSERT OR IGNORE)', () => {

@@ -22,7 +22,8 @@
     "dist": "electron-builder",
     "pretest": "npm run rebuild:node",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "preversion": "npm run typecheck && npm test"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",

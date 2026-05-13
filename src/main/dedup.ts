@@ -185,7 +185,10 @@ export function loadDismissedPairs(db: Database.Database): Set<string> {
     .all() as Array<{ contact_a_id: string; contact_b_id: string }>;
   const set = new Set<string>();
   for (const row of rows) {
-    set.add(`${row.contact_a_id}|${row.contact_b_id}`);
+    const [lo, hi] = row.contact_a_id < row.contact_b_id
+      ? [row.contact_a_id, row.contact_b_id]
+      : [row.contact_b_id, row.contact_a_id];
+    set.add(`${lo}|${hi}`);
   }
   return set;
 }
