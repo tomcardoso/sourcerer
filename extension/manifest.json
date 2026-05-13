@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Sourcerer",
   "version": "1.0.0",
-  "description": "Save a screenshot of the current tab to Sourcerer.",
+  "description": "Capture screenshots, save selected text as contact fields, and add new contacts to Sourcerer — the encrypted source management app.",
   "permissions": ["tabs", "storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": ["http://127.0.0.1:27371/*"],
   "background": {

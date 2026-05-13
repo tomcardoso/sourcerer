@@ -1,6 +1,7 @@
 node_modules/
 out/
 dist/
+dist-electron/
 dist-extension/
 .DS_Store
 *.salt

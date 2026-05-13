@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Sourcerer",
   "version": "1.0.0",
-  "description": "Save a screenshot of the current tab to Sourcerer.",
+  "description": "Capture full-page screenshots, save selected text as contact fields, and add new contacts to Sourcerer — the encrypted source management app for journalists.",
   "browser_specific_settings": {
     "gecko": {
       "id": "sourcerer@sourcerer.app",
