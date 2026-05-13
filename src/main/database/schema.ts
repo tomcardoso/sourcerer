@@ -33,10 +33,11 @@ export const LOCAL_SCHEMA_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS dedup_dismissed_pairs (
-    contact_a_id TEXT NOT NULL,
-    contact_b_id TEXT NOT NULL,
+    contact_a_id TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    contact_b_id TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     dismissed_at INTEGER NOT NULL,
-    PRIMARY KEY (contact_a_id, contact_b_id)
+    PRIMARY KEY (contact_a_id, contact_b_id),
+    CHECK(contact_a_id < contact_b_id)
   );
 
   CREATE TABLE IF NOT EXISTS contact_emails (
@@ -200,11 +201,14 @@ export const LOCAL_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_contact_phones_contact_id        ON contact_phones(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_phones_contact_phone  ON contact_phones(contact_id, phone);
   CREATE INDEX IF NOT EXISTS idx_contact_links_contact_id         ON contact_links(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_links_contact_url      ON contact_links(contact_id, url);
   CREATE INDEX IF NOT EXISTS idx_contact_screenshots_contact_id   ON contact_screenshots(contact_id);
-  CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_id    ON interaction_log_entries(membership_id);
+  CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_project_memberships_contact_id   ON project_memberships(contact_id);
-  CREATE INDEX IF NOT EXISTS idx_project_memberships_project_id   ON project_memberships(project_id);
-  CREATE INDEX IF NOT EXISTS idx_reminders_membership_id          ON reminders(membership_id);
+  CREATE INDEX IF NOT EXISTS idx_project_memberships_project_id      ON project_memberships(project_id);
+  CREATE INDEX IF NOT EXISTS idx_project_memberships_reporter_email ON project_memberships(reporter_email);
+  CREATE INDEX IF NOT EXISTS idx_reminders_membership_id            ON reminders(membership_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_reminders_membership_outreach ON reminders(membership_id) WHERE is_auto_outreach = 1;
   CREATE INDEX IF NOT EXISTS idx_reminders_contact_id             ON reminders(contact_id);
   CREATE INDEX IF NOT EXISTS idx_alert_mentions_contact_id        ON contact_alert_mentions(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_mentions_contact_guid   ON contact_alert_mentions(contact_id, guid);

@@ -3,6 +3,7 @@ export const SHARED_SCHEMA_SQL = `
   PRAGMA journal_mode = WAL;
 
   CREATE TABLE IF NOT EXISTS project_meta (
+    id          INTEGER PRIMARY KEY DEFAULT 1 CHECK(id = 1),
     name        TEXT NOT NULL DEFAULT 'Shared Project',
     description TEXT
   );
@@ -70,7 +71,8 @@ export const SHARED_SCHEMA_SQL = `
     status            TEXT,
     first_outreach_at INTEGER,
     created_at        INTEGER NOT NULL,
-    updated_at        INTEGER NOT NULL
+    updated_at        INTEGER NOT NULL,
+    UNIQUE(contact_id)
   );
 
   CREATE TABLE IF NOT EXISTS interaction_log_entries (
@@ -81,4 +83,13 @@ export const SHARED_SCHEMA_SQL = `
     body           TEXT    NOT NULL,
     created_at     INTEGER NOT NULL
   );
+  CREATE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_id     ON contact_emails(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_email ON contact_emails(contact_id, email);
+  CREATE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_id     ON contact_phones(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_phone ON contact_phones(contact_id, phone);
+  CREATE INDEX IF NOT EXISTS idx_shared_contact_links_contact_id      ON contact_links(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_id     ON contact_alert_mentions(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_guid ON contact_alert_mentions(contact_id, guid);
+  CREATE INDEX IF NOT EXISTS idx_shared_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_shared_project_memberships_contact_id ON project_memberships(contact_id);
 `;

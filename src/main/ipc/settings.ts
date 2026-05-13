@@ -41,11 +41,36 @@ export function registerSettingsHandlers(): void {
     'users:update',
     (_, data: { firstName: string; lastName: string; email: string }): User => {
       const db = getDatabase();
-      db.prepare('UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = 1').run(
-        data.firstName.trim(),
-        data.lastName.trim(),
-        data.email.trim(),
-      );
+      const newEmail = data.email.trim();
+      const newName = `${data.firstName.trim()} ${data.lastName.trim()}`;
+      const current = db
+        .prepare('SELECT email, first_name, last_name FROM users WHERE id = 1')
+        .get() as { email: string; first_name: string; last_name: string };
+      const oldEmail = current.email;
+      const oldName = `${current.first_name} ${current.last_name}`;
+
+      db.transaction(() => {
+        db.prepare('UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = 1').run(
+          data.firstName.trim(),
+          data.lastName.trim(),
+          newEmail,
+        );
+
+        const now = Math.floor(Date.now() / 1000);
+
+        if (newEmail !== oldEmail) {
+          db.prepare('UPDATE project_reporters    SET email          = ?        WHERE email          = ?').run(newEmail, oldEmail);
+          db.prepare('UPDATE project_memberships  SET reporter_email = ?, updated_at = ? WHERE reporter_email = ?').run(newEmail, now, oldEmail);
+          db.prepare('UPDATE membership_reporters SET reporter_email = ?        WHERE reporter_email = ?').run(newEmail, oldEmail);
+          // interaction_log_entries intentionally not updated — historical records
+        }
+
+        if (newName !== oldName) {
+          db.prepare('UPDATE project_reporters   SET name          = ?                    WHERE name          = ? AND is_self = 1').run(newName, oldName);
+          db.prepare('UPDATE project_memberships SET reporter_name = ?, updated_at = ?   WHERE reporter_name = ? AND reporter_email = ?').run(newName, now, oldName, newEmail);
+        }
+      })();
+
       return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
     },
   );
@@ -233,8 +258,13 @@ export function registerSettingsHandlers(): void {
         const saltTmpPath = saltPath + '.tmp';
         await fs.writeFile(saltTmpPath, newSalt, { mode: 0o600 });
 
-        // Rekey the active database connection in-place
-        getDatabase().pragma(`rekey="x'${newKeyHex}'"`);
+        // Rekey the active database connection in-place.
+        // PRAGMA rekey is not supported in WAL mode, so we checkpoint the WAL by
+        // switching to DELETE journal mode first, rekey, then restore WAL mode.
+        const db = getDatabase();
+        db.pragma('journal_mode = DELETE');
+        db.pragma(`rekey="x'${newKeyHex}'"`);
+        db.pragma('journal_mode = WAL');
 
         // Update the in-memory key so screenshot encryption keeps working
         updateActiveKeyHex(newKeyHex);
@@ -253,7 +283,7 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get-calendar-url', (): string => {
     const db = getDatabase();
     const { calendar_token } = db.prepare('SELECT calendar_token FROM users WHERE id = 1').get() as { calendar_token: string };
-    return `http://127.0.0.1:27371/calendar/reminders.ics?token=${calendar_token}`;
+    return `webcal://localhost:27371/calendar/reminders.ics?token=${calendar_token}`;
   });
 
   ipcMain.handle('settings:regenerate-calendar-token', (): User => {

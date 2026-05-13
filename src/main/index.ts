@@ -111,6 +111,34 @@ function buildMenu(): void {
         { role: 'selectAll' as const },
       ],
     },
+    // View
+    {
+      label: 'View',
+      submenu: [
+        ...(!app.isPackaged ? [
+          { role: 'toggleDevTools' as const },
+          { type: 'separator' as const },
+        ] : []),
+        { role: 'resetZoom' as const },
+        { role: 'zoomIn' as const },
+        { role: 'zoomOut' as const },
+      ],
+    },
+    // Window
+    {
+      label: 'Window',
+      role: 'window' as const,
+      submenu: [
+        { role: 'minimize' as const },
+        { role: 'zoom' as const },
+        ...(isMac
+          ? [
+              { type: 'separator' as const },
+              { role: 'front' as const },
+            ]
+          : [{ role: 'close' as const }]),
+      ],
+    },
     // Help
     {
       label: 'Help',

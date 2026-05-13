@@ -58,6 +58,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [stalenessThreshold, setStalenessThreshold] = useState<number>(90);
   const [stalenessThresholdInput, setStalenessThresholdInput] = useState<string>('90');
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
+  const [calendarUrl, setCalendarUrl] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -105,6 +106,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setWaybackEnabled(user.wayback_enabled !== 0);
     }
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
+    window.sourcerer.getCalendarUrl().then(setCalendarUrl);
   }, [user?.id]);
 
   async function handleProfileSave() {
@@ -185,6 +187,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   async function handleRegenerateToken() {
     const updated = await window.sourcerer.regenerateCalendarToken();
     onUserUpdated(updated);
+    const url = await window.sourcerer.getCalendarUrl();
+    setCalendarUrl(url);
     setCalendarRegenConfirm(false);
   }
 
@@ -517,18 +521,18 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         <div className="sv-section">
           <div className="sv-section-title">Calendar subscription</div>
           <p className="sv-hint">
-            Subscribe to this URL in your calendar app to see your Sourcerer reminders. This link will only work on devices where you are logged in to Sourcerer and have the app running.
+            Subscribe to this URL in any local calendar app (Apple Calendar, Outlook, Thunderbird, and others) to see your Sourcerer reminders. This link will only work on this machine while Sourcerer is running.
           </p>
           <div className="sv-calendar-url-row">
             <input
               className="sv-input sv-calendar-url"
               readOnly
-              value={user ? `http://127.0.0.1:27371/calendar/reminders.ics?token=${user.calendar_token}` : ''}
+              value={calendarUrl}
             />
             <button
               className="sv-copy-btn"
               onClick={() => {
-                if (user) navigator.clipboard.writeText(`http://127.0.0.1:27371/calendar/reminders.ics?token=${user.calendar_token}`);
+                if (calendarUrl) navigator.clipboard.writeText(calendarUrl);
               }}
             >
               Copy

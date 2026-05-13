@@ -132,7 +132,7 @@
             <p>The only outbound network connections the app initiates are:</p>
             <ul>
               <li><strong>RSS feeds</strong> — only for feeds you have explicitly attached to a contact. Sourcerer fetches these feeds from wherever they are hosted.</li>
-              <li><strong>Wayback Machine API</strong> — only when you explicitly trigger a snapshot from the Alerts view.</li>
+              <li><strong>Wayback Machine API</strong> — only when you add or update a contact's website URL and the Wayback Machine setting is enabled.</li>
             </ul>
             <p>There are no other outbound connections. The app does not phone home, check for updates automatically, or communicate with any Sourcerer-operated server.</p>
           </section>
@@ -142,7 +142,7 @@
             <p>When Sourcerer is running and unlocked, it starts a small HTTP server bound to <code>127.0.0.1:27371</code>. This server powers two features:</p>
             <ul>
               <li><strong>Chrome extension</strong> — the extension sends screenshots and reads contact data through this server</li>
-              <li><strong>iCal calendar feed</strong> — reminders can be subscribed to by any calendar app via a local URL</li>
+              <li><strong>Calendar feed</strong> — reminders can be subscribed to by any local calendar app (Apple Calendar, Outlook, Thunderbird, and others) via a <code>webcal://localhost</code> URL, accessible only on this machine</li>
             </ul>
             <p>The server is bound exclusively to the loopback interface (<code>127.0.0.1</code>). It is not accessible from any other machine on the network, and cannot be reached from the internet.</p>
 
@@ -158,7 +158,7 @@
 
           <section id="panic-wipe">
             <h2>Panic wipe</h2>
-            <p>The panic wipe is a single-action, immediate, irreversible destruction of all Sourcerer data on the machine. It deletes:</p>
+            <p>The panic wipe is a two-step, irreversible destruction of all Sourcerer data on the machine. Clicking the button reveals a confirmation step that requires you to type <strong>WIPE</strong> before anything is deleted. It then deletes:</p>
             <ul>
               <li>The encrypted database file and its WAL and SHM journal files</li>
               <li>The salt file (<code>sourcerer.salt</code>)</li>
@@ -166,7 +166,7 @@
             </ul>
             <p>Files are overwritten before deletion where possible, making forensic recovery harder (though not impossible on SSDs, which manage writes at the firmware level).</p>
             <div class="warn">
-              <strong>Panic wipe has no undo.</strong> There is no confirmation prompt. Use it only when you need data gone immediately. Backups stored elsewhere are not affected — the backup file is self-contained and can be restored using only your password.
+              <strong>Panic wipe has no undo.</strong> Once you confirm by typing WIPE, data is gone immediately. Backups stored elsewhere are not affected — the backup file is self-contained and can be restored using only your password.
             </div>
           </section>
 

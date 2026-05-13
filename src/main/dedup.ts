@@ -191,9 +191,10 @@ export function loadDismissedPairs(db: Database.Database): Set<string> {
 }
 
 export function dismissPair(db: Database.Database, aId: string, bId: string): void {
+  const [a, b] = aId < bId ? [aId, bId] : [bId, aId];
   db.prepare(
     'INSERT OR IGNORE INTO dedup_dismissed_pairs (contact_a_id, contact_b_id, dismissed_at) VALUES (?, ?, ?)',
-  ).run(aId, bId, Math.floor(Date.now() / 1000));
+  ).run(a, b, Math.floor(Date.now() / 1000));
 }
 
 export function mergeContacts(

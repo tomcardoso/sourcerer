@@ -41,12 +41,12 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
             <span>File → New Calendar Subscription → paste the URL → Subscribe</span>
           </div>
           <div className="reminders-cal-setup-item">
-            <strong>Outlook (Windows)</strong>
+            <strong>Outlook (Windows / Mac)</strong>
             <span>Add Calendar → From Internet → paste the URL → Import</span>
           </div>
           <div className="reminders-cal-setup-item">
-            <strong>Google Calendar</strong>
-            <span>Settings → Other calendars → From URL → paste the URL → Add calendar</span>
+            <strong>Thunderbird (Windows / Mac / Linux)</strong>
+            <span>Calendar → New Calendar → On the Network → paste the URL → Find Calendars</span>
           </div>
         </div>
 

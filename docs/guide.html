@@ -262,23 +262,25 @@
             <h2>Settings</h2>
 
             <h3>Changing your master password</h3>
-            <p>Sourcerer re-encrypts the database key with the new password. Your data is not re-encrypted from scratch — only the key wrapper changes. You will need to use the new password on all machines that share the same database file.</p>
+            <p>Sourcerer re-encrypts the entire database with a new key derived from your new password. All database pages are re-written. You will need to use the new password on all machines that share the same database file.</p>
 
             <h3>Auto-lock</h3>
             <p>Set a timeout (in minutes) after which Sourcerer will lock itself if no interaction is detected. Set to zero to disable auto-lock. When locked, the encryption key is cleared from memory and you must re-enter your password to continue.</p>
 
             <h3>Staleness threshold</h3>
-            <p>Configure how many days of inactivity cause a contact to be flagged as stale. The default is 30 days.</p>
+            <p>Configure how many days of inactivity cause a contact to be flagged as stale. The default is 90 days.</p>
 
             <h3>Panic wipe</h3>
-            <p>The panic wipe button immediately and irreversibly destroys:</p>
+            <p>The panic wipe button irreversibly destroys:</p>
             <ul>
               <li>The encrypted database and its WAL/journal files</li>
               <li>The salt file</li>
               <li>All stored screenshots</li>
             </ul>
+            <p>Clicking the button reveals a confirmation step that requires you to type <strong>WIPE</strong> before destruction begins. If you have a backup, it will not be affected — and unlike the live database, the backup embeds its own salt so it can be restored with just your password.
+            </p>
             <div class="warn">
-              <strong>This cannot be undone.</strong> There is no confirmation delay. If you have a backup, it will not be affected — but without the salt file, the backup cannot be opened either. Only use panic wipe when you need the data gone immediately.
+              <strong>This cannot be undone.</strong> Once you confirm, data is gone. Only use panic wipe when you need the data gone immediately.
             </div>
 
             <h3>Backup and restore</h3>
@@ -289,7 +291,7 @@
             </div>
 
             <h3>Calendar feed</h3>
-            <p>Sourcerer can expose your upcoming reminders as an iCal feed, which you can subscribe to from any calendar app (Apple Calendar, Google Calendar, Outlook). Copy the calendar URL from Settings and paste it into your calendar app's "Subscribe to calendar" dialog. The feed URL contains a token — if you believe it has been compromised, click <strong>Regenerate token</strong> to invalidate the old URL.</p>
+            <p>Sourcerer can expose your upcoming reminders as a calendar feed, which you can subscribe to from any local calendar app (Apple Calendar, Outlook, Thunderbird, and others). Copy the calendar URL from Settings and paste it into your calendar app's “Subscribe to calendar” dialog. The feed is served over <code>webcal://</code> on your local machine — it is only accessible while Sourcerer is running, and only from this computer. The feed URL contains a token — if you believe it has been compromised, click <strong>Regenerate token</strong> to invalidate the old URL.</p>
           </section>
 
           <section id="collaboration">

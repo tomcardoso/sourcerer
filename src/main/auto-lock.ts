@@ -4,7 +4,7 @@ import { closeAllSharedDbs } from './database/shared-db';
 import { stopPoller } from './sync/poller';
 import { clearExtensionSession } from './http-server';
 
-const IDLE_CHECK_INTERVAL_MS = 60_000;
+const IDLE_CHECK_INTERVAL_MS = 15_000;
 const DEFAULT_IDLE_THRESHOLD_MS = 15 * 60 * 1000;
 
 const AUTH_WIDTH = 560;
@@ -35,20 +35,25 @@ class AutoLockManager {
     this.idleThresholdMs = ms;
   }
 
+  lock(): void {
+    if (!isDatabaseOpen()) return;
+    stopPoller();
+    closeAllSharedDbs();
+    clearExtensionSession();
+    closeDatabase();
+    if (this.win) {
+      this.win.setResizable(false);
+      this.win.setMinimumSize(0, 0);
+      this.win.setSize(AUTH_WIDTH, AUTH_HEIGHT, true);
+      this.win.center();
+    }
+    this.win?.webContents.send('app:locked');
+  }
+
   private check(): void {
     if (!isDatabaseOpen()) return;
-    if (Date.now() - this.lastInteractionAt > this.idleThresholdMs) {
-      stopPoller();
-      closeAllSharedDbs();
-      clearExtensionSession();
-      closeDatabase();
-      if (this.win) {
-        this.win.setResizable(false);
-        this.win.setMinimumSize(0, 0);
-        this.win.setSize(AUTH_WIDTH, AUTH_HEIGHT, true);
-        this.win.center();
-      }
-      this.win?.webContents.send('app:locked');
+    if (Date.now() - this.lastInteractionAt >= this.idleThresholdMs) {
+      this.lock();
     }
   }
 

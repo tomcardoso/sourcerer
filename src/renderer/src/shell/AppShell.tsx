@@ -125,7 +125,12 @@ export default function AppShell() {
     <div className="app-shell">
       <div className="app-titlebar">
         <div className="app-titlebar-left" />
-        <div className="app-titlebar-right">Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted</div>
+        <div className="app-titlebar-right">
+          Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted
+          <button className="app-titlebar-lock" onClick={() => window.sourcerer.lock()} title="Lock Sourcerer">
+            🔒
+          </button>
+        </div>
       </div>
       <div className="app-body">
       <Sidebar
