@@ -1,6 +1,6 @@
 export const SHARED_SCHEMA_SQL = `
   PRAGMA foreign_keys = ON;
-  PRAGMA journal_mode = WAL;
+  PRAGMA journal_mode = DELETE;
 
   CREATE TABLE IF NOT EXISTS project_meta (
     id          INTEGER PRIMARY KEY DEFAULT 1 CHECK(id = 1),

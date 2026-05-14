@@ -15,6 +15,7 @@ function openRaw(filePath: string, keyHex: string): Database.Database {
     throw new Error('Cannot open shared project file — wrong key or corrupted file.');
   }
   db.pragma('foreign_keys = ON');
+  db.pragma('journal_mode = DELETE');
   db.pragma('busy_timeout = 5000');
   return db;
 }
