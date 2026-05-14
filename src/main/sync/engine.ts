@@ -96,73 +96,86 @@ function pullContacts(local: Database.Database, shared: Database.Database, now: 
         )
         .run(sc.id, sc.name, sc.organization, sc.notes, sc.created_at, sc.updated_at, now);
 
-      replaceSubTablesFromShared(local, shared, sc.id);
+      mergeSubTablesFromShared(local, shared, sc.id);
     }
   }
 }
 
-function replaceSubTablesFromShared(
+function mergeSubTablesFromShared(
   local: Database.Database,
   shared: Database.Database,
   contactId: string,
 ): void {
-  // Emails
-  local.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
-  for (const e of shared
+  // ── Emails ────────────────────────────────────────────────────────────────
+  // Stored emails are already normalised (lowercased, trimmed) — compare directly.
+  const sharedEmails = shared
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number }[]) {
-    local
-      .prepare(
-        'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-      )
-      .run(e.id, contactId, e.email, e.label, e.sort_order);
-  }
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
+  const localEmails = local
+    .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
 
-  // Phones
-  local.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(contactId);
-  for (const p of shared
+  const sharedEmailValues = new Set(sharedEmails.map((e) => e.email));
+  const localOnlyEmails = localEmails.filter((e) => !sharedEmailValues.has(e.email));
+
+  // Merge and sort by insertion time so rows appear in the order they were added.
+  const mergedEmails = [...sharedEmails, ...localOnlyEmails].sort((a, b) => a.created_at - b.created_at);
+
+  local.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
+  mergedEmails.forEach((e, i) => {
+    local
+      .prepare('INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(e.id, contactId, e.email, e.label, i, e.created_at);
+  });
+
+  // ── Phones ────────────────────────────────────────────────────────────────
+  // Stored phones are already normalised on save — compare stored values directly.
+  const sharedPhones = shared
     .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as { id: string; phone: string; sort_order: number }[]) {
-    local
-      .prepare(
-        'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
-      )
-      .run(p.id, contactId, p.phone, p.sort_order);
-  }
+    .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
+  const localPhones = local
+    .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
+    .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
 
-  // Links — preserve local-only wayback_url before replacing from shared
-  const existingWaybacks = new Map<string, string | null>(
-    (local
-      .prepare("SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
-      .all(contactId) as { url: string; wayback_url: string | null }[])
-      .map((r) => [r.url, r.wayback_url]),
-  );
-  local.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(contactId);
-  for (const l of shared
+  const sharedPhoneValues = new Set(sharedPhones.map((p) => p.phone));
+  const localOnlyPhones = localPhones.filter((p) => !sharedPhoneValues.has(p.phone));
+
+  const mergedPhones = [...sharedPhones, ...localOnlyPhones].sort((a, b) => a.created_at - b.created_at);
+
+  local.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(contactId);
+  mergedPhones.forEach((p, i) => {
+    local
+      .prepare('INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(p.id, contactId, p.phone, p.label, i, p.created_at);
+  });
+
+  // ── Links ─────────────────────────────────────────────────────────────────
+  // wayback_url is local-only — snapshot it before DELETE and restore after.
+  const sharedLinks = shared
     .prepare('SELECT * FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as {
-    id: string;
-    type: string;
-    label: string | null;
-    url: string;
-    sort_order: number;
-  }[]) {
-    local
-      .prepare(
-        'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
-      )
-      .run(l.id, contactId, l.type, l.label, l.url, l.sort_order);
-    if (l.type === 'website') {
-      const wayback = existingWaybacks.get(l.url);
-      if (wayback) {
-        local
-          .prepare("UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?")
-          .run(wayback, contactId, l.url);
-      }
-    }
-  }
+    .all(contactId) as { id: string; type: string; label: string | null; url: string; sort_order: number; created_at: number }[];
+  const localLinks = local
+    .prepare('SELECT id, type, label, url, wayback_url, sort_order, created_at FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
+    .all(contactId) as { id: string; type: string; label: string | null; url: string; wayback_url: string | null; sort_order: number; created_at: number }[];
 
-  // Alert RSS (one per contact)
+  const sharedUrlValues = new Set(sharedLinks.map((l) => l.url.trim()));
+  const localWaybacks = new Map(localLinks.filter((l) => l.wayback_url).map((l) => [l.url.trim(), l.wayback_url]));
+  const localOnlyLinks = localLinks.filter((l) => !sharedUrlValues.has(l.url.trim()));
+
+  // Build merged set: shared rows (with wayback_url restored) + local-only rows, sorted by created_at.
+  const mergedLinks = [
+    ...sharedLinks.map((l) => ({ ...l, wayback_url: localWaybacks.get(l.url.trim()) ?? null })),
+    ...localOnlyLinks,
+  ].sort((a, b) => a.created_at - b.created_at);
+
+  local.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(contactId);
+  mergedLinks.forEach((l, i) => {
+    local
+      .prepare('INSERT INTO contact_links (id, contact_id, type, label, url, wayback_url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(l.id, contactId, l.type, l.label, l.url, l.wayback_url, i, l.created_at);
+  });
+
+  // ── Alert RSS (one per contact — last-write-wins is fine here) ────────────
   local.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);
   const rss = shared
     .prepare('SELECT * FROM contact_alert_rss WHERE contact_id = ?')
@@ -360,23 +373,23 @@ function pushSubTablesToShared(
   shared.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
   for (const e of local
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number }[]) {
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[]) {
     shared
       .prepare(
-        'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run(e.id, contactId, e.email, e.label, e.sort_order);
+      .run(e.id, contactId, e.email, e.label, e.sort_order, e.created_at);
   }
 
   shared.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(contactId);
   for (const p of local
     .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
-    .all(contactId) as { id: string; phone: string; sort_order: number }[]) {
+    .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[]) {
     shared
       .prepare(
-        'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)',
+        'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       )
-      .run(p.id, contactId, p.phone, p.sort_order);
+      .run(p.id, contactId, p.phone, p.label, p.sort_order, p.created_at);
   }
 
   shared.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(contactId);
@@ -388,12 +401,13 @@ function pushSubTablesToShared(
     label: string | null;
     url: string;
     sort_order: number;
+    created_at: number;
   }[]) {
     shared
       .prepare(
-        'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
-      .run(l.id, contactId, l.type, l.label, l.url, l.sort_order);
+      .run(l.id, contactId, l.type, l.label, l.url, l.sort_order, l.created_at);
   }
 
   shared.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);

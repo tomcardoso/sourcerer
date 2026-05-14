@@ -46,6 +46,7 @@ export const LOCAL_SCHEMA_SQL = `
     email      TEXT    NOT NULL,
     label      TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0,
     synced_at  INTEGER
   );
 
@@ -55,6 +56,7 @@ export const LOCAL_SCHEMA_SQL = `
     phone      TEXT    NOT NULL,
     label      TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0,
     synced_at  INTEGER
   );
 
@@ -66,6 +68,7 @@ export const LOCAL_SCHEMA_SQL = `
     url        TEXT    NOT NULL,
     wayback_url TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0,
     synced_at  INTEGER
   );
 

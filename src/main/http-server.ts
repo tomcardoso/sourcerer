@@ -248,14 +248,14 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         ).run(contactId, name.trim(), (organization as string | undefined)?.trim() || null, now, now);
         if ((email as string | undefined)?.trim()) {
           db.prepare(
-            'INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, 0)'
-          ).run(randomUUID(), contactId, normalizeEmail((email as string).trim()));
+            'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)'
+          ).run(randomUUID(), contactId, normalizeEmail((email as string).trim()), now);
         }
         if ((phone as string | undefined)?.trim()) {
           const rawPhone = (phone as string).trim();
           db.prepare(
-            'INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, 0)'
-          ).run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone);
+            'INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, 0, ?)'
+          ).run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone, now);
         }
         json(res, 200, { id: contactId, name: name.trim() });
       } catch (err) {
@@ -284,11 +284,11 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         const now = Math.floor(Date.now() / 1000);
         if (fieldType === 'email') {
           const row = db.prepare('SELECT MAX(sort_order) AS m FROM contact_emails WHERE contact_id = ?').get(contactId) as { m: number | null };
-          db.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)').run(randomUUID(), contactId, normalizeEmail(value.trim()), (row.m ?? -1) + 1);
+          db.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), contactId, normalizeEmail(value.trim()), (row.m ?? -1) + 1, now);
         } else if (fieldType === 'phone') {
           const rawPhone = value.trim();
           const row = db.prepare('SELECT MAX(sort_order) AS m FROM contact_phones WHERE contact_id = ?').get(contactId) as { m: number | null };
-          db.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)').run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone, (row.m ?? -1) + 1);
+          db.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone, (row.m ?? -1) + 1, now);
         } else if (fieldType === 'note') {
           const existing = (db.prepare('SELECT notes FROM contacts WHERE id = ?').get(contactId) as { notes: string | null }).notes;
           const updated = existing ? `${existing}\n\n${value.trim()}` : value.trim();
