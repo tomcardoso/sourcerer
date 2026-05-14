@@ -65,6 +65,12 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
     if (!hasProjects && activeTab === 'project') setActiveTab('global');
   }, [hasProjects, activeTab]);
 
+  useEffect(() => {
+    return window.sourcerer.onWaybackUpdated((updatedId) => {
+      if (updatedId === contactId) reload();
+    });
+  }, [contactId, reload]);
+
   function handleMembershipChanged() {
     reload();
     onUpdated();

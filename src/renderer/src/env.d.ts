@@ -210,6 +210,8 @@ declare global {
         strategy: 'keep' | 'merge' | 'skip';
       }) => Promise<void>;
       onDuplicatePairsUpdated: (callback: (count: number) => void) => () => void;
+      onWaybackUpdated: (callback: (contactId: string) => void) => () => void;
+      onWaybackStatus: (callback: (payload: { contactId: string; url: string; status: 'pending' | 'failed' }) => void) => () => void;
     };
   }
 }

@@ -312,6 +312,16 @@ const sourcererApi = {
     ipcRenderer.on('contacts:duplicates-updated', handler);
     return () => ipcRenderer.removeListener('contacts:duplicates-updated', handler);
   },
+  onWaybackUpdated: (callback: (contactId: string) => void): (() => void) => {
+    const handler = (_: unknown, contactId: string) => callback(contactId);
+    ipcRenderer.on('contacts:wayback-updated', handler);
+    return () => ipcRenderer.removeListener('contacts:wayback-updated', handler);
+  },
+  onWaybackStatus: (callback: (payload: { contactId: string; url: string; status: 'pending' | 'failed' }) => void): (() => void) => {
+    const handler = (_: unknown, payload: { contactId: string; url: string; status: 'pending' | 'failed' }) => callback(payload);
+    ipcRenderer.on('contacts:wayback-status', handler);
+    return () => ipcRenderer.removeListener('contacts:wayback-status', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

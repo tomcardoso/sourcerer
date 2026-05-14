@@ -28,19 +28,41 @@ let cachedPairs: DuplicatePair[] = [];
 let dedupScanTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function triggerWaybackSave(contactId: string, url: string): Promise<void> {
+  console.log(`[wayback] Requesting archive for ${url}`);
+  const broadcast = (status: 'pending' | 'failed') => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('contacts:wayback-status', { contactId, url, status });
+    }
+  };
+
+  broadcast('pending');
   try {
     const response = await fetch(`https://web.archive.org/save/${encodeURIComponent(url)}`, {
       redirect: 'follow',
       headers: { 'User-Agent': 'Sourcerer/1.0' },
     });
     const waybackUrl = response.url;
+    console.log(`[wayback] Response status=${response.status} url=${waybackUrl}`);
+    if (!response.ok) {
+      console.warn(`[wayback] Archive request failed with HTTP ${response.status} for ${url}`);
+      broadcast('failed');
+      return;
+    }
     if (waybackUrl.includes('web.archive.org/web/') && isDatabaseOpen()) {
       getDatabase()
         .prepare("UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?")
         .run(waybackUrl, contactId, url);
+      console.log(`[wayback] Saved snapshot for ${url} → ${waybackUrl}`);
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('contacts:wayback-updated', contactId);
+      }
+    } else {
+      console.warn(`[wayback] Unexpected response URL, snapshot not saved: ${waybackUrl}`);
+      broadcast('failed');
     }
-  } catch {
-    // Silent failure — Wayback may not be reachable
+  } catch (err) {
+    console.error(`[wayback] Failed to archive ${url}:`, err);
+    broadcast('failed');
   }
 }
 
