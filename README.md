@@ -63,7 +63,7 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 - Export to CSV, Excel (.xlsx), or vCard (.vcf) — per project or all contacts
 - Sanitised export mode strips notes and interaction logs for sharing
 
-**Chrome extension**
+**[Chrome extension](https://chromewebstore.google.com/detail/sourcerer/pipgdnekoknjbghnmhilapocpchdcadm)** (Firefox Add-ons listing coming soon)
 - Full-page screenshot capture from any tab
 - Contact picker links screenshots to a source record
 - Screenshots stored encrypted alongside the database
