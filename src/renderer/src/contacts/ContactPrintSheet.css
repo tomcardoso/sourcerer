@@ -1,0 +1,211 @@
+/*
+ * ContactPrintSheet.css
+ *
+ * Styles for the printable contact summary sheet.
+ * This file owns all print-related CSS:
+ *   1. Screen: hide the sheet entirely (it renders as a portal to body).
+ *   2. Print: show the sheet, hide the rest of the app (#root).
+ *
+ * Edit this file to adjust the print layout without touching the app UI.
+ */
+
+/* ── Hide the sheet on screen ─────────────────────── */
+
+.cps-root {
+  display: none;
+}
+
+/* ── Print layout ─────────────────────────────────── */
+
+@media print {
+  /* Release the fixed-height, overflow:hidden root constraints */
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide the entire app; the portal sheet is a sibling of #root */
+  #root {
+    display: none !important;
+  }
+
+  .cps-root {
+    display: block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  /* Header */
+  .cps-header {
+    border-bottom: 2pt solid #000;
+    padding-bottom: 10pt;
+    margin-bottom: 16pt;
+  }
+
+  .cps-meta {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 4pt;
+  }
+
+  .cps-name {
+    font-size: 22pt;
+    font-weight: bold;
+    margin: 0 0 2pt;
+    line-height: 1.1;
+    color: #000;
+  }
+
+  .cps-org {
+    font-size: 13pt;
+    color: #000;
+    margin: 0;
+  }
+
+  /* Section */
+  .cps-section {
+    margin-bottom: 12pt;
+    break-inside: avoid;
+  }
+
+  .cps-section-label {
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    font-weight: bold;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #000;
+    border-bottom: 0.75pt solid #000;
+    padding-bottom: 2pt;
+    margin-bottom: 5pt;
+  }
+
+  /* Field rows */
+  .cps-row {
+    display: flex;
+    gap: 8pt;
+    align-items: baseline;
+    margin-bottom: 2pt;
+  }
+
+  .cps-value {
+    font-size: 10pt;
+    color: #000;
+  }
+
+  .cps-label {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #000;
+  }
+
+  .cps-link-type {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #000;
+    min-width: 64pt;
+    flex-shrink: 0;
+  }
+
+  /* Notes */
+  .cps-section--notes .cps-notes {
+    font-size: 10pt;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    color: #000;
+  }
+
+  /* Projects table */
+  .cps-projects-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+
+  .cps-projects-table th {
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 2pt 4pt;
+    border-bottom: 0.75pt solid #000;
+    color: #000;
+  }
+
+  .cps-projects-table td {
+    padding: 3pt 4pt;
+    border-bottom: 0.5pt solid #000;
+    vertical-align: top;
+    color: #000;
+  }
+
+  .cps-projects-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Interaction log */
+  .cps-log-project {
+    margin-bottom: 8pt;
+  }
+
+  .cps-log-project-name {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #000;
+    margin-bottom: 4pt;
+  }
+
+  .cps-log-entry {
+    margin-bottom: 6pt;
+    break-inside: avoid;
+    padding-left: 8pt;
+    border-left: 1pt solid #000;
+  }
+
+  .cps-log-meta {
+    display: flex;
+    gap: 8pt;
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #000;
+    margin-bottom: 2pt;
+  }
+
+  .cps-log-date {
+    font-weight: bold;
+  }
+
+  .cps-log-body {
+    font-size: 10pt;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    color: #000;
+  }
+
+  /* Footer */
+  .cps-footer {
+    margin-top: 20pt;
+    padding-top: 6pt;
+    border-top: 0.75pt solid #000;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    color: #000;
+  }
+}
