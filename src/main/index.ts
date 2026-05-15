@@ -197,8 +197,8 @@ app.whenReady().then(() => {
   registerScreenshotHandlers();
   registerSearchHandlers();
   startHttpServer();
-  const win = createWindow();
-  registerUpdaterHandlers(win);
+  createWindow();
+  registerUpdaterHandlers();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

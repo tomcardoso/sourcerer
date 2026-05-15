@@ -2,6 +2,12 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { is } from '@electron-toolkit/utils';
 import { autoUpdater } from 'electron-updater';
 
+function sendToWindow(channel: string, ...args: unknown[]): void {
+  // Resolve the active window at send time — avoids stale reference if the
+  // window is closed and re-created on macOS while the app stays running.
+  BrowserWindow.getAllWindows()[0]?.webContents.send(channel, ...args);
+}
+
 /**
  * Call this from the Help > "Check for Updates…" menu item.
  * Safe to call before registerUpdaterHandlers — the listeners are set up
@@ -12,18 +18,18 @@ export function triggerUpdateCheck(): void {
   autoUpdater.checkForUpdates().catch(() => {});
 }
 
-export function registerUpdaterHandlers(win: BrowserWindow): void {
+export function registerUpdaterHandlers(): void {
   // Dev simulation: fire a fake update-available banner after 3s so UI states can be tested.
   // The IPC handlers below are also registered in dev so the Download/Restart buttons work.
   if (is.dev) {
     ipcMain.handle('update:check', () => {});
     ipcMain.handle('update:download', () => {
-      win.webContents.send('update:downloaded', { version: '99.0.0' });
+      sendToWindow('update:downloaded', { version: '99.0.0' });
     });
     ipcMain.handle('update:quit-and-install', () => {});
     // Trigger from DevTools console: window.sourcerer.simulateUpdate()
     ipcMain.handle('update:dev-simulate', () => {
-      win.webContents.send('update:available', { version: '99.0.0' });
+      sendToWindow('update:available', { version: '99.0.0' });
     });
     return;
   }
@@ -32,15 +38,15 @@ export function registerUpdaterHandlers(win: BrowserWindow): void {
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('update-available', (info) => {
-    win.webContents.send('update:available', { version: info.version });
+    sendToWindow('update:available', { version: info.version });
   });
 
   autoUpdater.on('download-progress', (progress) => {
-    win.webContents.send('update:download-progress', { percent: Math.round(progress.percent) });
+    sendToWindow('update:download-progress', { percent: Math.round(progress.percent) });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    win.webContents.send('update:downloaded', { version: info.version });
+    sendToWindow('update:downloaded', { version: info.version });
   });
 
   ipcMain.handle('update:check', () => autoUpdater.checkForUpdates());
