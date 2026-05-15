@@ -94,7 +94,7 @@ function pullContacts(local: Database.Database, shared: Database.Database, now: 
              notes = excluded.notes, updated_at = excluded.updated_at,
              synced_at = excluded.synced_at`,
         )
-        .run(sc.id, sc.name, sc.organization, sc.notes, sc.created_at, sc.updated_at, now);
+        .run(sc.id, sc.name, sc.organization, sc.notes, sc.created_at, sc.updated_at, 0);
 
       mergeSubTablesFromShared(local, shared, sc.id);
     }
