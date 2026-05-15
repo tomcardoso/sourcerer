@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { is } from '@electron-toolkit/utils';
 import { autoUpdater } from 'electron-updater';
 
@@ -23,21 +23,36 @@ export function triggerUpdateCheck(): void {
     sendToWindow('update:available', { version: '99.0.0' });
     return;
   }
-  if (!app.isPackaged) return;
+  if (!app.isPackaged) {
+    // Running from a built but non-installed bundle — auto-updates require a
+    // signed, packaged app. Inform the user rather than silently doing nothing.
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Updates not available',
+      message: 'Updates are only available in installed builds of Sourcerer.',
+    });
+    return;
+  }
   autoUpdater.checkForUpdates().catch(() => {});
 }
 
 export function registerUpdaterHandlers(): void {
   // Dev simulation path: register stub handlers so the full UI flow is exercisable.
   if (is.dev) {
+    let devDownloadInProgress = false;
     ipcMain.handle('update:check', () => {});
     ipcMain.handle('update:download', () => {
+      // Guard against re-entry: clicking the button twice while a simulated
+      // download is in progress would fire interleaved progress sequences.
+      if (devDownloadInProgress) return;
+      devDownloadInProgress = true;
       // Simulate download progress (25 → 50 → 75 → 100 %) then fire update:downloaded.
       [25, 50, 75, 100].forEach((percent, i) => {
         setTimeout(() => {
           sendToWindow('update:download-progress', { percent });
           if (percent === 100) {
             setTimeout(() => {
+              devDownloadInProgress = false;
               cachedUpdateInfo = { event: 'downloaded', version: '99.0.0' };
               sendToWindow('update:downloaded', { version: '99.0.0' });
             }, 300);
@@ -73,6 +88,18 @@ export function registerUpdaterHandlers(): void {
   autoUpdater.on('update-downloaded', (info) => {
     cachedUpdateInfo = { event: 'downloaded', version: info.version };
     sendToWindow('update:downloaded', { version: info.version });
+  });
+
+  // electron-updater reports download/check failures through the error event,
+  // not by rejecting the promise — so this is the only reliable failure path.
+  autoUpdater.on('error', (err) => {
+    // If we had a fully-downloaded update, its artefacts are now suspect.
+    if (cachedUpdateInfo?.event === 'downloaded') {
+      cachedUpdateInfo = null;
+    }
+    sendToWindow('update:error', {
+      message: err instanceof Error ? err.message : String(err),
+    });
   });
 
   ipcMain.handle('update:check', () => autoUpdater.checkForUpdates());

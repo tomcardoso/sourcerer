@@ -213,6 +213,7 @@ declare global {
       onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void;
       onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
       onUpdateDownloadProgress: (callback: (info: { percent: number }) => void) => () => void;
+      onUpdateError: (callback: (info: { message: string }) => void) => () => void;
       downloadUpdate: () => Promise<void>;
       quitAndInstall: () => Promise<void>;
       simulateUpdate: () => Promise<void>;

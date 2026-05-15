@@ -330,6 +330,11 @@ const sourcererApi = {
     ipcRenderer.on('update:download-progress', handler);
     return () => ipcRenderer.removeListener('update:download-progress', handler);
   },
+  onUpdateError: (callback: (info: { message: string }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { message: string }) => callback(info);
+    ipcRenderer.on('update:error', handler);
+    return () => ipcRenderer.removeListener('update:error', handler);
+  },
   downloadUpdate: (): Promise<void> => ipcRenderer.invoke('update:download'),
   quitAndInstall: (): Promise<void> => ipcRenderer.invoke('update:quit-and-install'),
   simulateUpdate: (): Promise<void> => ipcRenderer.invoke('update:dev-simulate'),
