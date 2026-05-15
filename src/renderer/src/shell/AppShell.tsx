@@ -18,6 +18,7 @@ export type NavTarget =
   | { view: 'all-contacts' }
   | { view: 'alerts' }
   | { view: 'reminders' }
+  | { view: 'all-timeline' }
   | { view: 'project'; projectId: string }
   | { view: 'timeline'; projectId: string }
   | { view: 'settings' };
@@ -166,6 +167,14 @@ export default function AppShell() {
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
         {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} user={user} />}
+        {nav.view === 'all-timeline' && (
+          <ProjectTimeline
+            onSelectContact={(id) => {
+              setNav({ view: 'all-contacts' });
+              setOpenContactId(id);
+            }}
+          />
+        )}
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}

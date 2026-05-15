@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { TimelineEntry } from '@shared/types';
+import { useClickOutside } from '../hooks/useClickOutside';
+import { CalendarPicker } from './CalendarPicker';
+import './View.css';
+import './ColumnHeader.css';
 import './ProjectTimeline.css';
 
 interface Props {
-  projectId: string;
+  projectId?: string;
   projectName?: string;
   onSelectContact: (id: string) => void;
 }
@@ -40,80 +45,445 @@ function fmtTime(ts: number): string {
   return `${h12}:${m} ${period}`;
 }
 
+function toggle(arr: string[], val: string): string[] {
+  return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
+}
+
+function TimelinePrintSheet({
+  title,
+  kicker,
+  groups,
+  isGlobal,
+}: {
+  title: string;
+  kicker: string;
+  groups: Array<{ key: string; entries: TimelineEntry[] }>;
+  isGlobal: boolean;
+}) {
+  return createPortal(
+    <div className="ptl-ps-root">
+      <header className="ptl-ps-header">
+        <div className="ptl-ps-meta">{kicker}</div>
+        <h1 className="ptl-ps-title">{title}</h1>
+        <div className="ptl-ps-subtitle">Timeline</div>
+      </header>
+      <div className="ptl-ps-body">
+        {groups.map((group) => (
+          <div key={group.key} className="ptl-ps-group">
+            <div className="ptl-ps-day">{fmtDayLabel(group.key)}</div>
+            {group.entries.map((entry) => (
+              <div key={entry.id} className="ptl-ps-entry">
+                <div className="ptl-ps-entry-meta">
+                  <span className="ptl-ps-contact-name">{entry.contact_name}</span>
+                  {entry.contact_organization && (
+                    <span className="ptl-ps-badge">{entry.contact_organization}</span>
+                  )}
+                  {isGlobal && entry.project_name && (
+                    <span className="ptl-ps-badge">{entry.project_name}</span>
+                  )}
+                  {entry.priority && (
+                    <span className="ptl-ps-badge">{entry.priority}</span>
+                  )}
+                </div>
+                <p className="ptl-ps-body-text">{entry.body}</p>
+                <div className="ptl-ps-footer">
+                  <span className="ptl-ps-reporter">{entry.reporter_name}</span>
+                  <span className="ptl-ps-time">{fmtTime(entry.created_at)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <footer className="ptl-ps-page-footer">
+        <span>Printed from Sourcerer</span>
+        <span>
+          {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+          {' · '}
+          {new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        </span>
+      </footer>
+    </div>,
+    document.body,
+  );
+}
+
+function MultiSelect({
+  options,
+  selected,
+  onChange,
+  placeholder,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  const close = () => { setOpen(false); setQuery(''); };
+  useClickOutside(ref, close, { isOpen: open, escapeKey: false });
+
+  const filtered = options.filter(
+    (o) => !selected.includes(o) && o.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  return (
+    <div ref={ref} className="ptl-ms">
+      <div className="ptl-ms-chips" onClick={() => setOpen(true)}>
+        {selected.map((s) => (
+          <span key={s} className="ptl-ms-chip">
+            {s}
+            <button
+              className="ptl-ms-chip-remove"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onChange(selected.filter((x) => x !== s)); }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          className="ptl-ms-input"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' && query === '' && selected.length > 0) {
+              onChange(selected.slice(0, -1));
+            }
+          }}
+          placeholder={selected.length === 0 ? placeholder : ''}
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="ptl-ms-dropdown">
+          {filtered.map((opt) => (
+            <button
+              key={opt}
+              className="ptl-ms-option"
+              onMouseDown={(e) => { e.preventDefault(); onChange([...selected, opt]); setQuery(''); }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectTimeline({ projectId, projectName, onSelectContact }: Props) {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [selectedReporters, setSelectedReporters] = useState<string[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
+  const priorityRef = useRef<HTMLDivElement>(null);
+  const [openTextFilter, setOpenTextFilter] = useState<'theme' | 'org' | null>(null);
+  const themeRef = useRef<HTMLDivElement>(null);
+  const orgRef = useRef<HTMLDivElement>(null);
+  const [themeFilter, setThemeFilter] = useState('');
+  const [orgFilter, setOrgFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   useEffect(() => {
     setEntries([]);
     setLoading(true);
-    window.sourcerer.listProjectTimeline(projectId).then((data) => {
+    setSelectedReporters([]);
+    setSelectedProjects([]);
+    setSelectedPriorities([]);
+    setThemeFilter('');
+    setOrgFilter('');
+    setOpenTextFilter(null);
+    setDateFrom('');
+    setDateTo('');
+    const fetch = projectId
+      ? window.sourcerer.listProjectTimeline(projectId)
+      : window.sourcerer.listAllTimeline();
+    fetch.then((data) => {
       setEntries(data);
       setLoading(false);
     });
   }, [projectId]);
 
-  if (loading) {
-    return <div className="ptl-empty">Loading…</div>;
-  }
+  useClickOutside(priorityRef, () => setPriorityDropdownOpen(false), { isOpen: priorityDropdownOpen });
+  useClickOutside(themeRef, () => setOpenTextFilter(null), { isOpen: openTextFilter === 'theme' });
+  useClickOutside(orgRef, () => setOpenTextFilter(null), { isOpen: openTextFilter === 'org' });
 
-  if (entries.length === 0) {
+  const isGlobal = !projectId;
+  const headingTitle = projectName ?? 'All Contacts';
+
+  const reporterOptions = useMemo(
+    () => [...new Set(entries.map((e) => e.reporter_name))].sort(),
+    [entries],
+  );
+  const projectOptions = useMemo(
+    () => [...new Set(entries.map((e) => e.project_name).filter(Boolean) as string[])].sort(),
+    [entries],
+  );
+  const priorityOptions = useMemo(
+    () => [...new Set(entries.map((e) => e.priority).filter(Boolean) as string[])].sort(),
+    [entries],
+  );
+
+  const filtered = useMemo(() => {
+    return entries.filter((e) => {
+      if (selectedReporters.length > 0 && !selectedReporters.includes(e.reporter_name)) return false;
+      if (selectedProjects.length > 0 && (!e.project_name || !selectedProjects.includes(e.project_name))) return false;
+      if (selectedPriorities.length > 0 && (!e.priority || !selectedPriorities.includes(e.priority))) return false;
+      if (themeFilter && !(e.theme ?? '').toLowerCase().includes(themeFilter.toLowerCase())) return false;
+      if (orgFilter && !(e.contact_organization ?? '').toLowerCase().includes(orgFilter.toLowerCase())) return false;
+      if (dateFrom) {
+        const from = new Date(dateFrom).setHours(0, 0, 0, 0) / 1000;
+        if (e.created_at < from) return false;
+      }
+      if (dateTo) {
+        const to = new Date(dateTo).setHours(23, 59, 59, 999) / 1000;
+        if (e.created_at > to) return false;
+      }
+      return true;
+    });
+  }, [entries, selectedReporters, selectedProjects, selectedPriorities, themeFilter, orgFilter, dateFrom, dateTo]);
+
+  const groups = useMemo(() => {
+    const g: Array<{ key: string; entries: TimelineEntry[] }> = [];
+    for (const entry of filtered) {
+      const key = dayKey(entry.created_at);
+      const last = g[g.length - 1];
+      if (last && last.key === key) last.entries.push(entry);
+      else g.push({ key, entries: [entry] });
+    }
+    return g;
+  }, [filtered]);
+
+  const isFiltered =
+    selectedReporters.length > 0 ||
+    selectedProjects.length > 0 ||
+    selectedPriorities.length > 0 ||
+    themeFilter !== '' ||
+    orgFilter !== '' ||
+    dateFrom !== '' ||
+    dateTo !== '';
+
+  // Show year suffix when dates span different years, or when a single date is in a prior year
+  const thisYear = new Date().getFullYear();
+  const showFromYear = !!(dateFrom && (
+    (dateTo && dateFrom.slice(0, 4) !== dateTo.slice(0, 4)) ||
+    Number(dateFrom.slice(0, 4)) < thisYear
+  ));
+  const showToYear = !!(dateTo && (
+    (dateFrom && dateFrom.slice(0, 4) !== dateTo.slice(0, 4)) ||
+    Number(dateTo.slice(0, 4)) < thisYear
+  ));
+
+  const showSep = priorityOptions.length > 0;
+
+  const kicker = isFiltered
+    ? `${filtered.length} of ${entries.length} interaction${entries.length !== 1 ? 's' : ''}`
+    : `${entries.length} interaction${entries.length !== 1 ? 's' : ''}`;
+
+  const printSheet = groups.length > 0
+    ? <TimelinePrintSheet title={headingTitle} kicker={kicker} groups={groups} isGlobal={isGlobal} />
+    : null;
+
+  if (loading) {
     return (
-      <div className="ptl-empty">
-        No interactions logged yet. Log interactions from each contact's Project tab.
+      <div className="view">
+        <div className="ptl-empty">Loading…</div>
       </div>
     );
   }
 
-  // Group by calendar day (entries already sorted newest-first from IPC)
-  const groups: Array<{ key: string; entries: TimelineEntry[] }> = [];
-  for (const entry of entries) {
-    const key = dayKey(entry.created_at);
-    const last = groups[groups.length - 1];
-    if (last && last.key === key) {
-      last.entries.push(entry);
-    } else {
-      groups.push({ key, entries: [entry] });
-    }
-  }
-
   return (
-    <div className="ptl-page">
-      {projectName && (
-        <div className="ptl-header">
-          <h1 className="ptl-title">{projectName}</h1>
-          <span className="ptl-subtitle">Timeline</span>
+    <>
+      {printSheet}
+      <div className="view">
+      <div className="view-header">
+        <p className="view-kicker">
+          {isFiltered
+            ? `${filtered.length} of ${entries.length} interaction${entries.length !== 1 ? 's' : ''}`
+            : `${entries.length} interaction${entries.length !== 1 ? 's' : ''}`}
+        </p>
+        <div className="view-header-row">
+          <h1 className="view-headline">{headingTitle}</h1>
+          <button className="ptl-print-btn" onClick={() => window.print()} title="Print timeline">
+            Print
+          </button>
         </div>
-      )}
-      <div className="ptl-root">
-      {groups.map((group) => (
-        <div key={group.key} className="ptl-group">
-          <div className="ptl-day-label">{fmtDayLabel(group.key)}</div>
-          <div className="ptl-day-entries">
-            {group.entries.map((entry) => (
-              <div key={entry.id} className="ptl-entry">
-                <div className="ptl-entry-meta">
+        <p className="view-subtitle">Timeline</p>
+        <div className="view-rule-thick" />
+        <div className="view-rule-thin" />
+
+        {entries.length > 0 && (
+          <div className="project-meta-bar ptl-meta-bar">
+            <div className="project-meta-left">
+              {/* Priority dropdown */}
+              {priorityOptions.length > 0 && (
+                <div ref={priorityRef} className="project-meta-item ptl-priority-wrap">
                   <button
-                    className="ptl-contact-name"
-                    onClick={() => onSelectContact(entry.contact_id)}
+                    className={`project-meta-action-btn${selectedPriorities.length > 0 ? ' project-meta-action-btn--active' : ''}`}
+                    onClick={() => setPriorityDropdownOpen((v) => !v)}
                   >
-                    {entry.contact_name}
+                    Priority{selectedPriorities.length > 0 && <span className="project-meta-filter-count">{selectedPriorities.length}</span>}
                   </button>
-                  {entry.contact_organization && (
-                    <span className="ptl-contact-org">{entry.contact_organization}</span>
+                  {priorityDropdownOpen && (
+                    <div className="ptl-priority-dropdown col-filter-dropdown">
+                      <div className="col-filter-multiselect">
+                        {selectedPriorities.length > 0 && (
+                          <button className="col-filter-clear-all" onClick={() => setSelectedPriorities([])}>
+                            Clear all
+                          </button>
+                        )}
+                        {priorityOptions.map((p) => (
+                          <label key={p} className="col-filter-option">
+                            <input
+                              type="checkbox"
+                              checked={selectedPriorities.includes(p)}
+                              onChange={() => setSelectedPriorities((prev) => toggle(prev, p))}
+                            />
+                            {p}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
-                <p className="ptl-entry-body">{entry.body}</p>
-                <div className="ptl-entry-footer">
-                  <span className="ptl-reporter">{entry.reporter_name}</span>
-                  <span className="ptl-time">{fmtTime(entry.created_at)}</span>
-                </div>
+              )}
+
+              {/* Theme dropdown */}
+              <div ref={themeRef} className="project-meta-item ptl-priority-wrap">
+                <button
+                  className={`project-meta-action-btn${themeFilter ? ' project-meta-action-btn--active' : ''}`}
+                  onClick={() => setOpenTextFilter(openTextFilter === 'theme' ? null : 'theme')}
+                >
+                  Theme{themeFilter && <span className="project-meta-filter-count">1</span>}
+                </button>
+                {openTextFilter === 'theme' && (
+                  <div className="ptl-priority-dropdown col-filter-dropdown">
+                    <div className="col-filter-text">
+                      <input
+                        autoFocus
+                        className="col-filter-input"
+                        type="text"
+                        value={themeFilter}
+                        onChange={(e) => setThemeFilter(e.target.value)}
+                        placeholder="Contains…"
+                      />
+                      {themeFilter && (
+                        <button className="col-filter-clear" onClick={() => setThemeFilter('')}>×</button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
+
+              {/* Org dropdown */}
+              <div ref={orgRef} className="project-meta-item ptl-priority-wrap">
+                <button
+                  className={`project-meta-action-btn${orgFilter ? ' project-meta-action-btn--active' : ''}`}
+                  onClick={() => setOpenTextFilter(openTextFilter === 'org' ? null : 'org')}
+                >
+                  Org{orgFilter && <span className="project-meta-filter-count">1</span>}
+                </button>
+                {openTextFilter === 'org' && (
+                  <div className="ptl-priority-dropdown col-filter-dropdown">
+                    <div className="col-filter-text">
+                      <input
+                        autoFocus
+                        className="col-filter-input"
+                        type="text"
+                        value={orgFilter}
+                        onChange={(e) => setOrgFilter(e.target.value)}
+                        placeholder="Contains…"
+                      />
+                      {orgFilter && (
+                        <button className="col-filter-clear" onClick={() => setOrgFilter('')}>×</button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Multi-select: Projects (global) or Reporters (project) */}
+              <div className="project-meta-item">
+                {isGlobal ? (
+                  <MultiSelect
+                    options={projectOptions}
+                    selected={selectedProjects}
+                    onChange={setSelectedProjects}
+                    placeholder="Projects…"
+                  />
+                ) : (
+                  <MultiSelect
+                    options={reporterOptions}
+                    selected={selectedReporters}
+                    onChange={setSelectedReporters}
+                    placeholder="Reporters…"
+                  />
+                )}
+              </div>
+
+              {/* Date range */}
+              <span className="ptl-filter-sep" />
+              <div className="ptl-date-pair">
+                <CalendarPicker label="From" value={dateFrom} onChange={setDateFrom} showYear={showFromYear} />
+                <CalendarPicker label="To" value={dateTo} onChange={setDateTo} showYear={showToYear} />
+              </div>
+            </div>
           </div>
+        )}
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="view-empty">
+          <div className="view-empty-label">No interactions logged yet</div>
+          <div className="view-empty-hint">Log interactions from each contact's Project tab.</div>
         </div>
-      ))}
-    </div>
-    </div>
+      ) : filtered.length === 0 ? (
+        <div className="ptl-empty">No entries match your filters.</div>
+      ) : (
+        <div className="ptl-root">
+          {groups.map((group) => (
+            <div key={group.key} className="ptl-group">
+              <div className="ptl-day-label">{fmtDayLabel(group.key)}</div>
+              <div className="ptl-day-entries">
+                {group.entries.map((entry) => (
+                  <div key={entry.id} className="ptl-entry">
+                    <div className="ptl-entry-meta">
+                      <button
+                        className="ptl-contact-name"
+                        onClick={() => onSelectContact(entry.contact_id)}
+                      >
+                        {entry.contact_name}
+                      </button>
+                      {entry.contact_organization && (
+                        <span className="ptl-contact-org">{entry.contact_organization}</span>
+                      )}
+                      {isGlobal && entry.project_name && (
+                        <span className="ptl-project-badge">{entry.project_name}</span>
+                      )}
+                      {entry.priority && (
+                        <span className="ptl-priority-badge">{entry.priority}</span>
+                      )}
+                    </div>
+                    <p className="ptl-entry-body">{entry.body}</p>
+                    <div className="ptl-entry-footer">
+                      <span className="ptl-reporter">{entry.reporter_name}</span>
+                      <span className="ptl-time">{fmtTime(entry.created_at)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      </div>
+    </>
   );
 }

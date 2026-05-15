@@ -339,13 +339,32 @@ export function registerProjectHandlers(): void {
     return getDatabase()
       .prepare(
         `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
-                c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization
+                c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization,
+                p.id AS project_id, p.name AS project_name,
+                pm.theme, pm.priority
          FROM interaction_log_entries ile
          JOIN project_memberships pm ON pm.id = ile.membership_id
          JOIN contacts c ON c.id = pm.contact_id
+         JOIN projects p ON p.id = pm.project_id
          WHERE pm.project_id = ?
          ORDER BY ile.created_at DESC`,
       )
       .all(projectId);
+  });
+
+  ipcMain.handle('contacts:list-timeline', () => {
+    return getDatabase()
+      .prepare(
+        `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
+                c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization,
+                p.id AS project_id, p.name AS project_name,
+                pm.theme, pm.priority
+         FROM interaction_log_entries ile
+         JOIN project_memberships pm ON pm.id = ile.membership_id
+         JOIN contacts c ON c.id = pm.contact_id
+         JOIN projects p ON p.id = pm.project_id
+         ORDER BY ile.created_at DESC`,
+      )
+      .all();
   });
 }

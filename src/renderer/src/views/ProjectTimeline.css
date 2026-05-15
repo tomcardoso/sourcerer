@@ -1,35 +1,316 @@
-.ptl-page {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+.ptl-meta-bar {
+  flex-wrap: wrap;
+  gap: 4px 0;
 }
 
-.ptl-header {
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--color-border);
+/* ── Print portal sheet (hidden on screen, shown on print) ─── */
+
+.ptl-ps-root {
+  display: none;
+}
+
+@media print {
+  #root {
+    display: none !important;
+  }
+
+  .ptl-ps-root {
+    display: block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  .ptl-ps-header {
+    border-bottom: 2pt solid #000;
+    padding-bottom: 10pt;
+    margin-bottom: 16pt;
+  }
+
+  .ptl-ps-meta {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 4pt;
+  }
+
+  .ptl-ps-title {
+    font-size: 22pt;
+    font-weight: bold;
+    margin: 0 0 2pt;
+    line-height: 1.1;
+    color: #000;
+  }
+
+  .ptl-ps-subtitle {
+    font-family: 'Courier New', monospace;
+    font-size: 9pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #000;
+  }
+
+  .ptl-ps-group {
+    margin-bottom: 14pt;
+    break-inside: avoid;
+  }
+
+  .ptl-ps-day {
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    font-weight: bold;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #000;
+    border-bottom: 0.75pt solid #000;
+    padding-bottom: 2pt;
+    margin-bottom: 4pt;
+  }
+
+  .ptl-ps-entry {
+    padding: 5pt 0;
+    border-bottom: 0.5pt solid #ccc;
+  }
+
+  .ptl-ps-entry:last-child {
+    border-bottom: none;
+  }
+
+  .ptl-ps-entry-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 6pt;
+    margin-bottom: 3pt;
+    flex-wrap: wrap;
+  }
+
+  .ptl-ps-contact-name {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 12pt;
+    font-weight: bold;
+    color: #000;
+  }
+
+  .ptl-ps-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .ptl-ps-body-text {
+    font-size: 10pt;
+    color: #000;
+    line-height: 1.5;
+    margin: 0 0 4pt;
+    white-space: pre-wrap;
+  }
+
+  .ptl-ps-footer {
+    display: flex;
+    align-items: center;
+    gap: 8pt;
+  }
+
+  .ptl-ps-reporter,
+  .ptl-ps-time {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .ptl-ps-reporter::after {
+    content: '·';
+    margin-left: 8pt;
+    color: #aaa;
+  }
+  /* Page footer */
+  .ptl-ps-page-footer {
+    margin-top: 20pt;
+    padding-top: 6pt;
+    border-top: 0.75pt solid #000;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Courier New', monospace;
+    font-size: 7.5pt;
+    color: #000;
+  }}
+
+/* ── Print button ──────────────────────────────────────────── */
+
+.ptl-print-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  height: 28px;
+  padding: 0 12px;
+  background: none;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: center;
   flex-shrink: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
 }
 
-.ptl-title {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 400;
-  margin: 0;
+.ptl-print-btn:hover {
+  border-color: var(--color-text);
   color: var(--color-text);
 }
 
-.ptl-subtitle {
+/* ── Multi-select (matches reporter selectize in ProjectTab) ── */
+
+.ptl-ms {
+  position: relative;
+  margin-right: 4px;
+}
+
+.ptl-ms-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  cursor: text;
+}
+
+.ptl-ms-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+.ptl-ms-chip-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ptl-ms-chip-remove:hover {
+  color: var(--color-danger);
+}
+
+.ptl-ms-input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  outline: none;
+  padding: 2px 0;
+}
+
+.ptl-ms-input::placeholder {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.ptl-ms-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.ptl-ms-option {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+  letter-spacing: normal;
+  color: var(--color-text);
 }
+
+.ptl-ms-option:last-child {
+  border-bottom: none;
+}
+
+.ptl-ms-option:hover {
+  background: var(--color-bg);
+}
+
+/* ── Priority dropdown ─────────────────────────────────────── */
+
+.ptl-priority-wrap {
+  position: relative;
+}
+
+.ptl-priority-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  min-width: 160px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Filter bar ────────────────────────────────────────────── */
+
+.ptl-filter-sep {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+  margin: 0 8px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ptl-date-pair {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Scroll body ───────────────────────────────────────────── */
 
 .ptl-root {
   padding: 16px 0;
@@ -79,6 +360,7 @@
   align-items: baseline;
   gap: 8px;
   margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 .ptl-contact-name {
@@ -140,4 +422,18 @@
   content: '·';
   margin-left: 10px;
   color: var(--color-border);
+}
+
+/* ── Badges ────────────────────────────────────────────────── */
+
+.ptl-project-badge,
+.ptl-priority-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-border);
+  border-radius: 3px;
+  padding: 1px 5px;
 }

@@ -108,7 +108,7 @@ export default function Sidebar({
           <div className="sidebar-section-label">Workspace</div>
 
           <button
-            className={`sidebar-nav-item ${isActive({ view: 'all-contacts' }) ? 'active' : ''}`}
+            className={`sidebar-nav-item ${nav.view === 'all-contacts' || nav.view === 'all-timeline' ? 'active' : ''}`}
             onClick={() => onNav({ view: 'all-contacts' })}
           >
             <span className="sidebar-nav-indicator" />
@@ -117,6 +117,14 @@ export default function Sidebar({
               <span className="sidebar-contact-count">{totalContacts}</span>
             )}
           </button>
+          {(nav.view === 'all-contacts' || nav.view === 'all-timeline') && (
+            <button
+              className={`sidebar-project-sub-btn${nav.view === 'all-timeline' ? ' active' : ''}`}
+              onClick={() => onNav({ view: 'all-timeline' })}
+            >
+              Timeline
+            </button>
+          )}
 
           <button
             className={`sidebar-nav-item ${isActive({ view: 'reminders' }) ? 'active' : ''}`}
@@ -153,6 +161,7 @@ export default function Sidebar({
               {navigator.platform.startsWith('Mac') ? <><span>⌘</span>K</> : 'Ctrl+K'}
             </span>
           </button>
+
         </nav>
 
         {/* Projects */}

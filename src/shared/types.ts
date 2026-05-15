@@ -173,6 +173,10 @@ export interface TimelineEntry {
   contact_id: string;
   contact_name: string;
   contact_organization: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  theme: string | null;
+  priority: string | null;
 }
 
 export interface ScratchpadDraft {

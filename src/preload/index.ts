@@ -122,6 +122,8 @@ const sourcererApi = {
     ipcRenderer.invoke('projects:list-reporters', projectId),
   listProjectTimeline: (projectId: string): Promise<TimelineEntry[]> =>
     ipcRenderer.invoke('projects:list-timeline', projectId),
+  listAllTimeline: (): Promise<TimelineEntry[]> =>
+    ipcRenderer.invoke('contacts:list-timeline'),
 
   // Interaction log
   listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
