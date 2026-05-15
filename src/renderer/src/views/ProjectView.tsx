@@ -20,6 +20,8 @@ interface Props {
   user: User | null;
   onProjectUpdated: (project: Project) => void;
   refreshTrigger?: number;
+  openContactId?: string | null;
+  onOpenContactIdConsumed?: () => void;
 }
 
 type SortKey =
@@ -49,7 +51,7 @@ function fmtRelative(ms: number): string {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
-export default function ProjectView({ project, user, onProjectUpdated, refreshTrigger }: Props) {
+export default function ProjectView({ project, user, onProjectUpdated, refreshTrigger, openContactId, onOpenContactIdConsumed }: Props) {
   const [rows, setRows] = useState<ProjectContactRow[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
@@ -107,6 +109,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     window.sourcerer.listStatusOptions().then(setStatusOptions);
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
   }, []);
+
+  // Open a contact navigated from the Timeline view
+  useEffect(() => {
+    if (openContactId) {
+      setSelectedId(openContactId);
+      onOpenContactIdConsumed?.();
+    }
+  }, [openContactId, onOpenContactIdConsumed]);
 
   useEffect(() => {
     if (refreshTrigger) refresh();

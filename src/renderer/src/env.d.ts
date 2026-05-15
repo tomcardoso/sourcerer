@@ -23,6 +23,7 @@ import type {
   DuplicatePair,
   ContactScreenshot,
   SearchResult,
+  TimelineEntry,
 } from '@shared/types';
 
 declare global {
@@ -85,6 +86,8 @@ declare global {
       updateMembership: (data: UpdateMembershipInput) => Promise<void>;
       setMembershipReporters: (membershipId: string, reporters: Array<{ email: string; name: string }>) => Promise<void>;
       listProjectReporters: (projectId: string) => Promise<Array<{ email: string; name: string }>>;
+      listProjectTimeline: (projectId: string) => Promise<TimelineEntry[]>;
+      listAllTimeline: () => Promise<TimelineEntry[]>;
 
       // Interaction log
       listInteractionLog: (membershipId: string) => Promise<InteractionLogEntry[]>;

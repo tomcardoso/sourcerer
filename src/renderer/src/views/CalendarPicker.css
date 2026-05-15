@@ -1,0 +1,276 @@
+/* ── Wrapper (positioning anchor) ──────────────────────────── */
+
+.cal-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Clear × button (sibling to trigger, absolutely positioned) ─ */
+
+.cal-clear-x {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  color: var(--color-primary);
+}
+
+.cal-clear-x:hover {
+  opacity: 1;
+}
+
+/* Make room for the clear button when a value is active */
+.cal-wrap .project-meta-action-btn--active {
+  padding-right: 24px;
+}
+
+/* ── Dropdown panel ────────────────────────────────────────── */
+
+.cal-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 300;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  padding: 8px;
+  width: 224px;
+  user-select: none;
+}
+
+/* ── Month / year header ───────────────────────────────────── */
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.cal-month-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-month-name {
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+/* Year button inside header — clickable to enter year mode */
+.cal-year-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 0;
+  transition: color 0.1s;
+}
+
+.cal-year-btn:hover,
+.cal-year-btn--active {
+  color: var(--color-primary);
+}
+
+.cal-nav-placeholder {
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.cal-nav {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  padding: 2px 6px;
+  border-radius: 0;
+  transition: color 0.1s;
+}
+
+.cal-nav:hover {
+  color: var(--color-text);
+}
+
+/* ── 7-column day grid ─────────────────────────────────────── */
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+/* Day-of-week name headers */
+.cal-day-name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  text-align: center;
+  padding: 4px 0 6px;
+}
+
+/* Individual day cells */
+.cal-day {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text);
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.08s, color 0.08s;
+}
+
+.cal-day:hover {
+  background: var(--color-surface-2);
+}
+
+.cal-day--overflow {
+  color: var(--color-text-dim);
+}
+
+.cal-day--today {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.cal-day--selected {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* ── Footer clear link ─────────────────────────────────────── */
+
+.cal-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cal-clear-all {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding: 2px 4px;
+}
+
+.cal-clear-all:hover {
+  color: var(--color-danger);
+}
+
+/* ── Year picker grid ──────────────────────────────────────── */
+
+.cal-year-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.cal-year-cell {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text);
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.08s, color 0.08s;
+}
+
+.cal-year-cell:hover {
+  background: var(--color-surface-2);
+}
+
+.cal-year-cell--today {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.cal-year-cell--selected {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* ── Month picker grid ────────────────────────────────────── */
+
+.cal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.cal-month-cell {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.08s, color 0.08s;
+}
+
+.cal-month-cell:hover {
+  background: var(--color-surface-2);
+}
+
+.cal-month-cell--today {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.cal-month-cell--selected {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  font-weight: 600;
+}

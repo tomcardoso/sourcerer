@@ -11,13 +11,16 @@ import AddContactModal from '../contacts/AddContactModal';
 import AlertMentions from '../views/AlertMentions';
 import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
+import ProjectTimeline from '../views/ProjectTimeline';
 import './AppShell.css';
 
 export type NavTarget =
   | { view: 'all-contacts' }
   | { view: 'alerts' }
   | { view: 'reminders' }
+  | { view: 'all-timeline' }
   | { view: 'project'; projectId: string }
+  | { view: 'timeline'; projectId: string }
   | { view: 'settings' };
 
 export default function AppShell() {
@@ -111,7 +114,7 @@ export default function AppShell() {
   function handleProjectDeleted(id: string) {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     setNav((current) => {
-      if (current.view === 'project' && current.projectId === id) {
+      if ((current.view === 'project' || current.view === 'timeline') && current.projectId === id) {
         return { view: 'all-contacts' };
       }
       return current;
@@ -119,7 +122,7 @@ export default function AppShell() {
   }
 
   const activeProject =
-    nav.view === 'project' ? projects.find((p) => p.id === nav.projectId) ?? null : null;
+    (nav.view === 'project' || nav.view === 'timeline') ? projects.find((p) => p.id === nav.projectId) ?? null : null;
 
   return (
     <div className="app-shell">
@@ -164,6 +167,14 @@ export default function AppShell() {
           <AlertMentions onUnseenCountChange={setUnseenMentions} />
         )}
         {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} user={user} />}
+        {nav.view === 'all-timeline' && (
+          <ProjectTimeline
+            onSelectContact={(id) => {
+              setNav({ view: 'all-contacts' });
+              setOpenContactId(id);
+            }}
+          />
+        )}
         {nav.view === 'project' && (
           <ProjectView
             project={activeProject}
@@ -172,8 +183,25 @@ export default function AppShell() {
               setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
             }
             refreshTrigger={importRefreshTrigger}
+            openContactId={openContactId}
+            onOpenContactIdConsumed={() => setOpenContactId(null)}
           />
         )}
+        {nav.view === 'timeline' && (activeProject ? (
+          <ProjectTimeline
+            projectId={activeProject.id}
+            projectName={activeProject.name}
+            onSelectContact={(id) => {
+              setNav({ view: 'project', projectId: activeProject.id });
+              setOpenContactId(id);
+            }}
+          />
+        ) : (
+          // Project not yet loaded / no longer exists — fall back to global timeline
+          <ProjectTimeline
+            onSelectContact={(id) => setOpenContactId(id)}
+          />
+        ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
 

@@ -164,6 +164,21 @@ export interface InteractionLogEntry {
   created_at: number;
 }
 
+export interface TimelineEntry {
+  id: string;
+  body: string;
+  created_at: number;
+  reporter_name: string;
+  reporter_email: string;
+  contact_id: string;
+  contact_name: string;
+  contact_organization: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  theme: string | null;
+  priority: string | null;
+}
+
 export interface ScratchpadDraft {
   id: string;
   contact_id: string;

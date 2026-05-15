@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, net } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone } from '../sanitize';
@@ -37,7 +37,7 @@ async function triggerWaybackSave(contactId: string, url: string): Promise<void>
 
   broadcast('pending');
   try {
-    const response = await fetch(`https://web.archive.org/save/${encodeURIComponent(url)}`, {
+    const response = await net.fetch(`https://web.archive.org/save/${encodeURIComponent(url)}`, {
       redirect: 'follow',
       headers: { 'User-Agent': 'Sourcerer/1.0' },
     });
