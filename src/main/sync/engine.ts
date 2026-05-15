@@ -31,7 +31,7 @@ export function syncProject(
 
     localDb.transaction(() => {
       sharedDb.transaction(() => {
-        pullContacts(localDb, sharedDb, now);
+        pullContacts(localDb, sharedDb);
         pullMemberships(localDb, sharedDb, projectId, now);
         pullAppendOnly(localDb, sharedDb);
       })();
@@ -66,7 +66,7 @@ export function syncProject(
 // Pull helpers
 // ---------------------------------------------------------------------------
 
-function pullContacts(local: Database.Database, shared: Database.Database, now: number): void {
+function pullContacts(local: Database.Database, shared: Database.Database): void {
   const sharedContacts = shared.prepare('SELECT id, name, organization, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
