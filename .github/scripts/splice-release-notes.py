@@ -15,18 +15,33 @@ Environment variables:
 import os
 import sys
 
+VERSION_PLACEHOLDER = "{version}"
+CHANGELOG_PLACEHOLDER = "<!-- Describe changes in this release -->"
+
 version = os.environ.get("VERSION", "")
 if not version:
     print("ERROR: VERSION environment variable is not set.", file=sys.stderr)
     sys.exit(1)
 
-template = open(".github/release-template.md").read()
-generated = open("/tmp/generated-changelog.md").read().strip()
+with open(".github/release-template.md", encoding="utf-8") as f:
+    template = f.read()
+
+if VERSION_PLACEHOLDER not in template:
+    print(f"ERROR: placeholder '{VERSION_PLACEHOLDER}' not found in release template.", file=sys.stderr)
+    sys.exit(1)
+
+if CHANGELOG_PLACEHOLDER not in template:
+    print(f"ERROR: placeholder '{CHANGELOG_PLACEHOLDER}' not found in release template.", file=sys.stderr)
+    sys.exit(1)
+
+with open("/tmp/generated-changelog.md", encoding="utf-8") as f:
+    generated = f.read().strip()
 
 result = (
     template
-    .replace("{version}", version)
-    .replace("<!-- Describe changes in this release -->", generated)
+    .replace(VERSION_PLACEHOLDER, version)
+    .replace(CHANGELOG_PLACEHOLDER, generated)
 )
 
-open("/tmp/release-notes.md", "w").write(result)
+with open("/tmp/release-notes.md", "w", encoding="utf-8") as f:
+    f.write(result)

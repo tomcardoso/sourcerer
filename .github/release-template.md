@@ -12,11 +12,11 @@ Download **`Sourcerer-{version}-arm64.dmg`**, open it, and drag Sourcerer to you
 > **First launch:** macOS may show a security warning. Go to **System Settings → Privacy & Security** and click **Open Anyway**, or right-click the app and choose **Open**.
 
 ### Linux
-Download **`Sourcerer-{version}-x86_64.AppImage`**, make it executable, and run it:
+Download the **`.AppImage`** file for this release, make it executable, and run it:
 
 ```bash
-chmod +x Sourcerer-{version}-x86_64.AppImage
-./Sourcerer-{version}-x86_64.AppImage
+chmod +x Sourcerer-{version}*.AppImage
+./Sourcerer-{version}*.AppImage
 ```
 
 ### Windows
