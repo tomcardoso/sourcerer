@@ -254,6 +254,34 @@
   border-radius: 0;
 }
 
+/* Timeline sub-item under a selected project */
+.sidebar-project-sub-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 4px 10px 4px 32px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.sidebar-project-sub-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.sidebar-project-sub-btn.active {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  box-shadow: inset 3px 0 0 var(--color-text);
+}
+
 /* Colored square dot per project */
 .sidebar-project-dot {
   width: 10px;

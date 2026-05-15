@@ -1,3 +1,36 @@
+.ptl-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ptl-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ptl-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 400;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.ptl-subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
 .ptl-root {
   padding: 16px 0;
   overflow-y: auto;

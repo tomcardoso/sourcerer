@@ -4,6 +4,7 @@ import './ProjectTimeline.css';
 
 interface Props {
   projectId: string;
+  projectName?: string;
   onSelectContact: (id: string) => void;
 }
 
@@ -39,7 +40,7 @@ function fmtTime(ts: number): string {
   return `${h12}:${m} ${period}`;
 }
 
-export default function ProjectTimeline({ projectId, onSelectContact }: Props) {
+export default function ProjectTimeline({ projectId, projectName, onSelectContact }: Props) {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,7 +78,14 @@ export default function ProjectTimeline({ projectId, onSelectContact }: Props) {
   }
 
   return (
-    <div className="ptl-root">
+    <div className="ptl-page">
+      {projectName && (
+        <div className="ptl-header">
+          <h1 className="ptl-title">{projectName}</h1>
+          <span className="ptl-subtitle">Timeline</span>
+        </div>
+      )}
+      <div className="ptl-root">
       {groups.map((group) => (
         <div key={group.key} className="ptl-group">
           <div className="ptl-day-label">{fmtDayLabel(group.key)}</div>
@@ -105,6 +113,7 @@ export default function ProjectTimeline({ projectId, onSelectContact }: Props) {
           </div>
         </div>
       ))}
+    </div>
     </div>
   );
 }

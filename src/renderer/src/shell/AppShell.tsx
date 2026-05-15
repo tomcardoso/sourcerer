@@ -11,6 +11,7 @@ import AddContactModal from '../contacts/AddContactModal';
 import AlertMentions from '../views/AlertMentions';
 import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
+import ProjectTimeline from '../views/ProjectTimeline';
 import './AppShell.css';
 
 export type NavTarget =
@@ -18,6 +19,7 @@ export type NavTarget =
   | { view: 'alerts' }
   | { view: 'reminders' }
   | { view: 'project'; projectId: string }
+  | { view: 'timeline'; projectId: string }
   | { view: 'settings' };
 
 export default function AppShell() {
@@ -111,7 +113,7 @@ export default function AppShell() {
   function handleProjectDeleted(id: string) {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     setNav((current) => {
-      if (current.view === 'project' && current.projectId === id) {
+      if ((current.view === 'project' || current.view === 'timeline') && current.projectId === id) {
         return { view: 'all-contacts' };
       }
       return current;
@@ -119,7 +121,7 @@ export default function AppShell() {
   }
 
   const activeProject =
-    nav.view === 'project' ? projects.find((p) => p.id === nav.projectId) ?? null : null;
+    (nav.view === 'project' || nav.view === 'timeline') ? projects.find((p) => p.id === nav.projectId) ?? null : null;
 
   return (
     <div className="app-shell">
@@ -172,6 +174,18 @@ export default function AppShell() {
               setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
             }
             refreshTrigger={importRefreshTrigger}
+            openContactId={openContactId}
+            onOpenContactIdConsumed={() => setOpenContactId(null)}
+          />
+        )}
+        {nav.view === 'timeline' && activeProject && (
+          <ProjectTimeline
+            projectId={activeProject.id}
+            projectName={activeProject.name}
+            onSelectContact={(id) => {
+              setNav({ view: 'project', projectId: activeProject.id });
+              setOpenContactId(id);
+            }}
           />
         )}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}

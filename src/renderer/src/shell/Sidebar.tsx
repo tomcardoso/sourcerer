@@ -77,10 +77,10 @@ export default function Sidebar({
   }
 
   const isActive = (target: NavTarget): boolean => {
-    if (target.view !== nav.view) return false;
-    if (target.view === 'project' && nav.view === 'project') {
-      return target.projectId === nav.projectId;
+    if (target.view === 'project') {
+      return (nav.view === 'project' || nav.view === 'timeline') && 'projectId' in nav && nav.projectId === target.projectId;
     }
+    if (target.view !== nav.view) return false;
     return true;
   };
 
@@ -188,6 +188,7 @@ export default function Sidebar({
                     </div>
                   </div>
                 ) : (
+                  <>
                   <button
                     className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
                     onClick={() => onNav({ view: 'project', projectId: project.id })}
@@ -206,6 +207,15 @@ export default function Sidebar({
                       onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
                     >×</span>
                   </button>
+                  {isActive({ view: 'project', projectId: project.id }) && (
+                    <button
+                      className={`sidebar-project-sub-btn${'projectId' in nav && nav.view === 'timeline' && nav.projectId === project.id ? ' active' : ''}`}
+                      onClick={() => onNav({ view: 'timeline', projectId: project.id })}
+                    >
+                      Timeline
+                    </button>
+                  )}
+                  </>
                 )}
               </li>
             ))}
