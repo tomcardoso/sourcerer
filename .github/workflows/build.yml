@@ -83,12 +83,37 @@ jobs:
         if: runner.os == 'Linux'
         run: npm run dist:linux -- --publish never
 
-      - name: Upload build artifacts
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Upload build artifacts (macOS)
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
-          path: dist-electron/
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.blockmap
+            dist-electron/latest-mac.yml
+          retention-days: 1
+
+      - name: Upload build artifacts (Windows)
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.blockmap
+            dist-electron/latest.yml
+          retention-days: 1
+
+      - name: Upload build artifacts (Linux)
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist-electron/*.AppImage
+            dist-electron/*.blockmap
+            dist-electron/latest-linux.yml
           retention-days: 1
 
   finalize-release:
@@ -123,15 +148,18 @@ jobs:
             > /tmp/generated-changelog.md
 
           # Splice changelog into template, replacing placeholder and {version}
-          python3 -c "
-          template = open('.github/release-template.md').read()
-          generated = open('/tmp/generated-changelog.md').read().strip()
-          result = template.replace('{version}', '$VERSION').replace('<!-- Describe changes in this release -->', generated)
-          open('/tmp/release-notes.md', 'w').write(result)
-          "
+          python3 - <<PY
+template = open('.github/release-template.md').read()
+generated = open('/tmp/generated-changelog.md').read().strip()
+result = template.replace('{version}', '$VERSION').replace('<!-- Describe changes in this release -->', generated)
+open('/tmp/release-notes.md', 'w').write(result)
+PY
 
           # Collect all artifacts and create the release in one shot
-          find artifacts/ -type f | sort > /tmp/asset-list.txt
+          assets=()
+          while IFS= read -r asset; do
+            assets+=("$asset")
+          done < <(find artifacts/ -type f | sort)
           gh release create "$TAG" \
             --notes-file /tmp/release-notes.md \
-            $(cat /tmp/asset-list.txt)
+            "${assets[@]}"
