@@ -126,10 +126,38 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [hoveredScreenshotId, setHoveredScreenshotId] = useState<string | null>(null);
   const [confirmDeleteScreenshotId, setConfirmDeleteScreenshotId] = useState<string | null>(null);
   const [zoomMode, setZoomMode] = useState<'fit' | 'actual'>('fit');
+  const [waybackStatus, setWaybackStatus] = useState<Map<string, 'pending' | 'failed'>>(new Map());
   const viewerRef = useRef<HTMLDivElement>(null);
   const imageAreaRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+
+  useEffect(() => {
+    return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
+      if (contactId !== contact.id) return;
+      setWaybackStatus((prev) => {
+        const next = new Map(prev);
+        if (status === 'pending') {
+          next.set(url, 'pending');
+        } else {
+          next.set(url, 'failed');
+        }
+        return next;
+      });
+    });
+  }, [contact.id]);
+
+  // Clear pending status when contact reloads with a wayback_url
+  useEffect(() => {
+    const archivedUrls = new Set(contact.links.filter((l) => l.wayback_url).map((l) => l.url));
+    if (archivedUrls.size === 0) return;
+    setWaybackStatus((prev) => {
+      if ([...archivedUrls].every((u) => !prev.has(u))) return prev;
+      const next = new Map(prev);
+      for (const url of archivedUrls) next.delete(url);
+      return next;
+    });
+  }, [contact.links]);
 
   useEffect(() => {
     if (viewingScreenshot) {
@@ -693,6 +721,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 <a href={l.wayback_url} className="detail-wayback-link" onClick={(e) => { e.preventDefault(); window.open(l.wayback_url!); }} title="Wayback Machine snapshot">
                   archived ↗
                 </a>
+              )}
+              {!l.wayback_url && waybackStatus.get(l.url) === 'pending' && (
+                <span className="detail-wayback-pending">archiving…</span>
+              )}
+              {!l.wayback_url && waybackStatus.get(l.url) === 'failed' && (
+                <span className="detail-wayback-failed" title="Wayback Machine could not archive this URL">archive failed</span>
               )}
             </div>
           ))}

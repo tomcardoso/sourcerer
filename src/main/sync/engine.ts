@@ -130,7 +130,13 @@ function replaceSubTablesFromShared(
       .run(p.id, contactId, p.phone, p.sort_order);
   }
 
-  // Links
+  // Links — preserve local-only wayback_url before replacing from shared
+  const existingWaybacks = new Map<string, string | null>(
+    (local
+      .prepare("SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
+      .all(contactId) as { url: string; wayback_url: string | null }[])
+      .map((r) => [r.url, r.wayback_url]),
+  );
   local.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(contactId);
   for (const l of shared
     .prepare('SELECT * FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
@@ -143,9 +149,17 @@ function replaceSubTablesFromShared(
   }[]) {
     local
       .prepare(
-        'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
       )
       .run(l.id, contactId, l.type, l.label, l.url, l.sort_order);
+    if (l.type === 'website') {
+      const wayback = existingWaybacks.get(l.url);
+      if (wayback) {
+        local
+          .prepare("UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?")
+          .run(wayback, contactId, l.url);
+      }
+    }
   }
 
   // Alert RSS (one per contact)
