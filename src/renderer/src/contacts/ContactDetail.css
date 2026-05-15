@@ -754,7 +754,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-text-muted);
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
