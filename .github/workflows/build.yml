@@ -151,12 +151,7 @@ jobs:
           fi
 
           # Splice changelog into template, replacing placeholder and {version}
-          python3 - <<PY
-template = open('.github/release-template.md').read()
-generated = open('/tmp/generated-changelog.md').read().strip()
-result = template.replace('{version}', '$VERSION').replace('<!-- Describe changes in this release -->', generated)
-open('/tmp/release-notes.md', 'w').write(result)
-PY
+          python3 -c "t=open('.github/release-template.md').read();g=open('/tmp/generated-changelog.md').read().strip();r=t.replace('{version}','$VERSION').replace('<!-- Describe changes in this release -->',g);open('/tmp/release-notes.md','w').write(r)"
 
           # Collect all artifacts and create (or update) the release in one shot.
           # Using create+edit so the step is idempotent on workflow re-runs.
