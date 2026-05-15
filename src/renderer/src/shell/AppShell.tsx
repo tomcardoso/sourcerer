@@ -105,8 +105,10 @@ export default function AppShell() {
     });
     const offError = window.sourcerer.onUpdateError(() => {
       // The download failed (electron-updater reports errors via the error event,
-      // not by rejecting the downloadUpdate() promise). Revert so the user can retry.
-      setUpdateState('available');
+      // not by rejecting the downloadUpdate() promise). Only revert if we were
+      // actually downloading — a check error firing from idle would otherwise
+      // incorrectly show the update banner with no version.
+      setUpdateState((prev) => (prev === 'downloading' ? 'available' : prev));
     });
     // Replay any update event that fired before AppShell mounted (e.g. the
     // 10 s auto-check completed while the user was still on the lock screen).

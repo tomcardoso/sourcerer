@@ -20,6 +20,7 @@ function sendToWindow(channel: string, ...args: unknown[]): void {
  */
 export function triggerUpdateCheck(): void {
   if (is.dev) {
+    cachedUpdateInfo = { event: 'available', version: '99.0.0' };
     sendToWindow('update:available', { version: '99.0.0' });
     return;
   }
