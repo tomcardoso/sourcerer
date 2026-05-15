@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ContactDetail as ContactDetailType, Project, StatusOption, PriorityOption, User } from '@shared/types';
+import type { ContactDetail as ContactDetailType, InteractionLogEntry, Project, StatusOption, PriorityOption, User } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
 import GlobalTab from './GlobalTab';
 import ProjectTab from './ProjectTab';
+import ContactPrintSheet from './ContactPrintSheet';
 import '../views/View.css';
 import './ContactDetail.css';
 
@@ -25,6 +26,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   const [activeTab, setActiveTab] = useState<Tab>('global');
   const [isEditing, setIsEditing] = useState(false);
   const [interactionCount, setInteractionCount] = useState<number | null>(null);
+  const [printLogs, setPrintLogs] = useState<Array<{ projectName: string; entries: InteractionLogEntry[] }>>([]);
 
   // Keep stable refs so the event listener never needs to re-register
   const onCloseRef = useRef(onClose);
@@ -52,6 +54,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
     setContact(null);
     setActiveTab('global');
     setInteractionCount(null);
+    setPrintLogs([]);
     reload();
     window.sourcerer.listProjects().then(setAllProjects);
     window.sourcerer.listStatusOptions().then(setStatusOptions);
@@ -70,6 +73,18 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
       if (updatedId === contactId) reload();
     });
   }, [contactId, reload]);
+
+  useEffect(() => {
+    if (!contact) return;
+    Promise.all(
+      contact.projects.map((p) =>
+        window.sourcerer.listInteractionLog(p.membership_id).then((entries) => ({
+          projectName: p.name,
+          entries,
+        }))
+      )
+    ).then(setPrintLogs);
+  }, [contact]);
 
   function handleMembershipChanged() {
     reload();
@@ -141,6 +156,9 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               currentUser={user ? { email: user.email, firstName: user.first_name, lastName: user.last_name, outreachRemindersEnabled: user.outreach_reminders_enabled !== 0 } : null}
             />
           )}
+
+          {/* Rendered always when contact is loaded, visible only on print */}
+          <ContactPrintSheet contact={contact} logs={printLogs} />
         </>
       )}
     </div>

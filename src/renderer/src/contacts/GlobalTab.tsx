@@ -897,7 +897,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       </div>
 
       {screenshots.length > 0 && (
-        <div className="detail-section">
+        <div className="detail-section detail-section--screenshots">
           <div className="detail-section-label">Screenshots</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             {screenshots.map((s) => (
@@ -1031,6 +1031,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         ) : (
           <div className="detail-bottom-actions">
             <div className="detail-bottom-left">
+              <button
+                className="detail-print-btn"
+                onClick={() => window.print()}
+                title="Print contact sheet"
+              >
+                Print
+              </button>
               <button
                 className="detail-vcard-btn"
                 onClick={() => window.sourcerer.exportVCardContact(contact.id)}
