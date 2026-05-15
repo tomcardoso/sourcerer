@@ -217,7 +217,8 @@ declare global {
       downloadUpdate: () => Promise<void>;
       quitAndInstall: () => Promise<void>;
       simulateUpdate: () => Promise<void>;
-      getUpdateState: () => Promise<{ event: 'available' | 'downloaded'; version: string } | null>;
+      getUpdateState: () => Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null>;
+      showUpdateError: (message: string) => Promise<void>;
     };
   }
 }

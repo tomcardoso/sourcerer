@@ -5,7 +5,12 @@ import { autoUpdater } from 'electron-updater';
 // Cache the latest update event so renderers that mount after the event fires
 // (e.g. the user was on the lock screen when the 10 s auto-check fired) can
 // replay it via update:get-state on mount.
-let cachedUpdateInfo: { event: 'available' | 'downloaded'; version: string } | null = null;
+let cachedUpdateInfo: { event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null = null;
+
+// Set to true when the user explicitly invokes Help > Check for Updates.
+// Used to show "up to date" / error feedback on user-initiated checks only;
+// background auto-checks (the 10 s timer) are always silent.
+let userInitiatedCheck = false;
 
 function sendToWindow(channel: string, ...args: unknown[]): void {
   // Resolve the active window at send time — avoids stale reference if the
@@ -34,6 +39,7 @@ export function triggerUpdateCheck(): void {
     });
     return;
   }
+  userInitiatedCheck = true;
   autoUpdater.checkForUpdates().catch(() => {});
 }
 
@@ -47,18 +53,23 @@ export function registerUpdaterHandlers(): void {
       // download is in progress would fire interleaved progress sequences.
       if (devDownloadInProgress) return;
       devDownloadInProgress = true;
-      // Simulate download progress (25 → 50 → 75 → 100 %) then fire update:downloaded.
-      [25, 50, 75, 100].forEach((percent, i) => {
-        setTimeout(() => {
-          sendToWindow('update:download-progress', { percent });
-          if (percent === 100) {
-            setTimeout(() => {
-              devDownloadInProgress = false;
-              cachedUpdateInfo = { event: 'downloaded', version: '99.0.0' };
-              sendToWindow('update:downloaded', { version: '99.0.0' });
-            }, 300);
-          }
-        }, (i + 1) * 500);
+      // Return a Promise that resolves after the simulated download completes,
+      // matching production semantics where downloadUpdate() resolves post-download.
+      return new Promise<void>((resolve) => {
+        [25, 50, 75, 100].forEach((percent, i) => {
+          setTimeout(() => {
+            cachedUpdateInfo = { event: 'downloading', version: '99.0.0', percent };
+            sendToWindow('update:download-progress', { percent });
+            if (percent === 100) {
+              setTimeout(() => {
+                devDownloadInProgress = false;
+                cachedUpdateInfo = { event: 'downloaded', version: '99.0.0' };
+                sendToWindow('update:downloaded', { version: '99.0.0' });
+                resolve();
+              }, 300);
+            }
+          }, (i + 1) * 500);
+        });
       });
     });
     ipcMain.handle('update:quit-and-install', () => {});
@@ -67,6 +78,14 @@ export function registerUpdaterHandlers(): void {
     ipcMain.handle('update:dev-simulate', () => {
       cachedUpdateInfo = { event: 'available', version: '99.0.0' };
       sendToWindow('update:available', { version: '99.0.0' });
+    });
+    ipcMain.handle('update:show-error', (_event, message: string) => {
+      return dialog.showMessageBox({
+        type: 'error',
+        title: 'Update failed',
+        message: 'The update could not be downloaded. Please try again.',
+        detail: message,
+      });
     });
     return;
   }
@@ -78,12 +97,30 @@ export function registerUpdaterHandlers(): void {
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('update-available', (info) => {
+    userInitiatedCheck = false;
     cachedUpdateInfo = { event: 'available', version: info.version };
     sendToWindow('update:available', { version: info.version });
   });
 
+  // Only fires for user-initiated checks (the 10 s auto-check result is silent).
+  autoUpdater.on('update-not-available', () => {
+    if (userInitiatedCheck) {
+      userInitiatedCheck = false;
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'No updates available',
+        message: 'Sourcerer is up to date.',
+      });
+    }
+  });
+
   autoUpdater.on('download-progress', (progress) => {
-    sendToWindow('update:download-progress', { percent: Math.round(progress.percent) });
+    const percent = Math.round(progress.percent);
+    // Also update the cache so a remount during download can restore 'downloading' state.
+    if (cachedUpdateInfo) {
+      cachedUpdateInfo = { event: 'downloading', version: cachedUpdateInfo.version, percent };
+    }
+    sendToWindow('update:download-progress', { percent });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
@@ -94,13 +131,35 @@ export function registerUpdaterHandlers(): void {
   // electron-updater reports download/check failures through the error event,
   // not by rejecting the promise — so this is the only reliable failure path.
   autoUpdater.on('error', (err) => {
-    // If we had a fully-downloaded update, its artefacts are now suspect.
-    if (cachedUpdateInfo?.event === 'downloaded') {
+    const wasUserCheck = userInitiatedCheck;
+    userInitiatedCheck = false;
+    const message = err instanceof Error ? err.message : String(err);
+
+    // Capture prior state before mutating cache.
+    const priorState = cachedUpdateInfo?.event ?? null;
+    const priorVersion = cachedUpdateInfo?.version ?? null;
+
+    if (priorState === 'downloaded') {
       cachedUpdateInfo = null;
+    } else if (priorState === 'downloading' && priorVersion) {
+      // Revert to 'available' so the user can retry.
+      cachedUpdateInfo = { event: 'available', version: priorVersion };
     }
-    sendToWindow('update:error', {
-      message: err instanceof Error ? err.message : String(err),
-    });
+
+    if (priorState === 'downloading' || priorState === 'downloaded') {
+      // Download-phase error: tell the renderer so it can revert its UI.
+      sendToWindow('update:error', { message });
+    } else if (wasUserCheck) {
+      // Check-phase error from a user-initiated check: show directly from main
+      // (the renderer may still be on the lock screen with no listener attached).
+      dialog.showMessageBox({
+        type: 'error',
+        title: 'Update check failed',
+        message: 'Unable to check for updates. Please try again later.',
+        detail: message,
+      });
+    }
+    // Background auto-check errors are silently ignored.
   });
 
   ipcMain.handle('update:check', () => autoUpdater.checkForUpdates());
@@ -109,6 +168,14 @@ export function registerUpdaterHandlers(): void {
     autoUpdater.quitAndInstall(false, true);
   });
   ipcMain.handle('update:get-state', () => cachedUpdateInfo);
+  ipcMain.handle('update:show-error', (_event, message: string) => {
+    return dialog.showMessageBox({
+      type: 'error',
+      title: 'Update failed',
+      message: 'The update could not be downloaded. Please try again.',
+      detail: message,
+    });
+  });
 
   // Check for updates 10 s after launch so it doesn't block startup
   setTimeout(() => {

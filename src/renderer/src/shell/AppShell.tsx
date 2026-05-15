@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ImportResult, Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
 import SearchModal from './SearchModal';
@@ -43,6 +43,10 @@ export default function AppShell() {
   const [updateState, setUpdateState] = useState<'idle' | 'available' | 'downloading' | 'ready'>('idle');
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updatePercent, setUpdatePercent] = useState<number | null>(null);
+  // Keep a ref in sync so event listener callbacks can read the current state
+  // without closing over a stale value.
+  const updateStateRef = useRef<'idle' | 'available' | 'downloading' | 'ready'>('idle');
+  updateStateRef.current = updateState;
 
   const refreshOverdue = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -104,17 +108,13 @@ export default function AppShell() {
       setUpdateState('ready');
     });
     const offError = window.sourcerer.onUpdateError(({ message }) => {
-      // The download failed (electron-updater reports errors via the error event,
-      // not by rejecting the downloadUpdate() promise). Only revert if we were
-      // actually downloading — a check error firing from idle would otherwise
-      // incorrectly show the update banner with no version.
-      setUpdateState((prev) => {
-        if (prev === 'downloading') {
-          window.alert(`Update failed: ${message}\n\nPlease try again.`);
-          return 'available';
-        }
-        return prev;
-      });
+      // update:error is only sent for download-phase failures (check errors are handled
+      // by the main process directly). Revert to 'available' if we were downloading or
+      // ready (a post-download verification error), then show a main-process dialog.
+      if (updateStateRef.current === 'downloading' || updateStateRef.current === 'ready') {
+        setUpdateState('available');
+        window.sourcerer.showUpdateError(message);
+      }
     });
     // Replay any update event that fired before AppShell mounted (e.g. the
     // 10 s auto-check completed while the user was still on the lock screen).
@@ -122,6 +122,10 @@ export default function AppShell() {
       if (state?.event === 'available') {
         setUpdateVersion(state.version);
         setUpdateState('available');
+      } else if (state?.event === 'downloading') {
+        setUpdateVersion(state.version);
+        setUpdatePercent(state.percent ?? null);
+        setUpdateState('downloading');
       } else if (state?.event === 'downloaded') {
         setUpdateVersion(state.version);
         setUpdateState('ready');
