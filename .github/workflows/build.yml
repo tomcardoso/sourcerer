@@ -76,7 +76,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: npm run dist:mac -- --publish never
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:mac -- --publish always
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -84,12 +85,50 @@ jobs:
 
       - name: Package (Linux)
         if: runner.os == 'Linux'
-        run: npm run dist:linux -- --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:linux -- --publish always
 
       - name: Upload release assets
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.artifact_glob }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  finalize-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set release notes and remove blockmap assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+
+          # Ask GitHub to generate a changelog from merged PRs since the previous tag
+          gh api repos/tomcardoso/sourcerer/releases/generate-notes \
+            --method POST \
+            -f tag_name="$TAG" \
+            --jq '.body' \
+            | sed '/^## What'\''s Changed$/d' \
+            > /tmp/generated-changelog.md
+
+          # Splice changelog into template, replacing placeholder and {version}
+          python3 -c "
+          template = open('.github/release-template.md').read()
+          generated = open('/tmp/generated-changelog.md').read().strip()
+          result = template.replace('{version}', '$VERSION').replace('<!-- Describe changes in this release -->', generated)
+          open('/tmp/release-notes.md', 'w').write(result)
+          "
+
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md
