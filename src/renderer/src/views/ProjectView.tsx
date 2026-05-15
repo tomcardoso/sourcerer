@@ -4,6 +4,7 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
+import ProjectTimeline from './ProjectTimeline';
 import ContactsTable, {
   type ProjectFilters as Filters,
   DEFAULT_PROJECT_FILTERS as DEFAULT_FILTERS,
@@ -76,6 +77,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [activeView, setActiveView] = useState<'contacts' | 'timeline'>('contacts');
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const syncStartedAt = useRef<number>(0);
@@ -100,6 +102,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     setSyncError(null);
     setFileUnreachable(false);
     setLastSyncedAt(project?.last_synced_at ? project.last_synced_at * 1000 : null);
+    setActiveView('contacts');
     refresh();
   }, [refresh]);
 
@@ -595,7 +598,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
         <div className="sync-error-banner">Sync error: {syncError}</div>
       )}
 
-      {checkedCount > 0 && (
+      {checkedCount > 0 && activeView === 'contacts' && (
         <div className="bulk-bar">
           <div className="bulk-bar-element">
             <span className="bulk-bar-count">{checkedCount} selected</span>
@@ -673,6 +676,32 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
         </div>
       )}
 
+      <div className="pv-tab-bar">
+        <button
+          className={`pv-tab${activeView === 'contacts' ? ' pv-tab--active' : ''}`}
+          onClick={() => setActiveView('contacts')}
+        >
+          Contacts
+        </button>
+        <button
+          className={`pv-tab${activeView === 'timeline' ? ' pv-tab--active' : ''}`}
+          onClick={() => setActiveView('timeline')}
+        >
+          Timeline
+        </button>
+      </div>
+
+      {activeView === 'timeline' ? (
+        <div className="contacts-body">
+          <ProjectTimeline
+            projectId={project.id}
+            onSelectContact={(id) => {
+              setActiveView('contacts');
+              setSelectedId(id);
+            }}
+          />
+        </div>
+      ) : (
       <div className="contacts-body">
         <div className="contacts-table-area">
           <ContactsTable
@@ -711,6 +740,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
           />
         )}
       </div>
+      )}
     </div>
 
     {regenPayload && (

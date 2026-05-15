@@ -334,4 +334,18 @@ export function registerProjectHandlers(): void {
       .prepare('SELECT email, name FROM project_reporters WHERE project_id = ? ORDER BY is_self DESC, name ASC')
       .all(projectId) as Array<{ email: string; name: string }>;
   });
+
+  ipcMain.handle('projects:list-timeline', (_, projectId: string) => {
+    return getDatabase()
+      .prepare(
+        `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
+                c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization
+         FROM interaction_log_entries ile
+         JOIN project_memberships pm ON pm.id = ile.membership_id
+         JOIN contacts c ON c.id = pm.contact_id
+         WHERE pm.project_id = ?
+         ORDER BY ile.created_at DESC`,
+      )
+      .all(projectId);
+  });
 }

@@ -24,6 +24,7 @@ import type {
   Reminder,
   ImportResult,
   DuplicatePair,
+  TimelineEntry,
 } from '@shared/types';
 // ContactLinkInput used indirectly via CreateContactInput/UpdateContactInput
 
@@ -119,6 +120,8 @@ const sourcererApi = {
     ipcRenderer.invoke('memberships:set-reporters', { membershipId, reporters }),
   listProjectReporters: (projectId: string): Promise<Array<{ email: string; name: string }>> =>
     ipcRenderer.invoke('projects:list-reporters', projectId),
+  listProjectTimeline: (projectId: string): Promise<TimelineEntry[]> =>
+    ipcRenderer.invoke('projects:list-timeline', projectId),
 
   // Interaction log
   listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
