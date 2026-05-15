@@ -103,12 +103,18 @@ export default function AppShell() {
       setUpdateVersion(version);
       setUpdateState('ready');
     });
-    const offError = window.sourcerer.onUpdateError(() => {
+    const offError = window.sourcerer.onUpdateError(({ message }) => {
       // The download failed (electron-updater reports errors via the error event,
       // not by rejecting the downloadUpdate() promise). Only revert if we were
       // actually downloading — a check error firing from idle would otherwise
       // incorrectly show the update banner with no version.
-      setUpdateState((prev) => (prev === 'downloading' ? 'available' : prev));
+      setUpdateState((prev) => {
+        if (prev === 'downloading') {
+          window.alert(`Update failed: ${message}\n\nPlease try again.`);
+          return 'available';
+        }
+        return prev;
+      });
     });
     // Replay any update event that fired before AppShell mounted (e.g. the
     // 10 s auto-check completed while the user was still on the lock screen).
@@ -120,7 +126,7 @@ export default function AppShell() {
         setUpdateVersion(state.version);
         setUpdateState('ready');
       }
-    });
+    }).catch(() => {});
     return () => {
       offAvailable();
       offProgress();
