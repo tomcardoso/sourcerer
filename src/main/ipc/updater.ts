@@ -139,10 +139,9 @@ export function registerUpdaterHandlers(): void {
     const priorState = cachedUpdateInfo?.event ?? null;
     const priorVersion = cachedUpdateInfo?.version ?? null;
 
-    if (priorState === 'downloaded') {
-      cachedUpdateInfo = null;
-    } else if (priorState === 'downloading' && priorVersion) {
-      // Revert to 'available' so the user can retry.
+    if ((priorState === 'downloaded' || priorState === 'downloading') && priorVersion) {
+      // Revert to 'available' so the user can retry and so a remount after
+      // the error (e.g. lock/unlock) can still replay the banner correctly.
       cachedUpdateInfo = { event: 'available', version: priorVersion };
     }
 
