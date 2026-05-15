@@ -90,6 +90,7 @@ jobs:
             dist-electron/*.blockmap
             dist-electron/latest-mac.yml
           retention-days: 1
+          if-no-files-found: error
 
       - name: Upload build artifacts (Windows)
         if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
@@ -101,6 +102,7 @@ jobs:
             dist-electron/*.blockmap
             dist-electron/latest.yml
           retention-days: 1
+          if-no-files-found: error
 
       - name: Upload build artifacts (Linux)
         if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
@@ -112,6 +114,7 @@ jobs:
             dist-electron/*.blockmap
             dist-electron/latest-linux.yml
           retention-days: 1
+          if-no-files-found: error
 
   finalize-release:
     needs: build
@@ -151,7 +154,7 @@ jobs:
           fi
 
           # Splice changelog into template, replacing placeholder and {version}
-          python3 -c "t=open('.github/release-template.md').read();g=open('/tmp/generated-changelog.md').read().strip();r=t.replace('{version}','$VERSION').replace('<!-- Describe changes in this release -->',g);open('/tmp/release-notes.md','w').write(r)"
+          VERSION="$VERSION" python3 .github/scripts/splice-release-notes.py
 
           # Collect all artifacts and create (or update) the release in one shot.
           # Using create+edit so the step is idempotent on workflow re-runs.
