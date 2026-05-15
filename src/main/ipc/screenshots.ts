@@ -165,17 +165,16 @@ export function registerScreenshotHandlers(): void {
     const dir = screenshotsDir();
     let total = 0;
     try {
-      const entries = await fs.readdir(dir);
-      await Promise.all(
-        entries.map(async (name) => {
-          try {
-            const stat = await fs.stat(path.join(dir, name));
-            if (stat.isFile()) total += stat.size;
-          } catch {
-            // ignore files that disappeared between readdir and stat
-          }
-        }),
-      );
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        try {
+          const stat = await fs.stat(path.join(dir, entry.name));
+          total += stat.size;
+        } catch {
+          // ignore files that disappeared between readdir and stat
+        }
+      }
     } catch {
       // folder doesn't exist yet — size is 0
     }
@@ -185,6 +184,7 @@ export function registerScreenshotHandlers(): void {
   ipcMain.handle('screenshots:open-folder', async (): Promise<void> => {
     const dir = screenshotsDir();
     await fs.mkdir(dir, { recursive: true });
-    shell.openPath(dir);
+    const err = await shell.openPath(dir);
+    if (err) throw new Error(`Failed to open screenshots folder: ${err}`);
   });
 }

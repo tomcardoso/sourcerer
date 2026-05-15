@@ -567,7 +567,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 ? `${(screenshotFolderBytes / (1024 * 1024)).toFixed(1)} MB`
                 : `${(screenshotFolderBytes / 1024).toFixed(0)} KB`}
             </span>
-            <button className="sv-add-btn" onClick={() => window.sourcerer.openScreenshotFolder()}>
+            <button className="sv-add-btn" onClick={async () => { try { await window.sourcerer.openScreenshotFolder(); } catch (err) { console.error('Failed to open screenshot folder:', err); } }}>
               Open folder
             </button>
           </div>
