@@ -11,18 +11,12 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            dist_script: dist:mac
-            artifact_glob: dist-electron/*.dmg
           - os: windows-latest
-            dist_script: dist:win
-            artifact_glob: dist-electron/*.exe
           - os: ubuntu-latest
-            dist_script: dist:linux
-            artifact_glob: dist-electron/*.AppImage
 
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -86,10 +80,94 @@ jobs:
         if: runner.os == 'Linux'
         run: npm run dist:linux -- --publish never
 
-      - name: Upload release assets
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - name: Upload build artifacts (macOS)
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
         with:
-          files: ${{ matrix.artifact_glob }}
+          name: dist-${{ matrix.os }}
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.blockmap
+            dist-electron/latest-mac.yml
+          retention-days: 5
+          if-no-files-found: error
+
+      - name: Upload build artifacts (Windows)
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist-electron/*.exe
+            dist-electron/*.blockmap
+            dist-electron/latest.yml
+          retention-days: 5
+          if-no-files-found: error
+
+      - name: Upload build artifacts (Linux)
+        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist-electron/*.AppImage
+            dist-electron/*.blockmap
+            dist-electron/latest-linux.yml
+          retention-days: 5
+          if-no-files-found: error
+
+  finalize-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create release with assets and generated notes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+
+          # Ask GitHub to generate a changelog from merged PRs since the previous tag
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            --method POST \
+            -f tag_name="$TAG" \
+            --jq '.body' \
+            | sed '/^## What'\''s Changed$/d' \
+            > /tmp/generated-changelog.md
+
+          # Sanitize: --jq '.body' writes the literal string "null" when the API
+          # has no previous tag to diff against (e.g. the very first release).
+          if [ "$(cat /tmp/generated-changelog.md)" = "null" ]; then
+            : > /tmp/generated-changelog.md
+          fi
+
+          # Splice changelog into template, replacing placeholder and {version}
+          VERSION="$VERSION" python3 .github/scripts/splice-release-notes.py
+
+          # Collect all artifacts and create (or update) the release in one shot.
+          # Using create+edit so the step is idempotent on workflow re-runs.
+          assets=()
+          while IFS= read -r asset; do
+            assets+=("$asset")
+          done < <(find artifacts/ -type f | sort)
+          if gh release view "$TAG" &>/dev/null; then
+            # Release already exists (e.g. re-run): update notes and re-upload assets.
+            gh release edit "$TAG" --notes-file /tmp/release-notes.md
+            gh release upload --clobber "$TAG" "${assets[@]}"
+          else
+            gh release create "$TAG" \
+              --notes-file /tmp/release-notes.md \
+              "${assets[@]}"
+          fi
