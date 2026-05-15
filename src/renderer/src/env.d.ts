@@ -208,6 +208,17 @@ declare global {
       onDuplicatePairsUpdated: (callback: (count: number) => void) => () => void;
       onWaybackUpdated: (callback: (contactId: string) => void) => () => void;
       onWaybackStatus: (callback: (payload: { contactId: string; url: string; status: 'pending' | 'failed' }) => void) => () => void;
+
+      // Updater
+      onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void;
+      onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
+      onUpdateDownloadProgress: (callback: (info: { percent: number }) => void) => () => void;
+      onUpdateError: (callback: (info: { message: string }) => void) => () => void;
+      downloadUpdate: () => Promise<void>;
+      quitAndInstall: () => Promise<void>;
+      simulateUpdate: () => Promise<void>;
+      getUpdateState: () => Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null>;
+      showUpdateError: (message: string) => Promise<void>;
     };
   }
 }

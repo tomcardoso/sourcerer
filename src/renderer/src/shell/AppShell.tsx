@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ImportResult, Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
 import SearchModal from './SearchModal';
@@ -40,6 +40,13 @@ export default function AppShell() {
   const [showImportCsv, setShowImportCsv] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
+  const [updateState, setUpdateState] = useState<'idle' | 'available' | 'downloading' | 'ready'>('idle');
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [updatePercent, setUpdatePercent] = useState<number | null>(null);
+  // Keep a ref in sync so event listener callbacks can read the current state
+  // without closing over a stale value.
+  const updateStateRef = useRef<'idle' | 'available' | 'downloading' | 'ready'>('idle');
+  updateStateRef.current = updateState;
 
   const refreshOverdue = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -88,6 +95,50 @@ export default function AppShell() {
     return window.sourcerer.onRemindersChanged(refreshOverdue);
   }, [refreshOverdue]);
 
+  useEffect(() => {
+    const offAvailable = window.sourcerer.onUpdateAvailable(({ version }) => {
+      setUpdateVersion(version);
+      setUpdateState('available');
+    });
+    const offProgress = window.sourcerer.onUpdateDownloadProgress(({ percent }) => {
+      setUpdatePercent(percent);
+    });
+    const offDownloaded = window.sourcerer.onUpdateDownloaded(({ version }) => {
+      setUpdateVersion(version);
+      setUpdateState('ready');
+    });
+    const offError = window.sourcerer.onUpdateError(({ message }) => {
+      // update:error is only sent for download-phase failures (check errors are handled
+      // by the main process directly). Revert to 'available' if we were downloading or
+      // ready (a post-download verification error), then show a main-process dialog.
+      if (updateStateRef.current === 'downloading' || updateStateRef.current === 'ready') {
+        setUpdateState('available');
+        window.sourcerer.showUpdateError(message);
+      }
+    });
+    // Replay any update event that fired before AppShell mounted (e.g. the
+    // 10 s auto-check completed while the user was still on the lock screen).
+    window.sourcerer.getUpdateState().then((state) => {
+      if (state?.event === 'available') {
+        setUpdateVersion(state.version);
+        setUpdateState('available');
+      } else if (state?.event === 'downloading') {
+        setUpdateVersion(state.version);
+        setUpdatePercent(state.percent ?? null);
+        setUpdateState('downloading');
+      } else if (state?.event === 'downloaded') {
+        setUpdateVersion(state.version);
+        setUpdateState('ready');
+      }
+    }).catch(() => {});
+    return () => {
+      offAvailable();
+      offProgress();
+      offDownloaded();
+      offError();
+    };
+  }, []);
+
   function handleProjectCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
     setNav({ view: 'project', projectId: project.id });
@@ -129,6 +180,36 @@ export default function AppShell() {
       <div className="app-titlebar">
         <div className="app-titlebar-left" />
         <div className="app-titlebar-right">
+          {updateState === 'available' && (
+            <button
+              className="app-update-btn"
+              onClick={async () => {
+                setUpdatePercent(null);
+                setUpdateState('downloading');
+                try {
+                  await window.sourcerer.downloadUpdate();
+                } catch {
+                  setUpdatePercent(null);
+                  setUpdateState('available');
+                }
+              }}
+            >
+              Update available ({updateVersion})
+            </button>
+          )}
+          {updateState === 'downloading' && (
+            <span className="app-update-downloading">
+              Downloading update{updatePercent !== null ? ` ${updatePercent}%` : '\u2026'}
+            </span>
+          )}
+          {updateState === 'ready' && (
+            <button
+              className="app-update-btn app-update-btn--ready"
+              onClick={() => window.sourcerer.quitAndInstall()}
+            >
+              Restart to update ({updateVersion})
+            </button>
+          )}
           Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted
           <button className="app-titlebar-lock" onClick={() => window.sourcerer.lock()} title="Lock Sourcerer">
             🔒

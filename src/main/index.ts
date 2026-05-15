@@ -18,6 +18,7 @@ import { registerImportHandlers } from './ipc/import';
 import { registerBackupHandlers } from './ipc/backup';
 import { registerScreenshotHandlers } from './ipc/screenshots';
 import { registerSearchHandlers } from './ipc/search';
+import { registerUpdaterHandlers, triggerUpdateCheck } from './ipc/updater';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -160,6 +161,11 @@ function buildMenu(): void {
           label: 'Report an issue',
           click: () => shell.openExternal('https://github.com/tomcardoso/sourcerer/issues'),
         },
+        { type: 'separator' as const },
+        {
+          label: 'Check for Updates\u2026',
+          click: triggerUpdateCheck,
+        },
         ...(!isMac
           ? [
               { type: 'separator' as const },
@@ -190,6 +196,7 @@ app.whenReady().then(() => {
   registerBackupHandlers();
   registerScreenshotHandlers();
   registerSearchHandlers();
+  registerUpdaterHandlers();
   startHttpServer();
   createWindow();
 

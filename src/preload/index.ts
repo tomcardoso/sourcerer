@@ -313,6 +313,34 @@ const sourcererApi = {
     ipcRenderer.on('contacts:wayback-status', handler);
     return () => ipcRenderer.removeListener('contacts:wayback-status', handler);
   },
+
+  // Updater
+  onUpdateAvailable: (callback: (info: { version: string }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { version: string }) => callback(info);
+    ipcRenderer.on('update:available', handler);
+    return () => ipcRenderer.removeListener('update:available', handler);
+  },
+  onUpdateDownloaded: (callback: (info: { version: string }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { version: string }) => callback(info);
+    ipcRenderer.on('update:downloaded', handler);
+    return () => ipcRenderer.removeListener('update:downloaded', handler);
+  },
+  onUpdateDownloadProgress: (callback: (info: { percent: number }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { percent: number }) => callback(info);
+    ipcRenderer.on('update:download-progress', handler);
+    return () => ipcRenderer.removeListener('update:download-progress', handler);
+  },
+  onUpdateError: (callback: (info: { message: string }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { message: string }) => callback(info);
+    ipcRenderer.on('update:error', handler);
+    return () => ipcRenderer.removeListener('update:error', handler);
+  },
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke('update:download'),
+  quitAndInstall: (): Promise<void> => ipcRenderer.invoke('update:quit-and-install'),
+  simulateUpdate: (): Promise<void> => ipcRenderer.invoke('update:dev-simulate'),
+  getUpdateState: (): Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null> =>
+    ipcRenderer.invoke('update:get-state'),
+  showUpdateError: (message: string): Promise<void> => ipcRenderer.invoke('update:show-error', message),
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);
