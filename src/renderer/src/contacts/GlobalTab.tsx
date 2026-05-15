@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project } from '@shared/types';
 import './AddContactModal.css';
@@ -63,6 +63,32 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
+function useDragReorder<T>(items: T[], onReorder: (next: T[]) => void) {
+  const dragFromRef = useRef<number | null>(null);
+  const dragAllowed = useRef(false);
+  const getDragProps = (i: number) => ({
+    draggable: true as const,
+    onDragStart: (e: React.DragEvent<HTMLElement>) => {
+      if (!dragAllowed.current) { e.preventDefault(); return; }
+      dragFromRef.current = i;
+    },
+    onDragEnd: () => { dragAllowed.current = false; dragFromRef.current = null; },
+    onDragOver: (e: React.DragEvent<HTMLElement>) => e.preventDefault(),
+    onDrop: (e: React.DragEvent<HTMLElement>) => {
+      e.preventDefault();
+      const from = dragFromRef.current;
+      if (from === null || from === i) return;
+      const next = [...items];
+      const [moved] = next.splice(from, 1);
+      next.splice(i, 0, moved);
+      dragFromRef.current = null;
+      onReorder(next);
+    },
+  });
+  const handleProps = { onMouseDown: () => { dragAllowed.current = true; } };
+  return { getDragProps, handleProps };
+}
+
 function DynamicList({
   values,
   placeholder,
@@ -78,33 +104,16 @@ function DynamicList({
   onBlurItem?: (value: string) => void;
   warnings?: Record<string, string>;
 }) {
-  const dragFromRef = useRef<number | null>(null);
-  const dragAllowed = useRef(false);
+  const { getDragProps, handleProps } = useDragReorder(values, onChange);
   return (
     <div>
       {values.map((v, i) => (
         <div
           key={i}
-          draggable
-          onDragStart={(e) => {
-            if (!dragAllowed.current) { e.preventDefault(); return; }
-            dragFromRef.current = i;
-          }}
-          onDragEnd={() => { dragAllowed.current = false; }}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const from = dragFromRef.current;
-            if (from === null || from === i) return;
-            const next = [...values];
-            const [moved] = next.splice(from, 1);
-            next.splice(i, 0, moved);
-            dragFromRef.current = null;
-            onChange(next);
-          }}
+          {...getDragProps(i)}
         >
           <div className="ac-dynamic-row">
-            <span className="ac-drag-handle" onMouseDown={() => { dragAllowed.current = true; }}>⠿</span>
+            <span className="ac-drag-handle" {...handleProps}>⠿</span>
             <input
               className="ac-input"
               value={v}
@@ -159,12 +168,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const formRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
-  const emailDragFrom = useRef<number | null>(null);
-  const emailDragAllowed = useRef(false);
-  const phoneDragFrom = useRef<number | null>(null);
-  const phoneDragAllowed = useRef(false);
-  const otherSocialDragFrom = useRef<number | null>(null);
-  const otherSocialDragAllowed = useRef(false);
+
 
   useEffect(() => {
     return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
@@ -210,6 +214,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     linkedin: [], x: [], instagram: [], facebook: [],
   });
   const [editOtherSocials, setEditOtherSocials] = useState<Array<{ url: string; label: string }>>([]);
+  const { getDragProps: emailDragProps, handleProps: emailHandleProps } = useDragReorder(editEmails, setEditEmails);
+  const { getDragProps: phoneDragProps, handleProps: phoneHandleProps } = useDragReorder(editPhones, setEditPhones);
+  const { getDragProps: otherSocialDragProps, handleProps: otherSocialHandleProps } = useDragReorder(editOtherSocials, setEditOtherSocials);
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [editRssUrl, setEditRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
@@ -454,26 +461,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           {editEmails.map((entry, i) => (
             <div
               key={i}
-              draggable
-              onDragStart={(e) => {
-                if (!emailDragAllowed.current) { e.preventDefault(); return; }
-                emailDragFrom.current = i;
-              }}
-              onDragEnd={() => { emailDragAllowed.current = false; }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const from = emailDragFrom.current;
-                if (from === null || from === i) return;
-                const next = [...editEmails];
-                const [moved] = next.splice(from, 1);
-                next.splice(i, 0, moved);
-                emailDragFrom.current = null;
-                setEditEmails(next);
-              }}
+              {...emailDragProps(i)}
             >
               <div className="ac-phone-row">
-                <span className="ac-drag-handle" onMouseDown={() => { emailDragAllowed.current = true; }}>⠿</span>
+                <span className="ac-drag-handle" {...emailHandleProps}>⠿</span>
                 <input
                   className="ac-input"
                   value={entry.email}
@@ -549,26 +540,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           {editPhones.map((entry, i) => (
             <div
               key={i}
-              draggable
-              onDragStart={(e) => {
-                if (!phoneDragAllowed.current) { e.preventDefault(); return; }
-                phoneDragFrom.current = i;
-              }}
-              onDragEnd={() => { phoneDragAllowed.current = false; }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const from = phoneDragFrom.current;
-                if (from === null || from === i) return;
-                const next = [...editPhones];
-                const [moved] = next.splice(from, 1);
-                next.splice(i, 0, moved);
-                phoneDragFrom.current = null;
-                setEditPhones(next);
-              }}
+              {...phoneDragProps(i)}
             >
               <div className="ac-phone-row">
-                <span className="ac-drag-handle" onMouseDown={() => { phoneDragAllowed.current = true; }}>⠿</span>
+                <span className="ac-drag-handle" {...phoneHandleProps}>⠿</span>
                 <input
                   className="ac-input"
                   value={entry.phone}
@@ -677,26 +652,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           {editOtherSocials.map((entry, i) => (
             <div
               key={i}
-              draggable
-              onDragStart={(e) => {
-                if (!otherSocialDragAllowed.current) { e.preventDefault(); return; }
-                otherSocialDragFrom.current = i;
-              }}
-              onDragEnd={() => { otherSocialDragAllowed.current = false; }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const from = otherSocialDragFrom.current;
-                if (from === null || from === i) return;
-                const next = [...editOtherSocials];
-                const [moved] = next.splice(from, 1);
-                next.splice(i, 0, moved);
-                otherSocialDragFrom.current = null;
-                setEditOtherSocials(next);
-              }}
+              {...otherSocialDragProps(i)}
             >
               <div className="ac-other-social-row">
-                <span className="ac-drag-handle" onMouseDown={() => { otherSocialDragAllowed.current = true; }}>⠿</span>
+                <span className="ac-drag-handle" {...otherSocialHandleProps}>⠿</span>
                 <input
                   className="ac-input"
                   value={entry.label}
