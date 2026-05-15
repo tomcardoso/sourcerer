@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project } from '@shared/types';
+import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project, User } from '@shared/types';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -11,6 +11,7 @@ interface Props {
   onMembershipChanged: () => void;
   onDeleted: (id: string) => void;
   onEditingChange?: (editing: boolean) => void;
+  user?: User | null;
 }
 
 const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other'] as const;
@@ -113,7 +114,7 @@ function DynamicList({
   );
 }
 
-export default function GlobalTab({ contact, allProjects, onRefresh, onMembershipChanged, onDeleted, onEditingChange }: Props) {
+export default function GlobalTab({ contact, allProjects, onRefresh, onMembershipChanged, onDeleted, onEditingChange, user }: Props) {
   const [editing, setEditing] = useState(false);
 
   function setEditingAndNotify(value: boolean) {
@@ -700,7 +701,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 })
             )}
           />
-          <p className="ac-field-hint">Wayback Machine archiving can be enabled or disabled in Settings.</p>
+          {user?.wayback_enabled !== 0 && (
+            <p className="ac-field-hint">Wayback Machine archiving is enabled.</p>
+          )}
         </div>
 
         <div className="ac-field">

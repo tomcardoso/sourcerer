@@ -144,6 +144,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               onMembershipChanged={handleMembershipChanged}
               onDeleted={onDeleted}
               onEditingChange={setIsEditing}
+              user={user}
             />
           )}
 
