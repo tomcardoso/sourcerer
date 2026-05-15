@@ -208,6 +208,13 @@ declare global {
       onDuplicatePairsUpdated: (callback: (count: number) => void) => () => void;
       onWaybackUpdated: (callback: (contactId: string) => void) => () => void;
       onWaybackStatus: (callback: (payload: { contactId: string; url: string; status: 'pending' | 'failed' }) => void) => () => void;
+
+      // Updater
+      onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void;
+      onUpdateDownloaded: (callback: (info: { version: string }) => void) => () => void;
+      downloadUpdate: () => Promise<void>;
+      quitAndInstall: () => Promise<void>;
+      simulateUpdate: () => Promise<void>;
     };
   }
 }

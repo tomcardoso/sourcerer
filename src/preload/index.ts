@@ -313,6 +313,21 @@ const sourcererApi = {
     ipcRenderer.on('contacts:wayback-status', handler);
     return () => ipcRenderer.removeListener('contacts:wayback-status', handler);
   },
+
+  // Updater
+  onUpdateAvailable: (callback: (info: { version: string }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { version: string }) => callback(info);
+    ipcRenderer.on('update:available', handler);
+    return () => ipcRenderer.removeListener('update:available', handler);
+  },
+  onUpdateDownloaded: (callback: (info: { version: string }) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, info: { version: string }) => callback(info);
+    ipcRenderer.on('update:downloaded', handler);
+    return () => ipcRenderer.removeListener('update:downloaded', handler);
+  },
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke('update:download'),
+  quitAndInstall: (): Promise<void> => ipcRenderer.invoke('update:quit-and-install'),
+  simulateUpdate: (): Promise<void> => ipcRenderer.invoke('update:dev-simulate'),
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

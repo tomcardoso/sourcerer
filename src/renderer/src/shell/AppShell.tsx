@@ -40,6 +40,8 @@ export default function AppShell() {
   const [showImportCsv, setShowImportCsv] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
+  const [updateState, setUpdateState] = useState<'idle' | 'available' | 'downloading' | 'ready'>('idle');
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
 
   const refreshOverdue = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -88,6 +90,21 @@ export default function AppShell() {
     return window.sourcerer.onRemindersChanged(refreshOverdue);
   }, [refreshOverdue]);
 
+  useEffect(() => {
+    const offAvailable = window.sourcerer.onUpdateAvailable(({ version }) => {
+      setUpdateVersion(version);
+      setUpdateState('available');
+    });
+    const offDownloaded = window.sourcerer.onUpdateDownloaded(({ version }) => {
+      setUpdateVersion(version);
+      setUpdateState('ready');
+    });
+    return () => {
+      offAvailable();
+      offDownloaded();
+    };
+  }, []);
+
   function handleProjectCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
     setNav({ view: 'project', projectId: project.id });
@@ -129,6 +146,28 @@ export default function AppShell() {
       <div className="app-titlebar">
         <div className="app-titlebar-left" />
         <div className="app-titlebar-right">
+          {updateState === 'available' && (
+            <button
+              className="app-update-btn"
+              onClick={() => {
+                setUpdateState('downloading');
+                window.sourcerer.downloadUpdate();
+              }}
+            >
+              Update available ({updateVersion})
+            </button>
+          )}
+          {updateState === 'downloading' && (
+            <span className="app-update-downloading">Downloading update&hellip;</span>
+          )}
+          {updateState === 'ready' && (
+            <button
+              className="app-update-btn app-update-btn--ready"
+              onClick={() => window.sourcerer.quitAndInstall()}
+            >
+              Restart to update ({updateVersion})
+            </button>
+          )}
           Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted
           <button className="app-titlebar-lock" onClick={() => window.sourcerer.lock()} title="Lock Sourcerer">
             🔒
