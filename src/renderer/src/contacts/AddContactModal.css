@@ -213,10 +213,13 @@
 }
 
 .ac-collision-warn {
-  font-size: 11px;
-  color: #b45309;
+  font-size: 10px;
+  color: var(--color-danger);
   margin-top: 3px;
   margin-bottom: 4px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
 }
 
 .ac-field-hint {

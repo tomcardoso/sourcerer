@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import './AddContactModal.css';
@@ -35,6 +35,11 @@ function isValidUrl(raw: string): boolean {
 // notation letters (e, x, t for "ext", # for US-style extensions).
 function hasDisallowedPhoneChars(raw: string): boolean {
   return /[^0-9+\-(). \t#extEXT]/.test(raw);
+}
+
+// Strip separators so spacing variants of the same number compare equal.
+function normalizePhoneForComparison(raw: string): string {
+  return raw.trim().replace(/[\s\-().]/g, '');
 }
 
 function DynamicList({
@@ -107,10 +112,53 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
   const [phoneFormatWarnings, setPhoneFormatWarnings] = useState<Record<string, true>>({});
   const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
+
+  // Computed within-form duplicate sets — derived from state, no extra state needed.
+  const emailDuplicates = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const e of emails) {
+      const v = e.email.trim().toLowerCase();
+      if (!v) continue;
+      seen.set(v, (seen.get(v) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [v, count] of seen) if (count > 1) dupes.add(v);
+    return dupes;
+  }, [emails]);
+
+  const phoneDuplicates = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const p of phones) {
+      const v = normalizePhoneForComparison(p.phone);
+      if (!v) continue;
+      seen.set(v, (seen.get(v) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [v, count] of seen) if (count > 1) dupes.add(v);
+    return dupes;
+  }, [phones]);
+
+  const urlDuplicates = useMemo(() => {
+    const seen = new Map<string, number>();
+    const allUrls = [
+      ...websites,
+      ...SOCIAL_TYPES.flatMap((t) => socials[t]),
+    ];
+    for (const url of allUrls) {
+      const v = url.trim();
+      if (!v) continue;
+      seen.set(v, (seen.get(v) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [v, count] of seen) if (count > 1) dupes.add(v);
+    return dupes;
+  }, [websites, socials]);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [projectQuery, setProjectQuery] = useState('');
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const projectWrapRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +233,10 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (emailDuplicates.size > 0 || phoneDuplicates.size > 0 || urlDuplicates.size > 0) {
+      formRef.current?.querySelector<HTMLElement>('.ac-collision-warn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setSubmitting(true);
 
     const links = [
@@ -219,7 +271,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           <button className="ac-close" onClick={onCancel}>×</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="ac-form">
+        <form ref={formRef} onSubmit={handleSubmit} className="ac-form">
           <div className="ac-field">
             <label htmlFor="ac-name" className="ac-label">
               Name <span className="ac-required">*</span>
@@ -291,7 +343,10 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     ⚠ Invalid email address
                   </div>
                 )}
-                {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && emailCollisions[entry.email.trim()] && (
+                {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && emailDuplicates.has(entry.email.trim().toLowerCase()) && (
+                  <div className="ac-collision-warn">⚠ Already added</div>
+                )}
+                {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && !emailDuplicates.has(entry.email.trim().toLowerCase()) && emailCollisions[entry.email.trim()] && (
                   <div className="ac-collision-warn">
                     Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
                   </div>
@@ -356,7 +411,10 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                       : '⚠ Invalid phone number'}
                   </div>
                 )}
-                {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneCollisions[entry.phone.trim()] && (
+                {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && (
+                  <div className="ac-collision-warn">⚠ Already added</div>
+                )}
+                {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && !phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && phoneCollisions[entry.phone.trim()] && (
                   <div className="ac-collision-warn">
                     Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
                   </div>
@@ -390,7 +448,11 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               });
             }}
             warnings={Object.fromEntries(
-              websites.map((v) => v.trim()).filter((v) => v && urlFormatWarnings[v]).map((v) => [v, '⚠ Invalid URL'])
+              websites.map((v) => v.trim()).filter(Boolean).flatMap((v) => {
+                if (urlFormatWarnings[v]) return [[v, '⚠ Invalid URL']];
+                if (urlDuplicates.has(v)) return [[v, '⚠ Already added']];
+                return [];
+              })
             )}
           />
 
@@ -414,7 +476,11 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 });
               }}
               warnings={Object.fromEntries(
-                socials[type].map((v) => v.trim()).filter((v) => v && urlFormatWarnings[v]).map((v) => [v, '⚠ Invalid URL'])
+                socials[type].map((v) => v.trim()).filter(Boolean).flatMap((v) => {
+                  if (urlFormatWarnings[v]) return [[v, '⚠ Invalid URL']];
+                  if (urlDuplicates.has(v)) return [[v, '⚠ Already added']];
+                  return [];
+                })
               )}
             />
           ))}

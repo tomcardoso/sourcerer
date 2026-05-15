@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project } from '@shared/types';
 import './AddContactModal.css';
@@ -37,6 +37,11 @@ function isValidEmail(raw: string): boolean {
 // notation letters (e, x, t for "ext", # for US-style extensions).
 function hasDisallowedPhoneChars(raw: string): boolean {
   return /[^0-9+\-(). \t#extEXT]/.test(raw);
+}
+
+// Strip separators so spacing variants of the same number compare equal.
+function normalizePhoneForComparison(raw: string): string {
+  return raw.trim().replace(/[\s\-().]/g, '');
 }
 
 const OTHER_LABEL_MAX = 40;
@@ -128,6 +133,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [zoomMode, setZoomMode] = useState<'fit' | 'actual'>('fit');
   const viewerRef = useRef<HTMLDivElement>(null);
   const imageAreaRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
@@ -155,6 +161,48 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
   const [phoneFormatWarnings, setPhoneFormatWarnings] = useState<Record<string, true>>({});
   const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
+
+  // Computed within-form duplicate sets — derived from state, no extra state needed.
+  const emailDuplicates = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const e of editEmails) {
+      const v = e.email.trim().toLowerCase();
+      if (!v) continue;
+      seen.set(v, (seen.get(v) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [v, count] of seen) if (count > 1) dupes.add(v);
+    return dupes;
+  }, [editEmails]);
+
+  const phoneDuplicates = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const p of editPhones) {
+      const v = normalizePhoneForComparison(p.phone);
+      if (!v) continue;
+      seen.set(v, (seen.get(v) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [v, count] of seen) if (count > 1) dupes.add(v);
+    return dupes;
+  }, [editPhones]);
+
+  const urlDuplicates = useMemo(() => {
+    const seen = new Map<string, number>();
+    const allUrls = [
+      ...editWebsites,
+      ...NON_OTHER_SOCIAL_TYPES.flatMap((t) => editSocials[t]),
+      ...editOtherSocials.map((e) => e.url),
+    ];
+    for (const url of allUrls) {
+      const v = url.trim();
+      if (!v) continue;
+      seen.set(v, (seen.get(v) ?? 0) + 1);
+    }
+    const dupes = new Set<string>();
+    for (const [v, count] of seen) if (count > 1) dupes.add(v);
+    return dupes;
+  }, [editWebsites, editSocials, editOtherSocials]);
 
   useEffect(() => {
     window.sourcerer.getAlertRss(contact.id).then(setAlertRss);
@@ -261,6 +309,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function handleSave() {
     if (!editName.trim()) return;
+    if (emailDuplicates.size > 0 || phoneDuplicates.size > 0 || urlDuplicates.size > 0) {
+      formRef.current?.querySelector<HTMLElement>('.ac-collision-warn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setSaving(true);
     try {
       const links = [
@@ -330,7 +382,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   if (editing) {
     return (
-      <div className="detail-body">
+      <div className="detail-body" ref={formRef}>
         <div className="ac-field">
           <label className="ac-label">Name <span className="ac-required">*</span></label>
           <input className="ac-input" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
@@ -397,7 +449,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   ⚠ Invalid email address
                 </div>
               )}
-              {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && emailCollisions[entry.email.trim()] && (
+              {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && emailDuplicates.has(entry.email.trim().toLowerCase()) && (
+                <div className="ac-collision-warn">⚠ Already added</div>
+              )}
+              {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && !emailDuplicates.has(entry.email.trim().toLowerCase()) && emailCollisions[entry.email.trim()] && (
                 <div className="ac-collision-warn">
                   Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
                 </div>
@@ -469,7 +524,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                     : '⚠ Invalid phone number'}
                 </div>
               )}
-              {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneCollisions[entry.phone.trim()] && (
+              {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && (
+                <div className="ac-collision-warn">⚠ Already added</div>
+              )}
+              {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && !phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && phoneCollisions[entry.phone.trim()] && (
                 <div className="ac-collision-warn">
                   Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
                 </div>
@@ -507,8 +565,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               warnings={Object.fromEntries(
                 editSocials[type]
                   .map((v) => v.trim())
-                  .filter((v) => v && urlFormatWarnings[v])
-                  .map((v) => [v, '⚠ Invalid URL'])
+                  .filter(Boolean)
+                  .flatMap((v) => {
+                    if (urlFormatWarnings[v]) return [[v, '⚠ Invalid URL']];
+                    if (urlDuplicates.has(v)) return [[v, '⚠ Already added']];
+                    return [];
+                  })
               )}
             />
           </div>
@@ -567,6 +629,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               {entry.url.trim() && urlFormatWarnings[entry.url.trim()] && (
                 <div className="ac-collision-warn">⚠ Invalid URL</div>
               )}
+              {entry.url.trim() && !urlFormatWarnings[entry.url.trim()] && urlDuplicates.has(entry.url.trim()) && (
+                <div className="ac-collision-warn">⚠ Already added</div>
+              )}
             </div>
           ))}
           <button
@@ -599,8 +664,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             warnings={Object.fromEntries(
               editWebsites
                 .map((v) => v.trim())
-                .filter((v) => v && urlFormatWarnings[v])
-                .map((v) => [v, '⚠ Invalid URL'])
+                .filter(Boolean)
+                .flatMap((v) => {
+                  if (urlFormatWarnings[v]) return [[v, '⚠ Invalid URL']];
+                  if (urlDuplicates.has(v)) return [[v, '⚠ Already added']];
+                  return [];
+                })
             )}
           />
           <p className="ac-field-hint">Wayback Machine archiving can be enabled or disabled in Settings.</p>
