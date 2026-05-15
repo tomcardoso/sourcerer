@@ -140,22 +140,23 @@ export function CalendarPicker({
   return (
     <div ref={wrapRef} className="cal-wrap">
       <button
+        type="button"
         className={`project-meta-action-btn${value ? ' project-meta-action-btn--active' : ''}`}
         onClick={openCalendar}
       >
         {value ? fmtShort(value, showYear) : label}
-        {value && (
-          <span className="cal-clear-x" onMouseDown={clear}>
-            ×
-          </span>
-        )}
       </button>
+      {value && (
+        <button type="button" className="cal-clear-x" onClick={clear} aria-label="Clear date">
+          ×
+        </button>
+      )}
 
       {open && (
         <div className="cal-dropdown">
           <div className="cal-header">
             {showNav ? (
-              <button className="cal-nav" onClick={prevMonth} aria-label="Previous month">‹</button>
+              <button type="button" className="cal-nav" onClick={prevMonth} aria-label="Previous month">‹</button>
             ) : (
               <div className="cal-nav-placeholder" />
             )}
@@ -164,6 +165,7 @@ export function CalendarPicker({
                 <span className="cal-month-name">{MONTHS[viewMonth - 1]}</span>
               )}
               <button
+                type="button"
                 className={`cal-year-btn${mode !== 'days' ? ' cal-year-btn--active' : ''}`}
                 onClick={() => setMode(mode === 'years' ? 'days' : 'years')}
               >
@@ -171,7 +173,7 @@ export function CalendarPicker({
               </button>
             </span>
             {showNav ? (
-              <button className="cal-nav" onClick={nextMonth} aria-label="Next month">›</button>
+              <button type="button" className="cal-nav" onClick={nextMonth} aria-label="Next month">›</button>
             ) : (
               <div className="cal-nav-placeholder" />
             )}
@@ -181,6 +183,7 @@ export function CalendarPicker({
             <div className="cal-year-grid">
               {yearRange.map((y) => (
                 <button
+                  type="button"
                   key={y}
                   className={[
                     'cal-year-cell',
@@ -197,6 +200,7 @@ export function CalendarPicker({
             <div className="cal-month-grid">
               {MONTHS_SHORT.map((name, i) => (
                 <button
+                  type="button"
                   key={name}
                   className={[
                     'cal-month-cell',
@@ -220,6 +224,7 @@ export function CalendarPicker({
                 const isToday = iso === todayStr && !isSelected;
                 return (
                   <button
+                    type="button"
                     key={i}
                     className={[
                       'cal-day',
@@ -238,7 +243,7 @@ export function CalendarPicker({
 
           {value && (
             <div className="cal-footer">
-              <button className="cal-clear-all" onMouseDown={clear}>Clear</button>
+              <button type="button" className="cal-clear-all" onClick={clear}>Clear</button>
             </div>
           )}
         </div>

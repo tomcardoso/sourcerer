@@ -6,20 +6,32 @@
   align-items: center;
 }
 
-/* ── Clear × inside trigger button ────────────────────────── */
+/* ── Clear × button (sibling to trigger, absolutely positioned) ─ */
 
 .cal-clear-x {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 5px;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-size: 14px;
   line-height: 1;
   color: inherit;
   opacity: 0.6;
+  display: flex;
+  align-items: center;
 }
 
 .cal-clear-x:hover {
   opacity: 1;
+}
+
+/* Make room for the clear button when a value is active */
+.cal-wrap .project-meta-action-btn--active {
+  padding-right: 24px;
 }
 
 /* ── Dropdown panel ────────────────────────────────────────── */

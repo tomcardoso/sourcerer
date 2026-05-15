@@ -187,7 +187,7 @@ export default function AppShell() {
             onOpenContactIdConsumed={() => setOpenContactId(null)}
           />
         )}
-        {nav.view === 'timeline' && activeProject && (
+        {nav.view === 'timeline' && (activeProject ? (
           <ProjectTimeline
             projectId={activeProject.id}
             projectName={activeProject.name}
@@ -196,7 +196,12 @@ export default function AppShell() {
               setOpenContactId(id);
             }}
           />
-        )}
+        ) : (
+          // Project not yet loaded / no longer exists — fall back to global timeline
+          <ProjectTimeline
+            onSelectContact={(id) => setOpenContactId(id)}
+          />
+        ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
 

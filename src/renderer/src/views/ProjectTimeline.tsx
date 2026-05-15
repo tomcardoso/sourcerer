@@ -202,13 +202,19 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
     setOpenTextFilter(null);
     setDateFrom('');
     setDateTo('');
-    const fetch = projectId
+    let cancelled = false;
+    const loadPromise = projectId
       ? window.sourcerer.listProjectTimeline(projectId)
       : window.sourcerer.listAllTimeline();
-    fetch.then((data) => {
+    loadPromise.then((data) => {
+      if (cancelled) return;
       setEntries(data);
       setLoading(false);
+    }).catch(() => {
+      if (cancelled) return;
+      setLoading(false);
     });
+    return () => { cancelled = true; };
   }, [projectId]);
 
   useClickOutside(priorityRef, () => setPriorityDropdownOpen(false), { isOpen: priorityDropdownOpen });
@@ -239,11 +245,13 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
       if (themeFilter && !(e.theme ?? '').toLowerCase().includes(themeFilter.toLowerCase())) return false;
       if (orgFilter && !(e.contact_organization ?? '').toLowerCase().includes(orgFilter.toLowerCase())) return false;
       if (dateFrom) {
-        const from = new Date(dateFrom).setHours(0, 0, 0, 0) / 1000;
+        const [fy, fm, fd] = dateFrom.split('-').map(Number);
+        const from = new Date(fy, fm - 1, fd, 0, 0, 0, 0).getTime() / 1000;
         if (e.created_at < from) return false;
       }
       if (dateTo) {
-        const to = new Date(dateTo).setHours(23, 59, 59, 999) / 1000;
+        const [ty, tm, td] = dateTo.split('-').map(Number);
+        const to = new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime() / 1000;
         if (e.created_at > to) return false;
       }
       return true;
@@ -280,8 +288,6 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
     (dateFrom && dateFrom.slice(0, 4) !== dateTo.slice(0, 4)) ||
     Number(dateTo.slice(0, 4)) < thisYear
   ));
-
-  const showSep = priorityOptions.length > 0;
 
   const kicker = isFiltered
     ? `${filtered.length} of ${entries.length} interaction${entries.length !== 1 ? 's' : ''}`

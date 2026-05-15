@@ -80,6 +80,9 @@ export default function Sidebar({
     if (target.view === 'project') {
       return (nav.view === 'project' || nav.view === 'timeline') && 'projectId' in nav && nav.projectId === target.projectId;
     }
+    if (target.view === 'all-contacts') {
+      return nav.view === 'all-contacts' || nav.view === 'all-timeline';
+    }
     if (target.view !== nav.view) return false;
     return true;
   };
@@ -108,7 +111,7 @@ export default function Sidebar({
           <div className="sidebar-section-label">Workspace</div>
 
           <button
-            className={`sidebar-nav-item ${nav.view === 'all-contacts' || nav.view === 'all-timeline' ? 'active' : ''}`}
+            className={`sidebar-nav-item ${isActive({ view: 'all-contacts' }) ? 'active' : ''}`}
             onClick={() => onNav({ view: 'all-contacts' })}
           >
             <span className="sidebar-nav-indicator" />
