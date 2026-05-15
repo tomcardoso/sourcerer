@@ -43,6 +43,6 @@ If you already have Sourcerer installed, the app will notify you when a new upda
 <details>
 <summary>About the other files</summary>
 
-Files ending in `.blockmap` and `latest-*.yml` are used by the in-app updater and can be ignored. You only need the `.dmg` (macOS), `.AppImage` (Linux), or `.exe` (Windows) installer.
+Files ending in `.blockmap` and `latest-*.yml` are required for the in-app updater and must remain attached to the release. If you are downloading Sourcerer manually, you do not need these files — you only need the `.dmg` (macOS), `.AppImage` (Linux), or `.exe` (Windows) installer.
 
 </details>
