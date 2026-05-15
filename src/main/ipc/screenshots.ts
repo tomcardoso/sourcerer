@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog, BrowserWindow } from 'electron';
+import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron';
 import { randomUUID } from 'crypto';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import fs from 'fs/promises';
@@ -160,4 +160,31 @@ export function registerScreenshotHandlers(): void {
       }
     },
   );
+
+  ipcMain.handle('screenshots:get-folder-size', async (): Promise<number> => {
+    const dir = screenshotsDir();
+    let total = 0;
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        try {
+          const stat = await fs.stat(path.join(dir, entry.name));
+          total += stat.size;
+        } catch {
+          // ignore files that disappeared between readdir and stat
+        }
+      }
+    } catch {
+      // folder doesn't exist yet — size is 0
+    }
+    return total;
+  });
+
+  ipcMain.handle('screenshots:open-folder', async (): Promise<void> => {
+    const dir = screenshotsDir();
+    await fs.mkdir(dir, { recursive: true });
+    const err = await shell.openPath(dir);
+    if (err) throw new Error(`Failed to open screenshots folder: ${err}`);
+  });
 }

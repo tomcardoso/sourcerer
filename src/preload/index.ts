@@ -214,6 +214,10 @@ const sourcererApi = {
     ipcRenderer.invoke('screenshots:delete', screenshotId),
   saveScreenshot: (screenshotId: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('screenshots:save', screenshotId),
+  getScreenshotFolderSize: (): Promise<number> =>
+    ipcRenderer.invoke('screenshots:get-folder-size'),
+  openScreenshotFolder: (): Promise<void> =>
+    ipcRenderer.invoke('screenshots:open-folder'),
   onScreenshotAssigned: (callback: (contactId: string) => void): (() => void) => {
     const handler = (_: Electron.IpcRendererEvent, contactId: string) => callback(contactId);
     ipcRenderer.on('screenshots:assigned', handler);
