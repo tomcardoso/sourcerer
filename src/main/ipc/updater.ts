@@ -37,7 +37,10 @@ export function registerUpdaterHandlers(): void {
         setTimeout(() => {
           sendToWindow('update:download-progress', { percent });
           if (percent === 100) {
-            setTimeout(() => sendToWindow('update:downloaded', { version: '99.0.0' }), 300);
+            setTimeout(() => {
+              cachedUpdateInfo = { event: 'downloaded', version: '99.0.0' };
+              sendToWindow('update:downloaded', { version: '99.0.0' });
+            }, 300);
           }
         }, (i + 1) * 500);
       });
@@ -46,10 +49,14 @@ export function registerUpdaterHandlers(): void {
     ipcMain.handle('update:get-state', () => cachedUpdateInfo);
     // Trigger from DevTools console: window.sourcerer.simulateUpdate()
     ipcMain.handle('update:dev-simulate', () => {
+      cachedUpdateInfo = { event: 'available', version: '99.0.0' };
       sendToWindow('update:available', { version: '99.0.0' });
     });
     return;
   }
+
+  // No-op in production so simulateUpdate() from DevTools doesn't reject.
+  ipcMain.handle('update:dev-simulate', () => {});
 
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
