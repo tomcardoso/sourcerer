@@ -16,7 +16,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout
@@ -89,7 +89,7 @@ jobs:
             dist-electron/*.dmg
             dist-electron/*.blockmap
             dist-electron/latest-mac.yml
-          retention-days: 1
+          retention-days: 5
           if-no-files-found: error
 
       - name: Upload build artifacts (Windows)
@@ -101,7 +101,7 @@ jobs:
             dist-electron/*.exe
             dist-electron/*.blockmap
             dist-electron/latest.yml
-          retention-days: 1
+          retention-days: 5
           if-no-files-found: error
 
       - name: Upload build artifacts (Linux)
@@ -113,7 +113,7 @@ jobs:
             dist-electron/*.AppImage
             dist-electron/*.blockmap
             dist-electron/latest-linux.yml
-          retention-days: 1
+          retention-days: 5
           if-no-files-found: error
 
   finalize-release:
