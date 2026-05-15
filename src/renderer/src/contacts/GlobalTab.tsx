@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project, User } from '@shared/types';
 import './AddContactModal.css';
@@ -64,6 +64,32 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
+function useDragReorder<T>(items: T[], onReorder: (next: T[]) => void) {
+  const dragFromRef = useRef<number | null>(null);
+  const dragAllowed = useRef(false);
+  const getDragProps = (i: number) => ({
+    draggable: true as const,
+    onDragStart: (e: React.DragEvent<HTMLElement>) => {
+      if (!dragAllowed.current) { e.preventDefault(); return; }
+      dragFromRef.current = i;
+    },
+    onDragEnd: () => { dragAllowed.current = false; dragFromRef.current = null; },
+    onDragOver: (e: React.DragEvent<HTMLElement>) => e.preventDefault(),
+    onDrop: (e: React.DragEvent<HTMLElement>) => {
+      e.preventDefault();
+      const from = dragFromRef.current;
+      if (from === null || from === i) return;
+      const next = [...items];
+      const [moved] = next.splice(from, 1);
+      next.splice(i, 0, moved);
+      dragFromRef.current = null;
+      onReorder(next);
+    },
+  });
+  const handleProps = { onMouseDown: () => { dragAllowed.current = true; } };
+  return { getDragProps, handleProps };
+}
+
 function DynamicList({
   values,
   placeholder,
@@ -79,11 +105,16 @@ function DynamicList({
   onBlurItem?: (value: string) => void;
   warnings?: Record<string, string>;
 }) {
+  const { getDragProps, handleProps } = useDragReorder(values, onChange);
   return (
     <div>
       {values.map((v, i) => (
-        <div key={i}>
+        <div
+          key={i}
+          {...getDragProps(i)}
+        >
           <div className="ac-dynamic-row">
+            <span className="ac-drag-handle" {...handleProps}>⠿</span>
             <input
               className="ac-input"
               value={v}
@@ -139,6 +170,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
 
+
   useEffect(() => {
     return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
       if (contactId !== contact.id) return;
@@ -183,6 +215,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     linkedin: [], x: [], instagram: [], facebook: [],
   });
   const [editOtherSocials, setEditOtherSocials] = useState<Array<{ url: string; label: string }>>([]);
+  const { getDragProps: emailDragProps, handleProps: emailHandleProps } = useDragReorder(editEmails, setEditEmails);
+  const { getDragProps: phoneDragProps, handleProps: phoneHandleProps } = useDragReorder(editPhones, setEditPhones);
+  const { getDragProps: otherSocialDragProps, handleProps: otherSocialHandleProps } = useDragReorder(editOtherSocials, setEditOtherSocials);
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [editRssUrl, setEditRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
@@ -425,8 +460,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="ac-field">
           <label className="ac-label">Email</label>
           {editEmails.map((entry, i) => (
-            <div key={i}>
+            <div
+              key={i}
+              {...emailDragProps(i)}
+            >
               <div className="ac-phone-row">
+                <span className="ac-drag-handle" {...emailHandleProps}>⠿</span>
                 <input
                   className="ac-input"
                   value={entry.email}
@@ -500,8 +539,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="ac-field">
           <label className="ac-label">Phone</label>
           {editPhones.map((entry, i) => (
-            <div key={i}>
+            <div
+              key={i}
+              {...phoneDragProps(i)}
+            >
               <div className="ac-phone-row">
+                <span className="ac-drag-handle" {...phoneHandleProps}>⠿</span>
                 <input
                   className="ac-input"
                   value={entry.phone}
@@ -608,8 +651,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="ac-field">
           <label className="ac-label">Other social</label>
           {editOtherSocials.map((entry, i) => (
-            <div key={i}>
+            <div
+              key={i}
+              {...otherSocialDragProps(i)}
+            >
               <div className="ac-other-social-row">
+                <span className="ac-drag-handle" {...otherSocialHandleProps}>⠿</span>
                 <input
                   className="ac-input"
                   value={entry.label}

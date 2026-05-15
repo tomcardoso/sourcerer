@@ -229,9 +229,26 @@
   line-height: 1.4;
 }
 
+.ac-drag-handle {
+  cursor: grab;
+  color: var(--color-text-dim);
+  font-size: 16px;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  opacity: 0.4;
+  transition: opacity 0.1s;
+}
+
+.ac-drag-handle:hover {
+  opacity: 0.9;
+}
+
 .ac-phone-row {
   display: grid;
-  grid-template-columns: 2fr 1fr auto;
+  grid-template-columns: auto 2fr 1fr auto;
   gap: 6px;
   align-items: center;
   margin-bottom: 6px;
@@ -243,7 +260,7 @@
 
 .ac-other-social-row {
   display: grid;
-  grid-template-columns: 1fr 2fr auto;
+  grid-template-columns: auto 1fr 2fr auto;
   gap: 6px;
   align-items: center;
   margin-bottom: 6px;

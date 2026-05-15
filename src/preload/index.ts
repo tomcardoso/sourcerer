@@ -182,24 +182,6 @@ const sourcererApi = {
   setIdleTimeout: (seconds: number): Promise<void> =>
     ipcRenderer.invoke('settings:set-idle-timeout', seconds),
 
-  createStatusOption: (label: string): Promise<StatusOption> =>
-    ipcRenderer.invoke('status-options:create', label),
-  renameStatusOption: (id: string, label: string): Promise<void> =>
-    ipcRenderer.invoke('status-options:rename', { id, label }),
-  deleteStatusOption: (id: string): Promise<void> =>
-    ipcRenderer.invoke('status-options:delete', id),
-  moveStatusOption: (id: string, direction: 'up' | 'down'): Promise<void> =>
-    ipcRenderer.invoke('status-options:move', { id, direction }),
-
-  createPriorityOption: (label: string): Promise<PriorityOption> =>
-    ipcRenderer.invoke('priority-options:create', label),
-  renamePriorityOption: (id: string, label: string): Promise<void> =>
-    ipcRenderer.invoke('priority-options:rename', { id, label }),
-  deletePriorityOption: (id: string): Promise<void> =>
-    ipcRenderer.invoke('priority-options:delete', id),
-  movePriorityOption: (id: string, direction: 'up' | 'down'): Promise<void> =>
-    ipcRenderer.invoke('priority-options:move', { id, direction }),
-
   // Export
   exportProject: (projectId: string, mode: 'full' | 'sanitized'): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('export:project', { projectId, mode }),
