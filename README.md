@@ -41,6 +41,7 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 - Local projects or shared (encrypted shared database on a shared drive)
 - Per-project source memberships with reporter attribution, theme, priority, status, and outreach tracking
 - Multiple reporters per project; conflict detection when the same contact is assigned to two reporters
+- Timeline view: reverse-chronological interaction log across an entire project or all contacts, filterable by priority, theme, org, reporter, and date range
 
 **Outreach**
 - Priority levels: Critical, High, Medium, Low, Monitor-only — each with a fixed reminder interval
