@@ -77,6 +77,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
   const [panicWipeInput, setPanicWipeInput] = useState('');
   const [panicWiping, setPanicWiping] = useState(false);
+  const [screenshotFolderBytes, setScreenshotFolderBytes] = useState<number>(0);
 
   const countryOptions = useMemo(() => {
     const names = new Intl.DisplayNames([navigator.language], { type: 'region' });
@@ -107,6 +108,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     }
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
+    window.sourcerer.getScreenshotFolderSize().then(setScreenshotFolderBytes);
   }, [user?.id]);
 
   async function handleProfileSave() {
@@ -548,6 +550,31 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             <button className="sv-add-btn" onClick={() => setCalendarRegenConfirm(true)}>
               Regenerate token
             </button>
+          )}
+        </div>
+
+        {/* Screenshots storage */}
+        <div className="sv-section">
+          <div className="sv-section-title">Screenshot storage</div>
+          <p className="sv-hint">
+            Encrypted screenshots are stored locally on this machine. The folder is separate from the database.
+          </p>
+          <div className="sv-storage-row">
+            <span className="sv-storage-size">
+              {screenshotFolderBytes >= 1024 * 1024 * 1024
+                ? `${(screenshotFolderBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+                : screenshotFolderBytes >= 1024 * 1024
+                ? `${(screenshotFolderBytes / (1024 * 1024)).toFixed(1)} MB`
+                : `${(screenshotFolderBytes / 1024).toFixed(0)} KB`}
+            </span>
+            <button className="sv-add-btn" onClick={() => window.sourcerer.openScreenshotFolder()}>
+              Open folder
+            </button>
+          </div>
+          {screenshotFolderBytes >= 1024 * 1024 * 1024 && (
+            <div className="sv-storage-warning">
+              ⚠ Screenshot folder exceeds 1 GB. Open the folder to review and delete files manually.
+            </div>
           )}
         </div>
 
