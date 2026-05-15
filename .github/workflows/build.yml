@@ -11,11 +11,8 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            dist_script: dist:mac
           - os: windows-latest
-            dist_script: dist:win
           - os: ubuntu-latest
-            dist_script: dist:linux
 
     runs-on: ${{ matrix.os }}
     permissions:
@@ -147,6 +144,12 @@ jobs:
             | sed '/^## What'\''s Changed$/d' \
             > /tmp/generated-changelog.md
 
+          # Sanitize: --jq '.body' writes the literal string "null" when the API
+          # has no previous tag to diff against (e.g. the very first release).
+          if [ "$(cat /tmp/generated-changelog.md)" = "null" ]; then
+            : > /tmp/generated-changelog.md
+          fi
+
           # Splice changelog into template, replacing placeholder and {version}
           python3 - <<PY
 template = open('.github/release-template.md').read()
@@ -155,11 +158,18 @@ result = template.replace('{version}', '$VERSION').replace('<!-- Describe change
 open('/tmp/release-notes.md', 'w').write(result)
 PY
 
-          # Collect all artifacts and create the release in one shot
+          # Collect all artifacts and create (or update) the release in one shot.
+          # Using create+edit so the step is idempotent on workflow re-runs.
           assets=()
           while IFS= read -r asset; do
             assets+=("$asset")
           done < <(find artifacts/ -type f | sort)
-          gh release create "$TAG" \
-            --notes-file /tmp/release-notes.md \
-            "${assets[@]}"
+          if gh release view "$TAG" &>/dev/null; then
+            # Release already exists (e.g. re-run): update notes and re-upload assets.
+            gh release edit "$TAG" --notes-file /tmp/release-notes.md
+            gh release upload --clobber "$TAG" "${assets[@]}"
+          else
+            gh release create "$TAG" \
+              --notes-file /tmp/release-notes.md \
+              "${assets[@]}"
+          fi
