@@ -166,10 +166,12 @@ export default function AppShell() {
             <button
               className="app-update-btn"
               onClick={async () => {
+                setUpdatePercent(null);
                 setUpdateState('downloading');
                 try {
                   await window.sourcerer.downloadUpdate();
                 } catch {
+                  setUpdatePercent(null);
                   setUpdateState('available');
                 }
               }}
