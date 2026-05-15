@@ -42,6 +42,7 @@ export default function AppShell() {
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
   const [updateState, setUpdateState] = useState<'idle' | 'available' | 'downloading' | 'ready'>('idle');
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [updatePercent, setUpdatePercent] = useState<number | null>(null);
 
   const refreshOverdue = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -95,12 +96,27 @@ export default function AppShell() {
       setUpdateVersion(version);
       setUpdateState('available');
     });
+    const offProgress = window.sourcerer.onUpdateDownloadProgress(({ percent }) => {
+      setUpdatePercent(percent);
+    });
     const offDownloaded = window.sourcerer.onUpdateDownloaded(({ version }) => {
       setUpdateVersion(version);
       setUpdateState('ready');
     });
+    // Replay any update event that fired before AppShell mounted (e.g. the
+    // 10 s auto-check completed while the user was still on the lock screen).
+    window.sourcerer.getUpdateState().then((state) => {
+      if (state?.event === 'available') {
+        setUpdateVersion(state.version);
+        setUpdateState('available');
+      } else if (state?.event === 'downloaded') {
+        setUpdateVersion(state.version);
+        setUpdateState('ready');
+      }
+    });
     return () => {
       offAvailable();
+      offProgress();
       offDownloaded();
     };
   }, []);
@@ -149,16 +165,22 @@ export default function AppShell() {
           {updateState === 'available' && (
             <button
               className="app-update-btn"
-              onClick={() => {
+              onClick={async () => {
                 setUpdateState('downloading');
-                window.sourcerer.downloadUpdate();
+                try {
+                  await window.sourcerer.downloadUpdate();
+                } catch {
+                  setUpdateState('available');
+                }
               }}
             >
               Update available ({updateVersion})
             </button>
           )}
           {updateState === 'downloading' && (
-            <span className="app-update-downloading">Downloading update&hellip;</span>
+            <span className="app-update-downloading">
+              Downloading update{updatePercent !== null ? ` ${updatePercent}%` : '\u2026'}
+            </span>
           )}
           {updateState === 'ready' && (
             <button
