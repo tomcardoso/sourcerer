@@ -223,8 +223,8 @@ export function registerContactHandlers(): void {
         .filter((e) => e.email);
       emails.forEach((e, i) => {
         db.prepare(
-          'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-        ).run(uuidv4(), id, e.email, e.label, i);
+          'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, e.email, e.label, i, now);
       });
 
       phones = (data.phones ?? [])
@@ -233,15 +233,15 @@ export function registerContactHandlers(): void {
         .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
       phones.forEach((p, i) => {
         db.prepare(
-          'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-        ).run(uuidv4(), id, p.phone, p.label, i);
+          'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, p.phone, p.label, i, now);
       });
 
       const links = (data.links ?? []).filter((l) => l.url.trim());
       links.forEach((link, i) => {
         db.prepare(
-          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-        ).run(uuidv4(), id, link.type, link.label ?? null, link.url.trim(), i);
+          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, link.type, link.label ?? null, link.url.trim(), i, now);
       });
     });
 
@@ -341,6 +341,20 @@ export function registerContactHandlers(): void {
       .all(data.id) as { url: string; wayback_url: string | null }[];
     const existingWaybacks = new Map(existingWebsites.map((r) => [r.url, r.wayback_url]));
 
+    // Snapshot created_at values keyed by normalised value so they survive the re-insert.
+    const existingEmailCreatedAt = new Map(
+      (db.prepare('SELECT email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { email: string; created_at: number }[])
+        .map((r) => [r.email, r.created_at])
+    );
+    const existingPhoneCreatedAt = new Map(
+      (db.prepare('SELECT phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { phone: string; created_at: number }[])
+        .map((r) => [r.phone, r.created_at])
+    );
+    const existingLinkCreatedAt = new Map(
+      (db.prepare('SELECT url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { url: string; created_at: number }[])
+        .map((r) => [r.url.trim(), r.created_at])
+    );
+
     const run = db.transaction(() => {
       db.prepare(
         'UPDATE contacts SET name = ?, organization = ?, notes = ?, updated_at = ? WHERE id = ?',
@@ -352,8 +366,8 @@ export function registerContactHandlers(): void {
         .filter((e) => e.email);
       emails.forEach((e, i) => {
         db.prepare(
-          'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, e.email, e.label, i);
+          'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, e.email, e.label, i, existingEmailCreatedAt.get(e.email) ?? now);
       });
 
       db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
@@ -363,16 +377,16 @@ export function registerContactHandlers(): void {
         .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
       phones.forEach((p, i) => {
         db.prepare(
-          'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, p.phone, p.label, i);
+          'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, p.phone, p.label, i, existingPhoneCreatedAt.get(p.phone) ?? now);
       });
 
       db.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
       const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim());
       links.forEach((link: ContactLinkInput, i: number) => {
         db.prepare(
-          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i);
+          'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i, existingLinkCreatedAt.get(link.url.trim()) ?? now);
       });
 
       // Restore wayback_urls for previously saved website links

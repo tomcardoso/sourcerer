@@ -207,6 +207,7 @@ export function mergeContacts(
   strategy: 'keep' | 'merge',
 ): void {
   const doMerge = db.transaction(() => {
+    const now = Math.floor(Date.now() / 1000);
     if (strategy === 'merge') {
       const winner = db
         .prepare('SELECT name, organization, notes FROM contacts WHERE id = ?')
@@ -257,8 +258,8 @@ export function mergeContacts(
       for (const row of loserEmails) {
         if (!winnerEmails.has(row.email)) {
           db.prepare(
-            'INSERT INTO contact_emails (id, contact_id, email, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-          ).run(uuidv4(), winnerId, row.email, row.label, emailOffset++);
+            'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.email, row.label, emailOffset++, now);
         }
       }
 
@@ -281,8 +282,8 @@ export function mergeContacts(
       for (const row of loserPhones) {
         if (!winnerPhones.has(row.phone)) {
           db.prepare(
-            'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order) VALUES (?, ?, ?, ?, ?)',
-          ).run(uuidv4(), winnerId, row.phone, row.label, phoneOffset++);
+            'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.phone, row.label, phoneOffset++, now);
         }
       }
 
@@ -305,8 +306,8 @@ export function mergeContacts(
       for (const row of loserLinks) {
         if (!winnerUrls.has(row.url)) {
           db.prepare(
-            'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-          ).run(uuidv4(), winnerId, row.type, row.label, row.url, linkOffset++);
+            'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.type, row.label, row.url, linkOffset++, now);
         }
       }
     }

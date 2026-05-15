@@ -40,13 +40,13 @@ export function seedDevData(db: Database.Database, email: string, name: string):
          VALUES (?, ?, ?, ?, ?, ?)`,
       ),
       insertEmail: db.prepare(
-        `INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)`,
       ),
       insertPhone: db.prepare(
-        `INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, ?, ?)`,
       ),
       insertLink: db.prepare(
-        `INSERT INTO contact_links (id, contact_id, type, url, sort_order) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO contact_links (id, contact_id, type, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
       ),
       insertProject: db.prepare(
         `INSERT INTO projects (id, name, description, is_shared, created_at) VALUES (?, ?, ?, 0, ?)`,
@@ -79,9 +79,9 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       const updatedAt = STALE_NAMES.has(c.name) ? NOW - 120 * DAY : NOW;
       stmts.insertContact.run(id, c.name, c.organization ?? null, c.notes ?? null, NOW, updatedAt);
 
-      c.emails.forEach((e, i) => stmts.insertEmail.run(uuidv4(), id, e, i));
-      c.phones.forEach((p, i) => stmts.insertPhone.run(uuidv4(), id, p, i));
-      c.links.forEach((l, i) => stmts.insertLink.run(uuidv4(), id, l.type, l.url, i));
+      c.emails.forEach((e, i) => stmts.insertEmail.run(uuidv4(), id, e, i, NOW + i));
+      c.phones.forEach((p, i) => stmts.insertPhone.run(uuidv4(), id, p, i, NOW + i));
+      c.links.forEach((l, i) => stmts.insertLink.run(uuidv4(), id, l.type, l.url, i, NOW + i));
     }
 
     const cid = (n: string) => idByName.get(n)!;
