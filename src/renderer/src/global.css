@@ -257,6 +257,11 @@ code {
   margin-bottom: 0;
 }
 
+.sv-toggle--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .sv-toggle-row--has-hint {
   align-items: flex-start;
 }

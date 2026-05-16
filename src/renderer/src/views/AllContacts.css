@@ -335,10 +335,12 @@
 .bulk-delete-confirm-text {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-danger);
   font-weight: 500;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-right: 10px;
 }
 
 .bulk-delete-confirm-btn {
@@ -353,6 +355,7 @@
   text-transform: uppercase;
   color: #fff;
   cursor: pointer;
+  margin-right: 10px;
 }
 
 .bulk-delete-confirm-btn:hover:not(:disabled) {

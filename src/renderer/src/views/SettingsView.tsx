@@ -19,14 +19,15 @@ const TIMEOUT_OPTIONS = [
   { label: 'Never', seconds: 0 },
 ];
 
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+function Toggle({ checked, onChange, label, hint, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean }) {
   return (
     <div className={`sv-toggle-row${hint ? ' sv-toggle-row--has-hint' : ''}`}>
       <button
         type="button"
-        className={`sv-toggle${checked ? ' sv-toggle--on' : ''}`}
-        onClick={() => onChange(!checked)}
+        className={`sv-toggle${checked ? ' sv-toggle--on' : ''}${disabled ? ' sv-toggle--disabled' : ''}`}
+        onClick={() => !disabled && onChange(!checked)}
         aria-pressed={checked}
+        disabled={disabled}
       >
         <span className="sv-toggle-knob" />
         <span className="sv-toggle-label">{checked ? 'ON' : 'OFF'}</span>
@@ -79,6 +80,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [panicWiping, setPanicWiping] = useState(false);
   const [screenshotFolderBytes, setScreenshotFolderBytes] = useState<number>(0);
 
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [autoBackupDestPath, setAutoBackupDestPath] = useState<string | null>(null);
+  const [autoBackupMaxCount, setAutoBackupMaxCount] = useState(10);
+  const [autoBackupMaxCountInput, setAutoBackupMaxCountInput] = useState('10');
+  const [autoBackupRunning, setAutoBackupRunning] = useState(false);
+  const [autoBackupResult, setAutoBackupResult] = useState<string | null>(null);
+
   const countryOptions = useMemo(() => {
     const names = new Intl.DisplayNames([navigator.language], { type: 'region' });
     return getCountries()
@@ -109,6 +117,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
     window.sourcerer.getScreenshotFolderSize().then(setScreenshotFolderBytes);
+    window.sourcerer.getAutoBackupSettings().then(({ enabled, destPath, maxCount }) => {
+      setAutoBackupEnabled(enabled);
+      setAutoBackupDestPath(destPath);
+      setAutoBackupMaxCount(maxCount);
+      setAutoBackupMaxCountInput(String(maxCount));
+    });
   }, [user?.id]);
 
   async function handleProfileSave() {
@@ -256,6 +270,37 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     setPhoneCountry(country);
     const updated = await window.sourcerer.setPhoneCountry(country);
     onUserUpdated(updated);
+  }
+
+  async function handleChooseBackupFolder() {
+    const chosen = await window.sourcerer.chooseBackupFolder();
+    if (!chosen) return;
+    setAutoBackupDestPath(chosen);
+    await window.sourcerer.setAutoBackupSettings({ destPath: chosen });
+  }
+
+  async function handleAutoBackupToggle(enabled: boolean) {
+    setAutoBackupEnabled(enabled);
+    await window.sourcerer.setAutoBackupSettings({ enabled });
+  }
+
+  async function handleAutoBackupMaxCountBlur() {
+    const n = parseInt(autoBackupMaxCountInput, 10);
+    if (!isNaN(n) && n >= 1) {
+      setAutoBackupMaxCount(n);
+      await window.sourcerer.setAutoBackupSettings({ maxCount: n });
+    } else {
+      setAutoBackupMaxCountInput(String(autoBackupMaxCount));
+    }
+  }
+
+  async function handleRunAutoBackupNow() {
+    setAutoBackupRunning(true);
+    setAutoBackupResult(null);
+    const result = await window.sourcerer.runAutoBackup();
+    setAutoBackupRunning(false);
+    setAutoBackupResult(result.success ? 'Backup saved.' : (result.error ?? 'Backup failed.'));
+    setTimeout(() => setAutoBackupResult(null), 4000);
   }
 
   const profileDirty =
@@ -646,16 +691,16 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 Restoring a backup will permanently overwrite your current database and cannot be undone.
                 Enter the master password used when the backup was created, then choose the file.
               </p>
-              <input
-                className="sv-input"
-                type="password"
-                placeholder="Backup password"
-                value={restorePassword}
-                onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
-                autoComplete="current-password"
-                disabled={restoringBackup}
-              />
               <div className="sv-wipe-row">
+                <input
+                  className="sv-input"
+                  type="password"
+                  placeholder="Backup password"
+                  value={restorePassword}
+                  onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
+                  autoComplete="current-password"
+                  disabled={restoringBackup}
+                />
                 <button
                   className="sv-wipe-confirm-btn"
                   onClick={handleRestoreBackup}
@@ -674,6 +719,63 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               {restoreError && <div className="sv-error-inline">{restoreError}</div>}
             </div>
           )}
+        </div>
+
+        {/* Automatic backups */}
+        <div className="sv-section">
+          <div className="sv-section-title">Automatic backups</div>
+          <div className="sv-field">
+            <div className="sv-hint">
+              Choose a folder and Sourcerer will silently save an encrypted backup on every clean quit
+              and once per day while the app is running. Backups use the same format as manual exports
+              and can be restored using your master password.
+            </div>
+          </div>
+          <div className="sv-field">
+            <label className="sv-label">Backup folder</label>
+            <div className="sv-row">
+              <code className="sv-path-code">
+                {autoBackupDestPath ?? 'No folder selected'}
+              </code>
+              <button
+                className="sv-save-btn"
+                onClick={handleChooseBackupFolder}
+              >
+                Choose folder…
+              </button>
+            </div>
+          </div>
+          <Toggle
+            checked={autoBackupEnabled}
+            onChange={handleAutoBackupToggle}
+            label="Enable automatic backups"
+            hint={autoBackupDestPath ? undefined : 'Choose a backup folder first.'}
+            disabled={!autoBackupDestPath}
+          />
+          <div className="sv-field sv-field--inline-row">
+            <label className="sv-label">Max backups to keep</label>
+            <div className="sv-inline-actions">
+              <input
+                className="sv-input sv-input--short"
+                type="number"
+                min={1}
+                value={autoBackupMaxCountInput}
+                onChange={(e) => setAutoBackupMaxCountInput(e.target.value)}
+                onBlur={handleAutoBackupMaxCountBlur}
+                disabled={!autoBackupDestPath || !autoBackupEnabled}
+              />
+              <button
+                className="sv-save-btn"
+                onClick={handleRunAutoBackupNow}
+                disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
+              >
+                {autoBackupRunning ? 'Backing up…' : 'Back up now'}
+              </button>
+              {autoBackupResult && (
+                <span className="sv-hint sv-hint--inline">{autoBackupResult}</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Danger Zone */}

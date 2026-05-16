@@ -191,6 +191,14 @@ const sourcererApi = {
     ipcRenderer.invoke('backup:export', { password }),
   restoreBackup: (password: string): Promise<{ success: boolean; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('backup:restore', { password }),
+  runAutoBackup: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('backup:run-auto'),
+  getAutoBackupSettings: (): Promise<{ enabled: boolean; destPath: string | null; maxCount: number }> =>
+    ipcRenderer.invoke('settings:get-auto-backup'),
+  setAutoBackupSettings: (data: { enabled?: boolean; destPath?: string | null; maxCount?: number }): Promise<void> =>
+    ipcRenderer.invoke('settings:set-auto-backup', data),
+  chooseBackupFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('settings:choose-backup-folder'),
   searchGlobal: (query: string): Promise<import('@shared/types').SearchResult[]> =>
     ipcRenderer.invoke('search:global', query),
   assignScreenshot: (data: { tempId: string; contactId: string }): Promise<{ success: boolean; error?: string }> =>

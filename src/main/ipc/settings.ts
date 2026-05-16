@@ -1,10 +1,10 @@
-import { ipcMain, app } from 'electron';
+import { ipcMain, app, dialog } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getDatabase, closeDatabase, updateActiveKeyHex } from '../database';
+import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } from '../database';
 import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
@@ -172,8 +172,9 @@ export function registerSettingsHandlers(): void {
         db.pragma(`rekey="x'${newKeyHex}'"`);
         db.pragma('journal_mode = WAL');
 
-        // Update the in-memory key so screenshot encryption keeps working
+        // Update the in-memory key and password so screenshot encryption and auto-backups keep working
         updateActiveKeyHex(newKeyHex);
+        setActivePassword(newPassword);
 
         // Atomic rename completes the operation; if this fails the .tmp file
         // serves as a recovery signal on the next unlock attempt.
@@ -238,5 +239,40 @@ export function registerSettingsHandlers(): void {
     await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
 
     app.quit();
+  });
+
+  ipcMain.handle('settings:get-auto-backup', (): { enabled: boolean; destPath: string | null; maxCount: number } => {
+    const row = getDatabase()
+      .prepare('SELECT auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count FROM users WHERE id = 1')
+      .get() as { auto_backup_enabled: number; auto_backup_dest_path: string | null; auto_backup_max_count: number } | undefined;
+    return {
+      enabled: (row?.auto_backup_enabled ?? 0) !== 0,
+      destPath: row?.auto_backup_dest_path ?? null,
+      maxCount: row?.auto_backup_max_count ?? 10,
+    };
+  });
+
+  ipcMain.handle(
+    'settings:set-auto-backup',
+    (_, data: { enabled?: boolean; destPath?: string | null; maxCount?: number }): void => {
+      const db = getDatabase();
+      if (data.enabled !== undefined) {
+        db.prepare('UPDATE users SET auto_backup_enabled = ? WHERE id = 1').run(data.enabled ? 1 : 0);
+      }
+      if (data.destPath !== undefined) {
+        db.prepare('UPDATE users SET auto_backup_dest_path = ? WHERE id = 1').run(data.destPath ?? null);
+      }
+      if (data.maxCount !== undefined) {
+        db.prepare('UPDATE users SET auto_backup_max_count = ? WHERE id = 1').run(Math.max(1, data.maxCount));
+      }
+    },
+  );
+
+  ipcMain.handle('settings:choose-backup-folder', async (): Promise<string | null> => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Choose backup folder',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return canceled || filePaths.length === 0 ? null : filePaths[0];
   });
 }
