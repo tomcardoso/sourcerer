@@ -359,7 +359,7 @@ describe('processVcfContacts — project membership', () => {
 // ---------------------------------------------------------------------------
 
 describe('parseVcf — test-contacts.vcf fixture', () => {
-  const vcf = readFileSync(resolve(__dirname, '../../test-contacts.vcf'), 'utf-8');
+  const vcf = readFileSync(resolve(__dirname, 'test-contacts.vcf'), 'utf-8');
   const contacts = parseVcf(vcf);
 
   it('parses all 4 contacts', () => {
