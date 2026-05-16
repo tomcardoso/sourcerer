@@ -1,4 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { createTestDb, insertContact, insertProject } from './vitest.setup';
 import { parseVcf, processVcfContacts } from '../main/ipc/import';
 import type { ProcessImportOptions, VcfContact } from '../main/ipc/import';
@@ -349,5 +351,54 @@ describe('processVcfContacts — project membership', () => {
       db.prepare('SELECT COUNT(*) AS n FROM project_memberships').get() as { n: number }
     ).n;
     expect(count).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fixture: test-contacts.vcf
+// ---------------------------------------------------------------------------
+
+describe('parseVcf — test-contacts.vcf fixture', () => {
+  const vcf = readFileSync(resolve(__dirname, '../../test-contacts.vcf'), 'utf-8');
+  const contacts = parseVcf(vcf);
+
+  it('parses all 4 contacts', () => {
+    expect(contacts).toHaveLength(4);
+    expect(contacts.map((c) => c.name)).toEqual([
+      'Catherine Mwangi',
+      'James Rutherford',
+      'Amara Diallo',
+      'Sofia Reinholt',
+    ]);
+  });
+
+  it('Catherine Mwangi — org, two emails, phone, URL, notes', () => {
+    const c = contacts[0];
+    expect(c.organization).toBe('National Export Finance Corporation');
+    expect(c.emails).toEqual(['c.mwangi@nefc.go.ke', 'cat.mwangi@gmail.com']);
+    expect(c.phones).toEqual(['+254712345678']);
+    expect(c.urls).toEqual(['https://nefc.go.ke/staff/mwangi']);
+    expect(c.notes).toContain('Whistleblower contact');
+  });
+
+  it('James Rutherford — minimal contact, no notes or URL', () => {
+    const c = contacts[1];
+    expect(c.organization).toBe('Department of Finance');
+    expect(c.emails).toEqual(['j.rutherford@finance.gov.ca']);
+    expect(c.phones).toEqual(['+16135550192']);
+    expect(c.urls).toHaveLength(0);
+    expect(c.notes).toBeNull();
+  });
+
+  it('Amara Diallo — two emails, two phones, two URLs', () => {
+    const c = contacts[2];
+    expect(c.emails).toHaveLength(2);
+    expect(c.phones).toHaveLength(2);
+    expect(c.urls).toHaveLength(2);
+  });
+
+  it('Sofia Reinholt — escaped semicolon in notes decoded correctly', () => {
+    const c = contacts[3];
+    expect(c.notes).toBe('Freelance; covers EU regulatory affairs. Prefers email.');
   });
 });
