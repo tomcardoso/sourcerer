@@ -87,7 +87,8 @@ jobs:
           name: dist-${{ matrix.os }}
           path: |
             dist-electron/*.dmg
-            dist-electron/*.blockmap
+            dist-electron/*.zip
+            dist-electron/*.zip.blockmap
             dist-electron/latest-mac.yml
           retention-days: 5
           if-no-files-found: error

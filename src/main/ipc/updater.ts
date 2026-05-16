@@ -1,6 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { is } from '@electron-toolkit/utils';
 import { autoUpdater } from 'electron-updater';
+import log from 'electron-log/main';
+
+log.initialize();
+autoUpdater.logger = log;
 
 // Cache the latest update event so renderers that mount after the event fires
 // (e.g. the user was on the lock screen when the 10 s auto-check fired) can
@@ -162,7 +166,14 @@ export function registerUpdaterHandlers(): void {
   });
 
   ipcMain.handle('update:check', () => autoUpdater.checkForUpdates());
-  ipcMain.handle('update:download', () => autoUpdater.downloadUpdate());
+  ipcMain.handle('update:download', () => {
+    // Mark cache as downloading immediately so an early error (before any
+    // progress events fire) is correctly classified and surfaced to the user.
+    if (cachedUpdateInfo) {
+      cachedUpdateInfo = { event: 'downloading', version: cachedUpdateInfo.version };
+    }
+    return autoUpdater.downloadUpdate();
+  });
   ipcMain.handle('update:quit-and-install', () => {
     autoUpdater.quitAndInstall(false, true);
   });

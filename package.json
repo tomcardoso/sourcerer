@@ -30,6 +30,7 @@
     "@electron-toolkit/utils": "^3.0.0",
     "argon2": "^0.41.1",
     "better-sqlite3-multiple-ciphers": "^12.9.0",
+    "electron-log": "^5.4.4",
     "electron-updater": "^6.8.3",
     "libphonenumber-js": "^1.12.42",
     "qrcode": "^1.5.4",
@@ -88,6 +89,12 @@
       "target": [
         {
           "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "arm64"
           ]

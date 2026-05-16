@@ -196,9 +196,11 @@ export default function AppShell() {
                 setUpdateState('downloading');
                 try {
                   await window.sourcerer.downloadUpdate();
-                } catch {
+                } catch (err) {
                   setUpdatePercent(null);
                   setUpdateState('available');
+                  const message = err instanceof Error ? err.message : String(err);
+                  window.sourcerer.showUpdateError(message);
                 }
               }}
             >
