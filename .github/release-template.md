@@ -7,20 +7,26 @@
 ## Installation
 
 ### macOS
-Download **`Sourcerer-{version}-arm64.dmg`**, open it, and drag Sourcerer to your Applications folder.
+**[Download Sourcerer-{version}-arm64.dmg](https://github.com/tomcardoso/sourcerer/releases/download/v{version}/Sourcerer-{version}-arm64.dmg)**
+
+Open the `.dmg` and drag Sourcerer to your Applications folder.
 
 > **First launch:** macOS may show a security warning. Go to **System Settings → Privacy & Security** and click **Open Anyway**, or right-click the app and choose **Open**.
 
 ### Linux
-Download the **`.AppImage`** file for this release, make it executable, and run it:
+**[Download Sourcerer-{version}.AppImage](https://github.com/tomcardoso/sourcerer/releases/download/v{version}/Sourcerer-{version}.AppImage)**
+
+Make it executable and run it:
 
 ```bash
-chmod +x Sourcerer-{version}*.AppImage
-./Sourcerer-{version}*.AppImage
+chmod +x Sourcerer-{version}.AppImage
+./Sourcerer-{version}.AppImage
 ```
 
 ### Windows
-Download **`Sourcerer Setup {version}.exe`** and run the installer.
+**[Download Sourcerer.Setup.{version}.exe](https://github.com/tomcardoso/sourcerer/releases/download/v{version}/Sourcerer.Setup.{version}.exe)**
+
+Run the installer.
 
 > **Note:** Windows may display a SmartScreen warning. Click **More info → Run anyway** to proceed.
 
