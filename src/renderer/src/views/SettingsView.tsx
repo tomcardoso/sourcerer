@@ -691,16 +691,16 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 Restoring a backup will permanently overwrite your current database and cannot be undone.
                 Enter the master password used when the backup was created, then choose the file.
               </p>
-              <input
-                className="sv-input"
-                type="password"
-                placeholder="Backup password"
-                value={restorePassword}
-                onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
-                autoComplete="current-password"
-                disabled={restoringBackup}
-              />
               <div className="sv-wipe-row">
+                <input
+                  className="sv-input"
+                  type="password"
+                  placeholder="Backup password"
+                  value={restorePassword}
+                  onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
+                  autoComplete="current-password"
+                  disabled={restoringBackup}
+                />
                 <button
                   className="sv-wipe-confirm-btn"
                   onClick={handleRestoreBackup}
