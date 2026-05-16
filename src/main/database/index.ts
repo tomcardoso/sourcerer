@@ -115,7 +115,8 @@ const DB_VERSION = 1;
  *   2. Add an `if (version < N) { ... db.pragma('user_version = N'); }` block below.
  *   3. Update schema.ts so brand-new databases already include the change.
  */
-function runMigrations(db: Database.Database): void {
+/** Exported for test instrumentation only; callers should use unlockDatabase. */
+export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= DB_VERSION) return;
 

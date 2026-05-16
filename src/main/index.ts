@@ -207,9 +207,12 @@ app.whenReady().then(() => {
   });
 });
 
-// Auto-backup on clean quit
-app.on('before-quit', () => {
-  runAutoBackup().catch(() => {});
+// Auto-backup on clean quit — preventDefault so the app waits for the async
+// backup to finish before actually exiting. app.exit() bypasses before-quit
+// so it won't recurse.
+app.on('before-quit', (event) => {
+  event.preventDefault();
+  runAutoBackup().catch(() => {}).finally(() => app.exit(0));
 });
 
 app.on('window-all-closed', () => {
