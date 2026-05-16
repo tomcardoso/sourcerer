@@ -277,7 +277,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
       await window.sourcerer.bulkUpdateMemberships({ membershipIds, status });
       setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, status } : r));
-      setCheckedIds(new Set());
     } finally {
       setBulkWorking(false);
     }
@@ -290,7 +289,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
       await window.sourcerer.bulkUpdateMemberships({ membershipIds, priority });
       setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, priority } : r));
-      setCheckedIds(new Set());
     } finally {
       setBulkWorking(false);
     }
@@ -687,7 +685,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             <>
               {statusOptions.length > 0 && (
                 <div className="bulk-bar-element">
-                  <label className="bulk-bar-label">Status:</label>
+                  <label className="bulk-bar-label">Status</label>
                   <select
                     className="bulk-bar-select"
                     value=""
@@ -697,7 +695,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                     }}
                     disabled={bulkWorking}
                   >
-                    <option value="" disabled>Set status…</option>
+                    <option value="" disabled>Set status</option>
                     {statusOptions.map((o) => (
                       <option key={o.id} value={o.label}>{o.label}</option>
                     ))}
@@ -707,7 +705,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               )}
               {priorityOptions.length > 0 && (
                 <div className="bulk-bar-element">
-                  <label className="bulk-bar-label">Priority:</label>
+                  <label className="bulk-bar-label">Priority</label>
                   <select
                     className="bulk-bar-select"
                     value=""
@@ -717,7 +715,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                     }}
                     disabled={bulkWorking}
                   >
-                    <option value="" disabled>Set priority…</option>
+                    <option value="" disabled>Set priority</option>
                     {priorityOptions.map((o) => (
                       <option key={o.id} value={o.label}>{o.label}</option>
                     ))}
