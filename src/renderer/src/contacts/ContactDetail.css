@@ -1250,7 +1250,7 @@
 }
 
 .pt-status-prompt-select {
-  font-family: var(--font-mono);
+  font-family: var(--font-serif);
   font-size: 11px;
   padding: 3px 6px;
   background: var(--color-surface);
