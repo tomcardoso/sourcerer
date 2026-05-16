@@ -732,9 +732,8 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                   className="bulk-actions-trigger"
                   onClick={() => setShowBulkActions((v) => !v)}
                   disabled={bulkWorking}
-                  title="More actions"
                 >
-                  ···
+                  Remove from…
                 </button>
                 {showBulkActions && (
                   <div className="bulk-actions-menu">
@@ -742,13 +741,13 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                       className="bulk-actions-item bulk-actions-item--danger"
                       onClick={() => { setShowBulkActions(false); setConfirmRemove(true); }}
                     >
-                      Remove from project
+                      Project
                     </button>
                     <button
                       className="bulk-actions-item bulk-actions-item--danger"
                       onClick={() => { setShowBulkActions(false); setConfirmDelete(true); }}
                     >
-                      Delete from Sourcerer
+                      Sourcerer
                     </button>
                   </div>
                 )}
