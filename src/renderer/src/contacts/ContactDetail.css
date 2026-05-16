@@ -122,6 +122,11 @@
   user-select: text;
 }
 
+.detail-body button,
+.detail-body label {
+  user-select: none;
+}
+
 .detail-section {
   margin-bottom: 18px;
 }
