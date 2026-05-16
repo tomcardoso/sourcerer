@@ -90,10 +90,8 @@ export function isDatabaseOpen(): boolean {
   return activeDb !== null;
 }
 
-// Increment this when adding a new migration block below.
-// NOTE: other concurrent PRs (#21, #22) also target DB_VERSION = 2.
-// Renumber these blocks sequentially when merging.
-const DB_VERSION = 2;
+// Increment when adding a new migration block below.
+const DB_VERSION = 1;
 
 /**
  * Runs schema migrations against an existing database using user_version as
@@ -111,12 +109,7 @@ export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= DB_VERSION) return;
 
-  // No migration blocks yet — all changes prior to v1 are baked into the
-  // initial schema, so existing pre-production databases can be recreated.
-  db.pragma('user_version = 1');
-
-  if (version < 2) {
-    db.prepare('ALTER TABLE projects ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0').run();
-    db.pragma('user_version = 2');
-  }
+  // No migration blocks yet — all schema changes so far are baked into the
+  // initial schema SQL, so existing pre-production databases can be recreated.
+  db.pragma(`user_version = ${DB_VERSION}`);
 }
