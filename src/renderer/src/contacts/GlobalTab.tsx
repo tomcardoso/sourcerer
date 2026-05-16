@@ -637,7 +637,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Handle</label>
+          <label className="ac-label">Messaging</label>
           {editHandles.map((entry, i) => (
             <div key={i} className="ac-phone-row">
               <select
@@ -883,7 +883,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
       {contact.handles.length > 0 && (
         <div className="detail-section">
-          <div className="detail-section-label">Handle</div>
+          <div className="detail-section-label">Messaging</div>
           {contact.handles.map((h) => (
             <span key={h.id} className="detail-value">
               {h.handle}

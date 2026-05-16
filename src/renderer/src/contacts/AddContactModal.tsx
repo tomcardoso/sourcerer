@@ -458,7 +458,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-field">
-            <label className="ac-label">Handle</label>
+            <label className="ac-label">Messaging</label>
             {handles.map((entry, i) => (
               <div key={i} className="ac-phone-row">
                 <select
