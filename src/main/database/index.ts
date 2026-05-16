@@ -39,7 +39,7 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
   const db = openRaw(dbPath, keyHex);
   db.exec(LOCAL_SCHEMA_SQL);
   seedDefaults(db);
-  // Schema is already current — stamp version so migrations are skipped on next unlock.
+  // Stamp version so migrations are skipped on subsequent unlocks.
   db.pragma(`user_version = ${DB_VERSION}`);
   activeDb = db;
   activeKeyHex = keyHex;
@@ -101,10 +101,8 @@ export function isDatabaseOpen(): boolean {
   return activeDb !== null;
 }
 
-// Increment this when adding a new migration block below.
-// NOTE: other concurrent PRs (#19, #22) also target DB_VERSION = 2.
-// Renumber these blocks sequentially when merging.
-const DB_VERSION = 2;
+// Increment when adding a new migration block below.
+const DB_VERSION = 1;
 
 /**
  * Runs schema migrations against an existing database using user_version as
@@ -117,19 +115,12 @@ const DB_VERSION = 2;
  *   2. Add an `if (version < N) { ... db.pragma('user_version = N'); }` block below.
  *   3. Update schema.ts so brand-new databases already include the change.
  */
-/** Exported for test instrumentation only; callers should use unlockDatabase. */
-export function runMigrations(db: Database.Database): void {
+function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= DB_VERSION) return;
 
-  // No migration blocks yet — all changes prior to v1 are baked into the
-  // initial schema, so existing pre-production databases can be recreated.
-  db.pragma('user_version = 1');
-
-  if (version < 2) {
-    db.prepare("ALTER TABLE users ADD COLUMN auto_backup_enabled INTEGER NOT NULL DEFAULT 0").run();
-    db.prepare("ALTER TABLE users ADD COLUMN auto_backup_dest_path TEXT").run();
-    db.prepare("ALTER TABLE users ADD COLUMN auto_backup_max_count INTEGER NOT NULL DEFAULT 10").run();
-    db.pragma('user_version = 2');
-  }
+  // No migration blocks yet — all schema changes so far are baked into the
+  // initial schema SQL, so existing pre-production databases can be recreated.
+  db.pragma(`user_version = ${DB_VERSION}`);
 }
+
