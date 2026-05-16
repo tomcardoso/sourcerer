@@ -21,6 +21,8 @@ interface Props {
   onProjectCreatedShared: (project: Project, payload: string) => void;
   onProjectJoined: (project: Project) => void;
   onProjectRenamed: (id: string, name: string) => void;
+  onProjectArchived: (id: string) => void;
+  onProjectUnarchived: (id: string) => void;
   onProjectDeleted: (id: string) => void;
   onAddContact: () => void;
   onImportCsv: () => void;
@@ -39,12 +41,15 @@ export default function Sidebar({
   onProjectCreatedShared,
   onProjectJoined,
   onProjectRenamed,
+  onProjectArchived,
+  onProjectUnarchived,
   onProjectDeleted,
   onAddContact,
   onImportCsv,
 }: Props) {
   const [showNewProject, setShowNewProject] = useState(false);
   const [showJoinProject, setShowJoinProject] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -68,6 +73,16 @@ export default function Sidebar({
   function handleRenameKey(e: KeyboardEvent<HTMLInputElement>, id: string) {
     if (e.key === 'Enter') commitRename(id);
     if (e.key === 'Escape') setRenamingId(null);
+  }
+
+  async function handleArchive(id: string) {
+    await window.sourcerer.archiveProject(id);
+    onProjectArchived(id);
+  }
+
+  async function handleUnarchive(id: string) {
+    await window.sourcerer.unarchiveProject(id);
+    onProjectUnarchived(id);
   }
 
   async function confirmDelete(id: string) {
@@ -179,8 +194,10 @@ export default function Sidebar({
           )}
 
           <ul className="sidebar-project-list">
-            {projects.map((project, idx) => (
-              <li key={project.id} className="sidebar-project-item">
+            {projects
+              .filter((p) => showArchived || p.is_archived === 0)
+              .map((project, idx) => (
+              <li key={project.id} className={`sidebar-project-item${project.is_archived === 1 ? ' sidebar-project-item--archived' : ''}`}>
                 {renamingId === project.id ? (
                   <input
                     ref={renameInputRef}
@@ -204,20 +221,37 @@ export default function Sidebar({
                   <button
                     className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
                     onClick={() => onNav({ view: 'project', projectId: project.id })}
-                    onDoubleClick={() => startRename(project)}
-                    title="Double-click to rename"
+                    onDoubleClick={() => project.is_archived === 0 && startRename(project)}
+                    title={project.is_archived === 0 ? 'Double-click to rename' : undefined}
                   >
                     <span
                       className="sidebar-project-dot"
                       style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
                     />
                     <span className="sidebar-project-name">{project.name}</span>
-                    <span
-                      className="sidebar-project-delete"
-                      role="button"
-                      title="Delete project"
-                      onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
-                    >×</span>
+                    {project.is_archived === 1 ? (
+                      <span
+                        className="sidebar-project-delete"
+                        role="button"
+                        title="Unarchive project"
+                        onClick={(e) => { e.stopPropagation(); handleUnarchive(project.id); }}
+                      >↩</span>
+                    ) : (
+                      <>
+                        <span
+                          className="sidebar-project-archive"
+                          role="button"
+                          title="Archive project"
+                          onClick={(e) => { e.stopPropagation(); handleArchive(project.id); }}
+                        >⊘</span>
+                        <span
+                          className="sidebar-project-delete"
+                          role="button"
+                          title="Delete project"
+                          onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
+                        >×</span>
+                      </>
+                    )}
                   </button>
                   {isActive({ view: 'project', projectId: project.id }) && (
                     <button
@@ -232,6 +266,14 @@ export default function Sidebar({
               </li>
             ))}
           </ul>
+
+          {projects.some((p) => p.is_archived === 1) && (
+            <button className="sidebar-show-archived-btn" onClick={() => setShowArchived((v) => !v)}>
+              {showArchived
+                ? 'Hide archived'
+                : `Show archived (${projects.filter((p) => p.is_archived === 1).length})`}
+            </button>
+          )}
 
           <button className="sidebar-join-project" onClick={() => setShowJoinProject(true)}>
             + Join shared project

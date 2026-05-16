@@ -279,3 +279,21 @@ describe('checkOutreachReminders — disabled reminders', () => {
     expect(broadcast).not.toHaveBeenCalled();
   });
 });
+
+describe('checkOutreachReminders — archived projects', () => {
+  it('skips memberships belonging to an archived project', () => {
+    insertUser();
+    const projId = insertProject(testDb, 'Archived Project');
+    testDb.prepare('UPDATE projects SET is_archived = 1 WHERE id = ?').run(projId);
+    const contactId = insertContact(testDb, 'Test Contact');
+    insertMembership(contactId, projId, 7);
+
+    checkOutreachReminders();
+
+    const count = (
+      testDb.prepare('SELECT COUNT(*) AS n FROM reminders').get() as { n: number }
+    ).n;
+    expect(count).toBe(0);
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+});

@@ -22,6 +22,7 @@ export function checkReminders(): void {
   const notificationsEnabled = userRow?.reminder_notifications_enabled !== 0;
 
   const now = Math.floor(Date.now() / 1000);
+  const oneDayAgo = now - 86400;
 
   const rows = db
     .prepare(
@@ -29,13 +30,18 @@ export function checkReminders(): void {
        FROM reminders r
        JOIN contacts c ON c.id = r.contact_id
        JOIN projects p ON p.id = r.project_id
-       WHERE r.due_date <= ? AND r.is_auto_outreach = 0 AND r.completed_at IS NULL`,
+       WHERE r.due_date <= ? AND r.is_auto_outreach = 0 AND r.completed_at IS NULL
+         AND p.is_archived = 0
+         AND (r.last_notified_at IS NULL OR r.last_notified_at < ?)`,
     )
-    .all(now) as DueReminder[];
+    .all(now, oneDayAgo) as DueReminder[];
+
+  const stamp = db.prepare('UPDATE reminders SET last_notified_at = ? WHERE id = ?');
 
   for (const row of rows) {
     if (notifiedThisSession.has(row.id)) continue;
     notifiedThisSession.add(row.id);
+    stamp.run(now, row.id);
 
     if (!notificationsEnabled) continue;
 

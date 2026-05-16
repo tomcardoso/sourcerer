@@ -300,7 +300,8 @@
   font-size: 13px;
 }
 
-.sidebar-project-delete {
+.sidebar-project-delete,
+.sidebar-project-archive {
   flex-shrink: 0;
   font-size: 16px;
   line-height: 1;
@@ -312,12 +313,49 @@
   transition: opacity 0.1s, color 0.1s;
 }
 
-.sidebar-project-btn:hover .sidebar-project-delete {
+.sidebar-project-btn:hover .sidebar-project-delete,
+.sidebar-project-btn:hover .sidebar-project-archive {
   opacity: 1;
 }
 
 .sidebar-project-delete:hover {
   color: var(--color-danger);
+}
+
+.sidebar-project-archive:hover {
+  color: var(--color-text);
+}
+
+.sidebar-project-item--archived .sidebar-project-btn {
+  opacity: 0.45;
+}
+
+.sidebar-project-item--archived .sidebar-project-btn:hover {
+  opacity: 0.75;
+}
+
+/* Show archived toggle */
+.sidebar-show-archived-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+.sidebar-show-archived-btn:hover {
+  opacity: 1;
+  color: var(--color-text);
 }
 
 /* Rename input */

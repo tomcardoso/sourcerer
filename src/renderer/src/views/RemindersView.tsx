@@ -98,6 +98,7 @@ export default function RemindersView({ onCountChange, user }: Props) {
   useEffect(() => {
     refresh();
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
+    return window.sourcerer.onRemindersChanged(refresh);
   }, [refresh]);
 
   async function handleDelete(id: string) {

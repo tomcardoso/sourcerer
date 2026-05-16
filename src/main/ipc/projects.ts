@@ -5,6 +5,7 @@ import { getDatabase } from '../database';
 import { createSharedDb, openSharedDb, closeSharedDb } from '../database/shared-db';
 import { encodePayload, decodePayload } from '../sync/payload';
 import { syncProject } from '../sync/engine';
+import { broadcastRemindersChanged } from './reminders';
 import type { Project, User } from '@shared/types';
 
 export function registerProjectHandlers(): void {
@@ -322,6 +323,16 @@ export function registerProjectHandlers(): void {
       'UPDATE projects SET is_shared = 0, shared_db_path = NULL, shared_db_key = NULL, shared_pending_writes = 0 WHERE id = ?',
     ).run(id);
     return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
+  });
+
+  ipcMain.handle('projects:archive', (_, id: string): void => {
+    getDatabase().prepare('UPDATE projects SET is_archived = 1 WHERE id = ?').run(id);
+    broadcastRemindersChanged();
+  });
+
+  ipcMain.handle('projects:unarchive', (_, id: string): void => {
+    getDatabase().prepare('UPDATE projects SET is_archived = 0 WHERE id = ?').run(id);
+    broadcastRemindersChanged();
   });
 
   ipcMain.handle('projects:delete', (_, id: string): void => {

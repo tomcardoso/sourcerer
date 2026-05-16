@@ -162,6 +162,14 @@ export default function AppShell() {
     setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
   }
 
+  function handleProjectArchived(id: string) {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, is_archived: 1 as const } : p)));
+  }
+
+  function handleProjectUnarchived(id: string) {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, is_archived: 0 as const } : p)));
+  }
+
   function handleProjectDeleted(id: string) {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     setNav((current) => {
@@ -230,6 +238,8 @@ export default function AppShell() {
         onProjectCreatedShared={handleProjectCreatedShared}
         onProjectJoined={handleProjectJoined}
         onProjectRenamed={handleProjectRenamed}
+        onProjectArchived={handleProjectArchived}
+        onProjectUnarchived={handleProjectUnarchived}
         onProjectDeleted={handleProjectDeleted}
         onAddContact={() => setShowAddContact(true)}
         onImportCsv={() => setShowImportCsv(true)}
