@@ -102,7 +102,23 @@ async function addContactField(token, contactId, fieldType, value) {
     body: JSON.stringify({ contactId, fieldType, value }),
     signal: AbortSignal.timeout(5000),
   });
-  if (!r.ok) throw new Error(`Server error ${r.status}`);
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data.error || `Server error ${r.status}`);
+  }
+}
+
+function isCapturableUrl(url) {
+  if (!url) return false;
+  return !['chrome://', 'chrome-extension://', 'about:', 'edge://', 'moz-extension://'].some((p) => url.startsWith(p));
+}
+
+async function getActiveTabUrl() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    const u = tab?.url ?? '';
+    return isCapturableUrl(u) ? u : '';
+  } catch { return ''; }
 }
 
 // ── New: create a new contact ─────────────────────────────────────────────
@@ -113,7 +129,10 @@ async function createContact(token, fields) {
     body: JSON.stringify(fields),
     signal: AbortSignal.timeout(5000),
   });
-  if (!r.ok) throw new Error(`Server error ${r.status}`);
+  if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    throw new Error(data.error || `Server error ${r.status}`);
+  }
   return r.json();
 }
 
@@ -332,11 +351,13 @@ async function wireConnected(token) {
   const btnNewContact = document.getElementById('btn-new-contact');
   show(btnNewContact);
   document.getElementById('btn-contact-back').onclick = () => showScreen('screen-main');
-  btnNewContact.onclick = () => {
-    document.getElementById('contact-name').value = '';
-    document.getElementById('contact-org').value  = '';
+  btnNewContact.onclick = async () => {
+    document.getElementById('contact-name').value  = '';
+    document.getElementById('contact-org').value   = '';
+    document.getElementById('contact-title').value = '';
     document.getElementById('contact-email').value = '';
     document.getElementById('contact-phone').value = '';
+    document.getElementById('contact-url').value   = await getActiveTabUrl();
     const st = document.getElementById('contact-status');
     st.textContent = ''; st.className = 'screen-status';
     document.getElementById('btn-contact-save').disabled = false;
@@ -346,14 +367,16 @@ async function wireConnected(token) {
   document.getElementById('btn-contact-save').onclick = async () => {
     const name  = document.getElementById('contact-name').value.trim();
     const org   = document.getElementById('contact-org').value.trim();
+    const title = document.getElementById('contact-title').value.trim();
     const email = document.getElementById('contact-email').value.trim();
     const phone = document.getElementById('contact-phone').value.trim();
+    const url   = document.getElementById('contact-url').value.trim();
     const st = document.getElementById('contact-status');
     if (!name) { st.textContent = 'Name is required.'; st.className = 'screen-status err'; return; }
     document.getElementById('btn-contact-save').disabled = true;
     st.textContent = 'Saving…'; st.className = 'screen-status';
     try {
-      await createContact(token, { name, organization: org || undefined, email: email || undefined, phone: phone || undefined });
+      await createContact(token, { name, organization: org || undefined, title: title || undefined, email: email || undefined, phone: phone || undefined, url: url || undefined });
       st.textContent = '✓ Contact added.'; st.className = 'screen-status ok';
       setTimeout(() => showScreen('screen-main'), 1400);
     } catch (err) {
@@ -373,8 +396,10 @@ async function wireConnected(token) {
     if (pending?.action === 'contact') {
       document.getElementById('contact-name').value  = pending.text.slice(0, 120);
       document.getElementById('contact-org').value   = '';
+      document.getElementById('contact-title').value = '';
       document.getElementById('contact-email').value = '';
       document.getElementById('contact-phone').value = '';
+      document.getElementById('contact-url').value   = await getActiveTabUrl();
       const st = document.getElementById('contact-status');
       st.textContent = ''; st.className = 'screen-status';
       document.getElementById('btn-contact-save').disabled = false;
@@ -414,6 +439,13 @@ async function wireConnected(token) {
               (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
           : allContacts;
         list.innerHTML = '';
+        if (matches.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'contact-list-empty';
+          empty.textContent = query ? 'No contacts match.' : 'No contacts found.';
+          list.appendChild(empty);
+          return;
+        }
         matches.slice(0, 40).forEach((c) => {
           const btn = document.createElement('button');
           btn.className = 'contact-item';
@@ -477,7 +509,14 @@ async function wireConnected(token) {
             (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
         : allContacts;
       list.innerHTML = '';
-      matches.slice(0, 40).forEach((c) => {
+      if (matches.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'contact-list-empty';
+      empty.textContent = query ? 'No contacts match.' : 'No contacts found.';
+      list.appendChild(empty);
+      return;
+    }
+    matches.slice(0, 40).forEach((c) => {
         const btn = document.createElement('button');
         btn.className = 'contact-item';
         btn.dataset.id = c.id;

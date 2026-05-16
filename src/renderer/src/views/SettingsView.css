@@ -116,6 +116,12 @@
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
 }
 
+.sv-input:disabled,
+.sv-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sv-profile-actions {
   display: flex;
   justify-content: flex-end;
@@ -305,6 +311,15 @@
 
 .sv-hint code {
   font-size: 0.85em;
+}
+
+.sv-hint a {
+  color: var(--color-text-dim);
+  text-decoration: underline;
+}
+
+.sv-hint a:hover {
+  color: var(--color-text);
 }
 
 .sv-inline-field {
@@ -546,6 +561,22 @@
 
 .sv-field--inline-row {
   flex-direction: column;
+}
+
+.sv-key-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sv-key-row .sv-field {
+  flex: 1;
+}
+
+.sv-hint--top {
+  margin-top: 10px;
+  margin-bottom: 0;
 }
 
 .sv-inline-actions {

@@ -29,7 +29,7 @@ import type { DuplicatePair } from '@shared/types';
 let cachedPairs: DuplicatePair[] = [];
 let dedupScanTimer: ReturnType<typeof setTimeout> | null = null;
 
-async function triggerWaybackSave(contactId: string, url: string): Promise<void> {
+export async function triggerWaybackSave(contactId: string, url: string): Promise<void> {
   console.log(`[wayback] Requesting archive for ${url}`);
   const broadcast = (status: 'pending' | 'failed') => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -39,29 +39,77 @@ async function triggerWaybackSave(contactId: string, url: string): Promise<void>
 
   broadcast('pending');
   try {
-    const response = await net.fetch(`https://web.archive.org/save/${encodeURIComponent(url)}`, {
-      redirect: 'follow',
-      headers: { 'User-Agent': 'Sourcerer/1.0' },
-    });
-    const waybackUrl = response.url;
-    console.log(`[wayback] Response status=${response.status} url=${waybackUrl}`);
-    if (!response.ok) {
-      console.warn(`[wayback] Archive request failed with HTTP ${response.status} for ${url}`);
+    // Require Archive.org S3 credentials — SPN2 rejects unauthenticated requests
+    const { archive_access_key: accessKey, archive_secret_key: secretKey } = getDatabase()
+      .prepare('SELECT archive_access_key, archive_secret_key FROM users WHERE id = 1')
+      .get() as { archive_access_key: string | null; archive_secret_key: string | null };
+    if (!accessKey || !secretKey) {
+      console.warn('[wayback] Skipping: no Archive.org API keys configured in Settings.');
       broadcast('failed');
       return;
     }
-    if (waybackUrl.includes('web.archive.org/web/') && isDatabaseOpen()) {
-      getDatabase()
-        .prepare("UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?")
-        .run(waybackUrl, contactId, url);
-      console.log(`[wayback] Saved snapshot for ${url} → ${waybackUrl}`);
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send('contacts:wayback-updated', contactId);
-      }
-    } else {
-      console.warn(`[wayback] Unexpected response URL, snapshot not saved: ${waybackUrl}`);
+
+    // SPN2 API: POST capture request, returns { job_id }
+    const submitRes = await net.fetch('https://web.archive.org/save', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `LOW ${accessKey}:${secretKey}`,
+        'User-Agent': 'Sourcerer/1.0',
+      },
+      body: `url=${encodeURIComponent(url)}`,
+    });
+    if (!submitRes.ok) {
+      console.warn(`[wayback] Capture request failed with HTTP ${submitRes.status} for ${url}`);
       broadcast('failed');
+      return;
     }
+    const { job_id } = await submitRes.json() as { job_id?: string };
+    if (!job_id) {
+      console.warn(`[wayback] No job_id in response for ${url}`);
+      broadcast('failed');
+      return;
+    }
+    console.log(`[wayback] Job started: ${job_id}`);
+
+    // Poll /save/status/<job_id> until success, error, or timeout (~2.5 min)
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+      const statusRes = await net.fetch(`https://web.archive.org/save/status/${job_id}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `LOW ${accessKey}:${secretKey}`,
+          'User-Agent': 'Sourcerer/1.0',
+        },
+      });
+      const rawBody = await statusRes.text();
+      if (!statusRes.ok) { console.warn(`[wayback] Poll ${attempt + 1}: HTTP ${statusRes.status}`); continue; }
+      let data: { status?: string; timestamp?: string; original_url?: string; message?: string };
+      try { data = JSON.parse(rawBody); } catch { console.warn(`[wayback] Poll ${attempt + 1}: non-JSON response`); continue; }
+      console.log(`[wayback] Poll ${attempt + 1}: status=${data.status}`);
+      if (data.status === 'success' && data.timestamp && data.original_url) {
+        const waybackUrl = `https://web.archive.org/web/${data.timestamp}/${data.original_url}`;
+        if (isDatabaseOpen()) {
+          getDatabase()
+            .prepare("UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?")
+            .run(waybackUrl, contactId, url);
+          console.log(`[wayback] Saved snapshot for ${url} → ${waybackUrl}`);
+          for (const win of BrowserWindow.getAllWindows()) {
+            win.webContents.send('contacts:wayback-updated', contactId);
+          }
+        }
+        return;
+      }
+      if (data.status === 'error') {
+        console.warn(`[wayback] Capture error for ${url}: ${data.message ?? 'unknown'}`);
+        broadcast('failed');
+        return;
+      }
+      // status === 'pending' — keep polling
+    }
+    console.warn(`[wayback] Timed out waiting for archive of ${url}`);
+    broadcast('failed');
   } catch (err) {
     console.error(`[wayback] Failed to archive ${url}:`, err);
     broadcast('failed');

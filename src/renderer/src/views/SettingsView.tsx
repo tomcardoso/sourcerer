@@ -80,6 +80,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [panicWiping, setPanicWiping] = useState(false);
   const [screenshotFolderBytes, setScreenshotFolderBytes] = useState<number>(0);
 
+  const [archiveAccessKey, setArchiveAccessKey] = useState('');
+  const [archiveSecretKey, setArchiveSecretKey] = useState('');
+  const [archiveKeysSaved, setArchiveKeysSaved] = useState(false);
+
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
   const [autoBackupDestPath, setAutoBackupDestPath] = useState<string | null>(null);
   const [autoBackupMaxCount, setAutoBackupMaxCount] = useState(10);
@@ -113,6 +117,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
       setRssPollIntervalHours(user.rss_poll_interval_hours ?? 6);
       setWaybackEnabled(user.wayback_enabled !== 0);
+      setArchiveAccessKey(user.archive_access_key ?? '');
+      setArchiveSecretKey(user.archive_secret_key ?? '');
     }
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
@@ -246,6 +252,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     setWaybackEnabled(enabled);
     const updated = await window.sourcerer.setWaybackEnabled(enabled);
     onUserUpdated(updated);
+  }
+
+  async function handleArchiveKeysSave() {
+    const updated = await window.sourcerer.setArchiveKeys(archiveAccessKey, archiveSecretKey);
+    onUserUpdated(updated);
+    setArchiveKeysSaved(true);
+    setTimeout(() => setArchiveKeysSaved(false), 2000);
   }
 
   async function handleReminderNotificationsToggle(enabled: boolean) {
@@ -562,6 +575,43 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             onChange={handleWaybackToggle}
             label="Submit URLs to the Wayback Machine"
           />
+          <div className="sv-key-row">
+            <div className="sv-field">
+              <label className="sv-label">Archive.org access key</label>
+              <input
+                className="sv-input"
+                type="password"
+                value={archiveAccessKey}
+                onChange={(e) => setArchiveAccessKey(e.target.value)}
+                autoComplete="new-password"
+                disabled={!waybackEnabled}
+              />
+            </div>
+            <div className="sv-field">
+              <label className="sv-label">Archive.org secret key</label>
+              <input
+                className="sv-input"
+                type="password"
+                value={archiveSecretKey}
+                onChange={(e) => setArchiveSecretKey(e.target.value)}
+                autoComplete="new-password"
+                disabled={!waybackEnabled}
+              />
+            </div>
+            <button className="sv-save-btn" onClick={handleArchiveKeysSave} disabled={!waybackEnabled}>
+              Save keys
+            </button>
+          </div>
+          {archiveKeysSaved && (
+            <p className="sv-success">Keys saved.</p>
+          )}
+          <p className="sv-hint sv-hint--top">
+            Required for Wayback Machine submissions. Get your keys at{' '}
+            <a href="https://archive.org/account/s3.php" target="_blank" rel="noreferrer">
+              archive.org/account/s3.php
+            </a>
+            . Keys are stored encrypted in your local database.
+          </p>
         </div>
 
         {/* Calendar */}
