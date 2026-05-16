@@ -788,6 +788,10 @@
   flex-shrink: 0;
 }
 
+.pt-log-modal-search:focus-within {
+  border-bottom-color: var(--color-primary);
+}
+
 .pt-log-search-input {
   flex: 1;
   font-family: var(--font-serif);

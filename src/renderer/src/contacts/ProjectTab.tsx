@@ -80,12 +80,13 @@ function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onC
               className="pt-log-search-input"
               type="text"
               placeholder="Search entries…"
+              aria-label="Search log entries"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
             />
             {query && (
-              <button className="pt-log-search-clear" onClick={() => setQuery('')}>×</button>
+              <button className="pt-log-search-clear" aria-label="Clear search" onClick={() => setQuery('')}>×</button>
             )}
           </div>
         )}
