@@ -1,16 +1,19 @@
 interface SeedContact {
   name: string;
   organization: string | null;
+  title?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
   links: { type: 'linkedin' | 'x' | 'website' | 'facebook' | 'instagram' | 'other'; url: string }[];
+  handles?: { type: 'signal' | 'whatsapp' | 'telegram' | 'other'; handle: string }[];
 }
 
 export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Michael Clarke',
     organization: 'Clarke Strategies Inc.',
+    title: 'Crisis Communications Consultant',
     notes:
       'Crisis communications consultant retained by two of the developers under investigation. Former Prime Minister\'s Office comms director. Tracks our stories closely — assume anything shared with him reaches his clients within hours.',
     emails: ['michael@clarkestrategies.example'],
@@ -23,6 +26,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Michael Clark',
     organization: 'Clark & Whitten Barristers',
+    title: 'Senior Litigator',
     notes:
       'Senior litigator specialising in defamation and media law. Has represented three subjects of our investigations in cease-and-desist proceedings. Different firm from the Clarke Strategies contact.',
     emails: ['mclark@clarkwhitten.example'],
@@ -32,6 +36,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Anne Robertson',
     organization: 'Robertson Government Relations',
+    title: 'Registered Lobbyist',
     notes:
       'Former provincial Minister of the Environment, now a registered lobbyist for three petroleum extraction operators. Active on 11 federal files. Disclosure registry shows 34 contacts with federal environment ministry staff since 2022.',
     emails: ['anne@robertsongovrel.example', 'a.robertson@lobbyregistry.gov.example'],
@@ -44,6 +49,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Anne Robinson',
     organization: 'The National Chronicle',
+    title: 'Investigative Reporter',
     notes:
       'Investigative reporter covering the same housing fraud beat. Has published two pieces that overlap significantly with our sourcing — possible common whistleblower. Friendly at industry events.',
     emails: ['a.robinson@nationalchronicle.example'],
@@ -52,19 +58,23 @@ export const CONTACTS_4: SeedContact[] = [
       { type: 'x', url: 'https://x.com/annerobinson_nc' },
       { type: 'linkedin', url: 'https://linkedin.com/in/anne-robinson-chronicle' },
     ],
+    handles: [{ type: 'signal', handle: '+1 363 555 7319' }],
   },
   {
     name: 'Darnell Okafor',
     organization: null,
+    title: 'Former Fiscal Oversight Analyst',
     notes:
       'Former federal fiscal oversight analyst who left under disputed circumstances. Claims to have witnessed document destruction related to the infrastructure fund audit. Will not use email — Signal only, number provided through intermediary.',
     emails: [],
     phones: ['+1 582 555 7433'],
     links: [],
+    handles: [{ type: 'signal', handle: '+1 582 555 7433' }],
   },
   {
     name: 'Jocelyn Paré-Vachon',
     organization: 'Halloway & Prescott LLP — Laurentie',
+    title: 'Partner, Class Actions',
     notes:
       'Partner, class actions. Represents 340 former residents of the contaminated housing development. Has filed a motion to compel document production from the Ministry of Environment.',
     emails: ['jpare-vachon@hallowayprescott.example'],
@@ -74,6 +84,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Rupert Ainsworth',
     organization: 'The Sentinel — Investigations Desk',
+    title: 'Investigative Reporter',
     notes:
       'London-based colleague working on the offshore trust angle from the UK end. Sharing leads under a loose collaboration agreement. Copy any documents before sending — his editors sometimes publish without prior notice.',
     emails: ['r.ainsworth@thesentinel.example'],
@@ -82,10 +93,12 @@ export const CONTACTS_4: SeedContact[] = [
       { type: 'x', url: 'https://x.com/rupert_ainsworth' },
       { type: 'linkedin', url: 'https://linkedin.com/in/rupert-ainsworth-sentinel' },
     ],
+    handles: [{ type: 'whatsapp', handle: '+44 20 7946 0744' }],
   },
   {
     name: 'Congressional aide — Tiffany Holbrook',
     organization: 'US House Select Subcommittee on International Capital',
+    title: 'Congressional Aide',
     notes: null,
     emails: ['tiffany.holbrook@subcomm-intlcapital.example'],
     phones: ['+1 202 555 7661'],
@@ -94,6 +107,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Sen. (ret.) Gérald Marquette',
     organization: null,
+    title: 'Retired Senator',
     notes:
       'Retired senator who sat on the banking committee during the period under scrutiny. Has written an unpublished memoir chapter that he shared selectively. Willing to speak on background about internal committee dynamics.',
     emails: ['gerald.marquette@securemail.example'],
@@ -103,6 +117,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Priscilla Nakagawa',
     organization: 'Australian Securities and Investments Commission',
+    title: 'Senior Investigator',
     notes:
       'Senior investigator on cross-border enforcement. Australian regulatory action against the same Luxembourg holding structure preceded our story. Shared two public enforcement documents; more may be available via formal request.',
     emails: ['p.nakagawa@asic.example'],
@@ -120,6 +135,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Maureen Stafford-Hynes',
     organization: 'Former Deputy Minister — Innovation and Industrial Strategy',
+    title: 'Former Deputy Minister',
     notes:
       'Retired. Was in post during the approvals process for the AI procurement contracts under scrutiny. Has agreed to one background briefing — scheduling through her personal assistant.',
     emails: ['mstafford@securemail.example'],
@@ -140,6 +156,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Dr. Bridget O\'Halloran',
     organization: 'Federal Pharmaceutical Review Agency — Drug Evaluation',
+    title: 'Drug Reviewer',
     notes:
       'Reviewer who signed off on accelerated approval for a drug whose clinical trial data is now disputed. Has been placed on administrative leave pending internal review. Personal email used after office email bounced.',
     emails: ['bridget.ohalloran@fpra.gov.example', 'b.ohalloran@securemail.example'],
@@ -149,6 +166,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Finlay Drummond',
     organization: 'Transparency Watch — Domestic Chapter',
+    title: 'Executive Director',
     notes:
       'Executive director. Useful for contextualizing our findings in a comparative international corruption framework. Willing to comment on record and can point to peer NGOs in affected jurisdictions.',
     emails: ['f.drummond@transparencywatch.example'],
@@ -170,24 +188,29 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Antoine Durocher',
     organization: 'Réseau Télé de Laurentie — Investigations',
+    title: 'Senior Producer',
     notes:
       'Senior producer at the network\'s investigative unit. Working a parallel thread on the same pension file from the Laurentie angle. Met at IRE conference. Coordination call booked for next week.',
     emails: ['durocher.antoine@rtl-investigations.example'],
     phones: ['+1 438 555 8471'],
     links: [{ type: 'x', url: 'https://x.com/durocher_enquete' }],
+    handles: [{ type: 'signal', handle: '+1 438 555 8471' }],
   },
   {
     name: 'Kwame Asante-Mensah',
     organization: null,
+    title: 'Former Auditor',
     notes:
       'Former auditor at a provincial long-term care operator. Provided the spreadsheet showing discrepancy between reported and actual staffing hours. Left under a confidential settlement — legal has advised he cannot speak to that specifically.',
     emails: ['k.asante@securemail.example'],
     phones: [],
     links: [],
+    handles: [{ type: 'signal', handle: '@kwame.asante' }],
   },
   {
     name: 'Hon. Patricia Venn',
     organization: 'Federal Court',
+    title: 'Federal Court Justice',
     notes: null,
     emails: [],
     phones: [],
@@ -196,6 +219,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Callum Forsythe',
     organization: 'Meridian Forensics & Advisory',
+    title: 'Partner, Forensic Accounting',
     notes:
       'Partner, forensic accounting. Has been retained as court-appointed monitor in the receivership of one of the development companies. His reports are technically public once filed but often posted with minimal notice.',
     emails: ['callum.forsythe@meridianforensics.example'],
@@ -205,6 +229,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Dana Przybylski',
     organization: 'Federation of Investigative Journalists',
+    title: 'Executive Director',
     notes:
       'Executive director. Useful for institutional support on press freedom angles and formal complaints to government press offices. Helped with two access-to-information appeals already this year.',
     emails: ['d.przybylski@fij.example'],
@@ -217,6 +242,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Ignacio Velázquez-Mora',
     organization: 'OECD — Anti-Corruption Division',
+    title: 'Policy Analyst',
     notes:
       'Analyst working on the country peer review under the Anti-Bribery Convention. Has indicated informally that the review flagged enforcement gaps consistent with our reporting.',
     emails: ['i.velazquez@oecd.example'],
@@ -234,6 +260,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Emil Rosenqvist',
     organization: 'Riksrevisionen — Stockholm',
+    title: 'Senior Auditor',
     notes:
       'Swedish National Audit Office examiner who audited a joint venture that included the pension fund under our scrutiny. His published report contains data our sources say contradicts the fund\'s investor communications.',
     emails: ['emil.rosenqvist@riksrevisionen.example'],
@@ -243,6 +270,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Petra Vogelsang',
     organization: 'BaFin — Frankfurt',
+    title: 'Senior Examiner',
     notes:
       'Senior examiner, asset management supervision. German regulator reviewed a fund management company that is a subsidiary of one of our investigation targets. Sent initial query via official channels — awaiting response.',
     emails: ['p.vogelsang@bafin.example'],
@@ -250,4 +278,3 @@ export const CONTACTS_4: SeedContact[] = [
     links: [],
   },
 ];
-
