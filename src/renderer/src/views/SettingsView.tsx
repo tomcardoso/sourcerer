@@ -733,9 +733,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           <div className="sv-field">
             <label className="sv-label">Backup folder</label>
             <div className="sv-row">
-              <span className="sv-hint sv-hint--path">
+              <code className="sv-path-code">
                 {autoBackupDestPath ?? 'No folder selected'}
-              </span>
+              </code>
               <button className="sv-save-btn" onClick={handleChooseBackupFolder}>
                 Choose folder…
               </button>
@@ -747,29 +747,29 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             label="Enable automatic backups"
             hint={autoBackupDestPath ? undefined : 'Choose a backup folder first.'}
           />
-          <div className="sv-field">
+          <div className="sv-field sv-field--inline-row">
             <label className="sv-label">Max backups to keep</label>
-            <input
-              className="sv-input sv-input--short"
-              type="number"
-              min={1}
-              value={autoBackupMaxCountInput}
-              onChange={(e) => setAutoBackupMaxCountInput(e.target.value)}
-              onBlur={handleAutoBackupMaxCountBlur}
-              disabled={!autoBackupDestPath}
-            />
-          </div>
-          <div className="sv-field">
-            <button
-              className="sv-save-btn"
-              onClick={handleRunAutoBackupNow}
-              disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
-            >
-              {autoBackupRunning ? 'Backing up…' : 'Back up now'}
-            </button>
-            {autoBackupResult && (
-              <span className="sv-hint sv-hint--inline">{autoBackupResult}</span>
-            )}
+            <div className="sv-inline-actions">
+              <input
+                className="sv-input sv-input--short"
+                type="number"
+                min={1}
+                value={autoBackupMaxCountInput}
+                onChange={(e) => setAutoBackupMaxCountInput(e.target.value)}
+                onBlur={handleAutoBackupMaxCountBlur}
+                disabled={!autoBackupDestPath}
+              />
+              <button
+                className="sv-save-btn"
+                onClick={handleRunAutoBackupNow}
+                disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
+              >
+                {autoBackupRunning ? 'Backing up…' : 'Back up now'}
+              </button>
+              {autoBackupResult && (
+                <span className="sv-hint sv-hint--inline">{autoBackupResult}</span>
+              )}
+            </div>
           </div>
         </div>
 

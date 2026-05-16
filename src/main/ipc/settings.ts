@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getDatabase, closeDatabase, updateActiveKeyHex } from '../database';
+import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } from '../database';
 import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
@@ -172,8 +172,9 @@ export function registerSettingsHandlers(): void {
         db.pragma(`rekey="x'${newKeyHex}'"`);
         db.pragma('journal_mode = WAL');
 
-        // Update the in-memory key so screenshot encryption keeps working
+        // Update the in-memory key and password so screenshot encryption and auto-backups keep working
         updateActiveKeyHex(newKeyHex);
+        setActivePassword(newPassword);
 
         // Atomic rename completes the operation; if this fails the .tmp file
         // serves as a recovery signal on the next unlock attempt.
