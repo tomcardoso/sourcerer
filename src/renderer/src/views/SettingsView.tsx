@@ -745,7 +745,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               <button
                 className="sv-save-btn"
                 onClick={handleChooseBackupFolder}
-                disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
               >
                 Choose folder…
               </button>
@@ -761,7 +760,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 value={autoBackupMaxCountInput}
                 onChange={(e) => setAutoBackupMaxCountInput(e.target.value)}
                 onBlur={handleAutoBackupMaxCountBlur}
-                disabled={!autoBackupDestPath}
+                disabled={!autoBackupDestPath || !autoBackupEnabled}
               />
               <button
                 className="sv-save-btn"
