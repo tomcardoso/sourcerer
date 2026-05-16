@@ -49,6 +49,9 @@ export interface User {
   reminder_notifications_enabled: 0 | 1;
   rss_poll_interval_hours: number;
   wayback_enabled: 0 | 1;
+  auto_backup_enabled: 0 | 1;
+  auto_backup_dest_path: string | null;
+  auto_backup_max_count: number;
 }
 
 export interface ContactListItem {

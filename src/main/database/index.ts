@@ -6,6 +6,7 @@ import { seedDevData } from './dev-seeds';
 
 let activeDb: Database.Database | null = null;
 let activeKeyHex: string | null = null;
+let activePassword: string | null = null;
 
 function openRaw(dbPath: string, keyHex: string): Database.Database {
   const db = new Database(dbPath);
@@ -38,7 +39,7 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
   const db = openRaw(dbPath, keyHex);
   db.exec(LOCAL_SCHEMA_SQL);
   seedDefaults(db);
-  // Schema is already current — stamp version so migrations are skipped on next unlock.
+  // Stamp version so migrations are skipped on subsequent unlocks.
   db.pragma(`user_version = ${DB_VERSION}`);
   activeDb = db;
   activeKeyHex = keyHex;
@@ -78,11 +79,21 @@ export function updateActiveKeyHex(newKeyHex: string): void {
   activeKeyHex = newKeyHex;
 }
 
+export function getPassword(): string {
+  if (!activePassword) throw new Error('Database is not open.');
+  return activePassword;
+}
+
+export function setActivePassword(password: string): void {
+  activePassword = password;
+}
+
 export function closeDatabase(): void {
   if (activeDb) {
     activeDb.close();
     activeDb = null;
     activeKeyHex = null;
+    activePassword = null;
   }
 }
 
@@ -90,7 +101,7 @@ export function isDatabaseOpen(): boolean {
   return activeDb !== null;
 }
 
-// Increment this when adding a new migration block below.
+// Increment when adding a new migration block below.
 const DB_VERSION = 1;
 
 /**
@@ -109,7 +120,8 @@ export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= DB_VERSION) return;
 
-  // No migration blocks yet — all changes prior to v1 are baked into the
-  // initial schema, so existing pre-production databases can be recreated.
-  db.pragma('user_version = 1');
+  // No migration blocks yet — all schema changes so far are baked into the
+  // initial schema SQL, so existing pre-production databases can be recreated.
+  db.pragma(`user_version = ${DB_VERSION}`);
 }
+

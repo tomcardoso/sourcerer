@@ -1,9 +1,10 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import { getPaths, deriveKey } from '../utils';
-import { unlockDatabase, maybeRunDevSeeds } from '../database';
+import { unlockDatabase, maybeRunDevSeeds, setActivePassword } from '../database';
 import { autoLock } from '../auto-lock';
 import { startPoller } from '../sync/poller';
+import { startAutoBackupTimer } from '../index';
 import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
 import { checkReminders, clearReminderNotificationCache } from '../sync/reminder-checker';
 import type { UnlockResult } from '@shared/types';
@@ -46,6 +47,7 @@ export function registerUnlockHandlers(): void {
         await fs.rename(saltTmpPath, saltPath);
       }
 
+      setActivePassword(password);
       maybeRunDevSeeds(db);
 
       const savedUser = db
@@ -68,6 +70,7 @@ export function registerUnlockHandlers(): void {
       }
 
       startPoller();
+      startAutoBackupTimer();
       clearOutreachNotificationCache();
       clearReminderNotificationCache();
       checkOutreachReminders();
