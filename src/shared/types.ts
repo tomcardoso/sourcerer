@@ -93,6 +93,18 @@ export interface ContactLink {
   sort_order: number;
 }
 
+export interface ContactHandle {
+  id: string;
+  type: string;
+  handle: string;
+  sort_order: number;
+}
+
+export interface ContactHandleInput {
+  type: string;
+  handle: string;
+}
+
 export interface ContactProject {
   id: string;
   name: string;
@@ -114,12 +126,14 @@ export interface ContactDetail {
   id: string;
   name: string;
   organization: string | null;
+  title: string | null;
   notes: string | null;
   created_at: number;
   updated_at: number;
   emails: ContactEmail[];
   phones: ContactPhone[];
   links: ContactLink[];
+  handles: ContactHandle[];
   projects: ContactProject[];
 }
 
@@ -132,20 +146,24 @@ export interface ContactLinkInput {
 export interface CreateContactInput {
   name: string;
   organization?: string;
+  title?: string;
   notes?: string;
   emails?: Array<{ email: string; label?: string }>;
   phones?: Array<{ phone: string; label?: string }>;
   links?: ContactLinkInput[];
+  handles?: ContactHandleInput[];
 }
 
 export interface UpdateContactInput {
   id: string;
   name: string;
   organization?: string;
+  title?: string;
   notes?: string;
   emails?: Array<{ email: string; label?: string }>;
   phones?: Array<{ phone: string; label?: string }>;
   links?: ContactLinkInput[];
+  handles?: ContactHandleInput[];
 }
 
 export interface UpdateMembershipInput {

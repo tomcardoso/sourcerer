@@ -107,6 +107,9 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
               {contact.organization && (
                 <p className="detail-org">{contact.organization}</p>
               )}
+              {contact.title && (
+                <p className="detail-title">{contact.title}</p>
+              )}
             </>
           ) : (
             <div className="detail-loading">Loading…</div>

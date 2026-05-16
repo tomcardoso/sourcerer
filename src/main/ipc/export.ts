@@ -262,8 +262,8 @@ function escapeVCard(value: string): string {
 
 function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, contactId: string): string | null {
   const contact = db
-    .prepare('SELECT name, organization FROM contacts WHERE id = ?')
-    .get(contactId) as { name: string; organization: string | null } | undefined;
+    .prepare('SELECT name, organization, title FROM contacts WHERE id = ?')
+    .get(contactId) as { name: string; organization: string | null; title: string | null } | undefined;
   if (!contact) return null;
 
   const emails = (
@@ -278,10 +278,15 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
     db.prepare('SELECT type, url FROM contact_links WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { type: string; url: string }[]
   );
 
+  const handles = (
+    db.prepare('SELECT type, handle FROM contact_handles WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { type: string; handle: string }[]
+  );
+
   const lines: string[] = ['BEGIN:VCARD', 'VERSION:3.0'];
   lines.push(`FN:${escapeVCard(contact.name)}`);
   lines.push(`N:${escapeVCard(contact.name)};;;;`);
   if (contact.organization) lines.push(`ORG:${escapeVCard(contact.organization)}`);
+  if (contact.title) lines.push(`TITLE:${escapeVCard(contact.title)}`);
   emails.forEach((e) => {
     const typeParam = e.label ? `;TYPE=${e.label.toUpperCase()}` : ';TYPE=INTERNET';
     lines.push(`EMAIL${typeParam}:${e.email}`);
@@ -291,6 +296,7 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
     const typeLabel = l.type.charAt(0).toUpperCase() + l.type.slice(1);
     lines.push(`URL;TYPE=${typeLabel}:${l.url}`);
   });
+  handles.forEach((h) => lines.push(`IMPP:${h.type}:${escapeVCard(h.handle)}`));
   lines.push('END:VCARD');
 
   return lines.join('\r\n');

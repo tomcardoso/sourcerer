@@ -79,6 +79,16 @@
   white-space: nowrap;
 }
 
+.detail-title {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+}
+
 .detail-vcard-btn {
   height: 28px;
   padding: 0 10px;

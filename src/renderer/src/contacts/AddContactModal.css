@@ -236,7 +236,7 @@
   line-height: 1;
   user-select: none;
   flex-shrink: 0;
-  width: 16px;
+  width: 8px;
   text-align: center;
   opacity: 0.4;
   transition: opacity 0.1s;
@@ -264,6 +264,15 @@
   gap: 6px;
   align-items: center;
   margin-bottom: 6px;
+}
+
+.ac-handle-type {
+  flex: none;
+  width: auto;
+}
+
+.ac-phone-row:has(.ac-handle-type) {
+  grid-template-columns: 1fr 2fr auto;
 }
 
 .ac-other-social-row .ac-input {

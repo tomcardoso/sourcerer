@@ -244,7 +244,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         const contactId = randomUUID();
         const now = Math.floor(Date.now() / 1000);
         db.prepare(
-          'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)'
+          'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, NULL, NULL, ?, ?)'
         ).run(contactId, name.trim(), (organization as string | undefined)?.trim() || null, now, now);
         if ((email as string | undefined)?.trim()) {
           db.prepare(

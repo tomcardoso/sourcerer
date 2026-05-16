@@ -36,8 +36,8 @@ export function seedDevData(db: Database.Database, email: string, name: string):
   const doSeed = db.transaction(() => {
     const stmts = {
       insertContact: db.prepare(
-        `INSERT INTO contacts (id, name, organization, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at)
+         VALUES (?, ?, ?, NULL, ?, ?, ?)`,
       ),
       insertEmail: db.prepare(
         `INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)`,
