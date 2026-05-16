@@ -373,7 +373,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                   className={`project-meta-action-btn${themeFilter ? ' project-meta-action-btn--active' : ''}`}
                   onClick={() => setOpenTextFilter(openTextFilter === 'theme' ? null : 'theme')}
                 >
-                  Theme{themeFilter && <span className="project-meta-filter-count">1</span>}
+                  Theme
                 </button>
                 {openTextFilter === 'theme' && (
                   <div className="ptl-priority-dropdown col-filter-dropdown">
@@ -400,7 +400,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                   className={`project-meta-action-btn${orgFilter ? ' project-meta-action-btn--active' : ''}`}
                   onClick={() => setOpenTextFilter(openTextFilter === 'org' ? null : 'org')}
                 >
-                  Org{orgFilter && <span className="project-meta-filter-count">1</span>}
+                  Org
                 </button>
                 {openTextFilter === 'org' && (
                   <div className="ptl-priority-dropdown col-filter-dropdown">
@@ -427,7 +427,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                   className={`project-meta-action-btn${notesFilter ? ' project-meta-action-btn--active' : ''}`}
                   onClick={() => setOpenTextFilter(openTextFilter === 'notes' ? null : 'notes')}
                 >
-                  Notes{notesFilter && <span className="project-meta-filter-count">1</span>}
+                  Notes
                 </button>
                 {openTextFilter === 'notes' && (
                   <div className="ptl-priority-dropdown col-filter-dropdown">
