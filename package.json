@@ -1,6 +1,6 @@
 {
   "name": "sourcerer",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "description": "Encrypted source management for journalists",
   "author": "Tom Cardoso",
