@@ -4,6 +4,7 @@ import {
   validateEmail,
   normalizePhone,
   validateUrl,
+  detectLinkType,
 } from '../main/sanitize';
 
 describe('normalizeEmail', () => {
@@ -158,5 +159,43 @@ describe('validateUrl', () => {
 
   it('trims leading/trailing whitespace before validating', () => {
     expect(validateUrl('  https://example.com  ')).toBe(true);
+  });
+});
+
+describe('detectLinkType', () => {
+  it('detects linkedin.com', () => {
+    expect(detectLinkType('https://linkedin.com/in/someone')).toBe('linkedin');
+  });
+
+  it('detects linkedin.com with www prefix', () => {
+    expect(detectLinkType('https://www.linkedin.com/in/someone')).toBe('linkedin');
+  });
+
+  it('detects linkedin subdomains', () => {
+    expect(detectLinkType('https://ca.linkedin.com/in/someone')).toBe('linkedin');
+  });
+
+  it('detects x.com', () => {
+    expect(detectLinkType('https://x.com/someone')).toBe('x');
+  });
+
+  it('detects twitter.com', () => {
+    expect(detectLinkType('https://twitter.com/someone')).toBe('x');
+  });
+
+  it('detects instagram.com', () => {
+    expect(detectLinkType('https://instagram.com/someone')).toBe('instagram');
+  });
+
+  it('detects facebook.com', () => {
+    expect(detectLinkType('https://facebook.com/someone')).toBe('facebook');
+  });
+
+  it('returns website for an arbitrary URL', () => {
+    expect(detectLinkType('https://example.com')).toBe('website');
+  });
+
+  it('returns website for a malformed URL', () => {
+    expect(detectLinkType('not a url')).toBe('website');
   });
 });

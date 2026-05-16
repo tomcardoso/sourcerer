@@ -2,21 +2,10 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
-import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from './sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType } from './sanitize';
 import { triggerWaybackSave } from './ipc/contacts';
 
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
-
-function detectLinkType(url: string): 'linkedin' | 'x' | 'instagram' | 'facebook' | 'website' {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, '');
-    if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) return 'linkedin';
-    if (host === 'x.com' || host === 'twitter.com') return 'x';
-    if (host === 'instagram.com') return 'instagram';
-    if (host === 'facebook.com') return 'facebook';
-    return 'website';
-  } catch { return 'website'; }
-}
 const MAX_PENDING_SCREENSHOTS = 20;
 const pendingScreenshots = new Map<string, { buf: Buffer; tabUrl: string | null }>();
 
