@@ -316,7 +316,7 @@ function RemindersSection({
 
   async function handleAdd() {
     if (!dueDate) return;
-    const ts = Math.floor(new Date(`${dueDate}T00:00:00`).getTime() / 1000);
+    const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
     const r = await window.sourcerer.createReminder({
       contactId,
       projectId,
