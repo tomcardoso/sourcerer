@@ -67,10 +67,11 @@ export function syncProject(
 // ---------------------------------------------------------------------------
 
 function pullContacts(local: Database.Database, shared: Database.Database): void {
-  const sharedContacts = shared.prepare('SELECT id, name, organization, notes, created_at, updated_at FROM contacts').all() as {
+  const sharedContacts = shared.prepare('SELECT id, name, organization, title, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
     organization: string | null;
+    title: string | null;
     notes: string | null;
     created_at: number;
     updated_at: number;
@@ -87,14 +88,14 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
     if (localUpdatedAt === undefined || sc.updated_at > localUpdatedAt) {
       local
         .prepare(
-          `INSERT INTO contacts (id, name, organization, notes, created_at, updated_at, synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at, synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, organization = excluded.organization,
-             notes = excluded.notes, updated_at = excluded.updated_at,
-             synced_at = excluded.synced_at`,
+             title = excluded.title, notes = excluded.notes,
+             updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
         )
-        .run(sc.id, sc.name, sc.organization, sc.notes, sc.created_at, sc.updated_at, 0);
+        .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
       mergeSubTablesFromShared(local, shared, sc.id);
     }
@@ -173,6 +174,26 @@ function mergeSubTablesFromShared(
     local
       .prepare('INSERT INTO contact_links (id, contact_id, type, label, url, wayback_url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       .run(l.id, contactId, l.type, l.label, l.url, l.wayback_url, i, l.created_at);
+  });
+
+  // ── Handles ───────────────────────────────────────────────────────────────
+  const sharedHandles = shared
+    .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
+    .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
+  const localHandles = local
+    .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
+    .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
+
+  const sharedHandleKeys = new Set(sharedHandles.map((h) => `${h.type}:${h.handle}`));
+  const localOnlyHandles = localHandles.filter((h) => !sharedHandleKeys.has(`${h.type}:${h.handle}`));
+
+  const mergedHandles = [...sharedHandles, ...localOnlyHandles].sort((a, b) => a.created_at - b.created_at);
+
+  local.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(contactId);
+  mergedHandles.forEach((h, i) => {
+    local
+      .prepare('INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(h.id, contactId, h.type, h.handle, i, h.created_at);
   });
 
   // ── Alert RSS (one per contact — last-write-wins is fine here) ────────────
@@ -339,6 +360,7 @@ function pushContacts(
           id: string;
           name: string;
           organization: string | null;
+          title: string | null;
           notes: string | null;
           created_at: number;
           updated_at: number;
@@ -350,13 +372,14 @@ function pushContacts(
     if (!lc.synced_at || lc.updated_at > lc.synced_at) {
       shared
         .prepare(
-          `INSERT INTO contacts (id, name, organization, notes, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?)
+          `INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, organization = excluded.organization,
-             notes = excluded.notes, updated_at = excluded.updated_at`,
+             title = excluded.title, notes = excluded.notes,
+             updated_at = excluded.updated_at`,
         )
-        .run(lc.id, lc.name, lc.organization, lc.notes, lc.created_at, lc.updated_at);
+        .run(lc.id, lc.name, lc.organization, lc.title, lc.notes, lc.created_at, lc.updated_at);
 
       pushSubTablesToShared(local, shared, contactId);
 
@@ -408,6 +431,17 @@ function pushSubTablesToShared(
         'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
       .run(l.id, contactId, l.type, l.label, l.url, l.sort_order, l.created_at);
+  }
+
+  shared.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(contactId);
+  for (const h of local
+    .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
+    .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[]) {
+    shared
+      .prepare(
+        'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      )
+      .run(h.id, contactId, h.type, h.handle, h.sort_order, h.created_at);
   }
 
   shared.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);

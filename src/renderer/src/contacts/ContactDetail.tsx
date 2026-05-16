@@ -104,8 +104,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
                   : ''}
               </div>
               <h2 className="detail-name">{contact.name}</h2>
-              {contact.organization && (
-                <p className="detail-org">{contact.organization}</p>
+              {(contact.organization || contact.title) && (
+                <p className="detail-org">
+                  {[contact.organization, contact.title].filter(Boolean).join(' · ')}
+                </p>
               )}
             </>
           ) : (

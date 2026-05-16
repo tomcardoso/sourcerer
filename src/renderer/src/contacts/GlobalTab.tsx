@@ -17,6 +17,9 @@ interface Props {
 const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
 
+import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
+import type { HandleType } from './handleMeta';
+
 const NON_OTHER_SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
 type NonOtherSocialType = (typeof NON_OTHER_SOCIAL_TYPES)[number];
 
@@ -208,7 +211,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   // Edit form state
   const [editName, setEditName] = useState('');
   const [editOrg, setEditOrg] = useState('');
+  const [editTitle, setEditTitle] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editHandles, setEditHandles] = useState<Array<{ type: string; handle: string }>>([]);
   const [editEmails, setEditEmails] = useState<Array<{ email: string; label: string }>>([]);
   const [editPhones, setEditPhones] = useState<Array<{ phone: string; label: string }>>([]);
   const [editSocials, setEditSocials] = useState<Record<NonOtherSocialType, string[]>>({
@@ -309,7 +314,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   function startEdit() {
     setEditName(contact.name);
     setEditOrg(contact.organization ?? '');
+    setEditTitle(contact.title ?? '');
     setEditNotes(contact.notes ?? '');
+    setEditHandles(contact.handles.map((h) => ({ type: h.type, handle: h.handle })));
     setEditEmails(contact.emails.map((e) => ({ email: e.email, label: e.label ?? '' })));
     setEditPhones(contact.phones.map((p) => ({ phone: p.phone, label: p.label ?? '' })));
     const socialsByType = Object.fromEntries(
@@ -395,10 +402,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         id: contact.id,
         name: editName,
         organization: editOrg,
+        title: editTitle,
         notes: editNotes,
         emails: editEmails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
         phones: editPhones.map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
         links,
+        handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
       });
       // Persist RSS URL change
       const trimmedRss = editRssUrl.trim();
@@ -455,6 +464,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="ac-field">
           <label className="ac-label">Organization</label>
           <input className="ac-input" value={editOrg} onChange={(e) => setEditOrg(e.target.value)} />
+        </div>
+
+        <div className="ac-field">
+          <label className="ac-label">Title / Role</label>
+          <input className="ac-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="e.g. Senior Editor" />
         </div>
 
         <div className="ac-field">
@@ -610,6 +624,49 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             className="ac-add-row"
             type="button"
             onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
+          >
+            + Add
+          </button>
+        </div>
+
+        <div className="ac-field">
+          <label className="ac-label">Messaging</label>
+          {editHandles.map((entry, i) => (
+            <div key={i} className="ac-phone-row">
+              <select
+                className="ac-input ac-handle-type"
+                value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
+                onChange={(e) => {
+                  const next = [...editHandles];
+                  next[i] = { ...next[i], type: e.target.value };
+                  setEditHandles(next);
+                }}
+              >
+                {HANDLE_TYPES.map((t) => (
+                  <option key={t} value={t}>{HANDLE_META[t].label}</option>
+                ))}
+              </select>
+              <input
+                className="ac-input"
+                value={entry.handle}
+                placeholder={HANDLE_META[(HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other') as HandleType].placeholder}
+                onChange={(e) => {
+                  const next = [...editHandles];
+                  next[i] = { ...next[i], handle: e.target.value };
+                  setEditHandles(next);
+                }}
+              />
+              <button
+                className="ac-remove"
+                type="button"
+                onClick={() => setEditHandles(editHandles.filter((_, j) => j !== i))}
+              ></button>
+            </div>
+          ))}
+          <button
+            className="ac-add-row"
+            type="button"
+            onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
           >
             + Add
           </button>
@@ -812,6 +869,18 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             <span key={p.id} className="detail-value">
               {p.phone}
               {p.label && <span className="detail-phone-label">· {p.label}</span>}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {contact.handles.length > 0 && (
+        <div className="detail-section">
+          <div className="detail-section-label">Messaging</div>
+          {contact.handles.map((h) => (
+            <span key={h.id} className="detail-value">
+              {h.handle}
+              <span className="detail-phone-label">· {HANDLE_META[(HANDLE_TYPES.includes(h.type as HandleType) ? h.type : 'other') as HandleType].label}</span>
             </span>
           ))}
         </div>

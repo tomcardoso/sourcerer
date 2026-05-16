@@ -12,8 +12,10 @@ import type {
   ContactEmail,
   ContactPhone,
   ContactLink,
+  ContactHandle,
   ContactProject,
   ContactLinkInput,
+  ContactHandleInput,
   ProjectContactRow,
   InteractionLogEntry,
   ScratchpadDraft,
@@ -152,11 +154,12 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:get', (_, id: string): ContactDetail => {
     const db = getDatabase();
     const contact = db
-      .prepare('SELECT id, name, organization, notes, created_at, updated_at FROM contacts WHERE id = ?')
+      .prepare('SELECT id, name, organization, title, notes, created_at, updated_at FROM contacts WHERE id = ?')
       .get(id) as {
       id: string;
       name: string;
       organization: string | null;
+      title: string | null;
       notes: string | null;
       created_at: number;
       updated_at: number;
@@ -171,6 +174,9 @@ export function registerContactHandlers(): void {
     const links = db
       .prepare('SELECT id, type, label, url, wayback_url, sort_order FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactLink[];
+    const handles = db
+      .prepare('SELECT id, type, handle, sort_order FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
+      .all(id) as ContactHandle[];
     const projects = db
       .prepare(
         `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
@@ -202,7 +208,7 @@ export function registerContactHandlers(): void {
       reporters: allReporters.filter((r) => r.membership_id === p.membership_id),
     }));
 
-    return { ...contact, emails, phones, links, projects: projectsWithReporters };
+    return { ...contact, emails, phones, links, handles, projects: projectsWithReporters };
   });
 
   ipcMain.handle('contacts:create', (_, data: CreateContactInput): ContactListItem => {
@@ -215,8 +221,8 @@ export function registerContactHandlers(): void {
 
     const insert = db.transaction(() => {
       db.prepare(
-        'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ).run(id, data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, now);
+        'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.notes?.trim() || null, now, now);
 
       const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
@@ -242,6 +248,13 @@ export function registerContactHandlers(): void {
         db.prepare(
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), id, link.type, link.label ?? null, link.url.trim(), i, now);
+      });
+
+      const handles = (data.handles ?? []).filter((h) => h.handle.trim() && h.type.trim());
+      handles.forEach((h, i) => {
+        db.prepare(
+          'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), id, h.type.trim(), h.handle.trim(), i, now);
       });
     });
 
@@ -357,8 +370,8 @@ export function registerContactHandlers(): void {
 
     const run = db.transaction(() => {
       db.prepare(
-        'UPDATE contacts SET name = ?, organization = ?, notes = ?, updated_at = ? WHERE id = ?',
-      ).run(data.name.trim(), data.organization?.trim() || null, data.notes?.trim() || null, now, data.id);
+        'UPDATE contacts SET name = ?, organization = ?, title = ?, notes = ?, updated_at = ? WHERE id = ?',
+      ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.notes?.trim() || null, now, data.id);
 
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
       const emails = (data.emails ?? [])
@@ -387,6 +400,14 @@ export function registerContactHandlers(): void {
         db.prepare(
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i, existingLinkCreatedAt.get(link.url.trim()) ?? now);
+      });
+
+      db.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(data.id);
+      const handles = (data.handles ?? []).filter((h: ContactHandleInput) => h.handle.trim() && h.type.trim());
+      handles.forEach((h: ContactHandleInput, i: number) => {
+        db.prepare(
+          'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(uuidv4(), data.id, h.type.trim(), h.handle.trim(), i, now);
       });
 
       // Restore wayback_urls for previously saved website links

@@ -7,7 +7,7 @@ import { normalizeEmail, normalizePhone } from '../sanitize';
 import type { User, ImportResult } from '@shared/types';
 
 const SAMPLE_HEADERS =
-  'Name,Organization,Notes,Email,Phone,LinkedIn,X,Website,Theme,Status,Priority\n';
+  'Name,Organization,Title,Notes,Email,Phone,LinkedIn,X,Website,Theme,Status,Priority\n';
 
 export function parseCsv(text: string): string[][] {
   const result: string[][] = [];
@@ -103,7 +103,7 @@ export function processImportRows(
   let imported = 0;
 
   const stmtContact = db.prepare(
-    'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
   const stmtEmail = db.prepare(
     'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -150,7 +150,7 @@ export function processImportRows(
       const id = uuidv4();
       const now = Math.floor(Date.now() / 1000);
 
-      stmtContact.run(id, name, get('organization') || null, get('notes') || null, now, now);
+      stmtContact.run(id, name, get('organization') || null, get('title') || null, get('notes') || null, now, now);
 
       emails.forEach((email, i) => {
         stmtEmail.run(uuidv4(), id, email, i, now);

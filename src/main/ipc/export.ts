@@ -6,6 +6,7 @@ import { getDatabase } from '../database';
 interface ExportRow {
   Name: string;
   Organization: string;
+  Title: string;
   Emails: string;
   Phones: string;
   LinkedIn: string;
@@ -58,7 +59,7 @@ export function registerExportHandlers(): void {
           `SELECT pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status,
                   (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
                    WHERE ile.membership_id = pm.id) AS first_log_at,
-                  c.id AS contact_id, c.name, c.organization, c.notes
+                  c.id AS contact_id, c.name, c.organization, c.title, c.notes
            FROM project_memberships pm
            JOIN contacts c ON c.id = pm.contact_id
            WHERE pm.project_id = ?
@@ -74,6 +75,7 @@ export function registerExportHandlers(): void {
         contact_id: string;
         name: string;
         organization: string | null;
+        title: string | null;
         notes: string | null;
       }[];
 
@@ -122,6 +124,7 @@ export function registerExportHandlers(): void {
         rows.push({
           Name: m.name,
           Organization: m.organization ?? '',
+          Title: m.title ?? '',
           Emails: emails,
           Phones: phones,
           LinkedIn: byType('linkedin'),
@@ -178,8 +181,8 @@ export function registerExportHandlers(): void {
       const isXlsx = filePath.endsWith('.xlsx');
 
       const contacts = db
-        .prepare('SELECT id, name, organization, notes FROM contacts ORDER BY name COLLATE NOCASE')
-        .all() as { id: string; name: string; organization: string | null; notes: string | null }[];
+        .prepare('SELECT id, name, organization, title, notes FROM contacts ORDER BY name COLLATE NOCASE')
+        .all() as { id: string; name: string; organization: string | null; title: string | null; notes: string | null }[];
 
       const allContactIds = contacts.map((c) => c.id);
       const ph2 = (arr: unknown[]) => arr.map(() => '?').join(',');
@@ -196,9 +199,10 @@ export function registerExportHandlers(): void {
       const phonesById = new Map<string, string[]>();
       for (const r of allPhones2) { const a = phonesById.get(r.contact_id) ?? []; a.push(r.phone); phonesById.set(r.contact_id, a); }
 
-      const rows: { Name: string; Organization: string; Emails: string; Phones: string; Notes: string }[] = contacts.map((c) => ({
+      const rows: { Name: string; Organization: string; Title: string; Emails: string; Phones: string; Notes: string }[] = contacts.map((c) => ({
         Name: c.name,
         Organization: c.organization ?? '',
+        Title: c.title ?? '',
         Emails: (emailsById.get(c.id) ?? []).join('; '),
         Phones: (phonesById.get(c.id) ?? []).join('; '),
         Notes: c.notes ?? '',
@@ -262,8 +266,8 @@ function escapeVCard(value: string): string {
 
 function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, contactId: string): string | null {
   const contact = db
-    .prepare('SELECT name, organization FROM contacts WHERE id = ?')
-    .get(contactId) as { name: string; organization: string | null } | undefined;
+    .prepare('SELECT name, organization, title FROM contacts WHERE id = ?')
+    .get(contactId) as { name: string; organization: string | null; title: string | null } | undefined;
   if (!contact) return null;
 
   const emails = (
@@ -278,10 +282,15 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
     db.prepare('SELECT type, url FROM contact_links WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { type: string; url: string }[]
   );
 
+  const handles = (
+    db.prepare('SELECT type, handle FROM contact_handles WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { type: string; handle: string }[]
+  );
+
   const lines: string[] = ['BEGIN:VCARD', 'VERSION:3.0'];
   lines.push(`FN:${escapeVCard(contact.name)}`);
   lines.push(`N:${escapeVCard(contact.name)};;;;`);
   if (contact.organization) lines.push(`ORG:${escapeVCard(contact.organization)}`);
+  if (contact.title) lines.push(`TITLE:${escapeVCard(contact.title)}`);
   emails.forEach((e) => {
     const typeParam = e.label ? `;TYPE=${e.label.toUpperCase()}` : ';TYPE=INTERNET';
     lines.push(`EMAIL${typeParam}:${e.email}`);
@@ -290,6 +299,12 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
   links.forEach((l) => {
     const typeLabel = l.type.charAt(0).toUpperCase() + l.type.slice(1);
     lines.push(`URL;TYPE=${typeLabel}:${l.url}`);
+  });
+  handles.forEach((h) => {
+    const serviceType = h.type === 'whatsapp' ? 'WhatsApp'
+      : h.type.charAt(0).toUpperCase() + h.type.slice(1);
+    const scheme = h.type === 'other' ? 'x-other' : h.type;
+    lines.push(`IMPP;X-SERVICE-TYPE=${serviceType}:${scheme}:${encodeURIComponent(h.handle)}`);
   });
   lines.push('END:VCARD');
 

@@ -12,6 +12,7 @@ export const SHARED_SCHEMA_SQL = `
     id           TEXT    PRIMARY KEY,
     name         TEXT    NOT NULL,
     organization TEXT,
+    title        TEXT,
     notes        TEXT,
     created_at   INTEGER NOT NULL,
     updated_at   INTEGER NOT NULL
@@ -41,6 +42,15 @@ export const SHARED_SCHEMA_SQL = `
     type       TEXT    NOT NULL,
     label      TEXT,
     url        TEXT    NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS contact_handles (
+    id         TEXT    PRIMARY KEY,
+    contact_id TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    type       TEXT    NOT NULL,
+    handle     TEXT    NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT 0
   );
@@ -91,6 +101,8 @@ export const SHARED_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_id     ON contact_phones(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_phone ON contact_phones(contact_id, phone);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_links_contact_id      ON contact_links(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_shared_contact_handles_contact_id             ON contact_handles(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_handles_contact_type_handle ON contact_handles(contact_id, type, handle);
   CREATE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_id     ON contact_alert_mentions(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_guid ON contact_alert_mentions(contact_id, guid);
   CREATE INDEX IF NOT EXISTS idx_shared_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);

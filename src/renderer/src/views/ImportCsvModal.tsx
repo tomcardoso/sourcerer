@@ -45,7 +45,7 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
           <div className="icm-col-group">
             <div className="icm-col-label">Contact</div>
             <div className="icm-col-tags">
-              {['Name', 'Organization', 'Notes', 'Email', 'Phone',
+              {['Name', 'Organization', 'Title', 'Notes', 'Email', 'Phone',
                 'LinkedIn', 'X', 'Website'].map((h) => (
                 <span key={h} className="icm-tag">{h}</span>
               ))}

@@ -210,11 +210,11 @@ export function mergeContacts(
     const now = Math.floor(Date.now() / 1000);
     if (strategy === 'merge') {
       const winner = db
-        .prepare('SELECT name, organization, notes FROM contacts WHERE id = ?')
-        .get(winnerId) as { name: string; organization: string | null; notes: string | null };
+        .prepare('SELECT name, organization, title, notes FROM contacts WHERE id = ?')
+        .get(winnerId) as { name: string; organization: string | null; title: string | null; notes: string | null };
       const loser = db
-        .prepare('SELECT name, organization, notes FROM contacts WHERE id = ?')
-        .get(loserId) as { name: string; organization: string | null; notes: string | null };
+        .prepare('SELECT name, organization, title, notes FROM contacts WHERE id = ?')
+        .get(loserId) as { name: string; organization: string | null; title: string | null; notes: string | null };
 
       const name = loser.name.length > winner.name.length ? loser.name : winner.name;
       const organization = !winner.organization
@@ -224,6 +224,13 @@ export function mergeContacts(
           : loser.organization.length > winner.organization.length
             ? loser.organization
             : winner.organization;
+      const title = !winner.title
+        ? loser.title
+        : !loser.title
+          ? winner.title
+          : loser.title.length > winner.title.length
+            ? loser.title
+            : winner.title;
       const notes = !winner.notes
         ? loser.notes
         : !loser.notes
@@ -232,9 +239,10 @@ export function mergeContacts(
             ? loser.notes
             : winner.notes;
 
-      db.prepare('UPDATE contacts SET name = ?, organization = ?, notes = ? WHERE id = ?').run(
+      db.prepare('UPDATE contacts SET name = ?, organization = ?, title = ?, notes = ? WHERE id = ?').run(
         name,
         organization,
+        title,
         notes,
         winnerId,
       );
@@ -308,6 +316,30 @@ export function mergeContacts(
           db.prepare(
             'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
           ).run(uuidv4(), winnerId, row.type, row.label, row.url, linkOffset++, now);
+        }
+      }
+
+      const winnerHandles = new Set<string>(
+        (
+          db
+            .prepare('SELECT type, handle FROM contact_handles WHERE contact_id = ?')
+            .all(winnerId) as Array<{ type: string; handle: string }>
+        ).map((r) => `${r.type}:${r.handle}`),
+      );
+      const loserHandles = db
+        .prepare('SELECT type, handle FROM contact_handles WHERE contact_id = ?')
+        .all(loserId) as Array<{ type: string; handle: string }>;
+      const maxHandleOrder = (
+        db
+          .prepare('SELECT MAX(sort_order) AS m FROM contact_handles WHERE contact_id = ?')
+          .get(winnerId) as { m: number | null }
+      ).m ?? -1;
+      let handleOffset = maxHandleOrder + 1;
+      for (const row of loserHandles) {
+        if (!winnerHandles.has(`${row.type}:${row.handle}`)) {
+          db.prepare(
+            'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+          ).run(uuidv4(), winnerId, row.type, row.handle, handleOffset++, now);
         }
       }
     }

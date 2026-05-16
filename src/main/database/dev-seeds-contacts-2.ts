@@ -1,16 +1,19 @@
 interface SeedContact {
   name: string;
   organization: string | null;
+  title?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
   links: { type: 'linkedin' | 'x' | 'website' | 'facebook' | 'instagram' | 'other'; url: string }[];
+  handles?: { type: 'signal' | 'whatsapp' | 'telegram' | 'other'; handle: string }[];
 }
 
 export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Bertrand Lacombe',
     organization: 'Fédération des syndicats de Laurentie',
+    title: 'Lead Negotiator',
     notes:
       'Lead negotiator on the nursing shortage file. Has internal grievance data from three hospital regions that has not been made public. Prefers contact after 5 p.m.',
     emails: ['b.lacombe@fsl-laurentie.example'],
@@ -20,6 +23,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Dr. Patience Adusei-Mensah',
     organization: 'Westmarch General Hospital — Infectious Disease',
+    title: 'Infectious Disease Specialist',
     notes:
       'Published a dissenting memo on pandemic PPE procurement. Her research institution received reduced funding the following fiscal year. Willing to speak on background.',
     emails: ['p.adusei-mensah@wgh.example'],
@@ -40,6 +44,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Prof. Miriam Goldstein-Lau',
     organization: 'Ridgecrest University — School of Law, Indigenous Rights Clinic',
+    title: 'Professor of Law',
     notes:
       'Specialist in resource extraction and treaty rights. Has reviewed confidential co-management agreements at the centre of the pipeline dispute. Will testify as expert witness.',
     emails: ['m.goldstein@law.ridgecrest.example'],
@@ -52,11 +57,13 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Theresa Ouellet-Gauvin',
     organization: 'Centre hospitalier universitaire de Laurentie',
+    title: 'Chief Nursing Officer',
     notes:
       'Chief nursing officer. Filed an internal report on understaffing that the hospital board buried. Union rep confirmed she was subsequently passed over for promotion.',
     emails: ['t.ouellet-gauvin@chul.example', 'theresa.ouellet@securemail.example'],
     phones: ['+1 438 555 2744'],
     links: [],
+    handles: [{ type: 'signal', handle: '+1 438 555 2744' }],
   },
   {
     name: 'Rashid Abdirahman',
@@ -69,6 +76,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Dr. Ingrid Svensson-Park',
     organization: 'Hargreaves University — Environmental Science',
+    title: 'Associate Professor of Environmental Science',
     notes:
       "Authored the independent assessment of tailings pond integrity at the Coldwater mine. Received a cease-and-desist from the mining company's lawyers. Speaking with legal counsel before further comment.",
     emails: ['i.svensson@hargreaves.example'],
@@ -81,6 +89,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Yusuf Abdullahi',
     organization: 'National Council for Displaced Persons',
+    title: 'Policy Director',
     notes:
       'Policy director with access to internal border agency data on detention conditions at a regional facility. Has filed two court affidavits in ongoing civil rights challenges.',
     emails: ['y.abdullahi@ncdp.example'],
@@ -89,10 +98,12 @@ export const CONTACTS_2: SeedContact[] = [
       { type: 'linkedin', url: 'https://linkedin.com/in/yusuf-abdullahi-ncdp' },
       { type: 'x', url: 'https://x.com/yusuf_ncdp' },
     ],
+    handles: [{ type: 'whatsapp', handle: '+1 438 555 3091' }],
   },
   {
     name: 'Madeleine Tremblay-Côté',
     organization: 'Réseau Environnement Laurentie',
+    title: 'Senior Researcher',
     notes:
       'Senior researcher on federal subsidies to the fossil fuel industry. Her organization published an access-to-information database that the energy ministry tried to have taken down.',
     emails: ['mtremblay@rel-env.example'],
@@ -101,6 +112,7 @@ export const CONTACTS_2: SeedContact[] = [
       { type: 'x', url: 'https://x.com/madeleine_rel' },
       { type: 'linkedin', url: 'https://linkedin.com/in/madeleine-tremblay-cote' },
     ],
+    handles: [{ type: 'signal', handle: '@mtremblay.rel' }],
   },
   {
     name: 'Owen Blackstock',
@@ -113,6 +125,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Prof. Amara Diallo-Kamara',
     organization: 'Coastal University — Marine Environmental Law',
+    title: 'Professor of Marine Environmental Law',
     notes:
       'Monitors offshore drilling permit compliance on the Atlantic shelf. Provided key technical context for an earlier industry exposé. Easy to reach and forthcoming on background.',
     emails: ['a.diallo@coastal.example'],
@@ -125,11 +138,13 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Nadia Karpenko',
     organization: 'Energy Accountability Institute',
+    title: 'Energy Transition Analyst',
     notes:
       'Energy transition analyst specializing in coal-phase-out compliance. Has a source inside the federal natural resources ministry who flagged internal modelling discrepancies.',
     emails: ['n.karpenko@energyaccountability.example'],
     phones: ['+1 582 555 3551'],
     links: [{ type: 'linkedin', url: 'https://linkedin.com/in/nadia-karpenko-eai' }],
+    handles: [{ type: 'telegram', handle: '@nkarpenko_eai' }],
   },
   {
     name: 'Inspector Gilles Parenteau',
@@ -142,6 +157,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Dr. Susan Whitmore-Haig',
     organization: 'Centre for Mental Health and Addictions Research',
+    title: 'Research Director',
     notes:
       "Led the unreleased audit of supportive housing contracts in the province. Several providers audited have filed defamation notices. Willing to share methodology, not findings, until legal clears it.",
     emails: ['s.whitmore@cmhar.example'],
@@ -156,10 +172,12 @@ export const CONTACTS_2: SeedContact[] = [
     emails: ['a.fuentes@fedtrabveltria.example', 'alejandro.fuentes@securemail.example'],
     phones: ['+54 11 5555 3891'],
     links: [],
+    handles: [{ type: 'telegram', handle: '@alejfuentes_veltria' }],
   },
   {
     name: 'Janet Koo',
     organization: 'Cascadia Teachers\' Federation',
+    title: 'Chief Grievance Officer',
     notes:
       'Chief grievance officer. Has filed 14 complaints against school district IT procurement decisions that channelled contracts to a trustee-linked firm.',
     emails: ['j.koo@ctf-cascadia.example'],
@@ -180,6 +198,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Constance Abiodun',
     organization: 'Office of the Privacy Commissioner',
+    title: 'Senior Investigator',
     notes:
       "Senior investigator who handled a complaint against a federal biometric data program. Her office's redacted report contains sections sought via access-to-information requests.",
     emails: ['c.abiodun@privacycommissioner.example'],
@@ -189,6 +208,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Trevor Colpitts',
     organization: 'Eastcoast Province — Department of Environment',
+    title: 'Regional Enforcement Officer',
     notes:
       'Regional enforcement officer who issued — then quietly withdrew — a compliance order against a pulp mill. Currently on administrative leave. Reached once through a mutual source.',
     emails: ['t.colpitts@eastcoast-env.example', 't.colpitts.personal@securemail.example'],
@@ -198,6 +218,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Dr. Felicity Okonkwo',
     organization: 'Halden University — Health Evidence Synthesis',
+    title: 'Associate Professor',
     notes:
       "Peer reviewer for contested pharmaceutical efficacy studies. Has flagged methodology concerns in writing. Her department chair has asked her to route all media inquiries through the university's PR office.",
     emails: ['f.okonkwo@halden.example'],
@@ -215,15 +236,18 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Anita Fong-Marquez',
     organization: 'Federal Border Enforcement Agency — Intelligence Division',
+    title: 'Intelligence Analyst',
     notes:
       'Mid-level analyst. Made contact after a border agency story ran. Willing to verify documents but will not originate disclosures. Has a security clearance concern about direct email — suggested courier drop.',
     emails: [],
     phones: ['+1 582 555 4617'],
     links: [],
+    handles: [{ type: 'signal', handle: '+1 582 555 4617' }],
   },
   {
     name: 'Prof. David Adesanya',
     organization: 'Grantmore University — Criminology',
+    title: 'Professor of Criminology',
     notes:
       'Specialist in white-collar crime enforcement gaps. Published the definitive study of deferred prosecution agreements in the jurisdiction. Reliable on-record expert voice.',
     emails: ['d.adesanya@grantmore.example'],
@@ -236,6 +260,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Lorraine Hedley-Cross',
     organization: 'Northern Territories Environmental Assessment Board',
+    title: 'Review Officer',
     notes:
       "Review officer who flagged deficiencies in a mine remediation plan. The board's public report was edited before release. She has the unredacted version.",
     emails: ['l.hedley@nteab.example'],
@@ -245,6 +270,7 @@ export const CONTACTS_2: SeedContact[] = [
   {
     name: 'Marco Pietrangelo',
     organization: 'Consolidated Industrial Workers — Local 222',
+    title: 'Union Local President',
     notes:
       'President of the Harbourne plant local. Source on illegal subcontracting arrangements and safety violations after a recent line conversion. Keeps meticulous records. Will meet in person only.',
     emails: ['m.pietrangelo@ciw222.example'],

@@ -1,16 +1,19 @@
 interface SeedContact {
   name: string;
   organization: string | null;
+  title?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
   links: { type: 'linkedin' | 'x' | 'website' | 'facebook' | 'instagram' | 'other'; url: string }[];
+  handles?: { type: 'signal' | 'whatsapp' | 'telegram' | 'other'; handle: string }[];
 }
 
 export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Councillor Diane Ferreira',
     organization: 'City of Westmarch — Ward 9',
+    title: 'Infrastructure Committee Chair',
     notes:
       'Chairs the infrastructure committee and has received significant developer donations. Her office has stonewalled three freedom-of-information requests. Personal cell reportedly routed through a campaign staffer.',
     emails: ['d.ferreira@westmarch.example', 'ferreira.ward9@pressbox.example'],
@@ -23,15 +26,18 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Marcus Owusu-Boateng',
     organization: 'Province of Cascadia — Ministry of Municipal Affairs',
+    title: 'Senior Policy Director',
     notes:
       'Senior policy director. Has been a quiet source on the land-use file — prefers Signal. Connected to the Deputy Minister through a previous role at Infrastructure Cascadia.',
     emails: ['m.owusuboateng@cascadia.example'],
     phones: ['+1 265 555 0234'],
     links: [{ type: 'linkedin', url: 'https://linkedin.com/in/marcus-owusu-boateng' }],
+    handles: [{ type: 'signal', handle: '+1 265 555 0234' }],
   },
   {
     name: 'Vivienne Tran',
     organization: 'Northgate Barristers',
+    title: 'Barrister',
     notes:
       'Specialist in municipal land-use and development law. Represents several players implicated in the rezoning file. Will not confirm or deny client relationships.',
     emails: ['vtran@northgatelaw.example'],
@@ -49,6 +55,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Dr. Ananya Krishnamurthy',
     organization: 'Cascadia Public Health Agency',
+    title: 'Epidemiologist',
     notes:
       'Epidemiologist specializing in environmental health. Authored a suppressed internal report on industrial contamination near the Lakeview industrial corridor. Currently on secondment to the federal health ministry.',
     emails: ['a.krishnamurthy@cpha.example', 'ananya.k@fedhealth.example'],
@@ -61,6 +68,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Gordon Whitfield',
     organization: 'Meridian Capital Markets',
+    title: 'VP, Structured Finance',
     notes:
       'VP, Structured Finance. Involved in underwriting deals for several condo developers under scrutiny. His assistant screens all calls — email is the only reliable channel.',
     emails: ['gordon.whitfield@meridiancm.example'],
@@ -70,6 +78,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Priya Subramaniam',
     organization: 'Broadsheet Investigations',
+    title: 'Investigative Reporter',
     notes:
       'Competing journalist working the same rezoning angle. Shares occasional tips on sources already burned. Do not share exclusive documents. Friendly but rivalry is real.',
     emails: ['p.subramaniam@broadsheetinv.example'],
@@ -78,6 +87,7 @@ export const CONTACTS_1: SeedContact[] = [
       { type: 'x', url: 'https://x.com/priya_investigates' },
       { type: 'linkedin', url: 'https://linkedin.com/in/priya-subramaniam-broadsheet' },
     ],
+    handles: [{ type: 'whatsapp', handle: '+1 363 555 0611' }],
   },
   {
     name: 'Ted Molnar',
@@ -90,6 +100,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Sylvie Archambault',
     organization: 'Fédération des travailleurs de Laurentie',
+    title: 'Regional Director',
     notes:
       'Regional director. Source on the port labour dispute and related kickback allegations. Speaks only French in formal settings; bilingual off-record.',
     emails: ['s.archambault@ftl-laurentie.example'],
@@ -108,6 +119,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Ngozi Okafor-Ellis',
     organization: 'Halcyon, Selby & Partners LLP',
+    title: 'Forensic Accountant',
     notes:
       'Forensic accountant and expert witness retained in three ongoing class actions. Deeply knowledgeable about real-estate trust structures under scrutiny. Prefers in-person meetings.',
     emails: ['nokafor-ellis@halcyonselby.example', 'ngozi.ellis.work@securemail.example'],
@@ -125,15 +137,18 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Catherine Mwangi',
     organization: 'National Export Finance Corporation',
+    title: 'Risk Analyst',
     notes:
       'Risk analyst who flagged irregularities in an overseas infrastructure loan portfolio. Filed an internal complaint that was not actioned. Potential whistleblower — approach carefully.',
     emails: ['c.mwangi@nefc.example'],
     phones: ['+1 582 555 1244'],
     links: [],
+    handles: [{ type: 'signal', handle: '+1 582 555 1244' }],
   },
   {
     name: 'Dr. Jean-Paul Hébert',
     organization: 'Université de Laurentie — School of Public Policy',
+    title: 'Professor of Public Policy',
     notes:
       'Former federal deputy minister, now academic. Published critical analysis of pension fund governance failures. Happy to speak on background.',
     emails: ['jp.hebert@univ-laurentie.example'],
@@ -146,6 +161,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Sandra Woo-Patel',
     organization: 'Woodbourne Capital Partners',
+    title: 'Managing Partner',
     notes:
       'Managing partner at a private equity firm with positions in three of the contaminated sites. Her firm has donated to four sitting federal MPs. Has not responded to prior outreach.',
     emails: ['swoo@woodbournecapital.example'],
@@ -163,11 +179,13 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Oksana Petrenko',
     organization: 'Veltrian Diaspora Council',
+    title: 'Executive Director',
     notes:
       'Executive director and vocal critic of a national mining company operating near the Veltrian border. Has documentation the company disputes. Meeting scheduled for next month.',
     emails: ['o.petrenko@veltrian-diaspora.example', 'oksana.petrenko@securemail.example'],
     phones: ['+1 265 555 1581'],
     links: [{ type: 'x', url: 'https://x.com/OksanaPetrenko_VDC' }],
+    handles: [{ type: 'signal', handle: '+1 265 555 1581' }],
   },
   {
     name: 'Chief Medical Officer Dr. Farrukh Tashkentov',
@@ -207,15 +225,18 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Hamish Blackwood',
     organization: 'Clifton & Wray LLP — London',
+    title: 'Partner',
     notes:
       'Partner handling UK-side litigation in the offshore trust case. Brief correspondence via LinkedIn so far. May travel for depositions in the fall.',
     emails: ['h.blackwood@cliftonwray.example'],
     phones: ['+44 20 7946 0301'],
     links: [{ type: 'linkedin', url: 'https://linkedin.com/in/hamish-blackwood-cw' }],
+    handles: [{ type: 'whatsapp', handle: '+44 20 7946 0301' }],
   },
   {
     name: 'Renata Filipowicz',
     organization: 'Office of the Auditor General — Infrastructure Division',
+    title: 'Principal Auditor',
     notes:
       'Principal auditor on the infrastructure transfers file. Spoke briefly at a conference. Will not confirm specifics but usefully indicates areas of focus.',
     emails: ['r.filipowicz@auditor-general.example'],
@@ -233,6 +254,7 @@ export const CONTACTS_1: SeedContact[] = [
   {
     name: 'Mayor Colette Abara',
     organization: 'City of Harbourne',
+    title: 'Mayor',
     notes:
       'Elected on a transparency platform but has since blocked several open-data initiatives. Her Chief of Staff, Rahul Nair, is the real gatekeeper. Press office is aggressive — document all interactions.',
     emails: ['mayor@harbourne.example'],

@@ -194,4 +194,39 @@ describe('mergeContacts — merge strategy', () => {
     const row = db.prepare('SELECT organization FROM contacts WHERE id = ?').get(winner) as { organization: string | null };
     expect(row.organization).toBe('Beta Corp');
   });
+
+  it('picks the longer title when both are non-null', () => {
+    const winner = insertContact(db, 'Alice Smith', { title: 'Editor' });
+    const loser = insertContact(db, 'Alicia Smith', { title: 'Editor in Chief' });
+    mergeContacts(db, winner, loser, 'merge');
+    const row = db.prepare('SELECT title FROM contacts WHERE id = ?').get(winner) as { title: string | null };
+    expect(row.title).toBe('Editor in Chief');
+  });
+
+  it('falls back to loser title when winner has none', () => {
+    const winner = insertContact(db, 'Bob Jones');
+    const loser = insertContact(db, 'Robert Jones', { title: 'Staff Writer' });
+    mergeContacts(db, winner, loser, 'merge');
+    const row = db.prepare('SELECT title FROM contacts WHERE id = ?').get(winner) as { title: string | null };
+    expect(row.title).toBe('Staff Writer');
+  });
+
+  it('copies unique handles from loser to winner', () => {
+    const winner = insertContact(db, 'Alice Smith', {
+      handles: [{ type: 'signal', handle: '+1 202 111 0001' }],
+    });
+    const loser = insertContact(db, 'Alicia Smith', {
+      handles: [
+        { type: 'signal', handle: '+1 202 111 0001' }, // duplicate — should not be copied
+        { type: 'whatsapp', handle: '+1 202 111 0002' }, // unique — should be copied
+      ],
+    });
+    mergeContacts(db, winner, loser, 'merge');
+    const handles = (
+      db.prepare('SELECT type, handle FROM contact_handles WHERE contact_id = ?').all(winner) as { type: string; handle: string }[]
+    );
+    expect(handles).toHaveLength(2);
+    expect(handles.some((h) => h.type === 'signal' && h.handle === '+1 202 111 0001')).toBe(true);
+    expect(handles.some((h) => h.type === 'whatsapp' && h.handle === '+1 202 111 0002')).toBe(true);
+  });
 });

@@ -14,12 +14,12 @@ export function performSearch(query: string, db: Database.Database): SearchResul
        FROM contacts c
        LEFT JOIN contact_emails ce ON ce.contact_id = c.id
        LEFT JOIN contact_phones cp ON cp.contact_id = c.id
-       WHERE c.name LIKE ? ESCAPE '\\' OR c.organization LIKE ? ESCAPE '\\' OR c.notes LIKE ? ESCAPE '\\'
-          OR ce.email LIKE ? ESCAPE '\\' OR cp.phone LIKE ? ESCAPE '\\'
+       WHERE c.name LIKE ? ESCAPE '\\' OR c.organization LIKE ? ESCAPE '\\' OR c.title LIKE ? ESCAPE '\\'
+          OR c.notes LIKE ? ESCAPE '\\' OR ce.email LIKE ? ESCAPE '\\' OR cp.phone LIKE ? ESCAPE '\\'
        ORDER BY c.name COLLATE NOCASE
        LIMIT 15`,
     )
-    .all(pattern, pattern, pattern, pattern, pattern) as Array<{
+    .all(pattern, pattern, pattern, pattern, pattern, pattern) as Array<{
     id: string;
     name: string;
     organization: string | null;

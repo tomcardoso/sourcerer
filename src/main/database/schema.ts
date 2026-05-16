@@ -29,6 +29,7 @@ export const LOCAL_SCHEMA_SQL = `
     id           TEXT    PRIMARY KEY,
     name         TEXT    NOT NULL,
     organization TEXT,
+    title        TEXT,
     notes        TEXT,
     created_at   INTEGER NOT NULL,
     updated_at   INTEGER NOT NULL,
@@ -70,6 +71,16 @@ export const LOCAL_SCHEMA_SQL = `
     label      TEXT,
     url        TEXT    NOT NULL,
     wayback_url TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT 0,
+    synced_at  INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS contact_handles (
+    id         TEXT    PRIMARY KEY,
+    contact_id TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    type       TEXT    NOT NULL,
+    handle     TEXT    NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT 0,
     synced_at  INTEGER
@@ -209,6 +220,8 @@ export const LOCAL_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_contact_phones_contact_id        ON contact_phones(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_phones_contact_phone  ON contact_phones(contact_id, phone);
   CREATE INDEX IF NOT EXISTS idx_contact_links_contact_id         ON contact_links(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_contact_handles_contact_id           ON contact_handles(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_handles_contact_type_handle ON contact_handles(contact_id, type, handle);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_links_contact_url      ON contact_links(contact_id, url);
   CREATE INDEX IF NOT EXISTS idx_contact_screenshots_contact_id   ON contact_screenshots(contact_id);
   CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
