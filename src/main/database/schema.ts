@@ -221,4 +221,25 @@ export const LOCAL_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_alert_mentions_contact_id        ON contact_alert_mentions(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_mentions_contact_guid   ON contact_alert_mentions(contact_id, guid);
   CREATE INDEX IF NOT EXISTS idx_alert_mentions_seen_dismissed    ON contact_alert_mentions(seen, dismissed);
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS interaction_log_fts
+    USING fts5(body, content='interaction_log_entries', content_rowid='rowid');
+
+  CREATE TRIGGER IF NOT EXISTS interaction_log_fts_ai
+    AFTER INSERT ON interaction_log_entries BEGIN
+      INSERT INTO interaction_log_fts(rowid, body) VALUES (new.rowid, new.body);
+    END;
+
+  CREATE TRIGGER IF NOT EXISTS interaction_log_fts_ad
+    AFTER DELETE ON interaction_log_entries BEGIN
+      INSERT INTO interaction_log_fts(interaction_log_fts, rowid, body)
+        VALUES ('delete', old.rowid, old.body);
+    END;
+
+  CREATE TRIGGER IF NOT EXISTS interaction_log_fts_au
+    AFTER UPDATE ON interaction_log_entries BEGIN
+      INSERT INTO interaction_log_fts(interaction_log_fts, rowid, body)
+        VALUES ('delete', old.rowid, old.body);
+      INSERT INTO interaction_log_fts(rowid, body) VALUES (new.rowid, new.body);
+    END;
 `;

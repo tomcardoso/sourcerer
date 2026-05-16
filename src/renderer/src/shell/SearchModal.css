@@ -61,9 +61,16 @@
   padding: 7px 14px;
   cursor: pointer;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   transition: background 0.1s;
+}
+
+.search-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .search-result-row:hover,
@@ -93,6 +100,17 @@
   font-family: var(--font-serif);
   text-transform: none;
   letter-spacing: normal;
+}
+
+.search-result-excerpt {
+  font-size: 11px;
+  color: var(--color-text-dim);
+  font-family: var(--font-serif);
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .search-empty {

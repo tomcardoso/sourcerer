@@ -183,11 +183,13 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [priorityDropdownOpen, setPriorityDropdownOpen] = useState(false);
   const priorityRef = useRef<HTMLDivElement>(null);
-  const [openTextFilter, setOpenTextFilter] = useState<'theme' | 'org' | null>(null);
+  const [openTextFilter, setOpenTextFilter] = useState<'theme' | 'org' | 'notes' | null>(null);
   const themeRef = useRef<HTMLDivElement>(null);
   const orgRef = useRef<HTMLDivElement>(null);
+  const notesRef = useRef<HTMLDivElement>(null);
   const [themeFilter, setThemeFilter] = useState('');
   const [orgFilter, setOrgFilter] = useState('');
+  const [notesFilter, setNotesFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -199,6 +201,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
     setSelectedPriorities([]);
     setThemeFilter('');
     setOrgFilter('');
+    setNotesFilter('');
     setOpenTextFilter(null);
     setDateFrom('');
     setDateTo('');
@@ -220,6 +223,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
   useClickOutside(priorityRef, () => setPriorityDropdownOpen(false), { isOpen: priorityDropdownOpen });
   useClickOutside(themeRef, () => setOpenTextFilter(null), { isOpen: openTextFilter === 'theme' });
   useClickOutside(orgRef, () => setOpenTextFilter(null), { isOpen: openTextFilter === 'org' });
+  useClickOutside(notesRef, () => setOpenTextFilter(null), { isOpen: openTextFilter === 'notes' });
 
   const isGlobal = !projectId;
   const headingTitle = projectName ?? 'All Contacts';
@@ -244,6 +248,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
       if (selectedPriorities.length > 0 && (!e.priority || !selectedPriorities.includes(e.priority))) return false;
       if (themeFilter && !(e.theme ?? '').toLowerCase().includes(themeFilter.toLowerCase())) return false;
       if (orgFilter && !(e.contact_organization ?? '').toLowerCase().includes(orgFilter.toLowerCase())) return false;
+      if (notesFilter && !e.body.toLowerCase().includes(notesFilter.toLowerCase())) return false;
       if (dateFrom) {
         const [fy, fm, fd] = dateFrom.split('-').map(Number);
         const from = new Date(fy, fm - 1, fd, 0, 0, 0, 0).getTime() / 1000;
@@ -256,7 +261,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
       }
       return true;
     });
-  }, [entries, selectedReporters, selectedProjects, selectedPriorities, themeFilter, orgFilter, dateFrom, dateTo]);
+  }, [entries, selectedReporters, selectedProjects, selectedPriorities, themeFilter, orgFilter, notesFilter, dateFrom, dateTo]);
 
   const groups = useMemo(() => {
     const g: Array<{ key: string; entries: TimelineEntry[] }> = [];
@@ -275,6 +280,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
     selectedPriorities.length > 0 ||
     themeFilter !== '' ||
     orgFilter !== '' ||
+    notesFilter !== '' ||
     dateFrom !== '' ||
     dateTo !== '';
 
@@ -367,7 +373,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                   className={`project-meta-action-btn${themeFilter ? ' project-meta-action-btn--active' : ''}`}
                   onClick={() => setOpenTextFilter(openTextFilter === 'theme' ? null : 'theme')}
                 >
-                  Theme{themeFilter && <span className="project-meta-filter-count">1</span>}
+                  Theme
                 </button>
                 {openTextFilter === 'theme' && (
                   <div className="ptl-priority-dropdown col-filter-dropdown">
@@ -394,7 +400,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                   className={`project-meta-action-btn${orgFilter ? ' project-meta-action-btn--active' : ''}`}
                   onClick={() => setOpenTextFilter(openTextFilter === 'org' ? null : 'org')}
                 >
-                  Org{orgFilter && <span className="project-meta-filter-count">1</span>}
+                  Org
                 </button>
                 {openTextFilter === 'org' && (
                   <div className="ptl-priority-dropdown col-filter-dropdown">
@@ -409,6 +415,33 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                       />
                       {orgFilter && (
                         <button className="col-filter-clear" onClick={() => setOrgFilter('')}>×</button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Notes text filter */}
+              <div ref={notesRef} className="project-meta-item ptl-priority-wrap">
+                <button
+                  className={`project-meta-action-btn${notesFilter ? ' project-meta-action-btn--active' : ''}`}
+                  onClick={() => setOpenTextFilter(openTextFilter === 'notes' ? null : 'notes')}
+                >
+                  Notes
+                </button>
+                {openTextFilter === 'notes' && (
+                  <div className="ptl-priority-dropdown col-filter-dropdown">
+                    <div className="col-filter-text">
+                      <input
+                        autoFocus
+                        className="col-filter-input"
+                        type="text"
+                        value={notesFilter}
+                        onChange={(e) => setNotesFilter(e.target.value)}
+                        placeholder="Contains…"
+                      />
+                      {notesFilter && (
+                        <button className="col-filter-clear" onClick={() => setNotesFilter('')}>×</button>
                       )}
                     </div>
                   </div>

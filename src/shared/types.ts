@@ -315,12 +315,10 @@ export interface DuplicatePair {
   reason: 'email' | 'phone' | 'name';
 }
 
-export interface SearchResult {
-  type: 'contact' | 'project';
-  id: string;
-  name: string;
-  subtitle: string | null;
-}
+export type SearchResult =
+  | { type: 'contact'; id: string; name: string; subtitle: string | null }
+  | { type: 'project'; id: string; name: string; subtitle: string | null }
+  | { type: 'log'; id: string; name: string; subtitle: string | null; excerpt: string; contactId: string };
 
 export interface ContactScreenshot {
   id: string;
