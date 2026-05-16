@@ -580,10 +580,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               <label className="sv-label">Archive.org access key</label>
               <input
                 className="sv-input"
-                type="text"
+                type="password"
                 value={archiveAccessKey}
                 onChange={(e) => setArchiveAccessKey(e.target.value)}
-                autoComplete="off"
+                autoComplete="new-password"
                 disabled={!waybackEnabled}
               />
             </div>

@@ -16,7 +16,8 @@ export function registerAppHandlers(): void {
         `SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
                 phone_country, outreach_reminders_enabled, outreach_require_interaction,
                 staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
-                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                archive_access_key, archive_secret_key
          FROM users WHERE id = 1`,
       )
       .get() as User;
