@@ -17,15 +17,8 @@ interface Props {
 const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
 
-const HANDLE_TYPES = ['signal', 'whatsapp', 'telegram', 'other'] as const;
-type HandleType = (typeof HANDLE_TYPES)[number];
-
-const HANDLE_META: Record<HandleType, { label: string; placeholder: string }> = {
-  signal:   { label: 'Signal',   placeholder: '+1 555 000 0000 or username' },
-  whatsapp: { label: 'WhatsApp', placeholder: '+1 555 000 0000' },
-  telegram: { label: 'Telegram', placeholder: '@username' },
-  other:    { label: 'Other',    placeholder: 'handle or username' },
-};
+import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
+import type { HandleType } from './handleMeta';
 
 const NON_OTHER_SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
 type NonOtherSocialType = (typeof NON_OTHER_SOCIAL_TYPES)[number];

@@ -220,7 +220,8 @@ export const LOCAL_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_contact_phones_contact_id        ON contact_phones(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_phones_contact_phone  ON contact_phones(contact_id, phone);
   CREATE INDEX IF NOT EXISTS idx_contact_links_contact_id         ON contact_links(contact_id);
-  CREATE INDEX IF NOT EXISTS idx_contact_handles_contact_id       ON contact_handles(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_contact_handles_contact_id           ON contact_handles(contact_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_handles_contact_type_handle ON contact_handles(contact_id, type, handle);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_links_contact_url      ON contact_links(contact_id, url);
   CREATE INDEX IF NOT EXISTS idx_contact_screenshots_contact_id   ON contact_screenshots(contact_id);
   CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);

@@ -224,7 +224,13 @@ export function mergeContacts(
           : loser.organization.length > winner.organization.length
             ? loser.organization
             : winner.organization;
-      const title = winner.title ?? loser.title;
+      const title = !winner.title
+        ? loser.title
+        : !loser.title
+          ? winner.title
+          : loser.title.length > winner.title.length
+            ? loser.title
+            : winner.title;
       const notes = !winner.notes
         ? loser.notes
         : !loser.notes

@@ -24,13 +24,13 @@ export function insertProject(db: Database.Database, name: string): string {
 export function insertContact(
   db: Database.Database,
   name: string,
-  opts: { emails?: string[]; phones?: string[]; org?: string; notes?: string } = {},
+  opts: { emails?: string[]; phones?: string[]; org?: string; notes?: string; title?: string; handles?: { type: string; handle: string }[] } = {},
 ): string {
   const id = uuidv4();
   const now = Math.floor(Date.now() / 1000);
   db.prepare(
-    'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-  ).run(id, name, opts.org ?? null, opts.notes ?? null, now, now);
+    'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, opts.org ?? null, opts.title ?? null, opts.notes ?? null, now, now);
   (opts.emails ?? []).forEach((email, i) =>
     db
       .prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)')
@@ -40,6 +40,11 @@ export function insertContact(
     db
       .prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order) VALUES (?, ?, ?, ?)')
       .run(uuidv4(), id, phone, i),
+  );
+  (opts.handles ?? []).forEach((h, i) =>
+    db
+      .prepare('INSERT INTO contact_handles (id, contact_id, type, handle, sort_order) VALUES (?, ?, ?, ?, ?)')
+      .run(uuidv4(), id, h.type, h.handle, i),
   );
   return id;
 }
