@@ -67,6 +67,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [syncError, setSyncError] = useState<string | null>(null);
   const [fileUnreachable, setFileUnreachable] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -79,11 +80,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [editDescription, setEditDescription] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const bulkActionsRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const syncStartedAt = useRef<number>(0);
 
   const handleCloseExportMenu = useCallback(() => setShowExportMenu(false), []);
   useClickOutside(exportMenuRef, handleCloseExportMenu, { isOpen: showExportMenu });
+  const handleCloseBulkActions = useCallback(() => setShowBulkActions(false), []);
+  useClickOutside(bulkActionsRef, handleCloseBulkActions, { isOpen: showBulkActions });
 
   const refresh = useCallback(() => {
     if (!project) return;
@@ -265,6 +269,30 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       if (selectedId && removed.has(selectedId)) setSelectedId(null);
       setCheckedIds(new Set());
       setConfirmRemove(false);
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  async function handleBulkSetStatus(status: string | null) {
+    if (!project) return;
+    setBulkWorking(true);
+    try {
+      const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
+      await window.sourcerer.bulkUpdateMemberships({ membershipIds, status });
+      setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, status } : r));
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  async function handleBulkSetPriority(priority: string | null) {
+    if (!project) return;
+    setBulkWorking(true);
+    try {
+      const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
+      await window.sourcerer.bulkUpdateMemberships({ membershipIds, priority });
+      setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, priority } : r));
     } finally {
       setBulkWorking(false);
     }
@@ -659,24 +687,74 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             </div>
           ) : (
             <>
-              <div className="bulk-bar-element">
+              {statusOptions.length > 0 && (
+                <div className="bulk-bar-element">
+                  <label className="bulk-bar-label">Status</label>
+                  <select
+                    className="bulk-bar-select"
+                    value=""
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__clear__') { handleBulkSetStatus(null); return; }
+                      const opt = statusOptions.find((o) => o.id === v);
+                      if (opt) handleBulkSetStatus(opt.label);
+                    }}
+                    disabled={bulkWorking}
+                  >
+                    <option value="" disabled>Set status</option>
+                    {statusOptions.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                    <option value="__clear__">— clear —</option>
+                  </select>
+                </div>
+              )}
+              {priorityOptions.length > 0 && (
+                <div className="bulk-bar-element">
+                  <label className="bulk-bar-label">Priority</label>
+                  <select
+                    className="bulk-bar-select"
+                    value=""
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__clear__') { handleBulkSetPriority(null); return; }
+                      const opt = priorityOptions.find((o) => o.id === v);
+                      if (opt) handleBulkSetPriority(opt.label);
+                    }}
+                    disabled={bulkWorking}
+                  >
+                    <option value="" disabled>Set priority</option>
+                    {priorityOptions.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))}
+                    <option value="__clear__">— clear —</option>
+                  </select>
+                </div>
+              )}
+              <div className="bulk-bar-element bulk-actions-wrap" ref={bulkActionsRef} style={{ marginLeft: 'auto' }}>
                 <button
-                  className="bulk-delete-btn"
-                  style={{ marginLeft: 'auto' }}
-                  onClick={() => setConfirmRemove(true)}
+                  className="bulk-actions-trigger"
+                  onClick={() => setShowBulkActions((v) => !v)}
                   disabled={bulkWorking}
                 >
-                  Remove from project
+                  Remove from…
                 </button>
-              </div>
-              <div className="bulk-bar-element">
-                <button
-                  className="bulk-delete-btn"
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={bulkWorking}
-                >
-                  Delete from Sourcerer
-                </button>
+                {showBulkActions && (
+                  <div className="bulk-actions-menu">
+                    <button
+                      className="bulk-actions-item bulk-actions-item--danger"
+                      onClick={() => { setShowBulkActions(false); setConfirmRemove(true); }}
+                    >
+                      Project
+                    </button>
+                    <button
+                      className="bulk-actions-item bulk-actions-item--danger"
+                      onClick={() => { setShowBulkActions(false); setConfirmDelete(true); }}
+                    >
+                      Sourcerer
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

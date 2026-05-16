@@ -86,6 +86,7 @@ declare global {
       addToProject: (contactId: string, projectId: string) => Promise<void>;
       removeFromProject: (contactId: string, projectId: string) => Promise<void>;
       updateMembership: (data: UpdateMembershipInput) => Promise<void>;
+      bulkUpdateMemberships: (data: { membershipIds: string[]; status?: string | null; priority?: string | null }) => Promise<void>;
       setMembershipReporters: (membershipId: string, reporters: Array<{ email: string; name: string }>) => Promise<void>;
       listProjectReporters: (projectId: string) => Promise<Array<{ email: string; name: string }>>;
       listProjectTimeline: (projectId: string) => Promise<TimelineEntry[]>;

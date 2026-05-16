@@ -456,6 +456,25 @@ export function registerContactHandlers(): void {
   });
 
   ipcMain.handle(
+    'memberships:bulk-update',
+    (_, { membershipIds, status, priority }: { membershipIds: string[]; status?: string | null; priority?: string | null }): void => {
+      if (!membershipIds.length) return;
+      const db = getDatabase();
+      const now = Math.floor(Date.now() / 1000);
+      db.transaction(() => {
+        if (status !== undefined) {
+          const stmt = db.prepare('UPDATE project_memberships SET status = ?, updated_at = ? WHERE id = ?');
+          for (const id of membershipIds) stmt.run(status ?? null, now, id);
+        }
+        if (priority !== undefined) {
+          const stmt = db.prepare('UPDATE project_memberships SET priority = ?, updated_at = ? WHERE id = ?');
+          for (const id of membershipIds) stmt.run(priority ?? null, now, id);
+        }
+      })();
+    },
+  );
+
+  ipcMain.handle(
     'memberships:set-reporters',
     (_, { membershipId, reporters }: { membershipId: string; reporters: Array<{ email: string; name: string }> }): void => {
       const db = getDatabase();
