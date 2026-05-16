@@ -67,6 +67,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [syncError, setSyncError] = useState<string | null>(null);
   const [fileUnreachable, setFileUnreachable] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -79,11 +80,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [editDescription, setEditDescription] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const bulkActionsRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const syncStartedAt = useRef<number>(0);
 
   const handleCloseExportMenu = useCallback(() => setShowExportMenu(false), []);
   useClickOutside(exportMenuRef, handleCloseExportMenu, { isOpen: showExportMenu });
+  const handleCloseBulkActions = useCallback(() => setShowBulkActions(false), []);
+  useClickOutside(bulkActionsRef, handleCloseBulkActions, { isOpen: showBulkActions });
 
   const refresh = useCallback(() => {
     if (!project) return;
@@ -723,24 +727,31 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                   </select>
                 </div>
               )}
-              <div className="bulk-bar-element">
+              <div className="bulk-bar-element bulk-actions-wrap" ref={bulkActionsRef} style={{ marginLeft: 'auto' }}>
                 <button
-                  className="bulk-delete-btn"
-                  style={{ marginLeft: 'auto' }}
-                  onClick={() => setConfirmRemove(true)}
+                  className="bulk-actions-trigger"
+                  onClick={() => setShowBulkActions((v) => !v)}
                   disabled={bulkWorking}
+                  title="More actions"
                 >
-                  Remove from project
+                  ···
                 </button>
-              </div>
-              <div className="bulk-bar-element">
-                <button
-                  className="bulk-delete-btn"
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={bulkWorking}
-                >
-                  Delete from Sourcerer
-                </button>
+                {showBulkActions && (
+                  <div className="bulk-actions-menu">
+                    <button
+                      className="bulk-actions-item bulk-actions-item--danger"
+                      onClick={() => { setShowBulkActions(false); setConfirmRemove(true); }}
+                    >
+                      Remove from project
+                    </button>
+                    <button
+                      className="bulk-actions-item bulk-actions-item--danger"
+                      onClick={() => { setShowBulkActions(false); setConfirmDelete(true); }}
+                    >
+                      Delete from Sourcerer
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
