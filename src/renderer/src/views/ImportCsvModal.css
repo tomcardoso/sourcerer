@@ -2,6 +2,38 @@
   max-width: 480px;
 }
 
+.icm-format-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border-strong);
+  margin-bottom: 20px;
+}
+
+.icm-format-tab {
+  height: 32px;
+  padding: 0 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.icm-format-tab:hover {
+  color: var(--color-text);
+}
+
+.icm-format-tab--active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-text);
+}
+
 .icm-intro {
   font-size: 14px;
   color: var(--color-text);

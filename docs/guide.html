@@ -213,12 +213,16 @@
             <h2>Import &amp; export</h2>
 
             <h3>Importing from CSV</h3>
-            <p>You can import contacts from a CSV file. The only required column is <strong>Name</strong>. Other supported columns include: <code>Organization</code>, <code>Notes</code>, <code>Email</code>, <code>Phone</code>, <code>LinkedIn</code>, <code>Website</code>, and others.</p>
+            <p>You can import contacts from a CSV file. The only required column is <strong>Name</strong>. Other supported columns include: <code>Organization</code>, <code>Title</code>, <code>Notes</code>, <code>Email</code>, <code>Phone</code>, <code>LinkedIn</code>, <code>X</code>, and <code>Website</code>.</p>
             <p>For fields that can hold multiple values (emails, phones, websites), use semicolons to separate values within a single cell:</p>
             <div class="note">
               <strong>Example:</strong> A cell in the Email column reading <code>alice@example.com;alice@work.com</code> will create two email addresses on the imported contact.
             </div>
-            <p>On import you can choose whether to add contacts to a specific project, and set a default status for all imported contacts.</p>
+            <p>On import you can choose whether to add contacts to a specific project.</p>
+
+            <h3>Importing from vCard (.vcf)</h3>
+            <p>You can import contacts from a .vcf file exported by Apple Contacts, Google Contacts, or any standard address book. Both single-contact and multi-contact files are supported. The following fields are imported: <code>FN</code> (name), <code>ORG</code> (organisation), <code>NOTE</code> (notes), <code>EMAIL</code>, <code>TEL</code> (phone, normalised to international format), and <code>URL</code> (website links).</p>
+            <p>Contacts with a name or email matching an existing record are skipped. Duplicate fields within a single vCard entry are deduplicated automatically.</p>
 
             <h3>Exporting contacts</h3>
             <p>Contacts can be exported from the global contacts view or from within a project. Three formats are available:</p>

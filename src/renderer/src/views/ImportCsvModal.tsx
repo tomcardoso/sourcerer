@@ -9,7 +9,10 @@ interface Props {
   onClose: () => void;
 }
 
+type Format = 'csv' | 'vcf';
+
 export default function ImportCsvModal({ projects, preselectedProjectId, onComplete, onClose }: Props) {
+  const [format, setFormat] = useState<Format>('csv');
   const [projectId, setProjectId] = useState(preselectedProjectId ?? '');
   const [importing, setImporting] = useState(false);
 
@@ -22,7 +25,10 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
   async function handleImport() {
     setImporting(true);
     try {
-      const result = await window.sourcerer.importCsv({ projectId: projectId || undefined });
+      const data = { projectId: projectId || undefined };
+      const result = format === 'vcf'
+        ? await window.sourcerer.importVcf(data)
+        : await window.sourcerer.importCsv(data);
       if (!result.cancelled) onComplete(result);
     } finally {
       setImporting(false);
@@ -34,46 +40,92 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card icm-card" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Import contacts from CSV</h2>
+        <h2 className="modal-title">Import contacts</h2>
 
-        <p className="icm-intro">
-          Import a spreadsheet of contacts. Your file must use the following column headers
-          (extra columns are ignored):
-        </p>
-
-        <div className="icm-columns">
-          <div className="icm-col-group">
-            <div className="icm-col-label">Contact</div>
-            <div className="icm-col-tags">
-              {['Name', 'Organization', 'Title', 'Notes', 'Email', 'Phone',
-                'LinkedIn', 'X', 'Website'].map((h) => (
-                <span key={h} className="icm-tag">{h}</span>
-              ))}
-            </div>
-          </div>
-          <div className="icm-col-group">
-            <div className="icm-col-label">Project membership (optional)</div>
-            <div className="icm-col-tags">
-              {['Theme', 'Status', 'Priority'].map((h) => (
-                <span key={h} className="icm-tag">{h}</span>
-              ))}
-            </div>
-          </div>
+        <div className="icm-format-tabs">
+          <button
+            type="button"
+            className={`icm-format-tab${format === 'csv' ? ' icm-format-tab--active' : ''}`}
+            onClick={() => setFormat('csv')}
+            disabled={importing}
+          >
+            CSV
+          </button>
+          <button
+            type="button"
+            className={`icm-format-tab${format === 'vcf' ? ' icm-format-tab--active' : ''}`}
+            onClick={() => setFormat('vcf')}
+            disabled={importing}
+          >
+            vCard (.vcf)
+          </button>
         </div>
 
-        <p className="icm-collision-note">
-          To include multiple emails, phone numbers, or websites for a contact, separate them
-          with a semicolon in the cell (e.g. <code>alice@work.com; alice@home.com</code>).
-          Contacts with a matching name or email are skipped. Phone numbers are normalised to
-          international format on import.
-        </p>
+        {format === 'csv' ? (
+          <>
+            <p className="icm-intro">
+              Import a spreadsheet of contacts. Your file must use the following column headers
+              (extra columns are ignored):
+            </p>
 
-        <button
-          className="icm-template-btn"
-          onClick={() => window.sourcerer.downloadSampleCsv()}
-        >
-          ↓ Download blank template
-        </button>
+            <div className="icm-columns">
+              <div className="icm-col-group">
+                <div className="icm-col-label">Contact</div>
+                <div className="icm-col-tags">
+                  {['Name', 'Organization', 'Title', 'Notes', 'Email', 'Phone',
+                    'LinkedIn', 'X', 'Website'].map((h) => (
+                    <span key={h} className="icm-tag">{h}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="icm-col-group">
+                <div className="icm-col-label">Project membership (optional)</div>
+                <div className="icm-col-tags">
+                  {['Theme', 'Status', 'Priority'].map((h) => (
+                    <span key={h} className="icm-tag">{h}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="icm-collision-note">
+              To include multiple emails, phone numbers, or websites for a contact, separate them
+              with a semicolon in the cell (e.g. <code>alice@work.com; alice@home.com</code>).
+              Contacts with a matching name or email are skipped. Phone numbers are normalised to
+              international format on import.
+            </p>
+
+            <button
+              className="icm-template-btn"
+              onClick={() => window.sourcerer.downloadSampleCsv()}
+            >
+              ↓ Download blank template
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="icm-intro">
+              Import contacts from a .vcf file exported by Apple Contacts, Google Contacts, or any
+              standard address book. The following fields are imported:
+            </p>
+
+            <div className="icm-columns">
+              <div className="icm-col-group">
+                <div className="icm-col-tags">
+                  {['Name (FN)', 'Organization (ORG)', 'Notes (NOTE)',
+                    'Email (EMAIL)', 'Phone (TEL)', 'Website (URL)'].map((h) => (
+                    <span key={h} className="icm-tag">{h}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="icm-collision-note">
+              Multi-contact .vcf files are fully supported. Contacts with a matching name or email
+              are skipped. Phone numbers are normalised to international format on import.
+            </p>
+          </>
+        )}
 
         {showProjectSelect && (
           <div className="icm-project-row">

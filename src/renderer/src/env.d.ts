@@ -176,8 +176,9 @@ declare global {
       exportVCardProject: (projectId: string) => Promise<void>;
       exportAllContacts: () => Promise<{ success: boolean; error?: string }>;
 
-      // CSV import
+      // CSV / vCard import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;
+      importVcf: (data: { projectId?: string }) => Promise<ImportResult>;
       downloadSampleCsv: () => Promise<void>;
 
       // Backup

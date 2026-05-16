@@ -26,7 +26,7 @@ Sourcerer is built around the workflow of investigative reporting: you manage a 
 
 Deduplication surfaces likely-duplicate contacts via fuzzy name matching and exact email/phone signals, then presents them side-by-side so you can merge or dismiss each pair with one click.
 
-A Chrome extension captures full-page screenshots from any browser tab and links them to a contact record. Screenshots are encrypted on disk with the same key as the database. Export to CSV, Excel, or vCard; import from CSV with semicolon-separated multi-value fields.
+A Chrome extension captures full-page screenshots from any browser tab and links them to a contact record. Screenshots are encrypted on disk with the same key as the database. Export to CSV, Excel, or vCard; import from CSV or vCard (.vcf).
 
 ---
 
@@ -61,6 +61,7 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 
 **Import / Export**
 - CSV import with semicolon-separated multi-value fields (emails, phones, websites per cell)
+- vCard (.vcf) import — single or multi-contact files; handles Apple/Google exports
 - Export to CSV, Excel (.xlsx), or vCard (.vcf) — per project or all contacts
 - Sanitised export mode strips notes and interaction logs for sharing
 
