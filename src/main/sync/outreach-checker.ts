@@ -54,6 +54,7 @@ export function checkOutreachReminders(): void {
        WHERE pm.outreach_reminders_enabled = 1
          AND COALESCE(pm.outreach_interval_days, po.outreach_interval_days) IS NOT NULL
          AND pm.reporter_email = (SELECT email FROM users WHERE id = 1)
+         AND p.is_archived = 0
        GROUP BY pm.id`,
     )
     .all() as OutreachRow[];

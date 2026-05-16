@@ -99,6 +99,7 @@ export const LOCAL_SCHEMA_SQL = `
     name                 TEXT    NOT NULL,
     description          TEXT,
     is_shared            INTEGER NOT NULL DEFAULT 0,
+    is_archived          INTEGER NOT NULL DEFAULT 0,
     shared_db_path       TEXT,
     shared_db_key        BLOB,
     shared_pending_writes INTEGER NOT NULL DEFAULT 0,

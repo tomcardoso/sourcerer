@@ -324,6 +324,14 @@ export function registerProjectHandlers(): void {
     return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
   });
 
+  ipcMain.handle('projects:archive', (_, id: string): void => {
+    getDatabase().prepare('UPDATE projects SET is_archived = 1 WHERE id = ?').run(id);
+  });
+
+  ipcMain.handle('projects:unarchive', (_, id: string): void => {
+    getDatabase().prepare('UPDATE projects SET is_archived = 0 WHERE id = ?').run(id);
+  });
+
   ipcMain.handle('projects:delete', (_, id: string): void => {
     closeSharedDb(id);
     getDatabase().prepare('DELETE FROM projects WHERE id = ?').run(id);

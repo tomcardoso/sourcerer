@@ -24,6 +24,7 @@ export interface Project {
   name: string;
   description: string | null;
   is_shared: 0 | 1;
+  is_archived: 0 | 1;
   shared_db_path: string | null;
   shared_pending_writes: 0 | 1;
   created_at: number;

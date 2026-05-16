@@ -90,6 +90,8 @@ const sourcererApi = {
   updateProject: (id: string, name: string, description: string | null): Promise<Project> =>
     ipcRenderer.invoke('projects:update', { id, name, description }),
   unshareProject: (id: string): Promise<Project> => ipcRenderer.invoke('projects:unshare', id),
+  archiveProject: (id: string): Promise<void> => ipcRenderer.invoke('projects:archive', id),
+  unarchiveProject: (id: string): Promise<void> => ipcRenderer.invoke('projects:unarchive', id),
   deleteProject: (id: string): Promise<void> => ipcRenderer.invoke('projects:delete', id),
 
   // Contacts
