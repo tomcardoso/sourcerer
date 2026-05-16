@@ -19,7 +19,10 @@ export const LOCAL_SCHEMA_SQL = `
     reminder_notifications_enabled INTEGER NOT NULL DEFAULT 1,
     rss_poll_interval_hours        INTEGER NOT NULL DEFAULT 6,
     wayback_enabled                INTEGER NOT NULL DEFAULT 1,
-    last_rss_fetched_at            INTEGER
+    last_rss_fetched_at            INTEGER,
+    auto_backup_enabled            INTEGER NOT NULL DEFAULT 0,
+    auto_backup_dest_path          TEXT,
+    auto_backup_max_count          INTEGER NOT NULL DEFAULT 10
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
