@@ -695,13 +695,15 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                     value=""
                     onChange={(e) => {
                       const v = e.target.value;
-                      handleBulkSetStatus(v === '__clear__' ? null : v);
+                      if (v === '__clear__') { handleBulkSetStatus(null); return; }
+                      const opt = statusOptions.find((o) => o.id === v);
+                      if (opt) handleBulkSetStatus(opt.label);
                     }}
                     disabled={bulkWorking}
                   >
                     <option value="" disabled>Set status</option>
                     {statusOptions.map((o) => (
-                      <option key={o.id} value={o.label}>{o.label}</option>
+                      <option key={o.id} value={o.id}>{o.label}</option>
                     ))}
                     <option value="__clear__">— clear —</option>
                   </select>
@@ -715,13 +717,15 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                     value=""
                     onChange={(e) => {
                       const v = e.target.value;
-                      handleBulkSetPriority(v === '__clear__' ? null : v);
+                      if (v === '__clear__') { handleBulkSetPriority(null); return; }
+                      const opt = priorityOptions.find((o) => o.id === v);
+                      if (opt) handleBulkSetPriority(opt.label);
                     }}
                     disabled={bulkWorking}
                   >
                     <option value="" disabled>Set priority</option>
                     {priorityOptions.map((o) => (
-                      <option key={o.id} value={o.label}>{o.label}</option>
+                      <option key={o.id} value={o.id}>{o.label}</option>
                     ))}
                     <option value="__clear__">— clear —</option>
                   </select>

@@ -458,6 +458,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'memberships:bulk-update',
     (_, { membershipIds, status, priority }: { membershipIds: string[]; status?: string | null; priority?: string | null }): void => {
+      if (!membershipIds.length) return;
       const db = getDatabase();
       const now = Math.floor(Date.now() / 1000);
       db.transaction(() => {
