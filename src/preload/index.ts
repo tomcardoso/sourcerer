@@ -172,6 +172,8 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-rss-poll-interval', hours),
   setWaybackEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-wayback-enabled', enabled),
+  setArchiveKeys: (accessKey: string, secretKey: string): Promise<User> =>
+    ipcRenderer.invoke('settings:set-archive-keys', { accessKey, secretKey }),
   setAlertNotificationsEnabled: (enabled: boolean): Promise<User> =>
     ipcRenderer.invoke('settings:set-alert-notifications-enabled', enabled),
   setReminderNotificationsEnabled: (enabled: boolean): Promise<User> =>

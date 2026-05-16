@@ -805,7 +805,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 })
             )}
           />
-          {user?.wayback_enabled !== 0 && (
+          {user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && (
             <p className="ac-field-hint">Wayback Machine archiving is enabled.</p>
           )}
         </div>

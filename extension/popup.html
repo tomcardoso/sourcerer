@@ -322,6 +322,7 @@
       margin-top: 10px;
       color: var(--text-muted);
       line-height: 1.5;
+      text-transform: uppercase;
     }
     .screen-status:empty { margin-top: 0; }
     .screen-status.ok  { color: var(--ok); }
@@ -332,6 +333,15 @@
       height: 1px;
       background: var(--border);
       margin: 12px 0;
+    }
+
+    .contact-list-empty {
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: center;
+      text-transform: uppercase;
     }
 
     .hidden { display: none !important; }
@@ -393,8 +403,10 @@
     <p class="screen-heading">New contact</p>
     <input id="contact-name"  class="form-input" placeholder="Name *" />
     <input id="contact-org"   class="form-input" placeholder="Organization" />
+    <input id="contact-title" class="form-input" placeholder="Title / Role" />
     <input id="contact-email" class="form-input" placeholder="Email" />
     <input id="contact-phone" class="form-input" placeholder="Phone" />
+    <input id="contact-url"   class="form-input" placeholder="Source URL (optional)" />
     <button id="btn-contact-save" class="btn-action">Add contact</button>
     <div id="contact-status" class="screen-status"></div>
   </div>

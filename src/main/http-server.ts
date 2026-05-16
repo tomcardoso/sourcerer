@@ -2,9 +2,21 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
-import { normalizeEmail, normalizePhone } from './sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from './sanitize';
+import { triggerWaybackSave } from './ipc/contacts';
 
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
+
+function detectLinkType(url: string): 'linkedin' | 'x' | 'instagram' | 'facebook' | 'website' {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) return 'linkedin';
+    if (host === 'x.com' || host === 'twitter.com') return 'x';
+    if (host === 'instagram.com') return 'instagram';
+    if (host === 'facebook.com') return 'facebook';
+    return 'website';
+  } catch { return 'website'; }
+}
 const MAX_PENDING_SCREENSHOTS = 20;
 const pendingScreenshots = new Map<string, { buf: Buffer; tabUrl: string | null }>();
 
@@ -232,30 +244,52 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     req.on('data', (chunk: Buffer) => { raw += chunk.toString('utf-8'); });
     req.on('end', () => {
       try {
-        const { name, organization, email, phone } = JSON.parse(raw);
+        const { name, organization, title, email, phone, url } = JSON.parse(raw);
         if (!name || typeof name !== 'string' || !name.trim()) {
           json(res, 400, { error: 'name_required' });
           return;
         }
         const db = getDatabase();
-        const { phone_country: phoneCountry = 'US' } = db
-          .prepare('SELECT phone_country FROM users WHERE id = 1')
-          .get() as { phone_country: string };
+        const { phone_country: phoneCountry = 'US', wayback_enabled: waybackEnabled = 0, archive_access_key: archiveAccessKey = null, archive_secret_key: archiveSecretKey = null } = db
+          .prepare('SELECT phone_country, wayback_enabled, archive_access_key, archive_secret_key FROM users WHERE id = 1')
+          .get() as { phone_country: string; wayback_enabled: number; archive_access_key: string | null; archive_secret_key: string | null };
+        const rawEmail = (email as string | undefined)?.trim() || null;
+        if (rawEmail && !validateEmail(rawEmail)) {
+          json(res, 400, { error: 'Email address is invalid.' }); return;
+        }
+        const rawPhone = (phone as string | undefined)?.trim() || null;
+        let normalizedPhone: string | null = null;
+        if (rawPhone) {
+          normalizedPhone = normalizePhone(rawPhone, phoneCountry);
+          if (!normalizedPhone) { json(res, 400, { error: 'Phone number is invalid.' }); return; }
+        }
+        const rawUrl = (url as string | undefined)?.trim() || null;
+        if (rawUrl && !validateUrl(rawUrl)) {
+          json(res, 400, { error: 'URL is invalid.' }); return;
+        }
         const contactId = randomUUID();
         const now = Math.floor(Date.now() / 1000);
         db.prepare(
-          'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, NULL, NULL, ?, ?)'
-        ).run(contactId, name.trim(), (organization as string | undefined)?.trim() || null, now, now);
-        if ((email as string | undefined)?.trim()) {
+          'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, NULL, ?, ?)'
+        ).run(contactId, name.trim(), (organization as string | undefined)?.trim() || null, (title as string | undefined)?.trim() || null, now, now);
+        if (rawEmail) {
           db.prepare(
             'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)'
-          ).run(randomUUID(), contactId, normalizeEmail((email as string).trim()), now);
+          ).run(randomUUID(), contactId, normalizeEmail(rawEmail), now);
         }
-        if ((phone as string | undefined)?.trim()) {
-          const rawPhone = (phone as string).trim();
+        if (normalizedPhone) {
           db.prepare(
             'INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, 0, ?)'
-          ).run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone, now);
+          ).run(randomUUID(), contactId, normalizedPhone, now);
+        }
+        if (rawUrl) {
+          const linkType = detectLinkType(rawUrl);
+          db.prepare(
+            'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, NULL, ?, 0, ?)'
+          ).run(randomUUID(), contactId, linkType, rawUrl, now);
+          if (waybackEnabled && archiveAccessKey && archiveSecretKey && linkType === 'website') {
+            triggerWaybackSave(contactId, rawUrl).catch(() => {});
+          }
         }
         json(res, 200, { id: contactId, name: name.trim() });
       } catch (err) {
@@ -283,12 +317,15 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
           .get() as { phone_country: string };
         const now = Math.floor(Date.now() / 1000);
         if (fieldType === 'email') {
+          if (!validateEmail(value.trim())) { json(res, 400, { error: 'Email address is invalid.' }); return; }
           const row = db.prepare('SELECT MAX(sort_order) AS m FROM contact_emails WHERE contact_id = ?').get(contactId) as { m: number | null };
           db.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), contactId, normalizeEmail(value.trim()), (row.m ?? -1) + 1, now);
         } else if (fieldType === 'phone') {
           const rawPhone = value.trim();
+          const normalizedPhone = normalizePhone(rawPhone, phoneCountry);
+          if (!normalizedPhone) { json(res, 400, { error: 'Phone number is invalid.' }); return; }
           const row = db.prepare('SELECT MAX(sort_order) AS m FROM contact_phones WHERE contact_id = ?').get(contactId) as { m: number | null };
-          db.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), contactId, normalizePhone(rawPhone, phoneCountry) ?? rawPhone, (row.m ?? -1) + 1, now);
+          db.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, ?, ?)').run(randomUUID(), contactId, normalizedPhone, (row.m ?? -1) + 1, now);
         } else if (fieldType === 'note') {
           const existing = (db.prepare('SELECT notes FROM contacts WHERE id = ?').get(contactId) as { notes: string | null }).notes;
           const updated = existing ? `${existing}\n\n${value.trim()}` : value.trim();

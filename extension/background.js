@@ -6,10 +6,10 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'Save to Sourcerer',
     contexts: ['selection'],
   });
-  chrome.contextMenus.create({ id: 'sourcerer-email', parentId: MENU_PARENT, title: 'Save as email',  contexts: ['selection'] });
-  chrome.contextMenus.create({ id: 'sourcerer-phone', parentId: MENU_PARENT, title: 'Save as phone',  contexts: ['selection'] });
-  chrome.contextMenus.create({ id: 'sourcerer-note',  parentId: MENU_PARENT, title: 'Save as note',   contexts: ['selection'] });
-  chrome.contextMenus.create({ id: 'sourcerer-contact', parentId: MENU_PARENT, title: 'Add as new contact', contexts: ['selection'] });
+  chrome.contextMenus.create({ id: 'sourcerer-email',   parentId: MENU_PARENT, title: 'Save as email',       contexts: ['selection'] });
+  chrome.contextMenus.create({ id: 'sourcerer-phone',   parentId: MENU_PARENT, title: 'Save as phone',       contexts: ['selection'] });
+  chrome.contextMenus.create({ id: 'sourcerer-note',    parentId: MENU_PARENT, title: 'Save as note',        contexts: ['selection'] });
+  chrome.contextMenus.create({ id: 'sourcerer-contact', parentId: MENU_PARENT, title: 'Add as new contact',  contexts: ['selection'] });
 });
 
 const FIELD_TYPE_MAP = {

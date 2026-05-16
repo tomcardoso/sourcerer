@@ -129,6 +129,13 @@ export function registerSettingsHandlers(): void {
     return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
   });
 
+  ipcMain.handle('settings:set-archive-keys', (_, { accessKey, secretKey }: { accessKey: string; secretKey: string }): User => {
+    const db = getDatabase();
+    db.prepare('UPDATE users SET archive_access_key = ?, archive_secret_key = ? WHERE id = 1')
+      .run(accessKey.trim() || null, secretKey.trim() || null);
+    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+  });
+
   ipcMain.handle(
     'settings:change-password',
     async (_, { currentPassword, newPassword }: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; error?: string }> => {
@@ -202,7 +209,8 @@ export function registerSettingsHandlers(): void {
         `SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
                 phone_country, outreach_reminders_enabled, outreach_require_interaction,
                 staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
-                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                archive_access_key, archive_secret_key
          FROM users WHERE id = 1`,
       )
       .get() as User;
