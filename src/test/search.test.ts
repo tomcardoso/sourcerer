@@ -84,7 +84,7 @@ describe('performSearch — log results', () => {
     expect(results.filter((r) => r.type === 'log')).toHaveLength(5);
   });
 
-  it('triggers keep FTS index in sync after insert', () => {
+  it('insert trigger keeps FTS index in sync', () => {
     const contactId = insertContact(testDb, 'Jane Smith');
     const projId = insertProject(testDb, 'Test Project');
     const membId = insertMembership(contactId, projId);
@@ -95,18 +95,50 @@ describe('performSearch — log results', () => {
 
     expect(performSearch('whistleblower', testDb).filter((r) => r.type === 'log')).toHaveLength(1);
   });
-});
 
-describe('performSearch — malformed FTS query', () => {
-  it('returns [] for log results rather than throwing on invalid FTS syntax', () => {
+  it('delete trigger removes entry from FTS index', () => {
     const contactId = insertContact(testDb, 'Jane Smith');
     const projId = insertProject(testDb, 'Test Project');
     const membId = insertMembership(contactId, projId);
-    insertLogEntry(membId, 'some content');
+    const entryId = insertLogEntry(membId, 'discussed the pipeline report');
 
-    // Leading AND is invalid FTS5 syntax
-    expect(() => performSearch('AND', testDb)).not.toThrow();
-    const results = performSearch('AND', testDb);
-    expect(results.filter((r) => r.type === 'log')).toHaveLength(0);
+    expect(performSearch('pipeline', testDb).filter((r) => r.type === 'log')).toHaveLength(1);
+
+    testDb.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(entryId);
+
+    expect(performSearch('pipeline', testDb).filter((r) => r.type === 'log')).toHaveLength(0);
+  });
+
+  it('update trigger re-indexes the new body and removes the old', () => {
+    const contactId = insertContact(testDb, 'Jane Smith');
+    const projId = insertProject(testDb, 'Test Project');
+    const membId = insertMembership(contactId, projId);
+    const entryId = insertLogEntry(membId, 'discussed the pipeline report');
+
+    expect(performSearch('pipeline', testDb).filter((r) => r.type === 'log')).toHaveLength(1);
+    expect(performSearch('budget', testDb).filter((r) => r.type === 'log')).toHaveLength(0);
+
+    testDb.prepare('UPDATE interaction_log_entries SET body = ? WHERE id = ?').run('reviewed the annual budget', entryId);
+
+    expect(performSearch('pipeline', testDb).filter((r) => r.type === 'log')).toHaveLength(0);
+    expect(performSearch('budget', testDb).filter((r) => r.type === 'log')).toHaveLength(1);
+  });
+});
+
+describe('performSearch — FTS input escaping', () => {
+  it('treats FTS operator keywords as literal search terms', () => {
+    const contactId = insertContact(testDb, 'Jane Smith');
+    const projId = insertProject(testDb, 'Test Project');
+    const membId = insertMembership(contactId, projId);
+    insertLogEntry(membId, 'AND the source confirmed off the record');
+
+    // "AND" would be an FTS operator without escaping; with escaping it matches literally
+    const results = performSearch('AND', testDb).filter((r) => r.type === 'log');
+    expect(results).toHaveLength(1);
+  });
+
+  it('does not throw on bare FTS punctuation', () => {
+    expect(() => performSearch('"', testDb)).not.toThrow();
+    expect(() => performSearch('()', testDb)).not.toThrow();
   });
 });

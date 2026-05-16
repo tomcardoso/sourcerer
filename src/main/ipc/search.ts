@@ -32,6 +32,15 @@ export function performSearch(query: string, db: Database.Database): SearchResul
     )
     .all(pattern) as Array<{ id: string; name: string }>;
 
+  // Quote each whitespace-delimited token so FTS operators/punctuation in user
+  // input are treated as literals, then append * for prefix matching.
+  const ftsQuery = query
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => `"${t.replace(/"/g, '')}"*`)
+    .join(' ');
+
   let logResults: Array<{
     entry_id: string;
     contact_id: string;
@@ -51,11 +60,13 @@ export function performSearch(query: string, db: Database.Database): SearchResul
          JOIN contacts c ON c.id = pm.contact_id
          JOIN projects p ON p.id = pm.project_id
          WHERE fts.body MATCH ?
+         ORDER BY fts.rank, e.created_at DESC
          LIMIT 5`,
       )
-      .all(`${query.trim()}*`) as typeof logResults;
-  } catch {
-    // Malformed FTS query — skip log results
+      .all(ftsQuery) as typeof logResults;
+  } catch (e) {
+    // Only swallow FTS query syntax errors; rethrow anything else.
+    if (!(e instanceof Error) || !e.message.includes('fts5:')) throw e;
   }
 
   return [
