@@ -187,4 +187,16 @@ describe('checkReminders', () => {
       expect.objectContaining({ title: expect.stringContaining('James Clarke') }),
     );
   });
+
+  it('skips reminders belonging to an archived project', () => {
+    insertUser();
+    const cid = insertContact(testDb, 'Lambda Contact');
+    const pid = insertProject(testDb, 'Lambda');
+    testDb.prepare('UPDATE projects SET is_archived = 1 WHERE id = ?').run(pid);
+    insertReminder(cid, pid);
+
+    checkReminders();
+
+    expect(MockNotification).not.toHaveBeenCalled();
+  });
 });
