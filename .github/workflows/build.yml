@@ -87,6 +87,7 @@ jobs:
           name: dist-${{ matrix.os }}
           path: |
             dist-electron/*.dmg
+            dist-electron/*.zip
             dist-electron/*.blockmap
             dist-electron/latest-mac.yml
           retention-days: 5
