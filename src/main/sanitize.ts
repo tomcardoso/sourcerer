@@ -36,10 +36,11 @@ export function validateUrl(raw: string): boolean {
 export function detectLinkType(url: string): 'linkedin' | 'x' | 'instagram' | 'facebook' | 'website' {
   try {
     const host = new URL(url).hostname.replace(/^www\./, '');
-    if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) return 'linkedin';
-    if (host === 'x.com' || host === 'twitter.com') return 'x';
-    if (host === 'instagram.com') return 'instagram';
-    if (host === 'facebook.com') return 'facebook';
+    if (host === 'linkedin.com'  || host.endsWith('.linkedin.com'))  return 'linkedin';
+    if (host === 'x.com'         || host.endsWith('.x.com')
+     || host === 'twitter.com'   || host.endsWith('.twitter.com'))   return 'x';
+    if (host === 'instagram.com' || host.endsWith('.instagram.com')) return 'instagram';
+    if (host === 'facebook.com'  || host.endsWith('.facebook.com'))  return 'facebook';
     return 'website';
   } catch { return 'website'; }
 }

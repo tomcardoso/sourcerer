@@ -183,12 +183,24 @@ describe('detectLinkType', () => {
     expect(detectLinkType('https://twitter.com/someone')).toBe('x');
   });
 
+  it('detects mobile.twitter.com', () => {
+    expect(detectLinkType('https://mobile.twitter.com/someone')).toBe('x');
+  });
+
   it('detects instagram.com', () => {
     expect(detectLinkType('https://instagram.com/someone')).toBe('instagram');
   });
 
+  it('detects instagram subdomains', () => {
+    expect(detectLinkType('https://www.instagram.com/someone')).toBe('instagram');
+  });
+
   it('detects facebook.com', () => {
     expect(detectLinkType('https://facebook.com/someone')).toBe('facebook');
+  });
+
+  it('detects m.facebook.com', () => {
+    expect(detectLinkType('https://m.facebook.com/someone')).toBe('facebook');
   });
 
   it('returns website for an arbitrary URL', () => {

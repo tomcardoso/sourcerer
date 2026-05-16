@@ -128,6 +128,7 @@ declare global {
       setReminderNotificationsEnabled: (enabled: boolean) => Promise<User>;
       setRssPollInterval: (hours: number) => Promise<User>;
       setWaybackEnabled: (enabled: boolean) => Promise<User>;
+      setArchiveKeys: (accessKey: string, secretKey: string) => Promise<User>;
       setPriorityInterval: (id: string, days: number | null) => Promise<void>;
       getCalendarUrl: () => Promise<string>;
       regenerateCalendarToken: () => Promise<User>;

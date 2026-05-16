@@ -130,6 +130,9 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('settings:set-archive-keys', (_, { accessKey, secretKey }: { accessKey: string; secretKey: string }): User => {
+    if (typeof accessKey !== 'string' || typeof secretKey !== 'string') {
+      throw new Error('Invalid archive key payload');
+    }
     const db = getDatabase();
     db.prepare('UPDATE users SET archive_access_key = ?, archive_secret_key = ? WHERE id = 1')
       .run(accessKey.trim() || null, secretKey.trim() || null);

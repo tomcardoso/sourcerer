@@ -242,25 +242,27 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         const { phone_country: phoneCountry = 'US', wayback_enabled: waybackEnabled = 0, archive_access_key: archiveAccessKey = null, archive_secret_key: archiveSecretKey = null } = db
           .prepare('SELECT phone_country, wayback_enabled, archive_access_key, archive_secret_key FROM users WHERE id = 1')
           .get() as { phone_country: string; wayback_enabled: number; archive_access_key: string | null; archive_secret_key: string | null };
-        const rawEmail = (email as string | undefined)?.trim() || null;
+        const rawEmail = typeof email === 'string' ? email.trim() || null : null;
         if (rawEmail && !validateEmail(rawEmail)) {
           json(res, 400, { error: 'Email address is invalid.' }); return;
         }
-        const rawPhone = (phone as string | undefined)?.trim() || null;
+        const rawPhone = typeof phone === 'string' ? phone.trim() || null : null;
         let normalizedPhone: string | null = null;
         if (rawPhone) {
           normalizedPhone = normalizePhone(rawPhone, phoneCountry);
           if (!normalizedPhone) { json(res, 400, { error: 'Phone number is invalid.' }); return; }
         }
-        const rawUrl = (url as string | undefined)?.trim() || null;
+        const rawUrl = typeof url === 'string' ? url.trim() || null : null;
         if (rawUrl && !validateUrl(rawUrl)) {
           json(res, 400, { error: 'URL is invalid.' }); return;
         }
+        const rawOrg = typeof organization === 'string' ? organization.trim() || null : null;
+        const rawTitle = typeof title === 'string' ? title.trim() || null : null;
         const contactId = randomUUID();
         const now = Math.floor(Date.now() / 1000);
         db.prepare(
           'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, NULL, ?, ?)'
-        ).run(contactId, name.trim(), (organization as string | undefined)?.trim() || null, (title as string | undefined)?.trim() || null, now, now);
+        ).run(contactId, name.trim(), rawOrg, rawTitle, now, now);
         if (rawEmail) {
           db.prepare(
             'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)'
@@ -293,8 +295,8 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     req.on('data', (chunk: Buffer) => { raw += chunk.toString('utf-8'); });
     req.on('end', () => {
       try {
-        const { contactId, fieldType, value } = JSON.parse(raw) as { contactId: string; fieldType: string; value: string };
-        if (!contactId || !fieldType || !value?.trim()) {
+        const { contactId, fieldType, value } = JSON.parse(raw) as { contactId: string; fieldType: string; value: unknown };
+        if (!contactId || !fieldType || typeof value !== 'string' || !value.trim()) {
           json(res, 400, { error: 'missing_fields' });
           return;
         }
