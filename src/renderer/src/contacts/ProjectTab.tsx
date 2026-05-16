@@ -81,19 +81,37 @@ function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onC
 
 const LOG_PREVIEW = 3;
 
-function LogSection({ membership, onEntryAdded }: { membership: ContactProject; onEntryAdded?: () => void }) {
+const TRIGGER_STATUSES = ['Not yet contacted', 'Contacted, no reply'];
+
+function LogSection({
+  membership,
+  membershipStatus,
+  statusOptions,
+  onStatusChange,
+  onEntryAdded,
+}: {
+  membership: ContactProject;
+  membershipStatus: string;
+  statusOptions: StatusOption[];
+  onStatusChange: (value: string) => Promise<void>;
+  onEntryAdded?: () => void;
+}) {
   const [entries, setEntries] = useState<InteractionLogEntry[]>([]);
   const [text, setText] = useState('');
   const [logDate, setLogDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [adding, setAdding] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [showStatusPrompt, setShowStatusPrompt] = useState(false);
+  const [promptStatus, setPromptStatus] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     setEntries([]);
     setText('');
     setLogDate('');
     setAdding(false);
+    setShowStatusPrompt(false);
     window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
 
@@ -110,8 +128,27 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
       setLogDate('');
       setAdding(false);
       onEntryAdded?.();
+      if (TRIGGER_STATUSES.includes(membershipStatus)) {
+        const suggested =
+          statusOptions.find((s) => s.label === 'In dialogue') ??
+          statusOptions.find((s) => !TRIGGER_STATUSES.includes(s.label));
+        if (suggested) {
+          setPromptStatus(suggested.label);
+          setShowStatusPrompt(true);
+        }
+      }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleStatusUpdate() {
+    setUpdatingStatus(true);
+    try {
+      await onStatusChange(promptStatus);
+      setShowStatusPrompt(false);
+    } finally {
+      setUpdatingStatus(false);
     }
   }
 
@@ -142,6 +179,33 @@ function LogSection({ membership, onEntryAdded }: { membership: ContactProject; 
       )}
 
       {preview.map((e) => <LogRow key={e.id} entry={e} />)}
+
+      {showStatusPrompt && (
+        <div className="pt-status-prompt">
+          <span className="pt-status-prompt-label">Update status?</span>
+          <select
+            className="pt-status-prompt-select"
+            value={promptStatus}
+            onChange={(e) => setPromptStatus(e.target.value)}
+          >
+            {statusOptions
+              .filter((s) => !TRIGGER_STATUSES.includes(s.label))
+              .map((s) => (
+                <option key={s.id} value={s.label}>{s.label}</option>
+              ))}
+          </select>
+          <button
+            className="pt-status-prompt-update"
+            onClick={handleStatusUpdate}
+            disabled={updatingStatus}
+          >
+            {updatingStatus ? 'Updating…' : 'Update'}
+          </button>
+          <button className="pt-status-prompt-dismiss" onClick={() => setShowStatusPrompt(false)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {adding && (
         <div className="pt-log-compose">
@@ -728,7 +792,13 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         outreachEnabled={currentUser?.outreachRemindersEnabled ?? true}
         contactOutreachEnabled={localOutreachEnabled}
       />
-      <LogSection membership={membership} onEntryAdded={() => { onMembershipUpdated(); setReminderRefresh((t) => t + 1); }} />
+      <LogSection
+        membership={membership}
+        membershipStatus={localStatus}
+        statusOptions={statusOptions}
+        onStatusChange={handleStatusChange}
+        onEntryAdded={() => { onMembershipUpdated(); setReminderRefresh((t) => t + 1); }}
+      />
       <ScratchpadSection membership={membership} contactId={contact.id} />
     </div>
   );
