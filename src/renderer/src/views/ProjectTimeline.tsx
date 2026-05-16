@@ -261,7 +261,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
       }
       return true;
     });
-  }, [entries, selectedReporters, selectedProjects, selectedPriorities, themeFilter, orgFilter, dateFrom, dateTo]);
+  }, [entries, selectedReporters, selectedProjects, selectedPriorities, themeFilter, orgFilter, notesFilter, dateFrom, dateTo]);
 
   const groups = useMemo(() => {
     const g: Array<{ key: string; entries: TimelineEntry[] }> = [];
