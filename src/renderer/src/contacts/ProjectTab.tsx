@@ -49,6 +49,8 @@ function LogRow({ entry }: { entry: InteractionLogEntry }) {
 }
 
 function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onClose: () => void }) {
+  const [query, setQuery] = useState('');
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -60,6 +62,11 @@ function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onC
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const reversed = [...entries].reverse();
+  const visible = query
+    ? reversed.filter((e) => e.body.toLowerCase().includes(query.toLowerCase()))
+    : reversed;
+
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="pt-log-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -67,12 +74,33 @@ function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onC
           <span className="pt-reminders-label">Interaction Log</span>
           <button className="detail-close" onClick={onClose}>×</button>
         </div>
+        {entries.length > 0 && (
+          <div className="pt-log-modal-search">
+            <input
+              className="pt-log-search-input"
+              type="text"
+              placeholder="Search entries…"
+              aria-label="Search log entries"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+            />
+            {query && (
+              <button className="pt-log-search-clear" aria-label="Clear search" onClick={() => setQuery('')}>×</button>
+            )}
+          </div>
+        )}
         <div className="pt-log-modal-body">
-          {entries.length === 0
-            ? <p className="pt-reminders-empty">No entries yet.</p>
-            : [...entries].reverse().map((e) => <LogRow key={e.id} entry={e} />)
+          {visible.length === 0
+            ? <p className="pt-reminders-empty">{query ? 'No entries match.' : 'No entries yet.'}</p>
+            : visible.map((e) => <LogRow key={e.id} entry={e} />)
           }
         </div>
+        {query && entries.length > 0 && (
+          <div className="pt-log-modal-footer">
+            {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+          </div>
+        )}
       </div>
     </div>,
     document.body,
