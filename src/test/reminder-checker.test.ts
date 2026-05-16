@@ -136,7 +136,7 @@ describe('checkReminders', () => {
     expect(MockNotification).toHaveBeenCalledOnce();
   });
 
-  it('fires again after clearReminderNotificationCache', () => {
+  it('does not re-fire within 24h even after clearReminderNotificationCache', () => {
     insertUser();
     const cid = insertContact(testDb, 'Grace Kim');
     const pid = insertProject(testDb, 'Eta');
@@ -146,7 +146,20 @@ describe('checkReminders', () => {
     clearReminderNotificationCache();
     checkReminders();
 
-    expect(MockNotification).toHaveBeenCalledTimes(2);
+    expect(MockNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-fires after 24h have elapsed since last notification', () => {
+    insertUser();
+    const cid = insertContact(testDb, 'Grace Kim');
+    const pid = insertProject(testDb, 'Eta');
+    const reminderId = insertReminder(cid, pid);
+    const twoDaysAgo = Math.floor(Date.now() / 1000) - 2 * 86400;
+    testDb.prepare('UPDATE reminders SET last_notified_at = ? WHERE id = ?').run(twoDaysAgo, reminderId);
+
+    checkReminders();
+
+    expect(MockNotification).toHaveBeenCalledTimes(1);
   });
 
   it('includes the project name in the notification body when no note is set', () => {

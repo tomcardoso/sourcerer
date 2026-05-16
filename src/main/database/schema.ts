@@ -191,7 +191,8 @@ export const LOCAL_SCHEMA_SQL = `
     note             TEXT,
     is_auto_outreach INTEGER NOT NULL DEFAULT 0,
     created_at       INTEGER NOT NULL,
-    completed_at     INTEGER
+    completed_at     INTEGER,
+    last_notified_at INTEGER
   );
 
   CREATE TABLE IF NOT EXISTS contact_screenshots (
