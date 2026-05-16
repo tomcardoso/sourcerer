@@ -162,13 +162,7 @@ jobs:
             --json body \
             --jq '.[0].body // ""' 2>/dev/null || echo "")
           if [ -n "$PR_BODY" ]; then
-            WHATS_NEW=$(echo "$PR_BODY" | python3 -c "
-import sys, re
-body = sys.stdin.read()
-m = re.search(r\"(?i)##\s+What.s\s+new\s*\n(.*?)(?=\n##|\n---|🤖|\Z)\", body, re.DOTALL)
-if m:
-    print(m.group(1).strip())
-" 2>/dev/null || echo "")
+            WHATS_NEW=$(echo "$PR_BODY" | python3 .github/scripts/extract-whats-new.py 2>/dev/null || echo "")
             if [ -n "$WHATS_NEW" ]; then
               echo "$WHATS_NEW" > /tmp/generated-changelog.md
             fi
