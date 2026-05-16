@@ -81,6 +81,9 @@ function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onC
 
 const LOG_PREVIEW = 3;
 
+// Labels from the default status seed. No UI exists yet to rename statuses, so
+// these strings are stable in practice. If custom statuses land, this constant
+// should move to a shared location or status_options should gain a system_key column.
 const TRIGGER_STATUSES = ['Not yet contacted', 'Contacted, no reply'];
 
 function LogSection({
@@ -146,6 +149,8 @@ function LogSection({
     setUpdatingStatus(true);
     try {
       await onStatusChange(promptStatus);
+      setShowStatusPrompt(false);
+    } catch {
       setShowStatusPrompt(false);
     } finally {
       setUpdatingStatus(false);
