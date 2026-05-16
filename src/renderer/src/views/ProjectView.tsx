@@ -270,6 +270,32 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     }
   }
 
+  async function handleBulkSetStatus(status: string | null) {
+    if (!project) return;
+    setBulkWorking(true);
+    try {
+      const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
+      await window.sourcerer.bulkUpdateMemberships({ membershipIds, status });
+      setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, status } : r));
+      setCheckedIds(new Set());
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
+  async function handleBulkSetPriority(priority: string | null) {
+    if (!project) return;
+    setBulkWorking(true);
+    try {
+      const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
+      await window.sourcerer.bulkUpdateMemberships({ membershipIds, priority });
+      setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, priority } : r));
+      setCheckedIds(new Set());
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
   async function handleBulkDelete() {
     setBulkWorking(true);
     try {
@@ -659,6 +685,46 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             </div>
           ) : (
             <>
+              {statusOptions.length > 0 && (
+                <div className="bulk-bar-element">
+                  <label className="bulk-bar-label">Status:</label>
+                  <select
+                    className="bulk-bar-select"
+                    value=""
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      handleBulkSetStatus(v === '__clear__' ? null : v);
+                    }}
+                    disabled={bulkWorking}
+                  >
+                    <option value="" disabled>Set status…</option>
+                    {statusOptions.map((o) => (
+                      <option key={o.id} value={o.label}>{o.label}</option>
+                    ))}
+                    <option value="__clear__">— clear —</option>
+                  </select>
+                </div>
+              )}
+              {priorityOptions.length > 0 && (
+                <div className="bulk-bar-element">
+                  <label className="bulk-bar-label">Priority:</label>
+                  <select
+                    className="bulk-bar-select"
+                    value=""
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      handleBulkSetPriority(v === '__clear__' ? null : v);
+                    }}
+                    disabled={bulkWorking}
+                  >
+                    <option value="" disabled>Set priority…</option>
+                    {priorityOptions.map((o) => (
+                      <option key={o.id} value={o.label}>{o.label}</option>
+                    ))}
+                    <option value="__clear__">— clear —</option>
+                  </select>
+                </div>
+              )}
               <div className="bulk-bar-element">
                 <button
                   className="bulk-delete-btn"

@@ -118,6 +118,8 @@ const sourcererApi = {
     ipcRenderer.invoke('memberships:remove', { contactId, projectId }),
   updateMembership: (data: UpdateMembershipInput): Promise<void> =>
     ipcRenderer.invoke('memberships:update', data),
+  bulkUpdateMemberships: (data: { membershipIds: string[]; status?: string | null; priority?: string | null }): Promise<void> =>
+    ipcRenderer.invoke('memberships:bulk-update', data),
   setMembershipReporters: (membershipId: string, reporters: Array<{ email: string; name: string }>): Promise<void> =>
     ipcRenderer.invoke('memberships:set-reporters', { membershipId, reporters }),
   listProjectReporters: (projectId: string): Promise<Array<{ email: string; name: string }>> =>
