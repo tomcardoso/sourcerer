@@ -79,12 +79,12 @@ export function parseVcf(text: string): VcfContact[] {
   const lines = unfolded.split(/\r?\n/);
 
   const contacts: VcfContact[] = [];
-  let cur: (VcfContact & { _hasFn: boolean }) | null = null;
+  let cur: VcfContact | null = null;
 
   for (const raw of lines) {
     const upper = raw.trimEnd().toUpperCase();
     if (upper === 'BEGIN:VCARD') {
-      cur = { name: '', organization: null, notes: null, emails: [], phones: [], urls: [], _hasFn: false };
+      cur = { name: '', organization: null, notes: null, emails: [], phones: [], urls: [] };
       continue;
     }
     if (upper === 'END:VCARD') {
@@ -100,13 +100,12 @@ export function parseVcf(text: string): VcfContact[] {
     const value = raw.slice(colon + 1);
     if (!value.trim()) continue;
 
-    // Property name is before the first ';' (params follow after)
-    const prop = propPart.split(';')[0];
+    // Strip group prefix (e.g. "item1.EMAIL" → "EMAIL"), then strip params
+    const prop = propPart.split(';')[0].replace(/^[^.]*\./, '');
 
     switch (prop) {
       case 'FN':
         cur.name = decodeVcfValue(value);
-        cur._hasFn = true;
         break;
       case 'ORG':
         cur.organization = decodeVcfValue(value.split(';')[0]) || null;
@@ -168,13 +167,19 @@ export function processVcfContacts(
     for (const c of vcfContacts) {
       if (!c.name) continue;
 
-      const emails = c.emails
-        .map((e) => normalizeEmail(e))
-        .filter((e): e is string => e !== null && e !== '');
+      const emails = [
+        ...new Set(
+          c.emails.map((e) => normalizeEmail(e)).filter((e): e is string => e !== null && e !== ''),
+        ),
+      ];
 
-      const phones = c.phones
-        .map((p) => normalizePhone(p, phoneCountry))
-        .filter((p): p is string => p !== null);
+      const phones = [
+        ...new Set(
+          c.phones.map((p) => normalizePhone(p, phoneCountry)).filter((p): p is string => p !== null),
+        ),
+      ];
+
+      const urls = [...new Set(c.urls)];
 
       if (existingNames.has(c.name.toLowerCase())) {
         skipped.push({ name: c.name, reason: 'name' });
@@ -199,7 +204,7 @@ export function processVcfContacts(
         stmtPhone.run(uuidv4(), id, phone, i, now);
       });
 
-      c.urls.forEach((url, i) => {
+      urls.forEach((url, i) => {
         stmtLink.run(uuidv4(), id, 'website', null, url, i, now);
       });
 

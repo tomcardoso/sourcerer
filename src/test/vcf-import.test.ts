@@ -128,6 +128,21 @@ describe('parseVcf — property parameters', () => {
     const [c] = parseVcf(vcf);
     expect(c.organization).toBe('Acme Corp');
   });
+
+  it('parses grouped properties (e.g. item1.EMAIL from Apple/Google exports)', () => {
+    const vcf = [
+      'BEGIN:VCARD',
+      'FN:Alice Smith',
+      'item1.EMAIL;TYPE=INTERNET:work@example.com',
+      'item2.EMAIL;TYPE=INTERNET:home@example.com',
+      'item3.URL:https://example.com',
+      'END:VCARD',
+    ].join('\n');
+
+    const [c] = parseVcf(vcf);
+    expect(c.emails).toEqual(['work@example.com', 'home@example.com']);
+    expect(c.urls).toEqual(['https://example.com']);
+  });
 });
 
 describe('parseVcf — escape sequences', () => {
@@ -298,6 +313,31 @@ describe('processVcfContacts — collision detection', () => {
     expect(result.imported).toBe(1);
     expect(result.skipped).toHaveLength(1);
     expect(result.skipped[0].reason).toBe('email');
+  });
+});
+
+describe('processVcfContacts — per-contact deduplication', () => {
+  it('dedupes duplicate emails within a single vCard', () => {
+    const result = processVcfContacts(
+      [makeContact({ emails: ['alice@example.com', 'alice@example.com'] })],
+      db,
+      BASE_OPTS,
+    );
+    expect(result.imported).toBe(1);
+    const contact = db.prepare('SELECT id FROM contacts WHERE name = ?').get('Alice Smith') as { id: string };
+    const emails = db.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contact.id);
+    expect(emails).toHaveLength(1);
+  });
+
+  it('dedupes duplicate URLs within a single vCard', () => {
+    processVcfContacts(
+      [makeContact({ urls: ['https://example.com', 'https://example.com'] })],
+      db,
+      BASE_OPTS,
+    );
+    const contact = db.prepare('SELECT id FROM contacts WHERE name = ?').get('Alice Smith') as { id: string };
+    const links = db.prepare('SELECT url FROM contact_links WHERE contact_id = ?').all(contact.id);
+    expect(links).toHaveLength(1);
   });
 });
 
