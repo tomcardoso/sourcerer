@@ -19,14 +19,15 @@ const TIMEOUT_OPTIONS = [
   { label: 'Never', seconds: 0 },
 ];
 
-function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string }) {
+function Toggle({ checked, onChange, label, hint, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean }) {
   return (
     <div className={`sv-toggle-row${hint ? ' sv-toggle-row--has-hint' : ''}`}>
       <button
         type="button"
-        className={`sv-toggle${checked ? ' sv-toggle--on' : ''}`}
-        onClick={() => onChange(!checked)}
+        className={`sv-toggle${checked ? ' sv-toggle--on' : ''}${disabled ? ' sv-toggle--disabled' : ''}`}
+        onClick={() => !disabled && onChange(!checked)}
         aria-pressed={checked}
+        disabled={disabled}
       >
         <span className="sv-toggle-knob" />
         <span className="sv-toggle-label">{checked ? 'ON' : 'OFF'}</span>
@@ -730,12 +731,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               and can be restored using your master password.
             </div>
           </div>
-          <Toggle
-            checked={autoBackupEnabled}
-            onChange={handleAutoBackupToggle}
-            label="Enable automatic backups"
-            hint={autoBackupDestPath ? undefined : 'Choose a backup folder first.'}
-          />
           <div className="sv-field">
             <label className="sv-label">Backup folder</label>
             <div className="sv-row">
@@ -750,6 +745,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               </button>
             </div>
           </div>
+          <Toggle
+            checked={autoBackupEnabled}
+            onChange={handleAutoBackupToggle}
+            label="Enable automatic backups"
+            hint={autoBackupDestPath ? undefined : 'Choose a backup folder first.'}
+            disabled={!autoBackupDestPath}
+          />
           <div className="sv-field sv-field--inline-row">
             <label className="sv-label">Max backups to keep</label>
             <div className="sv-inline-actions">
