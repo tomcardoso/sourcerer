@@ -2,6 +2,10 @@
 
 Source and contact management for journalists and researchers — local-first, encrypted, no cloud.
 
+[![Latest release](https://img.shields.io/github/v/release/tomcardoso/sourcerer?label=version&color=4b5563)](https://github.com/tomcardoso/sourcerer/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/tomcardoso/sourcerer/build.yml?label=build)](https://github.com/tomcardoso/sourcerer/actions/workflows/build.yml)
+[![License: AGPL-3.0](https://img.shields.io/github/license/tomcardoso/sourcerer?color=4b5563)](LICENSE)
+
 ![screenshot](docs/img/contact-details-2.png)
 
 _All names and details in the screenshot are fictional and generated for demonstration purposes only._
@@ -51,7 +55,7 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 
 **Alerts**
 - RSS feed monitoring per contact; new mentions surfaced in a notification centre
-- Optional Wayback Machine snapshot on link save
+- Optional Wayback Machine snapshot on link save (requires free Archive.org S3 API keys)
 
 **Security**
 - AES-256 encryption via SQLCipher; master password derived with Argon2id
@@ -132,7 +136,7 @@ npm run rebuild        # restore Electron-targeted binaries before npm run dev
 
 ## Security notes
 
-- No network requests are made except: user-configured RSS feeds, optional Wayback Machine saves, and the local HTTP server that receives screenshots from the Chrome extension (localhost only, one-time token auth).
+- No network requests are made except: user-configured RSS feeds, optional Wayback Machine saves (requires Archive.org S3 API keys configured in Settings), and the local HTTP server that receives screenshots from the Chrome extension (localhost only, one-time token auth).
 - The master password cannot be recovered. Use a passphrase — four random words are easier to remember and just as strong as a complex string.
 - The Chrome extension communicates only with localhost and requires explicit one-time approval in the app.
 

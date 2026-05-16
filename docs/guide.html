@@ -206,7 +206,14 @@
             <p>The Alerts view shows all recent mentions across all your contacts, sorted by recency. Each item shows the article title, publication date, the source it is linked to, and the feed it came from.</p>
 
             <h3>Wayback Machine snapshots</h3>
-            <p>When saving a link in the alerts view, you can optionally trigger a Wayback Machine snapshot. This archives the page at the Internet Archive so you have a permanent record even if the original URL disappears.</p>
+            <p>When saving a website link on a contact, Sourcerer can optionally submit it to the <a href="https://web.archive.org" target="_blank" rel="noopener">Internet Archive's Wayback Machine</a>. This creates a permanent public snapshot of the page so you have a record even if the original URL disappears. The snapshot URL is saved to the contact and shown alongside the link.</p>
+            <p>Wayback archiving uses the <a href="https://docs.google.com/document/d/1Nsv52MvSjbLb2PCpHlat0gkzw0EvtSgpKHu4mk0MnrA/" target="_blank" rel="noopener">Save Page Now 2 (SPN2) API</a>, which requires free Archive.org S3 API keys. To set up archiving:</p>
+            <ol>
+              <li>Create a free account at <a href="https://archive.org" target="_blank" rel="noopener">archive.org</a>.</li>
+              <li>Visit <a href="https://archive.org/account/s3.php" target="_blank" rel="noopener">archive.org/account/s3.php</a> to generate your access key and secret key.</li>
+              <li>In Sourcerer, go to <strong>Settings → Website archiving</strong>, enable the toggle, and enter both keys.</li>
+            </ol>
+            <p>Archiving only fires for generic website links — social media profile URLs (LinkedIn, X, Instagram, Facebook) are excluded. Note that submitted URLs become public records on archive.org.</p>
           </section>
 
           <section id="import-export">
