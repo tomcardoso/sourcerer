@@ -60,6 +60,161 @@ export function parseCsv(text: string): string[][] {
   return result;
 }
 
+export interface VcfContact {
+  name: string;
+  organization: string | null;
+  notes: string | null;
+  emails: string[];
+  phones: string[];
+  urls: string[];
+}
+
+function decodeVcfValue(v: string): string {
+  return v.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\').trim();
+}
+
+export function parseVcf(text: string): VcfContact[] {
+  // Unfold continuation lines (RFC 6350 §3.2)
+  const unfolded = text.replace(/\r?\n[ \t]/g, '');
+  const lines = unfolded.split(/\r?\n/);
+
+  const contacts: VcfContact[] = [];
+  let cur: (VcfContact & { _hasFn: boolean }) | null = null;
+
+  for (const raw of lines) {
+    const upper = raw.trimEnd().toUpperCase();
+    if (upper === 'BEGIN:VCARD') {
+      cur = { name: '', organization: null, notes: null, emails: [], phones: [], urls: [], _hasFn: false };
+      continue;
+    }
+    if (upper === 'END:VCARD') {
+      if (cur?.name) contacts.push(cur);
+      cur = null;
+      continue;
+    }
+    if (!cur) continue;
+
+    const colon = raw.indexOf(':');
+    if (colon < 0) continue;
+    const propPart = raw.slice(0, colon).toUpperCase();
+    const value = raw.slice(colon + 1);
+    if (!value.trim()) continue;
+
+    // Property name is before the first ';' (params follow after)
+    const prop = propPart.split(';')[0];
+
+    switch (prop) {
+      case 'FN':
+        cur.name = decodeVcfValue(value);
+        cur._hasFn = true;
+        break;
+      case 'ORG':
+        cur.organization = decodeVcfValue(value.split(';')[0]) || null;
+        break;
+      case 'NOTE':
+        cur.notes = decodeVcfValue(value).replace(/\\n/gi, '\n') || null;
+        break;
+      case 'EMAIL':
+        { const e = decodeVcfValue(value); if (e) cur.emails.push(e); }
+        break;
+      case 'TEL':
+        { const t = decodeVcfValue(value); if (t) cur.phones.push(t); }
+        break;
+      case 'URL':
+        { const u = decodeVcfValue(value); if (u) cur.urls.push(u); }
+        break;
+    }
+  }
+
+  return contacts;
+}
+
+export function processVcfContacts(
+  vcfContacts: VcfContact[],
+  db: Database.Database,
+  options: ProcessImportOptions,
+): ImportResult {
+  const { projectId, phoneCountry, reporterEmail, reporterName } = options;
+
+  const existingNames = new Set(
+    (db.prepare('SELECT LOWER(name) AS n FROM contacts').all() as { n: string }[]).map((r) => r.n),
+  );
+  const existingEmails = new Set(
+    (db.prepare('SELECT LOWER(email) AS e FROM contact_emails').all() as { e: string }[]).map((r) => r.e),
+  );
+
+  const stmtContact = db.prepare(
+    'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+  );
+  const stmtEmail = db.prepare(
+    'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
+  );
+  const stmtPhone = db.prepare(
+    'INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
+  );
+  const stmtLink = db.prepare(
+    'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  );
+  const stmtMembership = db.prepare(
+    `INSERT INTO project_memberships
+       (id, contact_id, project_id, reporter_email, reporter_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  const skipped: ImportResult['skipped'] = [];
+  let imported = 0;
+
+  db.transaction(() => {
+    for (const c of vcfContacts) {
+      if (!c.name) continue;
+
+      const emails = c.emails
+        .map((e) => normalizeEmail(e))
+        .filter((e): e is string => e !== null && e !== '');
+
+      const phones = c.phones
+        .map((p) => normalizePhone(p, phoneCountry))
+        .filter((p): p is string => p !== null);
+
+      if (existingNames.has(c.name.toLowerCase())) {
+        skipped.push({ name: c.name, reason: 'name' });
+        continue;
+      }
+      if (emails.some((e) => existingEmails.has(e.toLowerCase()))) {
+        skipped.push({ name: c.name, reason: 'email' });
+        continue;
+      }
+
+      const id = uuidv4();
+      const now = Math.floor(Date.now() / 1000);
+
+      stmtContact.run(id, c.name, c.organization, c.notes, now, now);
+
+      emails.forEach((email, i) => {
+        stmtEmail.run(uuidv4(), id, email, i, now);
+        existingEmails.add(email.toLowerCase());
+      });
+
+      phones.forEach((phone, i) => {
+        stmtPhone.run(uuidv4(), id, phone, i, now);
+      });
+
+      c.urls.forEach((url, i) => {
+        stmtLink.run(uuidv4(), id, 'website', null, url, i, now);
+      });
+
+      if (projectId) {
+        stmtMembership.run(uuidv4(), id, projectId, reporterEmail, reporterName, now, now);
+      }
+
+      existingNames.add(c.name.toLowerCase());
+      imported++;
+    }
+  })();
+
+  return { imported, skipped, cancelled: false };
+}
+
 export interface ProcessImportOptions {
   projectId?: string;
   phoneCountry: string;
@@ -236,6 +391,43 @@ export function registerImportHandlers(): void {
       }
 
       return processImportRows(rows, db, { projectId, phoneCountry: phone_country, reporterEmail, reporterName });
+    },
+  );
+
+  ipcMain.handle(
+    'import:vcf',
+    async (_event, { projectId }: { projectId?: string }): Promise<ImportResult> => {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Import contacts from vCard',
+        filters: [{ name: 'vCard Files', extensions: ['vcf', 'vcard'] }],
+        properties: ['openFile'],
+      });
+      if (canceled || filePaths.length === 0) return { imported: 0, skipped: [], cancelled: true };
+
+      const content = await fs.readFile(filePaths[0], 'utf-8');
+      const vcfContacts = parseVcf(content);
+      const db = getDatabase();
+
+      const { phone_country } = db
+        .prepare('SELECT phone_country FROM users WHERE id = 1')
+        .get() as { phone_country: string };
+      const user = db
+        .prepare('SELECT first_name, last_name, email FROM users WHERE id = 1')
+        .get() as User;
+
+      let reporterEmail = user.email;
+      let reporterName = `${user.first_name} ${user.last_name}`.trim();
+      if (projectId) {
+        const self = db
+          .prepare('SELECT name, email FROM project_reporters WHERE project_id = ? AND is_self = 1')
+          .get(projectId) as { name: string; email: string } | undefined;
+        if (self) {
+          reporterEmail = self.email;
+          reporterName = self.name;
+        }
+      }
+
+      return processVcfContacts(vcfContacts, db, { projectId, phoneCountry: phone_country, reporterEmail, reporterName });
     },
   );
 

@@ -292,9 +292,11 @@ const sourcererApi = {
   exportAllContacts: (): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('export:all-contacts'),
 
-  // CSV import
+  // CSV / vCard import
   importCsv: (data: { projectId?: string }): Promise<ImportResult> =>
     ipcRenderer.invoke('import:csv', data),
+  importVcf: (data: { projectId?: string }): Promise<ImportResult> =>
+    ipcRenderer.invoke('import:vcf', data),
   downloadSampleCsv: (): Promise<void> => ipcRenderer.invoke('import:download-sample-csv'),
 
 
