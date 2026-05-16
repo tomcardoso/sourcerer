@@ -730,23 +730,27 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               and can be restored using your master password.
             </div>
           </div>
-          <div className="sv-field">
-            <label className="sv-label">Backup folder</label>
-            <div className="sv-row">
-              <code className="sv-path-code">
-                {autoBackupDestPath ?? 'No folder selected'}
-              </code>
-              <button className="sv-save-btn" onClick={handleChooseBackupFolder}>
-                Choose folder…
-              </button>
-            </div>
-          </div>
           <Toggle
             checked={autoBackupEnabled}
             onChange={handleAutoBackupToggle}
             label="Enable automatic backups"
             hint={autoBackupDestPath ? undefined : 'Choose a backup folder first.'}
           />
+          <div className="sv-field">
+            <label className="sv-label">Backup folder</label>
+            <div className="sv-row">
+              <code className="sv-path-code">
+                {autoBackupDestPath ?? 'No folder selected'}
+              </code>
+              <button
+                className="sv-save-btn"
+                onClick={handleChooseBackupFolder}
+                disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
+              >
+                Choose folder…
+              </button>
+            </div>
+          </div>
           <div className="sv-field sv-field--inline-row">
             <label className="sv-label">Max backups to keep</label>
             <div className="sv-inline-actions">
