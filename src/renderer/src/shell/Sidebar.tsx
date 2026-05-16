@@ -189,7 +189,7 @@ export default function Sidebar({
             <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} title="New project">+</button>
           </div>
 
-          {projects.filter((p) => p.is_archived === 0).length === 0 && projects.filter((p) => p.is_archived === 1).length === 0 && (
+          {projects.length === 0 && (
             <p className="sidebar-empty">No projects yet.</p>
           )}
 
