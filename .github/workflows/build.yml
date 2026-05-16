@@ -154,6 +154,26 @@ jobs:
             : > /tmp/generated-changelog.md
           fi
 
+          # Prefer the human-written "What's new" section from the version bump PR
+          # (branch: chore/v{VERSION}) over the raw generated PR list.
+          PR_BODY=$(gh pr list \
+            --state merged \
+            --head "chore/v${VERSION}" \
+            --json body \
+            --jq '.[0].body // ""' 2>/dev/null || echo "")
+          if [ -n "$PR_BODY" ]; then
+            WHATS_NEW=$(echo "$PR_BODY" | python3 -c "
+import sys, re
+body = sys.stdin.read()
+m = re.search(r\"(?i)##\s+What.s\s+new\s*\n(.*?)(?=\n##|\n---|🤖|\Z)\", body, re.DOTALL)
+if m:
+    print(m.group(1).strip())
+" 2>/dev/null || echo "")
+            if [ -n "$WHATS_NEW" ]; then
+              echo "$WHATS_NEW" > /tmp/generated-changelog.md
+            fi
+          fi
+
           # Splice changelog into template, replacing placeholder and {version}
           VERSION="$VERSION" python3 .github/scripts/splice-release-notes.py
 
