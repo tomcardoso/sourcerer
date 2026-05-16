@@ -50,6 +50,18 @@ function createWindow(): BrowserWindow {
 
   win.on('ready-to-show', () => win.show());
 
+  win.webContents.on('context-menu', (_e, params) => {
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    if (params.selectionText.trim()) {
+      items.push({ role: 'copy' });
+    }
+    if (params.isEditable) {
+      if (items.length) items.push({ type: 'separator' });
+      items.push({ role: 'cut' }, { role: 'paste' });
+    }
+    if (items.length) Menu.buildFromTemplate(items).popup({ window: win });
+  });
+
   win.webContents.setWindowOpenHandler((details) => {
     try {
       const parsed = new URL(details.url);
