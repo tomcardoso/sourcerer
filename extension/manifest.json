@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Sourcerer – Contact Management for Journalists",
+  "name": "Sourcerer – Contact Manager",
   "version": "1.1.0",
   "description": "Capture screenshots, save selected text as contact fields, and add new contacts to Sourcerer — the encrypted source management app.",
   "permissions": ["tabs", "storage", "activeTab", "scripting", "contextMenus"],
