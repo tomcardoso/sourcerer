@@ -29,8 +29,11 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
     if (result.type === 'contact') {
       onNav({ view: 'all-contacts' });
       onOpenContact(result.id);
-    } else {
+    } else if (result.type === 'project') {
       onNav({ view: 'project', projectId: result.id });
+    } else {
+      onNav({ view: 'all-contacts' });
+      onOpenContact(result.contactId);
     }
     onClose();
   }
@@ -52,6 +55,7 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
 
   const contacts = results.filter((r) => r.type === 'contact');
   const projects = results.filter((r) => r.type === 'project');
+  const logs = results.filter((r) => r.type === 'log');
 
   return (
     <div className="search-overlay" onClick={onClose}>
@@ -103,6 +107,23 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
                 })}
               </>
             )}
+            {logs.length > 0 && (
+              <>
+                <div className="search-section-label">Log entries</div>
+                {logs.map((r) => {
+                  const idx = results.indexOf(r);
+                  return (
+                    <ResultRow
+                      key={r.id}
+                      result={r}
+                      selected={idx === selectedIndex}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                      onClick={() => pick(r)}
+                    />
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 
@@ -111,7 +132,7 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
         )}
 
         {query.trim() === '' && (
-          <div className="search-empty">Type to search contacts and projects</div>
+          <div className="search-empty">Type to search contacts, projects and log entries</div>
         )}
 
         <div className="search-footer">
@@ -130,6 +151,8 @@ function ResultRow({ result, selected, onMouseEnter, onClick }: {
   onMouseEnter: () => void;
   onClick: () => void;
 }) {
+  const excerpt = result.type === 'log' ? result.excerpt.replace(/\[\[/g, '').replace(/\]\]/g, '') : null;
+
   return (
     <div
       className={`search-result-row${selected ? ' search-result-row--selected' : ''}`}
@@ -137,12 +160,17 @@ function ResultRow({ result, selected, onMouseEnter, onClick }: {
       onClick={onClick}
     >
       <span className="search-result-icon">
-        {result.type === 'contact' ? '◎' : '◈'}
+        {result.type === 'contact' ? '◎' : result.type === 'project' ? '◈' : '◷'}
       </span>
-      <span className="search-result-name">{result.name}</span>
-      {result.subtitle && (
-        <span className="search-result-subtitle">{result.subtitle}</span>
-      )}
+      <span className="search-result-body">
+        <span className="search-result-name">{result.name}</span>
+        {result.subtitle && (
+          <span className="search-result-subtitle">{result.subtitle}</span>
+        )}
+        {excerpt && (
+          <span className="search-result-excerpt">{excerpt}</span>
+        )}
+      </span>
     </div>
   );
 }

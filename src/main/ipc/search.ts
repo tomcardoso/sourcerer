@@ -33,6 +33,32 @@ export function registerSearchHandlers(): void {
       )
       .all(pattern) as Array<{ id: string; name: string }>;
 
+    let logResults: Array<{
+      entry_id: string;
+      contact_id: string;
+      contact_name: string;
+      project_name: string;
+      excerpt: string;
+    }> = [];
+    try {
+      logResults = db
+        .prepare(
+          `SELECT e.id AS entry_id, c.id AS contact_id, c.name AS contact_name,
+                  p.name AS project_name,
+                  snippet(interaction_log_fts, 0, '[[', ']]', '...', 20) AS excerpt
+           FROM interaction_log_fts fts
+           JOIN interaction_log_entries e ON e.rowid = fts.rowid
+           JOIN project_memberships pm ON pm.id = e.membership_id
+           JOIN contacts c ON c.id = pm.contact_id
+           JOIN projects p ON p.id = pm.project_id
+           WHERE fts.body MATCH ?
+           LIMIT 5`,
+        )
+        .all(`${query.trim()}*`) as typeof logResults;
+    } catch {
+      // Malformed FTS query — skip log results
+    }
+
     const results: SearchResult[] = [
       ...contacts.map((c) => ({
         type: 'contact' as const,
@@ -45,6 +71,14 @@ export function registerSearchHandlers(): void {
         id: p.id,
         name: p.name,
         subtitle: null,
+      })),
+      ...logResults.map((l) => ({
+        type: 'log' as const,
+        id: l.entry_id,
+        name: l.contact_name,
+        subtitle: l.project_name,
+        excerpt: l.excerpt,
+        contactId: l.contact_id,
       })),
     ];
 
