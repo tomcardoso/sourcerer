@@ -123,7 +123,11 @@
 }
 
 .detail-body button,
-.detail-body label {
+.detail-body label,
+.detail-section-label,
+.detail-phone-label,
+.detail-wayback-pending,
+.detail-wayback-failed {
   user-select: none;
 }
 
