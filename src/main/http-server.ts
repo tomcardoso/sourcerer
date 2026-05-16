@@ -317,6 +317,7 @@ function generateIcal(db: ReturnType<typeof getDatabase>): string {
        FROM reminders r
        JOIN contacts c ON c.id = r.contact_id
        JOIN projects p ON p.id = r.project_id
+       WHERE p.is_archived = 0
        ORDER BY r.due_date ASC`,
     )
     .all() as Array<{ id: string; due_date: number; note: string | null; is_auto_outreach: number; contact_name: string; project_name: string }>;

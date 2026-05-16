@@ -38,7 +38,7 @@ export function registerReminderHandlers(): void {
          FROM reminders r
          JOIN contacts c ON c.id = r.contact_id
          JOIN projects p ON p.id = r.project_id
-         WHERE r.completed_at IS NULL
+         WHERE r.completed_at IS NULL AND p.is_archived = 0
          ORDER BY r.due_date ASC`,
       )
       .all() as Reminder[];
