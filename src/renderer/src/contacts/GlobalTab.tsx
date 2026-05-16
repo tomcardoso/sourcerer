@@ -17,15 +17,14 @@ interface Props {
 const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other'] as const;
 type SocialType = (typeof SOCIAL_TYPES)[number];
 
-const HANDLE_TYPES = ['signal', 'whatsapp', 'telegram', 'matrix', 'other'] as const;
+const HANDLE_TYPES = ['signal', 'whatsapp', 'telegram', 'other'] as const;
 type HandleType = (typeof HANDLE_TYPES)[number];
 
 const HANDLE_META: Record<HandleType, { label: string; placeholder: string }> = {
-  signal:   { label: 'Signal',    placeholder: '+1 555 000 0000 or username' },
-  whatsapp: { label: 'WhatsApp',  placeholder: '+1 555 000 0000' },
-  telegram: { label: 'Telegram',  placeholder: '@username' },
-  matrix:   { label: 'Matrix',    placeholder: '@user:server.org' },
-  other:    { label: 'Other',     placeholder: 'handle or username' },
+  signal:   { label: 'Signal',   placeholder: '+1 555 000 0000 or username' },
+  whatsapp: { label: 'WhatsApp', placeholder: '+1 555 000 0000' },
+  telegram: { label: 'Telegram', placeholder: '@username' },
+  other:    { label: 'Other',    placeholder: 'handle or username' },
 };
 
 const NON_OTHER_SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
@@ -637,6 +636,49 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </button>
         </div>
 
+        <div className="ac-field">
+          <label className="ac-label">Handle</label>
+          {editHandles.map((entry, i) => (
+            <div key={i} className="ac-phone-row">
+              <select
+                className="ac-input ac-handle-type"
+                value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
+                onChange={(e) => {
+                  const next = [...editHandles];
+                  next[i] = { ...next[i], type: e.target.value };
+                  setEditHandles(next);
+                }}
+              >
+                {HANDLE_TYPES.map((t) => (
+                  <option key={t} value={t}>{HANDLE_META[t].label}</option>
+                ))}
+              </select>
+              <input
+                className="ac-input"
+                value={entry.handle}
+                placeholder={HANDLE_META[(HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other') as HandleType].placeholder}
+                onChange={(e) => {
+                  const next = [...editHandles];
+                  next[i] = { ...next[i], handle: e.target.value };
+                  setEditHandles(next);
+                }}
+              />
+              <button
+                className="ac-remove"
+                type="button"
+                onClick={() => setEditHandles(editHandles.filter((_, j) => j !== i))}
+              ></button>
+            </div>
+          ))}
+          <button
+            className="ac-add-row"
+            type="button"
+            onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
+          >
+            + Add
+          </button>
+        </div>
+
         {NON_OTHER_SOCIAL_TYPES.map((type) => (
           <div key={type} className="ac-field">
             <label className="ac-label">{SOCIAL_META[type].label}</label>
@@ -776,49 +818,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Messaging handles</label>
-          {editHandles.map((entry, i) => (
-            <div key={i} className="ac-phone-row">
-              <select
-                className="ac-input ac-handle-type"
-                value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
-                onChange={(e) => {
-                  const next = [...editHandles];
-                  next[i] = { ...next[i], type: e.target.value };
-                  setEditHandles(next);
-                }}
-              >
-                {HANDLE_TYPES.map((t) => (
-                  <option key={t} value={t}>{HANDLE_META[t].label}</option>
-                ))}
-              </select>
-              <input
-                className="ac-input"
-                value={entry.handle}
-                placeholder={HANDLE_META[(HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other') as HandleType].placeholder}
-                onChange={(e) => {
-                  const next = [...editHandles];
-                  next[i] = { ...next[i], handle: e.target.value };
-                  setEditHandles(next);
-                }}
-              />
-              <button
-                className="ac-remove"
-                type="button"
-                onClick={() => setEditHandles(editHandles.filter((_, j) => j !== i))}
-              ></button>
-            </div>
-          ))}
-          <button
-            className="ac-add-row"
-            type="button"
-            onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
-          >
-            + Add
-          </button>
-        </div>
-
-        <div className="ac-field">
           <label className="ac-label">Notes</label>
           <textarea
             className="ac-textarea"
@@ -884,7 +883,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
       {contact.handles.length > 0 && (
         <div className="detail-section">
-          <div className="detail-section-label">Messaging</div>
+          <div className="detail-section-label">Handle</div>
           {contact.handles.map((h) => (
             <span key={h.id} className="detail-value">
               {h.handle}
