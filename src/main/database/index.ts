@@ -6,6 +6,7 @@ import { seedDevData } from './dev-seeds';
 
 let activeDb: Database.Database | null = null;
 let activeKeyHex: string | null = null;
+let activePassword: string | null = null;
 
 function openRaw(dbPath: string, keyHex: string): Database.Database {
   const db = new Database(dbPath);
@@ -78,11 +79,21 @@ export function updateActiveKeyHex(newKeyHex: string): void {
   activeKeyHex = newKeyHex;
 }
 
+export function getPassword(): string {
+  if (!activePassword) throw new Error('Database is not open.');
+  return activePassword;
+}
+
+export function setActivePassword(password: string): void {
+  activePassword = password;
+}
+
 export function closeDatabase(): void {
   if (activeDb) {
     activeDb.close();
     activeDb = null;
     activeKeyHex = null;
+    activePassword = null;
   }
 }
 
@@ -91,7 +102,9 @@ export function isDatabaseOpen(): boolean {
 }
 
 // Increment this when adding a new migration block below.
-const DB_VERSION = 1;
+// NOTE: other concurrent PRs (#19, #22) also target DB_VERSION = 2.
+// Renumber these blocks sequentially when merging.
+const DB_VERSION = 2;
 
 /**
  * Runs schema migrations against an existing database using user_version as
@@ -112,4 +125,11 @@ export function runMigrations(db: Database.Database): void {
   // No migration blocks yet — all changes prior to v1 are baked into the
   // initial schema, so existing pre-production databases can be recreated.
   db.pragma('user_version = 1');
+
+  if (version < 2) {
+    db.prepare("ALTER TABLE users ADD COLUMN auto_backup_enabled INTEGER NOT NULL DEFAULT 0").run();
+    db.prepare("ALTER TABLE users ADD COLUMN auto_backup_dest_path TEXT").run();
+    db.prepare("ALTER TABLE users ADD COLUMN auto_backup_max_count INTEGER NOT NULL DEFAULT 10").run();
+    db.pragma('user_version = 2');
+  }
 }

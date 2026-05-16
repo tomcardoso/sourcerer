@@ -178,6 +178,10 @@ declare global {
       // Backup
       exportBackup: (password: string) => Promise<{ success: boolean; error?: string }>;
       restoreBackup: (password: string) => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+      runAutoBackup: () => Promise<{ success: boolean; error?: string }>;
+      getAutoBackupSettings: () => Promise<{ enabled: boolean; destPath: string | null; maxCount: number }>;
+      setAutoBackupSettings: (data: { enabled?: boolean; destPath?: string | null; maxCount?: number }) => Promise<void>;
+      chooseBackupFolder: () => Promise<string | null>;
 
       // Search
       searchGlobal: (query: string) => Promise<SearchResult[]>;
