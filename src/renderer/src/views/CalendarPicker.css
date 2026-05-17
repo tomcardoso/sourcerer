@@ -167,7 +167,7 @@
 
 .cal-day--selected {
   background: var(--color-primary) !important;
-  color: #fff !important;
+  color: var(--color-bg) !important;
   font-weight: 600;
 }
 
@@ -187,7 +187,7 @@
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   padding: 2px 4px;
@@ -231,7 +231,7 @@
 
 .cal-year-cell--selected {
   background: var(--color-primary) !important;
-  color: #fff !important;
+  color: var(--color-bg) !important;
   font-weight: 600;
 }
 
@@ -271,6 +271,6 @@
 
 .cal-month-cell--selected {
   background: var(--color-primary) !important;
-  color: #fff !important;
+  color: var(--color-bg) !important;
   font-weight: 600;
 }

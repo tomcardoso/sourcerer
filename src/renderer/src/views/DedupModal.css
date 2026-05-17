@@ -177,7 +177,7 @@
 
 .dedup-btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 .dedup-btn--primary:hover:not(:disabled) {

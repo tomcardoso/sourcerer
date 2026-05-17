@@ -28,7 +28,7 @@
 }
 
 .sync-badge-pending {
-  background: #f59e0b;
+  background: var(--color-warning-border);
 }
 
 .sync-badge-syncing {

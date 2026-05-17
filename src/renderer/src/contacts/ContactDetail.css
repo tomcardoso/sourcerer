@@ -268,7 +268,7 @@
 
 .detail-project-remove-yes:hover {
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 .detail-project-remove-no {
@@ -358,7 +358,7 @@
   height: 30px;
   padding: 0 12px;
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-bg);
   border: none;
   font-family: var(--font-mono);
   font-size: 10px;
@@ -764,7 +764,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-text-muted);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
@@ -1044,7 +1044,7 @@
 }
 
 .detail-rss-invalid {
-  color: #f59e0b;
+  color: var(--color-warning-border);
   margin-left: 4px;
 }
 
@@ -1283,7 +1283,7 @@
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: #856404;
+  color: var(--color-warning-text);
   padding: 0;
   line-height: 1;
   flex-shrink: 0;

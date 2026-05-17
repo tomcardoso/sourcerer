@@ -96,7 +96,7 @@
 }
 
 .alerts-item-unread:hover {
-  background: #fef3c7;
+  background: var(--color-warning-bg);
 }
 
 .alerts-item-main {
