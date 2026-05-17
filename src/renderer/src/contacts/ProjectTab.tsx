@@ -424,7 +424,7 @@ function RemindersSection({
       dueDate: ts,
       note: note.trim(),
     });
-    setReminders((prev) => [...prev, r].sort((a, b) => a.due_date - b.due_date));
+    setReminders((prev) => [...prev, r].sort((a, b) => b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date));
     setDueDate('');
     setNote('');
     setAdding(false);
@@ -446,7 +446,7 @@ function RemindersSection({
     const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
     const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
     setReminders((prev) =>
-      prev.map((r) => (r.id === id ? updated : r)).sort((a, b) => a.due_date - b.due_date),
+      prev.map((r) => (r.id === id ? updated : r)).sort((a, b) => b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date),
     );
     setEditingId(null);
   }
