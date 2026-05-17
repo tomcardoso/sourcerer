@@ -9,7 +9,7 @@ describe('encodePayload / decodePayload — round-trip', () => {
     const decoded = decodePayload(encoded);
     expect(decoded.name).toBe('Test Project');
     expect(decoded.description).toBe('A description');
-    expect(decoded.originalPath).toBe('/path/to/file.db');
+    expect(decoded.originalFilename).toBe('file.db');
     expect(decoded.keyHex).toBe(key.toString('hex'));
   });
 
