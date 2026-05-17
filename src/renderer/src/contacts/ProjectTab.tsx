@@ -250,6 +250,7 @@ function LogSection({
               value={logDate}
               onChange={setLogDate}
               showYear
+              maxDate={today}
             />
           </div>
           <textarea
@@ -415,6 +416,10 @@ function RemindersSection({
     });
   }, [contactId, projectId, refreshToken]);
 
+  function sortReminders(a: Reminder, b: Reminder) {
+    return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
+  }
+
   async function handleAdd() {
     if (!dueDate || !note.trim()) return;
     const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
@@ -424,7 +429,7 @@ function RemindersSection({
       dueDate: ts,
       note: note.trim(),
     });
-    setReminders((prev) => [...prev, r].sort((a, b) => b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date));
+    setReminders((prev) => [...prev, r].sort(sortReminders));
     setDueDate('');
     setNote('');
     setAdding(false);
@@ -445,20 +450,26 @@ function RemindersSection({
     if (!editDueDate || !editNote.trim()) return;
     const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
     const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
-    setReminders((prev) =>
-      prev.map((r) => (r.id === id ? updated : r)).sort((a, b) => b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date),
-    );
+    setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
     setEditingId(null);
   }
 
-  function handleComplete(id: string) {
+  async function handleComplete(id: string) {
     setCompleting((prev) => new Set(prev).add(id));
-    window.sourcerer.completeReminder(id);
+    try {
+      await window.sourcerer.completeReminder(id);
+    } catch {
+      setCompleting((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
   }
 
-  function handleUncomplete(id: string) {
+  async function handleUncomplete(id: string) {
     setCompleting((prev) => { const next = new Set(prev); next.delete(id); return next; });
-    window.sourcerer.uncompleteReminder(id);
+    try {
+      await window.sourcerer.uncompleteReminder(id);
+    } catch {
+      setCompleting((prev) => new Set(prev).add(id));
+    }
   }
 
   async function handleDelete(id: string) {
@@ -520,7 +531,6 @@ function RemindersSection({
                 value={editNote}
                 onChange={(e) => setEditNote(e.target.value)}
                 placeholder="Note"
-                autoFocus
               />
               <div className="pt-reminder-form-actions">
                 <button

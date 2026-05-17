@@ -95,10 +95,14 @@ export function registerReminderHandlers(): void {
 
   ipcMain.handle(
     'reminders:update',
-    (_, { id, dueDate, note }: { id: string; dueDate: number; note: string }): Reminder => {
+    (_, { id, dueDate, note }: { id: string; dueDate: number; note: string | null }): Reminder => {
       const db = getDatabase();
       if (!Number.isFinite(dueDate) || dueDate <= 0) throw new Error('invalid due_date');
-      db.prepare('UPDATE reminders SET due_date = ?, note = ? WHERE id = ?').run(dueDate, note, id);
+      const normalizedNote = note?.trim() || null;
+      const result = db
+        .prepare('UPDATE reminders SET due_date = ?, note = ? WHERE id = ? AND is_auto_outreach = 0')
+        .run(dueDate, normalizedNote, id);
+      if (result.changes === 0) throw new Error('reminder not found or not editable');
       const reminder = db
         .prepare(
           `SELECT ${SELECT_COLS}

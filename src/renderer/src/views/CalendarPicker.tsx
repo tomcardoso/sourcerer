@@ -69,11 +69,13 @@ export function CalendarPicker({
   value,
   onChange,
   showYear = false,
+  maxDate,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   showYear?: boolean;
+  maxDate?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'days' | 'months' | 'years'>('days');
@@ -222,6 +224,7 @@ export function CalendarPicker({
                 const iso = `${cell.y}-${String(cell.m).padStart(2, '0')}-${String(cell.d).padStart(2, '0')}`;
                 const isSelected = iso === value;
                 const isToday = iso === todayStr && !isSelected;
+                const isDisabled = !!maxDate && iso > maxDate;
                 return (
                   <button
                     type="button"
@@ -231,8 +234,10 @@ export function CalendarPicker({
                       cell.overflow ? 'cal-day--overflow' : '',
                       isSelected ? 'cal-day--selected' : '',
                       isToday ? 'cal-day--today' : '',
+                      isDisabled ? 'cal-day--disabled' : '',
                     ].filter(Boolean).join(' ')}
-                    onClick={() => selectDay(cell.y, cell.m, cell.d)}
+                    onClick={() => !isDisabled && selectDay(cell.y, cell.m, cell.d)}
+                    disabled={isDisabled}
                   >
                     {cell.d}
                   </button>
