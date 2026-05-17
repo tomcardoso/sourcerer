@@ -34,21 +34,16 @@ function getUserDataPath() {
 }
 
 async function promptPassword() {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  // Suppress echoing on interactive TTYs.
-  rl._writeToOutput = (s) => {
-    if (!rl.stdoutMuted) rl.output.write(s);
-  };
   return new Promise((resolve) => {
-    if (process.stdin.isTTY) {
-      process.stdout.write('Password: ');
-      rl.stdoutMuted = true;
-    }
-    rl.question('', (answer) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question('Password: ', (answer) => {
       rl.close();
-      if (process.stdin.isTTY) process.stdout.write('\n');
+      process.stdout.write('\n');
       resolve(answer);
     });
+    // Override AFTER question() has synchronously written the prompt, so the
+    // prompt text renders but typed characters are not echoed.
+    rl._writeToOutput = () => {};
   });
 }
 
@@ -119,16 +114,44 @@ async function main() {
     db.pragma(`key="x'${keyHex}'"`);
     // Verify the key works before attempting export.
     db.pragma('user_version');
-  } catch {
-    console.error('Could not open database — wrong password or corrupted file.');
+  } catch (err) {
+    console.error('Could not open database:', err.message);
     process.exit(1);
   }
 
+  const plainDb = new Database(outPath);
   try {
-    // VACUUM INTO writes a defragmented, unencrypted copy of the database.
-    // outPath is validated above to contain no SQL metacharacters.
-    db.prepare(`VACUUM INTO '${outPath}'`).run();
+    // sqlcipher_export() isn't available in the Node-built library, and
+    // VACUUM INTO copies pages with encryption intact. Instead, open a fresh
+    // unencrypted Database and copy schema + data at the JavaScript level.
+    plainDb.prepare('PRAGMA foreign_keys = OFF').run();
+
+    const tables = db.prepare(
+      "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL"
+    ).all();
+
+    for (const { name, sql } of tables) {
+      plainDb.prepare(sql).run();
+      const rows = db.prepare(`SELECT * FROM "${name}"`).all();
+      if (rows.length > 0) {
+        const cols = Object.keys(rows[0]).map(c => `"${c}"`).join(', ');
+        const placeholders = Object.keys(rows[0]).map(() => '?').join(', ');
+        const insert = plainDb.prepare(`INSERT INTO "${name}" (${cols}) VALUES (${placeholders})`);
+        plainDb.transaction((rs) => { for (const r of rs) insert.run(Object.values(r)); })(rows);
+      }
+    }
+
+    // Copy indexes, views, and triggers.
+    const extras = db.prepare(
+      "SELECT sql FROM sqlite_master WHERE type IN ('index', 'view', 'trigger') AND sql IS NOT NULL"
+    ).all();
+    for (const { sql } of extras) {
+      try { plainDb.prepare(sql).run(); } catch { /* skip anything that can't be recreated */ }
+    }
+
+    plainDb.prepare('PRAGMA foreign_keys = ON').run();
   } finally {
+    plainDb.close();
     db.close();
   }
 
