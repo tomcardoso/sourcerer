@@ -110,7 +110,7 @@
 .dedup-field-label {
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--color-text-muted);
@@ -162,7 +162,7 @@
   padding: 0 14px;
   border-radius: 0;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: 0.10em;
   cursor: pointer;
@@ -177,7 +177,7 @@
 
 .dedup-btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
 }
 
 .dedup-btn--primary:hover:not(:disabled) {

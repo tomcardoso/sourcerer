@@ -118,7 +118,7 @@
   width: 80px;
   flex-shrink: 0;
   color: var(--color-text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .view-dl-row dd {
@@ -240,7 +240,7 @@
   padding: 4px 10px;
   background: var(--color-danger);
   border: 1px solid var(--color-danger);
-  color: #fff;
+  color: var(--color-bg);
   cursor: pointer;
   font-size: 10px;
   letter-spacing: 0.16em;

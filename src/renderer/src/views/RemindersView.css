@@ -30,6 +30,7 @@
   border-radius: 0;
   font-size: 12px;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   color: var(--color-text);
   cursor: pointer;
@@ -191,7 +192,7 @@
 }
 
 .reminders-item-overdue-outreach:hover {
-  background: #fef3c7;
+  background: var(--color-warning-bg);
 }
 
 .reminders-item-main {
@@ -310,7 +311,7 @@
 }
 
 .reminders-item-days-outreach {
-  color: #d97706;
+  color: var(--color-warning-border);
   font-weight: 600;
 }
 

@@ -96,7 +96,7 @@
 }
 
 .alerts-item-unread:hover {
-  background: #fef3c7;
+  background: var(--color-warning-bg);
 }
 
 .alerts-item-main {
@@ -107,7 +107,7 @@
 .alerts-headline {
   display: block;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text);
   text-decoration: none;
   line-height: 1.55;

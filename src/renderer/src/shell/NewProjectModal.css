@@ -29,19 +29,23 @@
 
 .modal-label {
   display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
   margin-bottom: 5px;
 }
 
 .modal-required {
+  font-family: var(--font-mono);
   color: var(--color-danger);
 }
 
 .modal-optional {
-  color: var(--color-text-muted);
-  font-weight: 400;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
 }
 
 .modal-input {
@@ -80,7 +84,7 @@
   padding: 0 16px;
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
@@ -128,7 +132,7 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--color-text);
   cursor: pointer;
   user-select: none;

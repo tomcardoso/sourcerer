@@ -62,7 +62,7 @@
   width: 100%;
   padding: 6px 10px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-bg);
   border: none;
   font-family: var(--font-mono);
   font-size: 10px;
@@ -264,7 +264,7 @@
   padding: 4px 10px 4px 32px;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -404,19 +404,19 @@
   border-radius: 0;
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
 }
 
 .sidebar-delete-yes {
-  background: #ef4444;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-bg);
 }
 
 .sidebar-delete-yes:hover {
-  background: #dc2626;
+  background: #991b1b;
 }
 
 .sidebar-delete-no {
@@ -489,7 +489,7 @@
   color: var(--color-bg);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.16em;
   display: flex;
   align-items: center;
