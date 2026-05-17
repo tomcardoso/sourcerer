@@ -171,6 +171,12 @@
   font-weight: 600;
 }
 
+.cal-day--disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ── Footer clear link ─────────────────────────────────────── */
 
 .cal-footer {

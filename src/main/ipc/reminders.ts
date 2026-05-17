@@ -83,8 +83,37 @@ export function registerReminderHandlers(): void {
     broadcastRemindersChanged();
   });
 
+  ipcMain.handle('reminders:uncomplete', (_, id: string): void => {
+    getDatabase().prepare(`UPDATE reminders SET completed_at = NULL WHERE id = ?`).run(id);
+    broadcastRemindersChanged();
+  });
+
   ipcMain.handle('reminders:delete', (_, id: string): void => {
     getDatabase().prepare(`DELETE FROM reminders WHERE id = ?`).run(id);
     broadcastRemindersChanged();
   });
+
+  ipcMain.handle(
+    'reminders:update',
+    (_, { id, dueDate, note }: { id: string; dueDate: number; note: string | null }): Reminder => {
+      const db = getDatabase();
+      if (!Number.isFinite(dueDate) || dueDate <= 0) throw new Error('invalid due_date');
+      const normalizedNote = note?.trim() || null;
+      const result = db
+        .prepare('UPDATE reminders SET due_date = ?, note = ? WHERE id = ? AND is_auto_outreach = 0')
+        .run(dueDate, normalizedNote, id);
+      if (result.changes === 0) throw new Error('reminder not found or not editable');
+      const reminder = db
+        .prepare(
+          `SELECT ${SELECT_COLS}
+           FROM reminders r
+           JOIN contacts c ON c.id = r.contact_id
+           JOIN projects p ON p.id = r.project_id
+           WHERE r.id = ?`,
+        )
+        .get(id) as Reminder;
+      broadcastRemindersChanged();
+      return reminder;
+    },
+  );
 }

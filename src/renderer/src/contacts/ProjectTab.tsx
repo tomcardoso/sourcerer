@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fmtDateFull } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { CalendarPicker } from '../views/CalendarPicker';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -244,12 +245,12 @@ function LogSection({
         <div className="pt-log-compose">
           <div className="pt-log-date-row">
             <label className="pt-log-date-label">Date</label>
-            <input
-              type="date"
-              className="pt-log-date-input"
+            <CalendarPicker
+              label="Select date"
               value={logDate}
-              onChange={(e) => setLogDate(e.target.value)}
-              max={today}
+              onChange={setLogDate}
+              showYear
+              maxDate={today}
             />
           </div>
           <textarea
@@ -401,34 +402,88 @@ function RemindersSection({
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editNote, setEditNote] = useState('');
 
   useEffect(() => {
     setReminders([]);
     setCompleting(new Set());
+    setEditingId(null);
     window.sourcerer.listRemindersForContactProject(contactId, projectId).then((loaded) => {
       setReminders(loaded);
       setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
     });
   }, [contactId, projectId, refreshToken]);
 
+  function sortReminders(a: Reminder, b: Reminder) {
+    return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
+  }
+
   async function handleAdd() {
-    if (!dueDate) return;
+    if (!dueDate || !note.trim()) return;
     const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
     const r = await window.sourcerer.createReminder({
       contactId,
       projectId,
       dueDate: ts,
-      note: note.trim() || undefined,
+      note: note.trim(),
     });
-    setReminders((prev) => [...prev, r].sort((a, b) => a.due_date - b.due_date));
+    setReminders((prev) => [...prev, r].sort(sortReminders));
     setDueDate('');
     setNote('');
     setAdding(false);
   }
 
-  function handleComplete(id: string) {
+  function handleStartEdit(r: Reminder) {
+    const d = new Date(r.due_date * 1000);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    setEditDueDate(`${yyyy}-${mm}-${dd}`);
+    setEditNote(r.note ?? '');
+    setEditingId(r.id);
+    setAdding(false);
+  }
+
+  async function handleSaveEdit(id: string) {
+    if (!editDueDate || !editNote.trim()) return;
+    const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
+    try {
+      const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
+      setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
+      setEditingId(null);
+    } catch {
+      // leave edit form open so the user can retry
+    }
+  }
+
+  async function handleComplete(id: string) {
     setCompleting((prev) => new Set(prev).add(id));
-    window.sourcerer.completeReminder(id);
+    try {
+      await window.sourcerer.completeReminder(id);
+    } catch {
+      setCompleting((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }
+  }
+
+  async function handleUncomplete(id: string) {
+    setCompleting((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    try {
+      await window.sourcerer.uncompleteReminder(id);
+    } catch {
+      setCompleting((prev) => new Set(prev).add(id));
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await window.sourcerer.deleteReminder(id);
+    } catch {
+      return;
+    }
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+    setEditingId(null);
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -450,7 +505,7 @@ function RemindersSection({
     <div className="pt-section">
       <div className="pt-reminders-header">
         <span className="pt-reminders-label">Reminders</span>
-        <button className="pt-reminder-add-btn" onClick={() => setAdding((v) => !v)}>
+        <button className="pt-reminder-add-btn" onClick={() => { setAdding((v) => !v); setEditingId(null); }}>
           {adding ? '× CANCEL' : '+ ADD'}
         </button>
       </div>
@@ -470,39 +525,76 @@ function RemindersSection({
           );
         }
         const done = completing.has(r.id);
+        if (editingId === r.id) {
+          return (
+            <div key={r.id} className="pt-reminder-form">
+              <CalendarPicker
+                label="Due date"
+                value={editDueDate}
+                onChange={setEditDueDate}
+                showYear
+              />
+              <input
+                className="pt-input"
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                placeholder="Note"
+              />
+              <div className="pt-reminder-form-actions">
+                <button
+                  className="pt-log-submit"
+                  onClick={() => handleSaveEdit(r.id)}
+                  disabled={!editDueDate || !editNote.trim()}
+                >
+                  Save
+                </button>
+                <button className="pt-reminder-cancel" onClick={() => setEditingId(null)}>
+                  Cancel
+                </button>
+                <button className="pt-reminder-delete-btn" onClick={() => handleDelete(r.id)}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          );
+        }
         return (
           <div key={r.id} className={`pt-reminder-row${overdue ? ' pt-reminder-row--overdue' : ''}${done ? ' pt-reminder-row--completing' : ''}`}>
             <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
               {fmtReminderDate(r.due_date, overdue)}
             </div>
             <div className="pt-reminder-row-note">{r.note || ''}</div>
+            {!done && (
+              <button className="pt-reminder-edit-btn" onClick={() => handleStartEdit(r)} title="Edit">
+                Edit
+              </button>
+            )}
             <input
               type="checkbox"
               className="pt-reminder-check"
               checked={done}
-              onChange={() => { if (!done) handleComplete(r.id); }}
-              title="Mark complete"
+              onChange={() => { if (done) handleUncomplete(r.id); else handleComplete(r.id); }}
+              title={done ? 'Mark incomplete' : 'Mark complete'}
             />
           </div>
         );
       })}
       {adding && (
         <div className="pt-reminder-form">
-          <input
-            type="date"
-            className="pt-date"
+          <CalendarPicker
+            label="Due date"
             value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            autoFocus
+            onChange={setDueDate}
+            showYear
           />
           <input
             className="pt-input"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Note (optional)"
+            placeholder="Note"
           />
           <div className="pt-reminder-form-actions">
-            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate}>
+            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate || !note.trim()}>
               Add
             </button>
             <button className="pt-reminder-cancel" onClick={() => setAdding(false)}>
