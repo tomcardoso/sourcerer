@@ -83,6 +83,11 @@ export function registerReminderHandlers(): void {
     broadcastRemindersChanged();
   });
 
+  ipcMain.handle('reminders:uncomplete', (_, id: string): void => {
+    getDatabase().prepare(`UPDATE reminders SET completed_at = NULL WHERE id = ?`).run(id);
+    broadcastRemindersChanged();
+  });
+
   ipcMain.handle('reminders:delete', (_, id: string): void => {
     getDatabase().prepare(`DELETE FROM reminders WHERE id = ?`).run(id);
     broadcastRemindersChanged();

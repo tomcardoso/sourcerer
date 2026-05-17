@@ -1193,6 +1193,24 @@
   transform: rotate(45deg);
 }
 
+.pt-reminder-delete-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-danger);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.pt-reminder-delete-btn:hover {
+  opacity: 0.75;
+}
+
 .pt-reminder-edit-btn {
   font-family: var(--font-mono);
   font-size: 10px;

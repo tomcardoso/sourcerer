@@ -456,6 +456,17 @@ function RemindersSection({
     window.sourcerer.completeReminder(id);
   }
 
+  function handleUncomplete(id: string) {
+    setCompleting((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    window.sourcerer.uncompleteReminder(id);
+  }
+
+  async function handleDelete(id: string) {
+    await window.sourcerer.deleteReminder(id);
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+    setEditingId(null);
+  }
+
   const now = Math.floor(Date.now() / 1000);
 
   function fmtReminderDate(ts: number, overdue: boolean): string {
@@ -522,6 +533,9 @@ function RemindersSection({
                 <button className="pt-reminder-cancel" onClick={() => setEditingId(null)}>
                   Cancel
                 </button>
+                <button className="pt-reminder-delete-btn" onClick={() => handleDelete(r.id)}>
+                  Delete
+                </button>
               </div>
             </div>
           );
@@ -541,8 +555,8 @@ function RemindersSection({
               type="checkbox"
               className="pt-reminder-check"
               checked={done}
-              onChange={() => { if (!done) handleComplete(r.id); }}
-              title="Mark complete"
+              onChange={() => { if (done) handleUncomplete(r.id); else handleComplete(r.id); }}
+              title={done ? 'Mark incomplete' : 'Mark complete'}
             />
           </div>
         );

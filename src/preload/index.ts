@@ -284,6 +284,7 @@ const sourcererApi = {
     note?: string;
   }): Promise<Reminder> => ipcRenderer.invoke('reminders:create', data),
   completeReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:complete', id),
+  uncompleteReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:uncomplete', id),
   deleteReminder: (id: string): Promise<void> => ipcRenderer.invoke('reminders:delete', id),
   updateReminder: (data: { id: string; dueDate: number; note: string }): Promise<Reminder> =>
     ipcRenderer.invoke('reminders:update', data),
