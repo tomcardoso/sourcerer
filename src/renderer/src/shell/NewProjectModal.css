@@ -39,10 +39,12 @@
 }
 
 .modal-required {
+  font-family: var(--font-mono);
   color: var(--color-danger);
 }
 
 .modal-optional {
+  font-family: var(--font-mono);
   color: var(--color-text-dim);
 }
 
