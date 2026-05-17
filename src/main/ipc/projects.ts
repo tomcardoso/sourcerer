@@ -39,8 +39,8 @@ export function registerProjectHandlers(): void {
       // 1. Pick where to save the shared DB file
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Save shared project file',
-        defaultPath: `${name.trim().replace(/[^a-z0-9]/gi, '-').toLowerCase()}-sourcerer.db`,
-        filters: [{ name: 'Sourcerer Shared Project', extensions: ['db'] }],
+        defaultPath: `${name.trim().replace(/[^a-z0-9]/gi, '-').toLowerCase()}.sourcerer`,
+        filters: [{ name: 'Sourcerer Shared Project', extensions: ['sourcerer'] }],
       });
       if (saveResult.canceled || !saveResult.filePath) return null;
 
@@ -200,8 +200,8 @@ export function registerProjectHandlers(): void {
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Save shared project file',
-        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-sourcerer.db`,
-        filters: [{ name: 'Sourcerer Shared Project', extensions: ['db'] }],
+        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.sourcerer`,
+        filters: [{ name: 'Sourcerer Shared Project', extensions: ['sourcerer'] }],
       });
       if (saveResult.canceled || !saveResult.filePath) return null;
 
@@ -232,6 +232,18 @@ export function registerProjectHandlers(): void {
         'UPDATE projects SET is_shared = 1, shared_db_path = ?, shared_db_key = ? WHERE id = ?',
       ).run(filePath, keyBytes, projectId);
 
+      // Reset synced_at so all existing contacts/memberships are treated as
+      // unsynced and get pushed to the new shared file on the first sync.
+      const memberContactIds = (db
+        .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
+        .all(projectId) as { contact_id: string }[])
+        .map((r) => r.contact_id);
+      if (memberContactIds.length > 0) {
+        const ph = memberContactIds.map(() => '?').join(',');
+        db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
+      }
+      db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+
       // Push all existing local data to the shared file
       try {
         syncProject(db, sharedDb, projectId);
@@ -261,8 +273,8 @@ export function registerProjectHandlers(): void {
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Save regenerated shared project file',
-        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-sourcerer.db`,
-        filters: [{ name: 'Sourcerer Shared Project', extensions: ['db'] }],
+        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.sourcerer`,
+        filters: [{ name: 'Sourcerer Shared Project', extensions: ['sourcerer'] }],
       });
       if (saveResult.canceled || !saveResult.filePath) return null;
 
@@ -284,6 +296,17 @@ export function registerProjectHandlers(): void {
       db.prepare(
         'UPDATE projects SET shared_db_path = ?, shared_db_key = ? WHERE id = ?',
       ).run(filePath, keyBytes, projectId);
+
+      // Reset synced_at so all contacts/memberships get pushed to the new file.
+      const memberContactIds = (db
+        .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
+        .all(projectId) as { contact_id: string }[])
+        .map((r) => r.contact_id);
+      if (memberContactIds.length > 0) {
+        const ph = memberContactIds.map(() => '?').join(',');
+        db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
+      }
+      db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
 
       // Push all local project data to the fresh shared file
       try {

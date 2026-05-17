@@ -33,6 +33,10 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
           Share the link below with your collaborators out-of-band (e.g., via Signal). They'll paste
           it into Sourcerer to join the project.
         </p>
+        <p className="setup-payload-location-note">
+          The shared file must remain in a synced folder (Dropbox, OneDrive, iCloud Drive)
+          permanently — moving it will break sync for all collaborators.
+        </p>
 
         <div className="setup-payload-link-row">
           <textarea

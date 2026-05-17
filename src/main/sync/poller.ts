@@ -77,6 +77,9 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
   try {
     const sharedDb = openSharedDb(filePath, keyHex, projectId);
     const syncResult = syncProject(localDb, sharedDb, projectId);
+    // Close after each sync so the file handle is released and Dropbox/OneDrive
+    // can detect the change and upload it promptly.
+    closeSharedDb(projectId);
 
     const project = localDb
       .prepare('SELECT shared_pending_writes FROM projects WHERE id = ?')
