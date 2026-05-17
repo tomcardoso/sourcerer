@@ -9,6 +9,7 @@ import type {
   User,
 } from '@shared/types';
 import ColumnHeader, { TextFilter, ToggleFilter, PresetFilter, MultiSelectFilter } from './ColumnHeader';
+import { CalendarPicker } from './CalendarPicker';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -365,20 +366,20 @@ export default function ContactsTable(props: ContactsTableProps) {
                 filterOpen={openFilter === 'date_added'}
                 onFilterToggle={() => toggleFilter('date_added')}
                 filterContent={
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>From</label>
-                    <input
-                      type="date"
+                  <div className="date-filter-stack">
+                    <label className="date-filter-label">From</label>
+                    <CalendarPicker
+                      label="From"
                       value={pf?.dateAddedFrom ?? ''}
-                      onChange={(e) => setFilter('dateAddedFrom', e.target.value)}
-                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                      onChange={(v) => setFilter('dateAddedFrom', v)}
+                      showYear
                     />
-                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>To</label>
-                    <input
-                      type="date"
+                    <label className="date-filter-label">To</label>
+                    <CalendarPicker
+                      label="To"
                       value={pf?.dateAddedTo ?? ''}
-                      onChange={(e) => setFilter('dateAddedTo', e.target.value)}
-                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                      onChange={(v) => setFilter('dateAddedTo', v)}
+                      showYear
                     />
                   </div>
                 }
@@ -495,20 +496,20 @@ export default function ContactsTable(props: ContactsTableProps) {
                 filterOpen={openFilter === 'date_added'}
                 onFilterToggle={() => toggleFilter('date_added')}
                 filterContent={
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>From</label>
-                    <input
-                      type="date"
+                  <div className="date-filter-stack">
+                    <label className="date-filter-label">From</label>
+                    <CalendarPicker
+                      label="From"
                       value={af?.dateAddedFrom ?? ''}
-                      onChange={(e) => setFilter('dateAddedFrom', e.target.value)}
-                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                      onChange={(v) => setFilter('dateAddedFrom', v)}
+                      showYear
                     />
-                    <label style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>To</label>
-                    <input
-                      type="date"
+                    <label className="date-filter-label">To</label>
+                    <CalendarPicker
+                      label="To"
                       value={af?.dateAddedTo ?? ''}
-                      onChange={(e) => setFilter('dateAddedTo', e.target.value)}
-                      style={{ height: 28, padding: '0 6px', border: '1px solid var(--color-border)', fontSize: 12, fontFamily: 'var(--font-mono)', background: 'var(--color-bg)', color: 'var(--color-text)', outline: 'none', width: '100%' }}
+                      onChange={(v) => setFilter('dateAddedTo', v)}
+                      showYear
                     />
                   </div>
                 }

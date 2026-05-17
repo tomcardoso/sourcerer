@@ -265,3 +265,17 @@
   color: var(--color-text-muted);
   padding: 6px 8px 2px;
 }
+
+/* Date range filter */
+.date-filter-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-filter-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

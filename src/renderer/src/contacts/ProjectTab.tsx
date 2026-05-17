@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fmtDateFull } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { CalendarPicker } from '../views/CalendarPicker';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -244,12 +245,11 @@ function LogSection({
         <div className="pt-log-compose">
           <div className="pt-log-date-row">
             <label className="pt-log-date-label">Date</label>
-            <input
-              type="date"
-              className="pt-log-date-input"
+            <CalendarPicker
+              label="Select date"
               value={logDate}
-              onChange={(e) => setLogDate(e.target.value)}
-              max={today}
+              onChange={setLogDate}
+              showYear
             />
           </div>
           <textarea
@@ -488,12 +488,11 @@ function RemindersSection({
       })}
       {adding && (
         <div className="pt-reminder-form">
-          <input
-            type="date"
-            className="pt-date"
+          <CalendarPicker
+            label="Due date"
             value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            autoFocus
+            onChange={setDueDate}
+            showYear
           />
           <input
             className="pt-input"
