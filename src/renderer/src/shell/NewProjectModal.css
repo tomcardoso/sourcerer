@@ -29,9 +29,12 @@
 
 .modal-label {
   display: block;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
   margin-bottom: 5px;
 }
 
@@ -40,8 +43,7 @@
 }
 
 .modal-optional {
-  color: var(--color-text-muted);
-  font-weight: 400;
+  color: var(--color-text-dim);
 }
 
 .modal-input {
