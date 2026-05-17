@@ -64,6 +64,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmUnshare, setConfirmUnshare] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [confirmRotate, setConfirmRotate] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -246,6 +247,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     const projects = await window.sourcerer.listProjects();
     const updated = projects.find((p) => p.id === project.id);
     if (updated) onProjectUpdated(updated);
+    setRegenPayload({ projectName: project.name, payload: result.payload });
+  }
+
+  async function handleRotateKey() {
+    if (!project) return;
+    const result = await window.sourcerer.rotateSharedKey(project.id);
+    setConfirmRotate(false);
+    if (!result) return;
     setRegenPayload({ projectName: project.name, payload: result.payload });
   }
 
@@ -604,7 +613,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               </button>
             </div>
           )}
-          {project.is_shared === 1 && !confirmUnshare && (
+          {project.is_shared === 1 && !confirmUnshare && !confirmRotate && (
             <div className="project-meta-item">
               <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
                   Unshare project
@@ -617,6 +626,22 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                 Stop syncing?
                 <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
                 <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
+              </span>
+            </div>
+          )}
+          {project.is_shared === 1 && !confirmRotate && !confirmUnshare && (
+            <div className="project-meta-item">
+              <button className="project-meta-action-btn" onClick={() => setConfirmRotate(true)}>
+                Rotate key…
+              </button>
+            </div>
+          )}
+          {confirmRotate && (
+            <div className="project-meta-item">
+              <span className="inline-confirm">
+                Revokes all collaborator access. Continue?
+                <button className="inline-confirm-yes" onClick={handleRotateKey}>Yes, rotate</button>
+                <button className="inline-confirm-no" onClick={() => setConfirmRotate(false)}>Cancel</button>
               </span>
             </div>
           )}
