@@ -171,6 +171,7 @@ declare global {
       }) => Promise<Reminder>;
       completeReminder: (id: string) => Promise<void>;
       deleteReminder: (id: string) => Promise<void>;
+      updateReminder: (data: { id: string; dueDate: number; note: string }) => Promise<Reminder>;
 
       // vCard export
       exportVCardContact: (contactId: string) => Promise<void>;

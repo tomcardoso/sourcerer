@@ -1193,6 +1193,30 @@
   transform: rotate(45deg);
 }
 
+.pt-reminder-edit-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.pt-reminder-row:hover .pt-reminder-edit-btn {
+  opacity: 1;
+}
+
+.pt-reminder-edit-btn:hover {
+  color: var(--color-primary);
+}
+
 /* ── Add reminder form ── */
 .pt-reminder-form {
   display: flex;
