@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers,argon2",
     "rebuild:node": "npm rebuild better-sqlite3-multiple-ciphers argon2",
+    "db:export": "node scripts/export-plain-db.js",
     "dist:mac": "electron-builder --mac --arm64",
     "dist:win": "electron-builder --win --x64",
     "dist:linux": "electron-builder --linux --x64",
