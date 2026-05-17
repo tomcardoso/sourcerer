@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
 import './SetupPayloadModal.css';
 
 interface Props {
@@ -9,15 +8,8 @@ interface Props {
 }
 
 export default function SetupPayloadModal({ projectName, payload, onDone }: Props) {
-  const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    QRCode.toString(payload, { type: 'svg', width: 200, margin: 2 })
-      .then((svg) => setQrSrc(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`))
-      .catch(() => setQrSrc(null));
-  }, [payload]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onDone(); };
@@ -53,13 +45,6 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
             {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
-
-        {qrSrc && (
-          <div className="setup-payload-qr">
-            <p className="setup-payload-qr-label">Or scan this QR code:</p>
-            <img src={qrSrc} alt="Setup QR code" width={200} height={200} />
-          </div>
-        )}
 
         <p className="setup-payload-warning">
           This link contains the decryption key for the shared file. Only share it over a secure
