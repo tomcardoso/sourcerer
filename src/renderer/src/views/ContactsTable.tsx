@@ -370,6 +370,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                     <label className="date-filter-label">From</label>
                     <CalendarPicker
                       label="Pick date"
+                      ariaLabel="Date added from"
                       value={pf?.dateAddedFrom ?? ''}
                       onChange={(v) => setFilter('dateAddedFrom', v)}
                       showYear
@@ -377,6 +378,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                     <label className="date-filter-label">To</label>
                     <CalendarPicker
                       label="Pick date"
+                      ariaLabel="Date added to"
                       value={pf?.dateAddedTo ?? ''}
                       onChange={(v) => setFilter('dateAddedTo', v)}
                       showYear
@@ -500,6 +502,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                     <label className="date-filter-label">From</label>
                     <CalendarPicker
                       label="Pick date"
+                      ariaLabel="Date added from"
                       value={af?.dateAddedFrom ?? ''}
                       onChange={(v) => setFilter('dateAddedFrom', v)}
                       showYear
@@ -507,6 +510,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                     <label className="date-filter-label">To</label>
                     <CalendarPicker
                       label="Pick date"
+                      ariaLabel="Date added to"
                       value={af?.dateAddedTo ?? ''}
                       onChange={(v) => setFilter('dateAddedTo', v)}
                       showYear

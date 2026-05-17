@@ -70,12 +70,14 @@ export function CalendarPicker({
   onChange,
   showYear = false,
   maxDate,
+  ariaLabel,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   showYear?: boolean;
   maxDate?: string;
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'days' | 'months' | 'years'>('days');
@@ -138,6 +140,8 @@ export function CalendarPicker({
   const todayStr = todayISO();
   const thisYear = new Date().getFullYear();
   const showNav = mode === 'days';
+  const maxY = maxDate ? parseInt(maxDate.slice(0, 4), 10) : undefined;
+  const maxM = maxDate ? parseInt(maxDate.slice(5, 7), 10) : undefined;
 
   return (
     <div ref={wrapRef} className="cal-wrap">
@@ -145,6 +149,7 @@ export function CalendarPicker({
         type="button"
         className={`project-meta-action-btn${value ? ' project-meta-action-btn--active' : ''}`}
         onClick={openCalendar}
+        aria-label={ariaLabel ?? label}
       >
         {value ? fmtShort(value, showYear) : label}
       </button>
@@ -183,24 +188,32 @@ export function CalendarPicker({
 
           {mode === 'years' ? (
             <div className="cal-year-grid">
-              {yearRange.map((y) => (
-                <button
-                  type="button"
-                  key={y}
-                  className={[
-                    'cal-year-cell',
-                    y === viewYear ? 'cal-year-cell--selected' : '',
-                    y === thisYear && y !== viewYear ? 'cal-year-cell--today' : '',
-                  ].filter(Boolean).join(' ')}
-                  onClick={() => selectYear(y)}
-                >
-                  {y}
-                </button>
-              ))}
+              {yearRange.map((y) => {
+                const yearDisabled = maxY !== undefined && y > maxY;
+                return (
+                  <button
+                    type="button"
+                    key={y}
+                    className={[
+                      'cal-year-cell',
+                      y === viewYear ? 'cal-year-cell--selected' : '',
+                      y === thisYear && y !== viewYear ? 'cal-year-cell--today' : '',
+                      yearDisabled ? 'cal-day--disabled' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => selectYear(y)}
+                    disabled={yearDisabled}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
             </div>
           ) : mode === 'months' ? (
             <div className="cal-month-grid">
-              {MONTHS_SHORT.map((name, i) => (
+              {MONTHS_SHORT.map((name, i) => {
+                const monthDisabled = maxY !== undefined && maxM !== undefined &&
+                  (viewYear > maxY || (viewYear === maxY && i + 1 > maxM));
+                return (
                 <button
                   type="button"
                   key={name}
@@ -208,12 +221,15 @@ export function CalendarPicker({
                     'cal-month-cell',
                     i + 1 === viewMonth ? 'cal-month-cell--selected' : '',
                     i + 1 === new Date().getMonth() + 1 && viewYear === thisYear ? 'cal-month-cell--today' : '',
+                    monthDisabled ? 'cal-day--disabled' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => selectMonth(i + 1)}
+                  disabled={monthDisabled}
                 >
                   {name}
                 </button>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="cal-grid">

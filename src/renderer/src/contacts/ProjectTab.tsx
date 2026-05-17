@@ -449,9 +449,13 @@ function RemindersSection({
   async function handleSaveEdit(id: string) {
     if (!editDueDate || !editNote.trim()) return;
     const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
-    const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
-    setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
-    setEditingId(null);
+    try {
+      const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
+      setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
+      setEditingId(null);
+    } catch {
+      // leave edit form open so the user can retry
+    }
   }
 
   async function handleComplete(id: string) {
@@ -473,7 +477,11 @@ function RemindersSection({
   }
 
   async function handleDelete(id: string) {
-    await window.sourcerer.deleteReminder(id);
+    try {
+      await window.sourcerer.deleteReminder(id);
+    } catch {
+      return;
+    }
     setReminders((prev) => prev.filter((r) => r.id !== id));
     setEditingId(null);
   }
