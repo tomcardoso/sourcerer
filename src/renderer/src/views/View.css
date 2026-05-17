@@ -118,7 +118,7 @@
   width: 80px;
   flex-shrink: 0;
   color: var(--color-text-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .view-dl-row dd {

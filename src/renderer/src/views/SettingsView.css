@@ -135,7 +135,7 @@
   border: none;
   border-radius: 0;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: 0.10em;
   cursor: pointer;
@@ -273,7 +273,7 @@
   border: none;
   border-radius: 0;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: 0.10em;
   cursor: pointer;
