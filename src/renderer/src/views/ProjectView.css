@@ -51,6 +51,7 @@
   color: var(--color-text-muted);
   cursor: pointer;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   transition: background 0.1s, color 0.1s;
 }
@@ -100,6 +101,7 @@
   color: var(--color-text);
   cursor: pointer;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   white-space: nowrap;
 }
@@ -109,12 +111,12 @@
 }
 
 .recovery-btn-danger {
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.4);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 .recovery-btn-danger:hover {
-  background: rgba(248, 113, 113, 0.1);
+  background: rgba(185, 28, 28, 0.08);
 }
 
 /* Export button + dropdown — shared styles in View.css */
@@ -131,6 +133,7 @@
   color: var(--color-text-muted);
   cursor: pointer;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   transition: background 0.1s, color 0.1s;
 }
@@ -166,6 +169,7 @@
   color: var(--color-text-muted);
   cursor: pointer;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   transition: background 0.1s, color 0.1s;
 }

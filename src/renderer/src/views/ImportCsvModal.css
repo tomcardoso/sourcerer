@@ -100,6 +100,8 @@
   border-radius: 0;
   background: var(--color-surface);
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
   color: var(--color-primary);
   cursor: pointer;
   margin-bottom: 20px;

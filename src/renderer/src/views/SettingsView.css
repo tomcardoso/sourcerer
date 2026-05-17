@@ -287,19 +287,20 @@
 .sv-cancel-small-btn {
   height: 32px;
   padding: 0 10px;
-  background: #f3f4f6;
+  background: var(--color-surface);
   color: var(--color-text);
   border: none;
   border-radius: 0;
   font-size: 12px;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .sv-cancel-small-btn:hover {
-  background: #e5e7eb;
+  background: var(--color-surface-2);
 }
 
 .sv-hint {
@@ -467,6 +468,7 @@
   border-radius: 0;
   font-size: 12px;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   color: var(--color-danger);
   cursor: pointer;
@@ -515,6 +517,7 @@
   border-radius: 0;
   font-size: 12px;
   font-family: var(--font-mono);
+  font-weight: 600;
   letter-spacing: 0.10em;
   color: var(--color-bg);
   cursor: pointer;
