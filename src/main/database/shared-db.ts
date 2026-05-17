@@ -1,6 +1,18 @@
 import fs from 'node:fs';
+import { app } from 'electron';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { SHARED_SCHEMA_SQL } from './shared-schema';
+
+// Returns true if version string `a` is >= `b` (simple semver comparison).
+function semverGte(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true;
+    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false;
+  }
+  return true;
+}
 
 const connections = new Map<string, Database.Database>();
 
@@ -18,6 +30,21 @@ function openRaw(filePath: string, keyHex: string): Database.Database {
   db.pragma('journal_mode = DELETE');
   db.pragma('busy_timeout = 5000');
   runSharedMigrations(db);
+
+  // Check that this client is new enough to open the shared DB.
+  const metaRow = db.prepare(
+    `SELECT value FROM shared_meta WHERE key = 'min_app_version'`
+  ).get() as { value: string } | undefined;
+  if (metaRow) {
+    const current = app.getVersion();
+    if (!semverGte(current, metaRow.value)) {
+      db.close();
+      throw new Error(
+        `This shared project requires Sourcerer v${metaRow.value} or later. Please update the app.`
+      );
+    }
+  }
+
   return db;
 }
 
@@ -25,17 +52,33 @@ function openRaw(filePath: string, keyHex: string): Database.Database {
  * Applies any pending schema migrations to an existing shared DB.
  * Uses user_version as the migration counter, mirroring the local DB pattern.
  *
+ * POLICY: all future shared schema migrations MUST be backwards-compatible.
+ * Only add nullable columns or columns with defaults — never NOT NULL without
+ * a default. This ensures older clients can still open the DB; they will
+ * silently ignore columns they don't know about rather than hard-failing.
+ * When a migration requires a minimum app version, upsert `min_app_version`
+ * into shared_meta inside that migration block so older clients get a clear
+ * error on open rather than silent data corruption.
+ *
  * To add a migration:
- *   1. Add an `if (version < N) { ... db.pragma('user_version = N'); }` block below.
+ *   1. Increment the version check and add the block below.
  *   2. Update shared-schema.ts so brand-new shared DBs already include the change.
+ *   3. If the migration requires a newer client, upsert min_app_version.
  */
 function runSharedMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
-  // No migration blocks yet — schema changes during pre-production are handled
-  // by recreating shared DBs with the updated SHARED_SCHEMA_SQL.
   if (version < 1) {
     db.pragma('user_version = 1');
   }
+  // Future migration blocks go here. Example:
+  // if (version < 2) {
+  //   db.prepare('ALTER TABLE contacts ADD COLUMN foo TEXT').run();
+  //   db.prepare(
+  //     `INSERT INTO shared_meta (key, value) VALUES ('min_app_version', '0.2.0')
+  //      ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE excluded.value > value`
+  //   ).run();
+  //   db.pragma('user_version = 2');
+  // }
 }
 
 export function createSharedDb(
@@ -53,6 +96,11 @@ export function createSharedDb(
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
   db.exec(SHARED_SCHEMA_SQL);
+  // Record the creating client's version so older clients get a clear error
+  // if a future migration ever requires a minimum app version.
+  db.prepare(
+    `INSERT OR REPLACE INTO shared_meta (key, value) VALUES ('created_by_version', ?)`
+  ).run(app.getVersion());
   connections.set(projectId, db);
   return db;
 }
