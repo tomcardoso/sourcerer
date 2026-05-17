@@ -88,15 +88,23 @@ All design tokens are CSS custom properties defined in `src/renderer/src/global.
 | 11px | 0.14em | Buttons (global default), modal labels |
 | 12px | 0.10–0.12em | Sidebar items, slightly larger labels |
 
+**Components:**
+- Always use `CalendarPicker` (`src/renderer/src/views/CalendarPicker.tsx`) for any date input — never use `<input type="date">` (see issue #46 for outstanding cases)
+
 **Hard rules — do not break these:**
 - All interactive elements (buttons, inputs, selects, textareas) use `border-radius: 0` — square corners everywhere, no exceptions
 - Mono type is almost always `text-transform: uppercase` — exceptions only for body-level mono (e.g. code snippets)
 - Do not introduce colours outside the palette above; do not use system fonts or web-safe fallbacks
+- Never use inline styles. Always write a dedicated `.css` file co-located with the component
 
 ## Architecture notes
 
-- **IPC:** all database access happens in the main process; renderer communicates via typed IPC handlers in `src/main/ipc/`
-- **Schema + migrations:** `src/main/database/schema.ts` holds the full schema SQL; migrations use `user_version` as a counter (see `src/main/database/index.ts`)
+- **IPC:** all database access happens in the main process; renderer communicates via typed IPC handlers in `src/main/ipc/`. Each domain has a `register*Handlers()` function called from `src/main/index.ts` — new handlers always go in a domain file, never inline in `index.ts`
+- **Shared types:** `src/shared/types.ts` is the single contract between main and renderer. All IPC payload types must be defined there
+- **Renderer sandbox:** the renderer runs with `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true` — no Node APIs are available in React code. Everything goes through the preload bridge
+- **Schema + migrations:** `src/main/database/schema.ts` holds the full schema SQL; migrations use `user_version` as a counter (see `src/main/database/index.ts`). The shared DB has a parallel migration path in `src/main/database/shared-db.ts` — see issue #47 for known limitations around version compatibility between clients
 - **Cipher setup:** cipher pragmas must be set in a specific order before the key pragma — see `openRaw()` in `src/main/database/index.ts` for the canonical sequence
+- **Testing:** tests use an in-memory SQLite DB via `createTestDb()` in `src/test/vitest.setup.ts` — no database mocking. Helper functions (`insertProject`, `insertContact`, etc.) are defined there for test fixture setup. When building new features, consider whether a test is warranted — particularly for data logic, migrations, and sync behaviour
+- **Chrome extension HTTP server:** runs on `localhost:27371` with one-time token auth; defined in `src/main/http-server.ts`. It is not a general API — do not add endpoints unrelated to the extension
 - **Dev seeds:** seeded automatically on first unlock in dev mode; seed data lives in `src/main/database/dev-seeds*.ts`
 - **`*.db` and `*.salt` files are gitignored** — never commit them
