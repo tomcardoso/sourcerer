@@ -132,6 +132,15 @@ npm test
 npm run rebuild        # restore Electron-targeted binaries before npm run dev
 ```
 
+**Inspecting the database** (TablePlus, DB Browser, sqlite3, etc.):
+
+```bash
+npm run rebuild:node   # only needed once, or after switching between dev and Electron
+npm run db:export      # prompts for your app password, writes sourcerer-plain.db
+```
+
+The exported file is a standard unencrypted SQLite database. Delete it when you're done — it contains all your source data in plaintext. (`*.db` is in `.gitignore` so it won't be committed accidentally.)
+
 ---
 
 ## Security notes
