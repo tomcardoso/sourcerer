@@ -31,6 +31,10 @@ function openRaw(filePath: string, keyHex: string): Database.Database {
   db.pragma('busy_timeout = 5000');
   runSharedMigrations(db);
 
+  // Version check runs AFTER migrations by design: an old client skips migration
+  // blocks it doesn't know about (user_version is already high enough), so no
+  // harm is done before we get here. The new client that ran the migration is
+  // the one responsible for setting min_app_version inside that block.
   // Check that this client is new enough to open the shared DB.
   const metaRow = db.prepare(
     `SELECT value FROM shared_meta WHERE key = 'min_app_version'`
@@ -74,9 +78,10 @@ function runSharedMigrations(db: Database.Database): void {
   // if (version < 2) {
   //   db.prepare('ALTER TABLE contacts ADD COLUMN foo TEXT').run();
   //   db.prepare(
-  //     `INSERT INTO shared_meta (key, value) VALUES ('min_app_version', '0.2.0')
-  //      ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE excluded.value > value`
+  //     `INSERT OR REPLACE INTO shared_meta (key, value) VALUES ('min_app_version', '0.2.0')`
   //   ).run();
+  //   // Note: always use INSERT OR REPLACE here, not ON CONFLICT ... WHERE value > ...,
+  //   // because SQLite compares TEXT lexicographically and '0.9.0' > '0.10.0' is true.
   //   db.pragma('user_version = 2');
   // }
 }
