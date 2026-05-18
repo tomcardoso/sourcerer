@@ -229,6 +229,9 @@ export default function Sidebar({
                       style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
                     />
                     <span className="sidebar-project-name">{project.name}</span>
+                    {project.is_shared === 1 && (
+                      <span className="sidebar-project-shared-dot" title="Shared project" />
+                    )}
                     {project.is_archived === 1 ? (
                       <span
                         className="sidebar-project-delete"
