@@ -154,7 +154,7 @@ export function rekeySharedDb(projectId: string, filePath: string, oldKeyHex: st
   try {
     db.pragma(`rekey="x'${newKeyHex}'"`);
   } finally {
-    db.close();
+    try { db.close(); } catch { /* ignore */ }
     connections.delete(projectId);
   }
 }
