@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { fmtDate } from '../utils/fmtDate';
 import type {
   ContactListItem,
@@ -144,6 +145,8 @@ interface BaseTableProps {
   user: User | null;
   /** Total rows before filtering — used to distinguish "no data" from "no match" */
   totalCount: number;
+  virtualize?: boolean;
+  scrollContainerRef?: RefObject<HTMLDivElement>;
 }
 
 interface AllContactsTableProps extends BaseTableProps {
@@ -187,6 +190,8 @@ export default function ContactsTable(props: ContactsTableProps) {
     user,
     filters,
     totalCount,
+    virtualize = false,
+    scrollContainerRef,
   } = props;
 
   const isProject = mode === 'project';
@@ -215,6 +220,20 @@ export default function ContactsTable(props: ContactsTableProps) {
     if (!stalenessEnabled) return false;
     return ts === null || ts < now - stalenessThresholdSecs;
   }
+
+  const virtualizer = useVirtualizer({
+    count: virtualize ? rows.length : 0,
+    getScrollElement: () => scrollContainerRef?.current ?? null,
+    estimateSize: () => 41,
+    overscan: 10,
+  });
+
+  const virtualItems = virtualize ? virtualizer.getVirtualItems() : null;
+  const paddingTop = virtualItems?.length ? virtualItems[0].start : 0;
+  const paddingBottom = virtualItems?.length
+    ? virtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+    : 0;
+  const rowsToRender = virtualItems ? virtualItems.map((vi) => rows[vi.index]) : rows;
 
   const sd = (key: string) => (sort.key === key ? sort.dir : null);
   const colSpan = isProject ? 13 : 10;
@@ -568,116 +587,130 @@ export default function ContactsTable(props: ContactsTableProps) {
             </td>
           </tr>
         ) : (
-          rows.map((row) => {
-            const pr = isProject ? (row as ProjectContactRow) : null;
-            const ar = !isProject ? (row as ContactListItem) : null;
-            const isMe =
-              isProject && pp?.userEmail && (row as ProjectContactRow).reporter_email === pp.userEmail;
-            return (
-              <tr
-                key={row.id}
-                className={[
-                  selectedId === row.id ? 'selected' : '',
-                  checkedIds.has(row.id) ? 'checked' : '',
-                  isMe ? 'row row-mine' : 'row',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => onRowClick(row.id)}
-              >
-                <td className="contact-check-cell" onClick={(e) => onCheck(row.id, e)}>
-                  <input type="checkbox" checked={checkedIds.has(row.id)} onChange={() => {}} />
-                </td>
-
-                <td className="contact-name-cell">{row.name}</td>
-                <td className="contact-org-cell">{row.organization ?? '—'}</td>
-
-                {/* Project-only cells */}
-                {isProject && (
-                  <td className="contact-org-cell">
-                    {pr?.theme ?? <span className="contact-cell-muted">—</span>}
-                  </td>
-                )}
-                {isProject && (
-                  <td>{pr?.status ?? <span className="contact-cell-muted">—</span>}</td>
-                )}
-                {isProject && (
-                  <td>{pr?.priority ?? <span className="contact-cell-muted">—</span>}</td>
-                )}
-                {isProject && (
-                  <td className="contact-org-cell">{pr?.reporter_name}</td>
-                )}
-
-                {/* Project-only: Date Added */}
-                {isProject && (
-                  <td className="contact-date-cell">
-                    {fmtDate((pr as ProjectContactRow).membership_created_at)}
-                  </td>
-                )}
-
-                {/* Shared cells */}
-                <td className="contact-bool-cell">
-                  {row.has_email ? (
-                    <span className="contact-bool-yes">✓</span>
-                  ) : (
-                    <span className="contact-cell-muted">—</span>
-                  )}
-                </td>
-                <td className="contact-bool-cell">
-                  {row.has_phone ? (
-                    <span className="contact-bool-yes">✓</span>
-                  ) : (
-                    <span className="contact-cell-muted">—</span>
-                  )}
-                </td>
-                <td className="contact-bool-cell">
-                  {row.notes ? (
-                    <span className="contact-notes-icon">✎</span>
-                  ) : (
-                    <span className="contact-cell-muted">—</span>
-                  )}
-                </td>
-                <td className="contact-date-cell">
-                  {row.date_first_contacted === null ? (
-                    <span className="contact-cell-muted">—</span>
-                  ) : (
-                    fmtDate(row.date_first_contacted)
-                  )}
-                </td>
-                <td
-                  className={`contact-date-cell${isStale(row.date_last_contacted) ? ' contact-date-stale' : ''}`}
+          <>
+            {paddingTop > 0 && (
+              <tr aria-hidden="true">
+                {/* eslint-disable-next-line react/forbid-dom-props */}
+                <td colSpan={colSpan} className="virt-spacer" style={{ height: paddingTop }} />
+              </tr>
+            )}
+            {rowsToRender.map((row) => {
+              const pr = isProject ? (row as ProjectContactRow) : null;
+              const ar = !isProject ? (row as ContactListItem) : null;
+              const isMe =
+                isProject && pp?.userEmail && (row as ProjectContactRow).reporter_email === pp.userEmail;
+              return (
+                <tr
+                  key={row.id}
+                  className={[
+                    selectedId === row.id ? 'selected' : '',
+                    checkedIds.has(row.id) ? 'checked' : '',
+                    isMe ? 'row row-mine' : 'row',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => onRowClick(row.id)}
                 >
-                  {row.date_last_contacted === null ? (
-                    <span className="contact-cell-muted">Never</span>
-                  ) : (
-                    fmtDate(row.date_last_contacted)
-                  )}
-                </td>
-
-                {/* AllContacts-only: Date Added */}
-                {!isProject && (
-                  <td className="contact-date-cell">
-                    {fmtDate((ar as ContactListItem).created_at)}
+                  <td className="contact-check-cell" onClick={(e) => onCheck(row.id, e)}>
+                    <input type="checkbox" checked={checkedIds.has(row.id)} onChange={() => {}} />
                   </td>
-                )}
 
-                {/* AllContacts-only: Projects */}
-                {!isProject && (
-                  <td className="contact-projects-cell">
-                    {(ar?.projects.length ?? 0) === 0 ? (
-                      <span className="contact-no-projects">—</span>
+                  <td className="contact-name-cell">{row.name}</td>
+                  <td className="contact-org-cell">{row.organization ?? '—'}</td>
+
+                  {/* Project-only cells */}
+                  {isProject && (
+                    <td className="contact-org-cell">
+                      {pr?.theme ?? <span className="contact-cell-muted">—</span>}
+                    </td>
+                  )}
+                  {isProject && (
+                    <td>{pr?.status ?? <span className="contact-cell-muted">—</span>}</td>
+                  )}
+                  {isProject && (
+                    <td>{pr?.priority ?? <span className="contact-cell-muted">—</span>}</td>
+                  )}
+                  {isProject && (
+                    <td className="contact-org-cell">{pr?.reporter_name}</td>
+                  )}
+
+                  {/* Project-only: Date Added */}
+                  {isProject && (
+                    <td className="contact-date-cell">
+                      {fmtDate((pr as ProjectContactRow).membership_created_at)}
+                    </td>
+                  )}
+
+                  {/* Shared cells */}
+                  <td className="contact-bool-cell">
+                    {row.has_email ? (
+                      <span className="contact-bool-yes">✓</span>
                     ) : (
-                      ar?.projects.map((p) => (
-                        <span key={p.id} className="project-tag">
-                          {p.name}
-                        </span>
-                      ))
+                      <span className="contact-cell-muted">—</span>
                     )}
                   </td>
-                )}
+                  <td className="contact-bool-cell">
+                    {row.has_phone ? (
+                      <span className="contact-bool-yes">✓</span>
+                    ) : (
+                      <span className="contact-cell-muted">—</span>
+                    )}
+                  </td>
+                  <td className="contact-bool-cell">
+                    {row.notes ? (
+                      <span className="contact-notes-icon">✎</span>
+                    ) : (
+                      <span className="contact-cell-muted">—</span>
+                    )}
+                  </td>
+                  <td className="contact-date-cell">
+                    {row.date_first_contacted === null ? (
+                      <span className="contact-cell-muted">—</span>
+                    ) : (
+                      fmtDate(row.date_first_contacted)
+                    )}
+                  </td>
+                  <td
+                    className={`contact-date-cell${isStale(row.date_last_contacted) ? ' contact-date-stale' : ''}`}
+                  >
+                    {row.date_last_contacted === null ? (
+                      <span className="contact-cell-muted">Never</span>
+                    ) : (
+                      fmtDate(row.date_last_contacted)
+                    )}
+                  </td>
+
+                  {/* AllContacts-only: Date Added */}
+                  {!isProject && (
+                    <td className="contact-date-cell">
+                      {fmtDate((ar as ContactListItem).created_at)}
+                    </td>
+                  )}
+
+                  {/* AllContacts-only: Projects */}
+                  {!isProject && (
+                    <td className="contact-projects-cell">
+                      {(ar?.projects.length ?? 0) === 0 ? (
+                        <span className="contact-no-projects">—</span>
+                      ) : (
+                        ar?.projects.map((p) => (
+                          <span key={p.id} className="project-tag">
+                            {p.name}
+                          </span>
+                        ))
+                      )}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {paddingBottom > 0 && (
+              <tr aria-hidden="true">
+                {/* eslint-disable-next-line react/forbid-dom-props */}
+                <td colSpan={colSpan} className="virt-spacer" style={{ height: paddingBottom }} />
               </tr>
-            );
-          })
+            )}
+          </>
         )}
       </tbody>
     </table>
