@@ -120,16 +120,19 @@ describe('normalizePhone', () => {
     expect(withCA).not.toBeNull();
   });
 
-  it('preserves an extension in the output', () => {
+  it('preserves an extension in the output exactly once', () => {
     const result = normalizePhone('+1 202 456 1111 ext. 567', 'US');
-    expect(result).not.toBeNull();
-    expect(result).toContain('ext. 567');
+    expect(result).toBe('+1 202 456 1111 ext. 567');
   });
 
-  it('parses x-style extension notation', () => {
+  it('parses x-style extension notation exactly once', () => {
     const result = normalizePhone('+1 202 456 1111 x567', 'US');
-    expect(result).not.toBeNull();
-    expect(result).toContain('ext. 567');
+    expect(result).toBe('+1 202 456 1111 ext. 567');
+  });
+
+  it('parses a local number with x-style extension', () => {
+    const result = normalizePhone('416 585 5752 x123', 'CA');
+    expect(result).toBe('+1 416 585 5752 ext. 123');
   });
 });
 
