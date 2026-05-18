@@ -713,6 +713,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             onChange={(e) => setEditRssUrl(e.target.value)}
             placeholder="https://news.google.com/rss/search?q=…"
           />
+          {editRssUrl.trim() && !isValidUrl(editRssUrl.trim()) && (
+            <div className="ac-collision-warn">Invalid URL — must start with https:// or http://</div>
+          )}
           <p className="ac-field-hint">
             Paste a Google Alerts RSS URL to automatically track mentions.
             To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
@@ -720,7 +723,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="detail-edit-actions-bottom">
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!editRssUrl.trim() && !isValidUrl(editRssUrl.trim()))}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setEditingAndNotify(false)} disabled={saving}>
