@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
 import Modal from './Modal';
 import Button from './Button';
-import './NewProjectModal.css';
 
 interface Props {
   onCreated: (project: Project) => void;

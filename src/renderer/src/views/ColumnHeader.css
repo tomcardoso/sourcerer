@@ -59,7 +59,7 @@
 }
 
 .col-filter-btn-on {
-  opacity: 1 !important;
+  opacity: 1;
   color: var(--color-primary);
   font-size: 7px;
   position: relative;
