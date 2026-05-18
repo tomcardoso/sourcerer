@@ -135,6 +135,12 @@ function runDedupScan(): void {
   }, 500);
 }
 
+export function broadcastContactsChanged(): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('contacts:changed');
+  }
+}
+
 export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
     const rows = getDatabase()
@@ -333,6 +339,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
     getDatabase().prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    broadcastContactsChanged();
   });
 
   ipcMain.handle(
@@ -478,6 +485,7 @@ export function registerContactHandlers(): void {
         triggerWaybackSave(data.id, url).catch(() => {});
       }
     }
+    broadcastContactsChanged();
   });
 
   ipcMain.handle('memberships:update', (_, data: UpdateMembershipInput): void => {

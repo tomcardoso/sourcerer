@@ -55,6 +55,11 @@ const sourcererApi = {
     ipcRenderer.on('reminders:changed', handler);
     return () => ipcRenderer.removeListener('reminders:changed', handler);
   },
+  onContactsChanged: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('contacts:changed', handler);
+    return () => ipcRenderer.removeListener('contacts:changed', handler);
+  },
   onScreenshotReceived: (callback: (tempId: string) => void): (() => void) => {
     const handler = (_e: Electron.IpcRendererEvent, tempId: string) => callback(tempId);
     ipcRenderer.on('extension:screenshot-received', handler);

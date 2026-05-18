@@ -128,6 +128,10 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   }, [refreshTrigger, refresh]);
 
   useEffect(() => {
+    return window.sourcerer.onContactsChanged(refresh);
+  }, [refresh]);
+
+  useEffect(() => {
     if (!project?.is_shared) return;
     return window.sourcerer.onSyncStatus((event) => {
       if (event.projectId !== project.id) return;

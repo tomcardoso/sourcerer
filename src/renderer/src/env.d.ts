@@ -196,6 +196,7 @@ declare global {
       searchGlobal: (query: string) => Promise<SearchResult[]>;
 
       onRemindersChanged: (callback: () => void) => () => void;
+      onContactsChanged: (callback: () => void) => () => void;
 
       // Screenshots
       onScreenshotReceived: (callback: (tempId: string) => void) => () => void;

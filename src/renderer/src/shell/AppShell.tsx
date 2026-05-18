@@ -96,6 +96,13 @@ export default function AppShell() {
   }, [refreshOverdue]);
 
   useEffect(() => {
+    return window.sourcerer.onContactsChanged(() => {
+      window.sourcerer.getContactCount().then(setTotalContacts);
+      refreshOverdue();
+    });
+  }, [refreshOverdue]);
+
+  useEffect(() => {
     const offAvailable = window.sourcerer.onUpdateAvailable(({ version }) => {
       setUpdateVersion(version);
       setUpdateState('available');
