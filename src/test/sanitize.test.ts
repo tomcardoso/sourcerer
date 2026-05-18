@@ -65,6 +65,10 @@ describe('validateEmail', () => {
   it('rejects a whitespace-only string', () => {
     expect(validateEmail('   ')).toBe(false);
   });
+
+  it('rejects a TLD containing digits', () => {
+    expect(validateEmail('user@example.org2')).toBe(false);
+  });
 });
 
 describe('normalizePhone', () => {
