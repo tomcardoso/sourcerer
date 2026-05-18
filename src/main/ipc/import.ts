@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase } from '../database';
-import { normalizeEmail, normalizePhone, validateUrl } from '../sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import type { User, ImportResult } from '@shared/types';
 
 const SAMPLE_HEADERS =
@@ -169,7 +169,7 @@ export function processVcfContacts(
 
       const emails = [
         ...new Set(
-          c.emails.map((e) => normalizeEmail(e)).filter((e): e is string => e !== null && e !== ''),
+          c.emails.map((e) => normalizeEmail(e)).filter((e): e is string => !!e && validateEmail(e)),
         ),
       ];
 
@@ -290,7 +290,7 @@ export function processImportRows(
       const emails = get('email')
         .split(';')
         .map((e) => normalizeEmail(e.trim()))
-        .filter(Boolean);
+        .filter((e): e is string => !!e && validateEmail(e));
 
       const phones = get('phone')
         .split(';')
