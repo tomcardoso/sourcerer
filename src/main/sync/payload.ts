@@ -5,8 +5,7 @@ interface SetupPayload {
   name: string;
   description: string | null;
   filename: string;
-  path?: string; // legacy field — kept for decode compat with old payloads
-  key: string;   // base64-encoded 32-byte key
+  key: string; // base64-encoded 32-byte key
 }
 
 export function encodePayload(
@@ -50,7 +49,7 @@ export function decodePayload(encoded: string): {
   const keyBytes = Buffer.from(payload.key, 'base64');
   if (keyBytes.length !== 32) throw new Error('Invalid key length in payload.');
 
-  const originalFilename = payload.filename ?? path.basename(payload.path ?? 'shared.sourcerer');
+  const originalFilename = payload.filename ?? 'shared.sourcerer';
 
   return {
     name: payload.name ?? 'Shared Project',

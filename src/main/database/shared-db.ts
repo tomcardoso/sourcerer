@@ -4,15 +4,22 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { SHARED_SCHEMA_SQL } from './shared-schema';
 
 // Returns true if version string `a` is >= `b` (simple semver comparison).
+// Strips leading `v` and any pre-release/build suffix before parsing so that
+// strings like `v0.2.0` or `0.2.0-beta.1` don't produce NaN in Number().
 function semverGte(a: string, b: string): boolean {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
+  const clean = (v: string) => v.replace(/^v/, '').replace(/[-+].*$/, '');
+  const pa = clean(a).split('.').map(Number);
+  const pb = clean(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) {
     if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true;
     if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false;
   }
   return true;
 }
+
+// Bump this whenever you add a new migration block in runSharedMigrations,
+// and update SHARED_SCHEMA_SQL to include the change for new files.
+const SHARED_DB_VERSION = 1;
 
 const connections = new Map<string, Database.Database>();
 
@@ -101,6 +108,7 @@ export function createSharedDb(
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
   db.exec(SHARED_SCHEMA_SQL);
+  db.pragma(`user_version = ${SHARED_DB_VERSION}`);
   // Record the creating client's version so older clients get a clear error
   // if a future migration ever requires a minimum app version.
   db.prepare(

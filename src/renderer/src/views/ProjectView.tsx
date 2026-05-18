@@ -89,10 +89,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const handleCloseBulkActions = useCallback(() => setShowBulkActions(false), []);
   useClickOutside(bulkActionsRef, handleCloseBulkActions, { isOpen: showBulkActions });
 
+  const projectId = project?.id;
   const refresh = useCallback(() => {
-    if (!project) return;
-    window.sourcerer.listContactsForProject(project.id).then(setRows);
-  }, [project]);
+    if (!projectId) return;
+    window.sourcerer.listContactsForProject(projectId).then(setRows);
+  }, [projectId]);
 
   useEffect(() => {
     setSelectedId(null);
@@ -156,7 +157,17 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     syncStartedAt.current = Date.now();
     setSyncing(true);
     setSyncError(null);
-    await window.sourcerer.triggerSync(project.id);
+    const result = await window.sourcerer.triggerSync(project.id);
+    if (result && !result.success) {
+      const msg = result.error ?? 'Unknown sync error';
+      const isUnreachable =
+        msg.includes('no such file') ||
+        msg.includes('ENOENT') ||
+        msg.includes('not a database') ||
+        msg.includes('Cannot open');
+      setFileUnreachable(isUnreachable);
+      if (!isUnreachable) setSyncError(msg);
+    }
   }
 
   function openEditProject() {
@@ -500,9 +511,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               title={
                 syncing
                   ? 'Syncing…'
-                  : isPendingWrites
-                    ? 'Pending sync — shared file unreachable'
-                    : 'Synced'
+                  : syncError
+                    ? syncError
+                    : isPendingWrites
+                      ? 'Pending sync — shared file unreachable'
+                      : 'Synced'
               }
             />
           )}
