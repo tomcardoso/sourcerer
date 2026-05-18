@@ -72,6 +72,11 @@
   position: relative;
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Sync error banner */
 .sync-error-banner {
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
@@ -82,5 +87,6 @@
   font-size: 12px;
   color: var(--color-danger);
   line-height: 1.4;
+  animation: fade-in 200ms ease both;
 }
 
