@@ -65,6 +65,19 @@ describe('validateEmail', () => {
   it('rejects a whitespace-only string', () => {
     expect(validateEmail('   ')).toBe(false);
   });
+
+  it('rejects a TLD containing digits', () => {
+    expect(validateEmail('user@example.org2')).toBe(false);
+  });
+
+  it('rejects a local part containing invalid characters', () => {
+    expect(validateEmail('user name@example.com')).toBe(false);
+    expect(validateEmail('user!@example.com')).toBe(false);
+  });
+
+  it('accepts common local-part characters: dots, plus, underscore, hyphen', () => {
+    expect(validateEmail('first.last+tag_name-here@example.com')).toBe(true);
+  });
 });
 
 describe('normalizePhone', () => {
@@ -107,16 +120,19 @@ describe('normalizePhone', () => {
     expect(withCA).not.toBeNull();
   });
 
-  it('preserves an extension in the output', () => {
+  it('preserves an extension in the output exactly once', () => {
     const result = normalizePhone('+1 202 456 1111 ext. 567', 'US');
-    expect(result).not.toBeNull();
-    expect(result).toContain('ext. 567');
+    expect(result).toBe('+1 202 456 1111 ext. 567');
   });
 
-  it('parses x-style extension notation', () => {
+  it('parses x-style extension notation exactly once', () => {
     const result = normalizePhone('+1 202 456 1111 x567', 'US');
-    expect(result).not.toBeNull();
-    expect(result).toContain('ext. 567');
+    expect(result).toBe('+1 202 456 1111 ext. 567');
+  });
+
+  it('parses a local number with x-style extension', () => {
+    const result = normalizePhone('416 585 5752 x123', 'CA');
+    expect(result).toBe('+1 416 585 5752 ext. 123');
   });
 });
 
@@ -159,6 +175,18 @@ describe('validateUrl', () => {
 
   it('trims leading/trailing whitespace before validating', () => {
     expect(validateUrl('  https://example.com  ')).toBe(true);
+  });
+
+  it('rejects a URL with an internal space', () => {
+    expect(validateUrl('https://example.com/path with spaces')).toBe(false);
+  });
+
+  it('rejects a URL with an embedded tab', () => {
+    expect(validateUrl('https://example.com/path\twith\ttabs')).toBe(false);
+  });
+
+  it('rejects a URL with an embedded newline', () => {
+    expect(validateUrl('https://example.com/path\nwith\nnewlines')).toBe(false);
   });
 });
 

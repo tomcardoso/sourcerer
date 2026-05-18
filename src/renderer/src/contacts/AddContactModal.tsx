@@ -2,6 +2,14 @@ import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } fro
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import Button from '../shell/Button';
+import DynamicList from './DynamicList';
+import {
+  isValidEmail,
+  isValidUrl,
+  hasDisallowedPhoneChars,
+  normalizePhoneForComparison,
+  findDuplicates,
+} from './contactValidation';
 import '../shell/Modal.css';
 import './AddContactModal.css';
 
@@ -23,84 +31,6 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
 import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
 import type { HandleType } from './handleMeta';
 
-function isValidEmail(raw: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim());
-}
-
-function isValidUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw.trim());
-    return u.protocol === 'https:' || u.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
-
-// Allowed phone chars: digits, +, -, (, ), ., whitespace, and extension
-// notation letters (e, x, t for "ext", # for US-style extensions).
-function hasDisallowedPhoneChars(raw: string): boolean {
-  return /[^0-9+\-(). \t#extEXT]/.test(raw);
-}
-
-// Strip separators so spacing variants of the same number compare equal.
-function normalizePhoneForComparison(raw: string): string {
-  return raw.trim().replace(/[\s\-().]/g, '');
-}
-
-function DynamicList({
-  label,
-  values,
-  placeholder,
-  onChange,
-  onChangeItem,
-  onBlurItem,
-  warnings,
-}: {
-  label: string;
-  values: string[];
-  placeholder: string;
-  onChange: (values: string[]) => void;
-  onChangeItem?: (oldVal: string, newVal: string) => void;
-  onBlurItem?: (value: string) => void;
-  warnings?: Record<string, string>;
-}) {
-  return (
-    <div className="ac-field">
-      <label className="modal-label">{label}</label>
-      {values.map((val, i) => (
-        <div key={i}>
-          <div className="ac-dynamic-row">
-            <input
-              className="ac-input"
-              type="text"
-              value={val}
-              placeholder={placeholder}
-              onChange={(e) => {
-                onChangeItem?.(val.trim(), e.target.value.trim());
-                onChange(values.map((v, j) => (j === i ? e.target.value : v)));
-              }}
-              onBlur={() => onBlurItem?.(val.trim())}
-            />
-            {values.length > 1 && (
-              <button
-                type="button"
-                className="ac-remove"
-                onClick={() => onChange(values.filter((_, j) => j !== i))}
-              ></button>
-            )}
-          </div>
-          {val.trim() && warnings?.[val.trim()] && (
-            <div className="ac-collision-warn">{warnings[val.trim()]}</div>
-          )}
-        </div>
-      ))}
-      <Button variant="ghost" type="button" onClick={() => onChange([...values, ''])}>
-        + Add {label.toLowerCase()}
-      </Button>
-    </div>
-  );
-}
-
 export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
@@ -121,45 +51,20 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
 
   // Computed within-form duplicate sets — derived from state, no extra state needed.
-  const emailDuplicates = useMemo(() => {
-    const seen = new Map<string, number>();
-    for (const e of emails) {
-      const v = e.email.trim().toLowerCase();
-      if (!v) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    const dupes = new Set<string>();
-    for (const [v, count] of seen) if (count > 1) dupes.add(v);
-    return dupes;
-  }, [emails]);
+  const emailDuplicates = useMemo(
+    () => findDuplicates(emails.map((e) => e.email.trim().toLowerCase())),
+    [emails],
+  );
 
-  const phoneDuplicates = useMemo(() => {
-    const seen = new Map<string, number>();
-    for (const p of phones) {
-      const v = normalizePhoneForComparison(p.phone);
-      if (!v) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    const dupes = new Set<string>();
-    for (const [v, count] of seen) if (count > 1) dupes.add(v);
-    return dupes;
-  }, [phones]);
+  const phoneDuplicates = useMemo(
+    () => findDuplicates(phones.map((p) => normalizePhoneForComparison(p.phone))),
+    [phones],
+  );
 
-  const urlDuplicates = useMemo(() => {
-    const seen = new Map<string, number>();
-    const allUrls = [
-      ...websites,
-      ...SOCIAL_TYPES.flatMap((t) => socials[t]),
-    ];
-    for (const url of allUrls) {
-      const v = url.trim();
-      if (!v) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    const dupes = new Set<string>();
-    for (const [v, count] of seen) if (count > 1) dupes.add(v);
-    return dupes;
-  }, [websites, socials]);
+  const urlDuplicates = useMemo(
+    () => findDuplicates([...websites, ...SOCIAL_TYPES.flatMap((t) => socials[t])].map((u) => u.trim())),
+    [websites, socials],
+  );
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
@@ -370,7 +275,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 )}
                 {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && !emailDuplicates.has(entry.email.trim().toLowerCase()) && emailCollisions[entry.email.trim()] && (
                   <div className="ac-collision-warn">
-                    Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
+                    Already on: <span>{emailCollisions[entry.email.trim()]}</span>
                   </div>
                 )}
               </div>
@@ -438,7 +343,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 )}
                 {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && !phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && phoneCollisions[entry.phone.trim()] && (
                   <div className="ac-collision-warn">
-                    Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
+                    Already on: <span>{phoneCollisions[entry.phone.trim()]}</span>
                   </div>
                 )}
               </div>

@@ -143,6 +143,11 @@
   letter-spacing: 0.16em;
 }
 
+.ac-collision-warn span {
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
 .ac-field-hint {
   font-size: 12px;
   color: var(--color-text-dim);

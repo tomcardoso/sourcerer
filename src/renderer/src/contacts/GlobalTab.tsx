@@ -1,7 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project, User } from '@shared/types';
 import Button from '../shell/Button';
+import DynamicList, { useDragReorder } from './DynamicList';
+import {
+  isValidEmail,
+  isValidUrl,
+  hasDisallowedPhoneChars,
+  normalizePhoneForComparison,
+  sanitizeOtherLabel,
+  OTHER_LABEL_MAX,
+  findDuplicates,
+} from './contactValidation';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -33,121 +43,6 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
 };
 
 const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
-
-function isValidEmail(raw: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim());
-}
-
-// Allowed phone chars: digits, +, -, (, ), ., whitespace, and extension
-// notation letters (e, x, t for "ext", # for US-style extensions).
-function hasDisallowedPhoneChars(raw: string): boolean {
-  return /[^0-9+\-(). \t#extEXT]/.test(raw);
-}
-
-// Strip separators so spacing variants of the same number compare equal.
-function normalizePhoneForComparison(raw: string): string {
-  return raw.trim().replace(/[\s\-().]/g, '');
-}
-
-const OTHER_LABEL_MAX = 40;
-
-function sanitizeOtherLabel(raw: string): string {
-  return raw
-    .trim()
-    .replace(/\s+/g, ' ')            // collapse whitespace runs
-    .replace(/[\x00-\x1f\x7f]/g, '') // strip control characters
-    .slice(0, OTHER_LABEL_MAX);
-}
-
-function isValidUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw.trim());
-    return u.protocol === 'https:' || u.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
-
-function useDragReorder<T>(items: T[], onReorder: (next: T[]) => void) {
-  const dragFromRef = useRef<number | null>(null);
-  const dragAllowed = useRef(false);
-  const getDragProps = (i: number) => ({
-    draggable: true as const,
-    onDragStart: (e: React.DragEvent<HTMLElement>) => {
-      if (!dragAllowed.current) { e.preventDefault(); return; }
-      dragFromRef.current = i;
-    },
-    onDragEnd: () => { dragAllowed.current = false; dragFromRef.current = null; },
-    onDragOver: (e: React.DragEvent<HTMLElement>) => e.preventDefault(),
-    onDrop: (e: React.DragEvent<HTMLElement>) => {
-      e.preventDefault();
-      const from = dragFromRef.current;
-      if (from === null || from === i) return;
-      const next = [...items];
-      const [moved] = next.splice(from, 1);
-      next.splice(i, 0, moved);
-      dragFromRef.current = null;
-      onReorder(next);
-    },
-  });
-  const handleProps = { onMouseDown: () => { dragAllowed.current = true; } };
-  return { getDragProps, handleProps };
-}
-
-function DynamicList({
-  values,
-  placeholder,
-  onChange,
-  onChangeItem,
-  onBlurItem,
-  warnings,
-}: {
-  values: string[];
-  placeholder: string;
-  onChange: (vals: string[]) => void;
-  onChangeItem?: (oldVal: string, newVal: string) => void;
-  onBlurItem?: (value: string) => void;
-  warnings?: Record<string, string>;
-}) {
-  const { getDragProps, handleProps } = useDragReorder(values, onChange);
-  return (
-    <div>
-      {values.map((v, i) => (
-        <div
-          key={i}
-          {...getDragProps(i)}
-        >
-          <div className="ac-dynamic-row">
-            <span className="ac-drag-handle" {...handleProps}>⠿</span>
-            <input
-              className="ac-input"
-              value={v}
-              placeholder={placeholder}
-              onChange={(e) => {
-                onChangeItem?.(v.trim(), e.target.value.trim());
-                const next = [...values];
-                next[i] = e.target.value;
-                onChange(next);
-              }}
-              onBlur={() => onBlurItem?.(v.trim())}
-            />
-            <button
-              className="ac-remove"
-              type="button"
-              onClick={() => onChange(values.filter((_, j) => j !== i))}
-            ></button>
-          </div>
-          {v.trim() && warnings?.[v.trim()] && (
-            <div className="ac-collision-warn">{warnings[v.trim()]}</div>
-          )}
-        </div>
-      ))}
-      <Button variant="ghost" type="button" onClick={() => onChange([...values, ''])}>
-        + Add
-      </Button>
-    </div>
-  );
-}
 
 export default function GlobalTab({ contact, allProjects, onRefresh, onMembershipChanged, onDeleted, onEditingChange, user }: Props) {
   const [editing, setEditing] = useState(false);
@@ -233,46 +128,24 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
 
   // Computed within-form duplicate sets — derived from state, no extra state needed.
-  const emailDuplicates = useMemo(() => {
-    const seen = new Map<string, number>();
-    for (const e of editEmails) {
-      const v = e.email.trim().toLowerCase();
-      if (!v) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    const dupes = new Set<string>();
-    for (const [v, count] of seen) if (count > 1) dupes.add(v);
-    return dupes;
-  }, [editEmails]);
+  const emailDuplicates = useMemo(
+    () => findDuplicates(editEmails.map((e) => e.email.trim().toLowerCase())),
+    [editEmails],
+  );
 
-  const phoneDuplicates = useMemo(() => {
-    const seen = new Map<string, number>();
-    for (const p of editPhones) {
-      const v = normalizePhoneForComparison(p.phone);
-      if (!v) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    const dupes = new Set<string>();
-    for (const [v, count] of seen) if (count > 1) dupes.add(v);
-    return dupes;
-  }, [editPhones]);
+  const phoneDuplicates = useMemo(
+    () => findDuplicates(editPhones.map((p) => normalizePhoneForComparison(p.phone))),
+    [editPhones],
+  );
 
-  const urlDuplicates = useMemo(() => {
-    const seen = new Map<string, number>();
-    const allUrls = [
+  const urlDuplicates = useMemo(
+    () => findDuplicates([
       ...editWebsites,
       ...NON_OTHER_SOCIAL_TYPES.flatMap((t) => editSocials[t]),
       ...editOtherSocials.map((e) => e.url),
-    ];
-    for (const url of allUrls) {
-      const v = url.trim();
-      if (!v) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    const dupes = new Set<string>();
-    for (const [v, count] of seen) if (count > 1) dupes.add(v);
-    return dupes;
-  }, [editWebsites, editSocials, editOtherSocials]);
+    ].map((u) => u.trim())),
+    [editWebsites, editSocials, editOtherSocials],
+  );
 
   useEffect(() => {
     window.sourcerer.getAlertRss(contact.id).then(setAlertRss);
@@ -537,18 +410,20 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
               {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && !emailDuplicates.has(entry.email.trim().toLowerCase()) && emailCollisions[entry.email.trim()] && (
                 <div className="ac-collision-warn">
-                  Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
+                  Already on: <span>{emailCollisions[entry.email.trim()]}</span>
                 </div>
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditEmails([...editEmails, { email: '', label: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditEmails([...editEmails, { email: '', label: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         <div className="ac-field">
@@ -616,18 +491,20 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
               {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && !phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && phoneCollisions[entry.phone.trim()] && (
                 <div className="ac-collision-warn">
-                  Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
+                  Already on: <span>{phoneCollisions[entry.phone.trim()]}</span>
                 </div>
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         <div className="ac-field">
@@ -664,19 +541,22 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               ></button>
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         {NON_OTHER_SOCIAL_TYPES.map((type) => (
           <div key={type} className="ac-field">
             <label className="ac-label">{SOCIAL_META[type].label}</label>
             <DynamicList
+              enableDragReorder
               values={editSocials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
@@ -768,18 +648,21 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditOtherSocials([...editOtherSocials, { url: '', label: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditOtherSocials([...editOtherSocials, { url: '', label: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         <div className="ac-field">
           <label className="ac-label">Website</label>
           <DynamicList
+            enableDragReorder
             values={editWebsites}
             placeholder="https://example.com"
             onChange={setEditWebsites}
@@ -830,6 +713,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             onChange={(e) => setEditRssUrl(e.target.value)}
             placeholder="https://news.google.com/rss/search?q=…"
           />
+          {editRssUrl.trim() && !isValidUrl(editRssUrl.trim()) && (
+            <div className="ac-collision-warn">Invalid URL — must be a valid https:// or http:// address</div>
+          )}
           <p className="ac-field-hint">
             Paste a Google Alerts RSS URL to automatically track mentions.
             To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
@@ -837,7 +723,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="detail-edit-actions-bottom">
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!editRssUrl.trim() && !isValidUrl(editRssUrl.trim()))}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setEditingAndNotify(false)} disabled={saving}>

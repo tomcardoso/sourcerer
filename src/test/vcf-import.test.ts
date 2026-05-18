@@ -176,12 +176,56 @@ describe('parseVcf — missing optional fields', () => {
     expect(parseVcf(vcf)[0].notes).toBeNull();
   });
 
-  it('returns empty arrays when EMAIL/TEL/URL are absent', () => {
+  it('returns null for title when TITLE is absent', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].title).toBeNull();
+  });
+
+  it('returns empty arrays when EMAIL/TEL/URL/IMPP are absent', () => {
     const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'END:VCARD'].join('\n');
     const [c] = parseVcf(vcf);
     expect(c.emails).toEqual([]);
     expect(c.phones).toEqual([]);
     expect(c.urls).toEqual([]);
+    expect(c.handles).toEqual([]);
+  });
+});
+
+describe('parseVcf — TITLE', () => {
+  it('parses a TITLE field', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'TITLE:Senior Reporter', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].title).toBe('Senior Reporter');
+  });
+});
+
+describe('parseVcf — IMPP handles', () => {
+  it('parses a Signal IMPP field', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'IMPP;X-SERVICE-TYPE=Signal:signal:%2B1%20555%200001', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.handles).toEqual([{ type: 'signal', handle: '+1 555 0001' }]);
+  });
+
+  it('parses a WhatsApp IMPP field', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'IMPP:whatsapp:%2B1%20555%200002', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.handles).toEqual([{ type: 'whatsapp', handle: '+1 555 0002' }]);
+  });
+
+  it('parses a Telegram IMPP field', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'IMPP:telegram:%40username', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.handles).toEqual([{ type: 'telegram', handle: '@username' }]);
+  });
+
+  it('maps an unknown IMPP scheme to other', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'IMPP:xmpp:user@example.com', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.handles).toEqual([{ type: 'other', handle: 'user@example.com' }]);
+  });
+
+  it('ignores an IMPP with no handle value', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'IMPP:signal:', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].handles).toEqual([]);
   });
 });
 
@@ -202,10 +246,12 @@ function makeContact(overrides: Partial<VcfContact> = {}): VcfContact {
   return {
     name: 'Alice Smith',
     organization: null,
+    title: null,
     notes: null,
     emails: [],
     phones: [],
     urls: [],
+    handles: [],
     ...overrides,
   };
 }

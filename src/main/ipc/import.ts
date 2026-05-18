@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase } from '../database';
-import { normalizeEmail, normalizePhone } from '../sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import type { User, ImportResult } from '@shared/types';
 
 const SAMPLE_HEADERS =
@@ -63,10 +63,12 @@ export function parseCsv(text: string): string[][] {
 export interface VcfContact {
   name: string;
   organization: string | null;
+  title: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
   urls: string[];
+  handles: Array<{ type: string; handle: string }>;
 }
 
 function decodeVcfValue(v: string): string {
@@ -84,7 +86,7 @@ export function parseVcf(text: string): VcfContact[] {
   for (const raw of lines) {
     const upper = raw.trimEnd().toUpperCase();
     if (upper === 'BEGIN:VCARD') {
-      cur = { name: '', organization: null, notes: null, emails: [], phones: [], urls: [] };
+      cur = { name: '', organization: null, title: null, notes: null, emails: [], phones: [], urls: [], handles: [] };
       continue;
     }
     if (upper === 'END:VCARD') {
@@ -110,6 +112,9 @@ export function parseVcf(text: string): VcfContact[] {
       case 'ORG':
         cur.organization = decodeVcfValue(value.split(';')[0]) || null;
         break;
+      case 'TITLE':
+        cur.title = decodeVcfValue(value) || null;
+        break;
       case 'NOTE':
         cur.notes = decodeVcfValue(value).replace(/\\n/gi, '\n') || null;
         break;
@@ -122,6 +127,17 @@ export function parseVcf(text: string): VcfContact[] {
       case 'URL':
         { const u = decodeVcfValue(value); if (u) cur.urls.push(u); }
         break;
+      case 'IMPP': {
+        const schemeColon = value.indexOf(':');
+        if (schemeColon < 0) break;
+        const scheme = value.slice(0, schemeColon).toLowerCase();
+        let handle = '';
+        try { handle = decodeURIComponent(value.slice(schemeColon + 1)).trim(); } catch { handle = value.slice(schemeColon + 1).trim(); }
+        if (!handle) break;
+        const typeMap: Record<string, string> = { signal: 'signal', whatsapp: 'whatsapp', telegram: 'telegram' };
+        cur.handles.push({ type: typeMap[scheme] ?? 'other', handle });
+        break;
+      }
     }
   }
 
@@ -143,7 +159,7 @@ export function processVcfContacts(
   );
 
   const stmtContact = db.prepare(
-    'INSERT INTO contacts (id, name, organization, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
   const stmtEmail = db.prepare(
     'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -153,6 +169,9 @@ export function processVcfContacts(
   );
   const stmtLink = db.prepare(
     'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  );
+  const stmtHandle = db.prepare(
+    'INSERT OR IGNORE INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
   );
   const stmtMembership = db.prepare(
     `INSERT INTO project_memberships
@@ -169,7 +188,7 @@ export function processVcfContacts(
 
       const emails = [
         ...new Set(
-          c.emails.map((e) => normalizeEmail(e)).filter((e): e is string => e !== null && e !== ''),
+          c.emails.map((e) => normalizeEmail(e)).filter((e): e is string => !!e && validateEmail(e)),
         ),
       ];
 
@@ -179,7 +198,7 @@ export function processVcfContacts(
         ),
       ];
 
-      const urls = [...new Set(c.urls)];
+      const urls = [...new Set(c.urls)].filter(validateUrl);
 
       if (existingNames.has(c.name.toLowerCase())) {
         skipped.push({ name: c.name, reason: 'name' });
@@ -193,7 +212,7 @@ export function processVcfContacts(
       const id = uuidv4();
       const now = Math.floor(Date.now() / 1000);
 
-      stmtContact.run(id, c.name, c.organization, c.notes, now, now);
+      stmtContact.run(id, c.name, c.organization, c.title, c.notes, now, now);
 
       emails.forEach((email, i) => {
         stmtEmail.run(uuidv4(), id, email, i, now);
@@ -206,6 +225,10 @@ export function processVcfContacts(
 
       urls.forEach((url, i) => {
         stmtLink.run(uuidv4(), id, 'website', null, url, i, now);
+      });
+
+      c.handles.forEach((h, i) => {
+        stmtHandle.run(uuidv4(), id, h.type, h.handle, i, now);
       });
 
       if (projectId) {
@@ -290,7 +313,7 @@ export function processImportRows(
       const emails = get('email')
         .split(';')
         .map((e) => normalizeEmail(e.trim()))
-        .filter(Boolean);
+        .filter((e): e is string => !!e && validateEmail(e));
 
       const phones = get('phone')
         .split(';')
@@ -324,9 +347,9 @@ export function processImportRows(
       const links: { type: string; url: string }[] = [];
       const linkedin = get('linkedin');
       const x = get('x');
-      if (linkedin) links.push({ type: 'linkedin', url: linkedin });
-      if (x) links.push({ type: 'x', url: x });
-      get('website').split(';').map((s) => s.trim()).filter(Boolean).forEach((url) => {
+      if (linkedin && validateUrl(linkedin)) links.push({ type: 'linkedin', url: linkedin });
+      if (x && validateUrl(x)) links.push({ type: 'x', url: x });
+      get('website').split(';').map((s) => s.trim()).filter(Boolean).filter(validateUrl).forEach((url) => {
         links.push({ type: 'website', url });
       });
       links.forEach((link, i) => {

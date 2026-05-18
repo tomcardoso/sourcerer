@@ -110,7 +110,7 @@ input,
 select,
 textarea,
 [role="button"] {
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 /* Global button baseline — mono uppercase; override per-component for colour/size */

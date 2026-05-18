@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow, net } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
-import { normalizeEmail, normalizePhone } from '../sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
 import type {
   ContactListItem,
@@ -116,7 +116,7 @@ export async function triggerWaybackSave(contactId: string, url: string): Promis
   }
 }
 
-function runDedupScan(): void {
+export function runDedupScan(): void {
   if (dedupScanTimer) clearTimeout(dedupScanTimer);
   dedupScanTimer = setTimeout(() => {
     dedupScanTimer = null;
@@ -280,7 +280,7 @@ export function registerContactHandlers(): void {
 
       const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
-        .filter((e) => e.email);
+        .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
         db.prepare(
           'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -297,7 +297,7 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, p.phone, p.label, i, now);
       });
 
-      const links = (data.links ?? []).filter((l) => l.url.trim());
+      const links = (data.links ?? []).filter((l) => l.url.trim() && validateUrl(l.url));
       links.forEach((link, i) => {
         db.prepare(
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -316,7 +316,7 @@ export function registerContactHandlers(): void {
     runDedupScan();
 
     if (wayback_enabled) {
-      const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
+      const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim() && validateUrl(l.url));
       for (const link of websiteLinks) {
         triggerWaybackSave(id, link.url.trim()).catch(() => {});
       }
@@ -327,11 +327,11 @@ export function registerContactHandlers(): void {
       organization: data.organization?.trim() || null,
       notes: data.notes?.trim() || null,
       created_at: now,
-      has_email: (data.emails?.length ?? 0) > 0 ? 1 : 0,
+      has_email: emails.length > 0 ? 1 : 0,
       has_phone: phones.length > 0 ? 1 : 0,
       date_first_contacted: null,
       date_last_contacted: null,
-      emails_raw: (data.emails ?? []).map((e) => normalizeEmail(e.email)).filter(Boolean).join(' ') || null,
+      emails_raw: emails.map((e) => e.email).join(' ') || null,
       phones_raw: phones.length > 0 ? phones.map((p) => p.phone).join(' ') : null,
       projects: [],
     };
@@ -433,7 +433,7 @@ export function registerContactHandlers(): void {
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
       const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
-        .filter((e) => e.email);
+        .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
         db.prepare(
           'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -452,7 +452,7 @@ export function registerContactHandlers(): void {
       });
 
       db.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
-      const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim());
+      const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim() && validateUrl(l.url));
       links.forEach((link: ContactLinkInput, i: number) => {
         db.prepare(
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -481,7 +481,7 @@ export function registerContactHandlers(): void {
 
     if (wayback_enabled) {
       const newWebsiteUrls = (data.links ?? [])
-        .filter((l) => l.type === 'website' && l.url.trim() && !existingWaybacks.has(l.url.trim()))
+        .filter((l) => l.type === 'website' && l.url.trim() && validateUrl(l.url) && !existingWaybacks.has(l.url.trim()))
         .map((l) => l.url.trim());
       for (const url of newWebsiteUrls) {
         triggerWaybackSave(data.id, url).catch(() => {});
@@ -501,7 +501,9 @@ export function registerContactHandlers(): void {
       ? data.outreachRemindersEnabled
       : (current?.outreach_reminders_enabled ?? 1);
 
-    const reporterChanging = data.reporterEmail !== undefined && data.reporterEmail !== current?.reporter_email;
+    const reporterChanging = data.reporterEmail !== undefined
+      && data.reporterEmail !== current?.reporter_email
+      && validateEmail(data.reporterEmail);
 
     db.prepare(
       `UPDATE project_memberships
@@ -518,7 +520,7 @@ export function registerContactHandlers(): void {
       data.priority ?? null,
       data.theme ?? null,
       newEnabled,
-      data.reporterEmail ?? null,
+      (data.reporterEmail && validateEmail(data.reporterEmail)) ? data.reporterEmail : null,
       data.reporterName ?? null,
       reporterChanging ? 1 : 0, now,
       reporterChanging ? 1 : 0, data.clearConflict ? 1 : 0,
@@ -566,6 +568,7 @@ export function registerContactHandlers(): void {
       db.transaction(() => {
         deleteReporters.run(membershipId);
         for (const r of reporters) {
+          if (!validateEmail(r.email)) continue;
           insertReporter.run(uuidv4(), membershipId, r.email, r.name);
         }
       })();

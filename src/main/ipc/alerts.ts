@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import { pollAllRss, pollContactRss } from '../sync/rss-poller';
+import { validateUrl } from '@shared/validation';
 import type { ContactAlertRss, ContactAlertMention } from '@shared/types';
 
 export function registerAlertHandlers(): void {
@@ -16,6 +17,7 @@ export function registerAlertHandlers(): void {
   ipcMain.handle(
     'alerts:set-rss',
     (_, { contactId, rssUrl }: { contactId: string; rssUrl: string }): void => {
+      if (!validateUrl(rssUrl)) throw new Error('Invalid RSS URL');
       const db = getDatabase();
       const existing = db
         .prepare(`SELECT id FROM contact_alert_rss WHERE contact_id = ?`)

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import type { User } from '@shared/types';
+import { isValidEmail } from '../contacts/contactValidation';
 import Button from '../shell/Button';
 import './View.css';
 import './SettingsView.css';
@@ -47,6 +48,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [email, setEmail] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const emailValid = !email.trim() || isValidEmail(email);
 
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('CA');
@@ -133,7 +135,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   }, [user?.id]);
 
   async function handleProfileSave() {
-    if (!firstName.trim() || !email.trim()) return;
+    if (!firstName.trim() || !email.trim() || !isValidEmail(email)) return;
     setProfileSaving(true);
     try {
       const updated = await window.sourcerer.updateUser({ firstName, lastName, email });
@@ -363,6 +365,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
               />
+              {!emailValid && (
+                <p className="sv-field-error">Enter a valid email address.</p>
+              )}
             </div>
           </div>
           <div className="sv-profile-actions">
@@ -370,7 +375,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               variant="accent"
               size="sm"
               onClick={handleProfileSave}
-              disabled={profileSaving || !profileDirty || !firstName.trim() || !email.trim()}
+              disabled={profileSaving || !profileDirty || !firstName.trim() || !email.trim() || !emailValid}
             >
               {profileSaved ? 'Saved!' : profileSaving ? 'Saving…' : 'Save profile'}
             </Button>
