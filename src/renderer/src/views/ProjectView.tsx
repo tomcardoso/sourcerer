@@ -927,12 +927,10 @@ function UnshareProjectModal({
         Your local data is unaffected.
       </p>
       <div className="modal-actions">
-        <button className="modal-btn-cancel" onClick={onDismiss} disabled={working}>
-          Cancel
-        </button>
-        <button className="modal-btn-danger" onClick={handleConfirm} disabled={working}>
+        <Button variant="secondary" onClick={onDismiss} disabled={working}>Cancel</Button>
+        <Button variant="danger" onClick={handleConfirm} disabled={working}>
           {working ? 'Unsharing…' : 'Unshare project'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -962,12 +960,10 @@ function RotateKeyModal({
         out-of-band.
       </p>
       <div className="modal-actions">
-        <button className="modal-btn-cancel" onClick={onDismiss} disabled={working}>
-          Cancel
-        </button>
-        <button className="modal-btn-danger" onClick={handleConfirm} disabled={working}>
+        <Button variant="secondary" onClick={onDismiss} disabled={working}>Cancel</Button>
+        <Button variant="danger" onClick={handleConfirm} disabled={working}>
           {working ? 'Rotating…' : 'Rotate key'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
