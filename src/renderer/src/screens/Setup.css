@@ -120,25 +120,6 @@
   margin-bottom: 16px;
 }
 
-.setup-submit {
-  width: 100%;
+.setup-card .btn {
   height: 40px;
-  background: var(--color-text);
-  color: var(--color-bg);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.setup-submit:hover:not(:disabled) {
-  background: var(--color-text-muted);
-}
-
-.setup-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
