@@ -90,6 +90,8 @@ const sourcererApi = {
     ipcRenderer.invoke('projects:convertToShared', projectId),
   regenerateSharedProject: (projectId: string): Promise<{ payload: string } | null> =>
     ipcRenderer.invoke('projects:regenerateShared', projectId),
+  rotateSharedKey: (projectId: string): Promise<{ payload: string } | null> =>
+    ipcRenderer.invoke('projects:rotateSharedKey', projectId),
   renameProject: (id: string, name: string): Promise<void> =>
     ipcRenderer.invoke('projects:rename', { id, name }),
   updateProject: (id: string, name: string, description: string | null): Promise<Project> =>

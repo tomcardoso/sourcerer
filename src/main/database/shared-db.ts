@@ -146,6 +146,19 @@ export function closeSharedDb(projectId: string): void {
   }
 }
 
+export function rekeySharedDb(projectId: string, filePath: string, oldKeyHex: string, newKeyHex: string): void {
+  let db = connections.get(projectId);
+  if (!db) {
+    db = openRaw(filePath, oldKeyHex);
+  }
+  try {
+    db.pragma(`rekey="x'${newKeyHex}'"`);
+  } finally {
+    try { db.close(); } catch { /* ignore */ }
+    connections.delete(projectId);
+  }
+}
+
 export function closeAllSharedDbs(): void {
   for (const [projectId, db] of connections) {
     try {

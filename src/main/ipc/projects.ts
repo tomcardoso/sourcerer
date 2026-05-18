@@ -2,7 +2,7 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
-import { createSharedDb, openSharedDb, closeSharedDb } from '../database/shared-db';
+import { createSharedDb, openSharedDb, closeSharedDb, rekeySharedDb } from '../database/shared-db';
 import { encodePayload, decodePayload } from '../sync/payload';
 import { syncProject } from '../sync/engine';
 import { broadcastRemindersChanged } from './reminders';
@@ -316,6 +316,33 @@ export function registerProjectHandlers(): void {
       }
 
       const payload = encodePayload(project.name, project.description, filePath, keyBytes);
+      return { payload };
+    },
+  );
+
+  ipcMain.handle(
+    'projects:rotateSharedKey',
+    (_, projectId: string): { payload: string } | null => {
+      const db = getDatabase();
+      const project = db
+        .prepare('SELECT * FROM projects WHERE id = ?')
+        .get(projectId) as (Project & { shared_db_key: Buffer | null }) | undefined;
+      if (!project || !project.shared_db_path || !project.shared_db_key) return null;
+
+      const oldKeyHex = project.shared_db_key.toString('hex');
+      const newKeyBytes = randomBytes(32);
+      const newKeyHex = newKeyBytes.toString('hex');
+
+      rekeySharedDb(projectId, project.shared_db_path, oldKeyHex, newKeyHex);
+
+      db.prepare('UPDATE projects SET shared_db_key = ? WHERE id = ?').run(newKeyBytes, projectId);
+
+      const payload = encodePayload(
+        project.name,
+        project.description,
+        project.shared_db_path,
+        newKeyBytes,
+      );
       return { payload };
     },
   );

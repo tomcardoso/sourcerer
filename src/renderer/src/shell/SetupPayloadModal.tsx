@@ -22,7 +22,7 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
   }
 
   return (
-    <Modal title={'Share “' + projectName + '”'} onDismiss={onDone} className="setup-payload-modal">
+    <Modal title={`Share “${projectName}”`} onDismiss={onDone} className="setup-payload-modal">
       <p className="modal-description">
         Share the link below with your collaborators out-of-band (e.g., via Signal). They'll paste
         it into Sourcerer to join the project.

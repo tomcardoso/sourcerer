@@ -62,8 +62,9 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [confirmUnshare, setConfirmUnshare] = useState(false);
+  const [showUnshareModal, setShowUnshareModal] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [showRotateModal, setShowRotateModal] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -229,11 +230,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     if (!project) return;
     try {
       const updated = await window.sourcerer.unshareProject(project.id);
-      setConfirmUnshare(false);
+      setShowUnshareModal(false);
       onProjectUpdated(updated);
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Failed to unshare project.');
-      setConfirmUnshare(false);
+      setShowUnshareModal(false);
     }
   }
 
@@ -247,6 +248,19 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     const updated = projects.find((p) => p.id === project.id);
     if (updated) onProjectUpdated(updated);
     setRegenPayload({ projectName: project.name, payload: result.payload });
+  }
+
+  async function handleRotateKey() {
+    if (!project) return;
+    try {
+      const result = await window.sourcerer.rotateSharedKey(project.id);
+      if (!result) return;
+      setRegenPayload({ projectName: project.name, payload: result.payload });
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Failed to rotate key.');
+    } finally {
+      setShowRotateModal(false);
+    }
   }
 
   // Bulk selection handlers (allChecked/someChecked are computed after displayed is built below)
@@ -558,17 +572,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               ✎ Edit
             </button>
           </div>
-          {project.is_shared === 1 && (
-            <div className="project-meta-item">
-              <button
-                className={`project-meta-action-btn${syncing ? ' project-meta-action-btn--syncing' : ''}`}
-                onClick={handleSyncNow}
-                disabled={syncing}
-              >
-                {syncing ? 'Syncing…' : '↻ Sync'}
-              </button>
-            </div>
-          )}
           <div className="project-meta-item export-menu-wrap" ref={exportMenuRef}>
             <button
               className="project-meta-action-btn"
@@ -604,20 +607,15 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               </button>
             </div>
           )}
-          {project.is_shared === 1 && !confirmUnshare && (
+          {project.is_shared === 1 && (
             <div className="project-meta-item">
-              <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
-                  Unshare project
+              <button
+                className={`project-meta-action-btn${syncing ? ' project-meta-action-btn--syncing' : ''}`}
+                onClick={handleSyncNow}
+                disabled={syncing}
+              >
+                {syncing ? 'Syncing…' : '↻ Sync'}
               </button>
-            </div>
-          )}
-          {confirmUnshare && (
-            <div className="project-meta-item">
-              <span className="inline-confirm">
-                Stop syncing?
-                <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
-                <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
-              </span>
             </div>
           )}
           </div>
@@ -836,6 +834,22 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
     )}
 
+    {showUnshareModal && project && (
+      <UnshareProjectModal
+        projectName={project.name}
+        onDismiss={() => setShowUnshareModal(false)}
+        onConfirm={handleUnshare}
+      />
+    )}
+
+    {showRotateModal && project && (
+      <RotateKeyModal
+        projectName={project.name}
+        onDismiss={() => setShowRotateModal(false)}
+        onConfirm={handleRotateKey}
+      />
+    )}
+
     {showEditProject && (
       <Modal title="Edit project" onDismiss={() => setShowEditProject(false)}>
         <form onSubmit={handleEditProjectSubmit}>
@@ -869,8 +883,87 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             </Button>
           </div>
         </form>
+        {project?.is_shared === 1 && (
+          <div className="modal-danger-zone">
+            <p className="modal-danger-zone-label">Danger zone</p>
+            <div className="modal-danger-zone-actions">
+              <Button variant="danger-outline" size="sm" onClick={() => { setShowEditProject(false); setShowUnshareModal(true); }}>
+                Unshare project
+              </Button>
+              <Button variant="danger-outline" size="sm" onClick={() => { setShowEditProject(false); setShowRotateModal(true); }}>
+                Rotate key…
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     )}
   </>
+  );
+}
+
+function UnshareProjectModal({
+  projectName,
+  onDismiss,
+  onConfirm,
+}: {
+  projectName: string;
+  onDismiss: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [working, setWorking] = useState(false);
+
+  async function handleConfirm() {
+    setWorking(true);
+    try { await onConfirm(); } finally { setWorking(false); }
+  }
+
+  return (
+    <Modal title="Unshare project" onDismiss={onDismiss}>
+      <p className="modal-description">
+        <strong>{projectName}</strong> will be converted back to a local-only project. All
+        collaborators will immediately lose access and the shared file will no longer be updated.
+        Your local data is unaffected.
+      </p>
+      <div className="modal-actions">
+        <Button variant="secondary" onClick={onDismiss} disabled={working}>Cancel</Button>
+        <Button variant="danger" onClick={handleConfirm} disabled={working}>
+          {working ? 'Unsharing…' : 'Unshare project'}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+function RotateKeyModal({
+  projectName,
+  onDismiss,
+  onConfirm,
+}: {
+  projectName: string;
+  onDismiss: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [working, setWorking] = useState(false);
+
+  async function handleConfirm() {
+    setWorking(true);
+    try { await onConfirm(); } finally { setWorking(false); }
+  }
+
+  return (
+    <Modal title="Rotate encryption key" onDismiss={onDismiss}>
+      <p className="modal-description">
+        This will generate a new encryption key for <strong>{projectName}</strong>. All current
+        collaborators will immediately lose access. You'll be shown a new share link to redistribute
+        out-of-band.
+      </p>
+      <div className="modal-actions">
+        <Button variant="secondary" onClick={onDismiss} disabled={working}>Cancel</Button>
+        <Button variant="danger" onClick={handleConfirm} disabled={working}>
+          {working ? 'Rotating…' : 'Rotate key'}
+        </Button>
+      </div>
+    </Modal>
   );
 }
