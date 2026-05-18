@@ -56,7 +56,7 @@ Releases are triggered by pushing a version tag (`v*`). Because `main` is protec
    git push -u origin chore/v{VERSION}
    gh pr create ...
    ```
-4. Optionally add a `## What's new` section to the PR body — the release workflow will use it as the GitHub Release description instead of the auto-generated PR list
+4. Optionally add a `## What's new` section to the PR body — plain English, written for a lay audience. The release workflow will prepend it to the auto-generated PR list (which appears in a collapsible Details block below). If omitted, only the PR list is shown.
 5. Once the PR is merged, push the tag to trigger the build:
    ```bash
    git checkout main && git pull
