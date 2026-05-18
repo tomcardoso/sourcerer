@@ -470,8 +470,8 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
               {/* Date range */}
               <span className="ptl-filter-sep" />
               <div className="ptl-date-pair">
-                <CalendarPicker label="From" value={dateFrom} onChange={setDateFrom} showYear={showFromYear} />
-                <CalendarPicker label="To" value={dateTo} onChange={setDateTo} showYear={showToYear} />
+                <CalendarPicker label="From" value={dateFrom} onChange={setDateFrom} showYear={showFromYear} maxDate={new Date().toISOString().slice(0, 10)} />
+                <CalendarPicker label="To" value={dateTo} onChange={setDateTo} showYear={showToYear} maxDate={new Date().toISOString().slice(0, 10)} />
               </div>
             </div>
           </div>

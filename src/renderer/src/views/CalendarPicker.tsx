@@ -83,6 +83,7 @@ export function CalendarPicker({
   const [mode, setMode] = useState<'days' | 'months' | 'years'>('days');
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth() + 1);
+  const [yearPageOffset, setYearPageOffset] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(wrapRef, () => { setOpen(false); setMode('days'); }, { isOpen: open });
@@ -98,6 +99,7 @@ export function CalendarPicker({
       setViewMonth(now.getMonth() + 1);
     }
     setMode('days');
+    setYearPageOffset(0);
     setOpen((v) => !v);
   }
 
@@ -136,10 +138,11 @@ export function CalendarPicker({
   }
 
   const cells = buildCells(viewYear, viewMonth);
-  const yearRange = buildYearRange(viewYear);
+  const yearRange = buildYearRange(viewYear + yearPageOffset * YEAR_WINDOW);
   const todayStr = todayISO();
   const thisYear = new Date().getFullYear();
   const showNav = mode === 'days';
+  const showYearPageNav = mode === 'years';
   const maxY = maxDate ? parseInt(maxDate.slice(0, 4), 10) : undefined;
   const maxM = maxDate ? parseInt(maxDate.slice(5, 7), 10) : undefined;
 
@@ -164,6 +167,8 @@ export function CalendarPicker({
           <div className="cal-header">
             {showNav ? (
               <button type="button" className="cal-nav" onClick={prevMonth} aria-label="Previous month">‹</button>
+            ) : showYearPageNav ? (
+              <button type="button" className="cal-nav" onClick={() => setYearPageOffset((o) => o - 1)} aria-label="Earlier years">‹</button>
             ) : (
               <div className="cal-nav-placeholder" />
             )}
@@ -171,16 +176,22 @@ export function CalendarPicker({
               {mode === 'days' && (
                 <span className="cal-month-name">{MONTHS[viewMonth - 1]}</span>
               )}
-              <button
-                type="button"
-                className={`cal-year-btn${mode !== 'days' ? ' cal-year-btn--active' : ''}`}
-                onClick={() => setMode(mode === 'years' ? 'days' : 'years')}
-              >
-                {viewYear}
-              </button>
+              {mode === 'years' ? (
+                <span className="cal-year-range">{yearRange[0]} – {yearRange[yearRange.length - 1]}</span>
+              ) : (
+                <button
+                  type="button"
+                  className={`cal-year-btn${mode !== 'days' ? ' cal-year-btn--active' : ''}`}
+                  onClick={() => { setYearPageOffset(0); setMode('years'); }}
+                >
+                  {viewYear}
+                </button>
+              )}
             </span>
             {showNav ? (
               <button type="button" className="cal-nav" onClick={nextMonth} aria-label="Next month">›</button>
+            ) : showYearPageNav ? (
+              <button type="button" className="cal-nav" onClick={() => setYearPageOffset((o) => o + 1)} aria-label="Later years">›</button>
             ) : (
               <div className="cal-nav-placeholder" />
             )}
