@@ -330,6 +330,11 @@
 
 .ac-rss-add-row {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   align-items: flex-start;
+}
+
+.ac-rss-url-input {
+  width: 100%;
 }

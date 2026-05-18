@@ -725,7 +725,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           ))}
           <div className="ac-rss-add-row">
             <input
-              className="ac-input"
+              className="ac-input ac-rss-url-input"
               type="url"
               value={newRssUrl}
               onChange={(e) => setNewRssUrl(e.target.value)}
