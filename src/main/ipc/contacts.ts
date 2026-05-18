@@ -365,6 +365,7 @@ export function registerContactHandlers(): void {
         Math.floor(Date.now() / 1000),
         Math.floor(Date.now() / 1000),
       );
+      broadcastContactsChanged();
     },
   );
 
@@ -374,6 +375,7 @@ export function registerContactHandlers(): void {
       getDatabase()
         .prepare('DELETE FROM project_memberships WHERE contact_id = ? AND project_id = ?')
         .run(contactId, projectId);
+      broadcastContactsChanged();
     },
   );
 
@@ -530,6 +532,7 @@ export function registerContactHandlers(): void {
       ).run(data.membershipId);
       broadcastRemindersChanged();
     }
+    broadcastContactsChanged();
   });
 
   ipcMain.handle(
@@ -548,6 +551,7 @@ export function registerContactHandlers(): void {
           for (const id of membershipIds) stmt.run(priority ?? null, now, id);
         }
       })();
+      broadcastContactsChanged();
     },
   );
 
@@ -590,6 +594,7 @@ export function registerContactHandlers(): void {
       ).run(id, membershipId, user.email, reporterName, body.trim(), ts);
       // Clear any auto-outreach calendar reminder — source is no longer overdue.
       db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1').run(membershipId);
+      broadcastContactsChanged();
       return {
         id,
         membership_id: membershipId,
@@ -745,6 +750,7 @@ export function registerContactHandlers(): void {
         mergeContactsDb(db, winnerId, loserId, strategy);
       }
       setImmediate(runDedupScan);
+      broadcastContactsChanged();
     },
   );
 }
