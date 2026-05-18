@@ -32,8 +32,11 @@ function tryOpen(filePath: string, keyHex: string): void {
   const db = new Database(filePath);
   db.pragma(`cipher='sqlcipher'`);
   db.pragma(`key="x'${keyHex}'"`);
-  db.pragma('user_version'); // forces actual decryption
-  db.close();
+  try {
+    db.pragma('user_version'); // forces actual decryption
+  } finally {
+    try { db.close(); } catch { /* ignore */ }
+  }
 }
 
 describe('rekeySharedDb', () => {
