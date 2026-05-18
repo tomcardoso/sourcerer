@@ -252,10 +252,15 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
   async function handleRotateKey() {
     if (!project) return;
-    const result = await window.sourcerer.rotateSharedKey(project.id);
-    setShowRotateModal(false);
-    if (!result) return;
-    setRegenPayload({ projectName: project.name, payload: result.payload });
+    try {
+      const result = await window.sourcerer.rotateSharedKey(project.id);
+      if (!result) return;
+      setRegenPayload({ projectName: project.name, payload: result.payload });
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Failed to rotate key.');
+    } finally {
+      setShowRotateModal(false);
+    }
   }
 
   // Bulk selection handlers (allChecked/someChecked are computed after displayed is built below)
