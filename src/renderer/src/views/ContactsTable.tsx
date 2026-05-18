@@ -226,6 +226,23 @@ export default function ContactsTable(props: ContactsTableProps) {
     getScrollElement: () => scrollContainerRef?.current ?? null,
     estimateSize: () => 41,
     overscan: 10,
+    // Only notify on height changes — width changes (e.g. detail panel open/close)
+    // are irrelevant for vertical virtualization and would cause a spurious re-render
+    // that blocks the first animation frame of the detail panel slide-in.
+    observeElementRect: (instance, cb) => {
+      const el = instance.scrollElement;
+      if (!el) return () => {};
+      let prevH = 0;
+      const ro = new ResizeObserver(([entry]) => {
+        const h = Math.round(entry.contentRect.height);
+        if (h !== prevH) {
+          prevH = h;
+          cb({ height: h, width: entry.contentRect.width });
+        }
+      });
+      ro.observe(el);
+      return () => ro.disconnect();
+    },
   });
 
   const virtualItems = virtualize ? virtualizer.getVirtualItems() : null;
