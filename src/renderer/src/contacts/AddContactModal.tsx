@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
+import '../shell/Modal.css';
 import './AddContactModal.css';
 
 interface Props {
@@ -64,7 +65,7 @@ function DynamicList({
 }) {
   return (
     <div className="ac-field">
-      <label className="ac-label">{label}</label>
+      <label className="modal-label">{label}</label>
       {values.map((val, i) => (
         <div key={i}>
           <div className="ac-dynamic-row">
@@ -280,8 +281,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
         <form ref={formRef} onSubmit={handleSubmit} className="ac-form">
           <div className="ac-field">
-            <label htmlFor="ac-name" className="ac-label">
-              Name <span className="ac-required">*</span>
+            <label htmlFor="ac-name" className="modal-label">
+              Name <span className="modal-required">*</span>
             </label>
             <input
               id="ac-name"
@@ -296,7 +297,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-field">
-            <label htmlFor="ac-org" className="ac-label">Organization</label>
+            <label htmlFor="ac-org" className="modal-label">Organization</label>
             <input
               id="ac-org"
               className="ac-input"
@@ -309,7 +310,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-field">
-            <label htmlFor="ac-title" className="ac-label">Title / Role</label>
+            <label htmlFor="ac-title" className="modal-label">Title / Role</label>
             <input
               id="ac-title"
               className="ac-input"
@@ -322,7 +323,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-field">
-            <label className="ac-label">Email</label>
+            <label className="modal-label">Email</label>
             {emails.map((entry, i) => (
               <div key={i}>
                 <div className="ac-phone-row">
@@ -378,7 +379,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             </button>
           </div>
           <div className="ac-field">
-            <label className="ac-label">Phone</label>
+            <label className="modal-label">Phone</label>
             {phones.map((entry, i) => (
               <div key={i}>
                 <div className="ac-phone-row">
@@ -451,7 +452,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-field">
-            <label className="ac-label">Messaging</label>
+            <label className="modal-label">Messaging</label>
             {handles.map((entry, i) => (
               <div key={i} className="ac-phone-row">
                 <select
@@ -545,7 +546,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
           {projects.length > 0 && (
             <div className="ac-field">
-              <label className="ac-label">Add to projects</label>
+              <label className="modal-label">Add to projects</label>
               <div className="ac-project-select" ref={projectWrapRef}>
                 <div className="ac-project-chips">
                   {[...selectedProjectIds].map((id) => {
@@ -593,7 +594,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           )}
 
           <div className="ac-field">
-            <label htmlFor="ac-notes" className="ac-label">Notes</label>
+            <label htmlFor="ac-notes" className="modal-label">Notes</label>
             <textarea
               id="ac-notes"
               className="ac-textarea"

@@ -1,13 +1,3 @@
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
 .ac-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -55,21 +45,6 @@
 
 .ac-field {
   margin-bottom: 14px;
-}
-
-.ac-label {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin-bottom: 5px;
-}
-
-.ac-required {
-  color: var(--color-danger);
 }
 
 .ac-input {
@@ -172,44 +147,10 @@
   border-top: 1px solid var(--color-border);
 }
 
-/* Reuse from NewProjectModal */
-.modal-btn-cancel,
-.modal-btn-create {
+/* Slightly smaller than the modal default to match the 34px form inputs */
+.ac-actions .modal-btn-cancel,
+.ac-actions .modal-btn-create {
   height: 34px;
-  padding: 0 16px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: none;
-}
-
-.modal-btn-cancel {
-  background: none;
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text-muted);
-}
-
-.modal-btn-cancel:hover:not(:disabled) {
-  border-color: var(--color-text);
-  color: var(--color-text);
-}
-
-.modal-btn-create {
-  background: var(--color-text);
-  color: var(--color-bg);
-}
-
-.modal-btn-create:hover:not(:disabled) {
-  background: var(--color-text-muted);
-}
-
-.modal-btn-create:disabled,
-.modal-btn-cancel:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .ac-collision-warn {
