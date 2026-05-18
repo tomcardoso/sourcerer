@@ -144,7 +144,9 @@
 }
 
 .detail-value {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
   font-size: 13px;
   color: var(--color-text);
   margin-bottom: 2px;
@@ -1096,7 +1098,7 @@
 .detail-phone-label {
   font-size: 12px;
   color: var(--color-text-muted);
-  margin-left: 5px;
+  white-space: nowrap;
 }
 
 .detail-website-row {
