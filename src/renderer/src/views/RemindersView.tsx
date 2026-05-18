@@ -217,7 +217,7 @@ export default function RemindersView({ onCountChange, user }: Props) {
                   <ReminderRow
                     key={r.id}
                     reminder={r}
-                    daysLabel={`${Math.abs(relDays(r.due_date))}d ago`}
+                    daysLabel={relDays(r.due_date) === 0 ? 'Today' : `${Math.abs(relDays(r.due_date))}d ago`}
                     overdue
                     onDelete={handleDelete}
                     onContactClick={openContact}
