@@ -1,4 +1,4 @@
-export { validateEmail as isValidEmail, validateUrl as isValidUrl } from '@shared/validation';
+export { validateEmail as isValidEmail, validateUrl as isValidUrl, isGoogleAlertUrl } from '@shared/validation';
 
 // Allowed phone chars: digits, +, -, (, ), ., whitespace, # for US extensions,
 // and "ext"/"x" as an extension prefix. Strip any trailing extension first so

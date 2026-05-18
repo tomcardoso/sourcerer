@@ -902,6 +902,10 @@
 }
 
 
+.detail-rss-feed {
+  margin-bottom: 6px;
+}
+
 .detail-rss-invalid {
   color: var(--color-warning-border);
   margin-left: 4px;

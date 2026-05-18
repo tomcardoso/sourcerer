@@ -247,10 +247,12 @@ const sourcererApi = {
   },
 
   // Alerts / RSS mentions
-  getAlertRss: (contactId: string): Promise<ContactAlertRss | null> =>
-    ipcRenderer.invoke('alerts:get-rss', contactId),
-  setAlertRss: (contactId: string, rssUrl: string): Promise<void> =>
-    ipcRenderer.invoke('alerts:set-rss', { contactId, rssUrl }),
+  listAlertRss: (contactId: string): Promise<ContactAlertRss[]> =>
+    ipcRenderer.invoke('alerts:list-rss', contactId),
+  addAlertRss: (contactId: string, rssUrl: string): Promise<void> =>
+    ipcRenderer.invoke('alerts:add-rss', { contactId, rssUrl }),
+  removeAlertRss: (id: string): Promise<void> =>
+    ipcRenderer.invoke('alerts:remove-rss', id),
   clearAlertRss: (contactId: string): Promise<void> =>
     ipcRenderer.invoke('alerts:clear-rss', contactId),
   listMentions: (): Promise<ContactAlertMention[]> =>

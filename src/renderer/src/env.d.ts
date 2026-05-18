@@ -147,8 +147,9 @@ declare global {
       onSyncStatus: (callback: (event: SyncStatusEvent) => void) => () => void;
 
       // Alerts / RSS mentions
-      getAlertRss: (contactId: string) => Promise<ContactAlertRss | null>;
-      setAlertRss: (contactId: string, rssUrl: string) => Promise<void>;
+      listAlertRss: (contactId: string) => Promise<ContactAlertRss[]>;
+      addAlertRss: (contactId: string, rssUrl: string) => Promise<void>;
+      removeAlertRss: (id: string) => Promise<void>;
       clearAlertRss: (contactId: string) => Promise<void>;
       listMentions: () => Promise<ContactAlertMention[]>;
       markMentionSeen: (id: string) => Promise<void>;

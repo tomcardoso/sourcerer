@@ -271,6 +271,7 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     const { phone_country, wayback_enabled } = db.prepare('SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
+    let emails: { email: string; label: string | null }[] = [];
     let phones: { phone: string; label: string | null }[] = [];
 
     const insert = db.transaction(() => {
@@ -278,7 +279,7 @@ export function registerContactHandlers(): void {
         'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.notes?.trim() || null, now, now);
 
-      const emails = (data.emails ?? [])
+      emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
         .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {

@@ -6,34 +6,30 @@ import { validateUrl } from '@shared/validation';
 import type { ContactAlertRss, ContactAlertMention } from '@shared/types';
 
 export function registerAlertHandlers(): void {
-  ipcMain.handle('alerts:get-rss', (_, contactId: string): ContactAlertRss | null => {
-    return (
-      (getDatabase()
-        .prepare(`SELECT * FROM contact_alert_rss WHERE contact_id = ?`)
-        .get(contactId) as ContactAlertRss | undefined) ?? null
-    );
+  ipcMain.handle('alerts:list-rss', (_, contactId: string): ContactAlertRss[] => {
+    return getDatabase()
+      .prepare(`SELECT * FROM contact_alert_rss WHERE contact_id = ? ORDER BY rowid`)
+      .all(contactId) as ContactAlertRss[];
   });
 
   ipcMain.handle(
-    'alerts:set-rss',
+    'alerts:add-rss',
     (_, { contactId, rssUrl }: { contactId: string; rssUrl: string }): void => {
       if (!validateUrl(rssUrl)) throw new Error('Invalid RSS URL');
       const db = getDatabase();
-      const existing = db
-        .prepare(`SELECT id FROM contact_alert_rss WHERE contact_id = ?`)
-        .get(contactId);
-      if (existing) {
-        db.prepare(
-          `UPDATE contact_alert_rss SET rss_url = ?, is_invalid = 0, last_polled_at = NULL WHERE contact_id = ?`,
-        ).run(rssUrl, contactId);
-      } else {
-        db.prepare(
-          `INSERT INTO contact_alert_rss (id, contact_id, rss_url) VALUES (?, ?, ?)`,
-        ).run(uuidv4(), contactId, rssUrl);
-      }
+      const id = uuidv4();
+      db.prepare(
+        `INSERT INTO contact_alert_rss (id, contact_id, rss_url) VALUES (?, ?, ?)`,
+      ).run(id, contactId, rssUrl);
       pollContactRss(contactId).catch(() => {});
     },
   );
+
+  ipcMain.handle('alerts:remove-rss', (_, id: string): void => {
+    getDatabase()
+      .prepare(`DELETE FROM contact_alert_rss WHERE id = ?`)
+      .run(id);
+  });
 
   ipcMain.handle('alerts:clear-rss', (_, contactId: string): void => {
     getDatabase()
