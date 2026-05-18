@@ -116,7 +116,7 @@ export async function triggerWaybackSave(contactId: string, url: string): Promis
   }
 }
 
-function runDedupScan(): void {
+export function runDedupScan(): void {
   if (dedupScanTimer) clearTimeout(dedupScanTimer);
   dedupScanTimer = setTimeout(() => {
     dedupScanTimer = null;

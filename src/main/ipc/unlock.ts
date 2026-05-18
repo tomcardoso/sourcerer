@@ -7,6 +7,7 @@ import { startPoller } from '../sync/poller';
 import { startAutoBackupTimer } from '../index';
 import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
 import { checkReminders, clearReminderNotificationCache } from '../sync/reminder-checker';
+import { runDedupScan } from './contacts';
 import type { UnlockResult } from '@shared/types';
 
 const APP_WIDTH = 1100;
@@ -75,6 +76,7 @@ export function registerUnlockHandlers(): void {
       clearReminderNotificationCache();
       checkOutreachReminders();
       checkReminders();
+      runDedupScan();
       return { success: true };
     } catch {
       return { success: false, error: 'Incorrect password.' };
