@@ -178,6 +178,11 @@
   background: var(--color-surface-2);
 }
 
+@keyframes bulk-bar-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Bulk action bar */
 .bulk-bar {
   display: flex;
@@ -189,6 +194,7 @@
   border-bottom: 1px solid var(--color-border-strong);
   font-size: 13px;
   flex-shrink: 0;
+  animation: bulk-bar-in 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
 .bulk-bar-element {
