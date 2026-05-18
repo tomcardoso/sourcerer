@@ -122,4 +122,5 @@
 
 .setup-card .btn {
   height: 40px;
+  justify-content: center;
 }
