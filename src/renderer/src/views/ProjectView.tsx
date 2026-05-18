@@ -4,6 +4,7 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
+import Modal from '../shell/Modal';
 import ContactsTable, {
   type ProjectFilters as Filters,
   DEFAULT_PROJECT_FILTERS as DEFAULT_FILTERS,
@@ -831,42 +832,39 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     )}
 
     {showEditProject && (
-      <div className="modal-overlay" onClick={() => setShowEditProject(false)}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <h2 className="modal-title">Edit project</h2>
-          <form onSubmit={handleEditProjectSubmit}>
-            <div className="modal-field">
-              <label className="modal-label">Project name <span className="modal-required">*</span></label>
-              <input
-                className="modal-input"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                autoFocus
-                required
-                disabled={editSubmitting}
-              />
-            </div>
-            <div className="modal-field">
-              <label className="modal-label">Description <span className="modal-optional">(optional)</span></label>
-              <input
-                className="modal-input"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Short slug line"
-                disabled={editSubmitting}
-              />
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="modal-btn-cancel" onClick={() => setShowEditProject(false)} disabled={editSubmitting}>
-                Cancel
-              </button>
-              <button type="submit" className="modal-btn-create" disabled={editSubmitting || !editName.trim()}>
-                {editSubmitting ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+      <Modal title="Edit project" onDismiss={() => setShowEditProject(false)}>
+        <form onSubmit={handleEditProjectSubmit}>
+          <div className="modal-field">
+            <label className="modal-label">Project name <span className="modal-required">*</span></label>
+            <input
+              className="modal-input"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              autoFocus
+              required
+              disabled={editSubmitting}
+            />
+          </div>
+          <div className="modal-field">
+            <label className="modal-label">Description <span className="modal-optional">(optional)</span></label>
+            <input
+              className="modal-input"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Short slug line"
+              disabled={editSubmitting}
+            />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="modal-btn-cancel" onClick={() => setShowEditProject(false)} disabled={editSubmitting}>
+              Cancel
+            </button>
+            <button type="submit" className="modal-btn-create" disabled={editSubmitting || !editName.trim()}>
+              {editSubmitting ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     )}
   </>
   );

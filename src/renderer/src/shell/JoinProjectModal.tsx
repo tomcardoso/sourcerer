@@ -1,5 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
+import Modal from './Modal';
 import './JoinProjectModal.css';
 
 interface Props {
@@ -14,12 +15,6 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel]);
 
   async function handlePayloadChange(value: string) {
     setPayload(value);
@@ -67,11 +62,8 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   const canJoin = canLocate && !!selectedPath && !submitting;
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-card join-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Join shared project</h2>
-
-        <form onSubmit={handleSubmit}>
+    <Modal title="Join shared project" onDismiss={onCancel} className="join-modal">
+      <form onSubmit={handleSubmit}>
           <div className="modal-field">
             <label htmlFor="join-payload" className="modal-label">
               Setup link <span className="modal-required">*</span>
@@ -132,8 +124,7 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
               {submitting ? 'Joining…' : 'Join project'}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

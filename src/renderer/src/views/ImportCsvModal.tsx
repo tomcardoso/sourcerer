@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { ImportResult, Project } from '@shared/types';
+import Modal from '../shell/Modal';
 import './ImportCsvModal.css';
 
 interface Props {
@@ -15,12 +16,6 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
   const [format, setFormat] = useState<Format>('csv');
   const [projectId, setProjectId] = useState(preselectedProjectId ?? '');
   const [importing, setImporting] = useState(false);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   async function handleImport() {
     setImporting(true);
@@ -38,11 +33,8 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
   const showProjectSelect = projects.length > 0 && !preselectedProjectId;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card icm-card" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Import contacts</h2>
-
-        <div className="icm-format-tabs">
+    <Modal title="Import contacts" onDismiss={onClose} className="icm-card">
+      <div className="icm-format-tabs">
           <button
             type="button"
             className={`icm-format-tab${format === 'csv' ? ' icm-format-tab--active' : ''}`}
@@ -143,15 +135,14 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
           </div>
         )}
 
-        <div className="modal-actions">
-          <button className="modal-btn-cancel" onClick={onClose} disabled={importing}>
-            Cancel
-          </button>
-          <button className="modal-btn-create" onClick={handleImport} disabled={importing}>
-            {importing ? 'Importing…' : 'Choose file & import'}
-          </button>
-        </div>
+      <div className="modal-actions">
+        <button className="modal-btn-cancel" onClick={onClose} disabled={importing}>
+          Cancel
+        </button>
+        <button className="modal-btn-create" onClick={handleImport} disabled={importing}>
+          {importing ? 'Importing…' : 'Choose file & import'}
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

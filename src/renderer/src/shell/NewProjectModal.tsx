@@ -1,5 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
+import Modal from './Modal';
 import './NewProjectModal.css';
 
 interface Props {
@@ -13,12 +14,6 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
   const [description, setDescription] = useState('');
   const [isShared, setIsShared] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -46,11 +41,8 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
   }
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">New Project</h2>
-
-        <form onSubmit={handleSubmit}>
+    <Modal title="New Project" onDismiss={onCancel}>
+      <form onSubmit={handleSubmit}>
           <div className="modal-field">
             <label htmlFor="proj-name" className="modal-label">
               Project name <span className="modal-required">*</span>
@@ -117,8 +109,7 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
               {submitting ? 'Creating…' : 'Create project'}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

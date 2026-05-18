@@ -2,17 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Reminder, User } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
 import ContactDetail from '../contacts/ContactDetail';
+import Modal from '../shell/Modal';
 import './View.css';
 import './RemindersView.css';
 
 function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(url);
@@ -21,10 +16,8 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card reminders-cal-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Add to calendar</h2>
-        <p className="reminders-cal-modal-intro">
+    <Modal title="Add to calendar" onDismiss={onClose} className="reminders-cal-modal">
+      <p className="reminders-cal-modal-intro">
           Subscribe to this URL in your calendar app to see your Sourcerer reminders. This link will only work on devices where you are logged in to Sourcerer and have the app running.
         </p>
 
@@ -54,11 +47,10 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
           The feed is only available while Sourcerer is running. Existing calendar events are unaffected when the app is closed.
         </p>
 
-        <div className="modal-actions">
-          <button className="modal-btn-create" onClick={onClose}>Done</button>
-        </div>
+      <div className="modal-actions">
+        <button className="modal-btn-create" onClick={onClose}>Done</button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
