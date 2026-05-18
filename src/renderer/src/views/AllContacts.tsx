@@ -42,6 +42,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const bulkProjectMenuRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const tableAreaRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(() => {
     window.sourcerer.listContacts().then(setContacts);
@@ -401,7 +402,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
       )}
 
       <div className={`contacts-body${detailId && checkedIds.size <= 1 ? ' contacts-body--detail-open' : ''}`}>
-        <div className="contacts-table-area">
+        <div className="contacts-table-area" ref={tableAreaRef}>
           <ContactsTable
             mode="all"
             rows={displayed}
@@ -421,6 +422,8 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
             selectAllRef={selectAllRef}
             user={user}
             projects={projects}
+            virtualize
+            scrollContainerRef={tableAreaRef}
           />
         </div>
       </div>

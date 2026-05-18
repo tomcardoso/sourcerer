@@ -36,7 +36,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   isEditingRef.current = isEditing;
 
   useEffect(() => {
-    panelRef.current?.focus();
+    panelRef.current?.focus({ preventScroll: true });
   }, [contactId]);
 
   useEffect(() => {
