@@ -69,6 +69,15 @@ describe('validateEmail', () => {
   it('rejects a TLD containing digits', () => {
     expect(validateEmail('user@example.org2')).toBe(false);
   });
+
+  it('rejects a local part containing invalid characters', () => {
+    expect(validateEmail('user name@example.com')).toBe(false);
+    expect(validateEmail('user!@example.com')).toBe(false);
+  });
+
+  it('accepts common local-part characters: dots, plus, underscore, hyphen', () => {
+    expect(validateEmail('first.last+tag_name-here@example.com')).toBe(true);
+  });
 });
 
 describe('normalizePhone', () => {

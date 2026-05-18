@@ -1,7 +1,7 @@
 export function validateEmail(raw: string): boolean {
   const trimmed = raw.trim();
   if (!trimmed) return false;
-  return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(trimmed);
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed);
 }
 
 export function validateUrl(raw: string): boolean {
