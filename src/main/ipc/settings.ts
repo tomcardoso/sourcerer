@@ -8,6 +8,7 @@ import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } fro
 import { getPaths, deriveKey } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
+import { validateEmail } from '@shared/validation';
 import type { User } from '@shared/types';
 
 export function registerSettingsHandlers(): void {
@@ -16,6 +17,7 @@ export function registerSettingsHandlers(): void {
     (_, data: { firstName: string; lastName: string; email: string }): User => {
       const db = getDatabase();
       const newEmail = data.email.trim();
+      if (!validateEmail(newEmail)) throw new Error('Invalid email address');
       const newName = `${data.firstName.trim()} ${data.lastName.trim()}`;
       const current = db
         .prepare('SELECT email, first_name, last_name FROM users WHERE id = 1')

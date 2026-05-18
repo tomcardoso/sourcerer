@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase } from '../database';
-import { normalizeEmail, normalizePhone } from '../sanitize';
+import { normalizeEmail, normalizePhone, validateUrl } from '../sanitize';
 import type { User, ImportResult } from '@shared/types';
 
 const SAMPLE_HEADERS =
@@ -179,7 +179,7 @@ export function processVcfContacts(
         ),
       ];
 
-      const urls = [...new Set(c.urls)];
+      const urls = [...new Set(c.urls)].filter(validateUrl);
 
       if (existingNames.has(c.name.toLowerCase())) {
         skipped.push({ name: c.name, reason: 'name' });
@@ -324,9 +324,9 @@ export function processImportRows(
       const links: { type: string; url: string }[] = [];
       const linkedin = get('linkedin');
       const x = get('x');
-      if (linkedin) links.push({ type: 'linkedin', url: linkedin });
-      if (x) links.push({ type: 'x', url: x });
-      get('website').split(';').map((s) => s.trim()).filter(Boolean).forEach((url) => {
+      if (linkedin && validateUrl(linkedin)) links.push({ type: 'linkedin', url: linkedin });
+      if (x && validateUrl(x)) links.push({ type: 'x', url: x });
+      get('website').split(';').map((s) => s.trim()).filter(Boolean).filter(validateUrl).forEach((url) => {
         links.push({ type: 'website', url });
       });
       links.forEach((link, i) => {

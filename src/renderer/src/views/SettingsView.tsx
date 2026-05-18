@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import type { User } from '@shared/types';
+import { isValidEmail } from '../contacts/contactValidation';
 import Button from '../shell/Button';
 import './View.css';
 import './SettingsView.css';
@@ -133,7 +134,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   }, [user?.id]);
 
   async function handleProfileSave() {
-    if (!firstName.trim() || !email.trim()) return;
+    if (!firstName.trim() || !email.trim() || !isValidEmail(email)) return;
     setProfileSaving(true);
     try {
       const updated = await window.sourcerer.updateUser({ firstName, lastName, email });
