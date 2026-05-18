@@ -3,6 +3,7 @@ import type { Reminder, User } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
 import ContactDetail from '../contacts/ContactDetail';
 import Modal from '../shell/Modal';
+import Button from '../shell/Button';
 import './View.css';
 import './RemindersView.css';
 
@@ -23,9 +24,9 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
 
         <div className="reminders-cal-url-row">
           <p className="reminders-cal-setup-url">{url}</p>
-          <button className="reminders-cal-copy-btn" onClick={handleCopy}>
+          <Button variant="secondary" size="sm" onClick={handleCopy}>
             {copied ? 'Copied!' : 'Copy URL'}
-          </button>
+          </Button>
         </div>
 
         <div className="reminders-cal-setup-body">
@@ -48,7 +49,7 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
         </p>
 
       <div className="modal-actions">
-        <button className="modal-btn-create" onClick={onClose}>Done</button>
+        <Button variant="primary" onClick={onClose}>Done</Button>
       </div>
     </Modal>
   );

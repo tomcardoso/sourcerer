@@ -115,51 +115,6 @@
   white-space: nowrap;
 }
 
-/* Header buttons */
-.btn-secondary {
-  height: 32px;
-  padding: 0 12px;
-  background: none;
-  color: var(--color-text);
-  border: 1px solid var(--color-border-strong);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  border-color: var(--color-text);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-link {
-  height: 32px;
-  padding: 0 8px;
-  background: none;
-  color: var(--color-text-muted);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-link:hover {
-  color: var(--color-text);
-}
-
-
 /* Compact boolean cells (email, phone, notes) */
 .contact-bool-cell {
   text-align: center;
@@ -270,11 +225,6 @@
   color: var(--color-text);
 }
 
-.bulk-bar-btn {
-  height: 28px;
-  padding: 0 10px;
-  font-size: 10px;
-}
 
 .bulk-project-wrap {
   position: relative;
@@ -310,25 +260,6 @@
   background: var(--color-surface);
 }
 
-.bulk-delete-btn {
-  height: 28px;
-  padding: 0 10px;
-  background: none;
-  border: 1px solid var(--color-danger);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-danger);
-  cursor: pointer;
-  margin-left: auto;
-  margin-right: 10px;
-}
-
-.bulk-delete-btn:hover {
-  background: rgba(185, 28, 28, 0.06);
-}
 
 .bulk-delete-confirm-text {
   margin-left: auto;
@@ -341,29 +272,6 @@
   margin-right: 10px;
 }
 
-.bulk-delete-confirm-btn {
-  height: 28px;
-  padding: 0 10px;
-  background: var(--color-danger);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-bg);
-  cursor: pointer;
-  margin-right: 10px;
-}
-
-.bulk-delete-confirm-btn:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-.bulk-delete-confirm-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 .bulk-actions-wrap {
   position: relative;

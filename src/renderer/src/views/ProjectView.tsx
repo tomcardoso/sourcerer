@@ -5,6 +5,7 @@ import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
 import Modal from '../shell/Modal';
+import Button from '../shell/Button';
 import ContactsTable, {
   type ProjectFilters as Filters,
   DEFAULT_PROJECT_FILTERS as DEFAULT_FILTERS,
@@ -629,13 +630,13 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             <strong>Shared file not found.</strong> The project file may have moved or been deleted.
           </div>
           <div className="recovery-banner-actions">
-            <button className="recovery-btn" onClick={handleRelocate}>
+            <Button variant="secondary" size="sm" onClick={handleRelocate}>
               Relocate file…
-            </button>
+            </Button>
             {!confirmRegen ? (
-              <button className="recovery-btn recovery-btn-danger" onClick={() => setConfirmRegen(true)}>
+              <Button variant="danger-outline" size="sm" onClick={() => setConfirmRegen(true)}>
                 Regenerate from local data…
-              </button>
+              </Button>
             ) : (
               <span className="inline-confirm">
                 Overwrites shared file with your local data. Continue?
@@ -668,40 +669,44 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               <span className="bulk-delete-confirm-text">
                 Remove {checkedCount} contact{checkedCount !== 1 ? 's' : ''} from this project?
               </span>
-              <button
-                className="bulk-delete-confirm-btn"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={handleBulkRemove}
                 disabled={bulkWorking}
               >
                 {bulkWorking ? 'Removing…' : 'Confirm remove'}
-              </button>
-              <button
-                className="btn-secondary bulk-bar-btn"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setConfirmRemove(false)}
                 disabled={bulkWorking}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : confirmDelete ? (
             <div className="bulk-bar-element">
               <span className="bulk-delete-confirm-text">
                 Permanently delete {checkedCount} contact{checkedCount !== 1 ? 's' : ''}?
               </span>
-              <button
-                className="bulk-delete-confirm-btn"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={handleBulkDelete}
                 disabled={bulkWorking}
               >
                 {bulkWorking ? 'Deleting…' : 'Confirm delete'}
-              </button>
-              <button
-                className="btn-secondary bulk-bar-btn"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setConfirmDelete(false)}
                 disabled={bulkWorking}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -856,12 +861,12 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             />
           </div>
           <div className="modal-actions">
-            <button type="button" className="modal-btn-cancel" onClick={() => setShowEditProject(false)} disabled={editSubmitting}>
+            <Button type="button" variant="secondary" onClick={() => setShowEditProject(false)} disabled={editSubmitting}>
               Cancel
-            </button>
-            <button type="submit" className="modal-btn-create" disabled={editSubmitting || !editName.trim()}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={editSubmitting || !editName.trim()}>
               {editSubmitting ? 'Saving…' : 'Save changes'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

@@ -4,6 +4,7 @@ import Setup from './screens/Setup';
 import Unlock from './screens/Unlock';
 import AppShell from './shell/AppShell';
 import ScreenshotPickerModal from './contacts/ScreenshotPickerModal';
+import Button from './shell/Button';
 
 type AppScreen = 'loading' | 'setup' | 'locked' | 'unlocked';
 
@@ -50,12 +51,12 @@ export default function App() {
           just triggered this from the extension.
         </p>
         <div className="ext-approval-actions">
-          <button className="modal-btn-cancel" onClick={handleDeny}>
+          <Button variant="secondary" onClick={handleDeny}>
             Deny
-          </button>
-          <button className="modal-btn-create" onClick={handleApprove}>
+          </Button>
+          <Button variant="primary" onClick={handleApprove}>
             Approve
-          </button>
+          </Button>
         </div>
       </div>
     </div>

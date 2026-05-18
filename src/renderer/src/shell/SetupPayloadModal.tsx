@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Modal from './Modal';
+import Button from './Button';
 import './SetupPayloadModal.css';
 
 interface Props {
@@ -49,9 +50,9 @@ export default function SetupPayloadModal({ projectName, payload, onDone }: Prop
       </p>
 
       <div className="modal-actions">
-        <button className="modal-btn-create" onClick={onDone}>
+        <Button variant="primary" onClick={onDone}>
           Done
-        </button>
+        </Button>
       </div>
     </Modal>
   );

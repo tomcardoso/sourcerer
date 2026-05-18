@@ -4,6 +4,7 @@ import type { NavTarget } from './AppShell';
 import NewProjectModal from './NewProjectModal';
 import JoinProjectModal from './JoinProjectModal';
 import { WordmarkLogo } from '../components/WordmarkLogo';
+import Button from './Button';
 import './Sidebar.css';
 
 const DOT_COLORS = ['#1a1815', '#e8a840', '#7a6f60', '#c87a1a', '#5b5750', '#b8a898'];
@@ -119,8 +120,8 @@ export default function Sidebar({
         <nav className="sidebar-nav">
 
           <div className="sidebar-action-btns">
-            <button className="sidebar-action-btn" onClick={onAddContact}>+ Add contact</button>
-            <button className="sidebar-action-btn sidebar-action-btn--secondary" onClick={onImportCsv}>Import contacts</button>
+            <Button variant="accent" size="sm" full onClick={onAddContact}>+ Add contact</Button>
+            <Button variant="secondary" size="sm" full onClick={onImportCsv}>Import contacts</Button>
           </div>
 
           <div className="sidebar-section-label">Workspace</div>

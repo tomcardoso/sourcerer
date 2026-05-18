@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { TimelineEntry } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from './CalendarPicker';
+import Button from '../shell/Button';
 import './View.css';
 import './ColumnHeader.css';
 import './ProjectTimeline.css';
@@ -323,9 +324,9 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
         </p>
         <div className="view-header-row">
           <h1 className="view-headline">{headingTitle}</h1>
-          <button className="ptl-print-btn" onClick={() => window.print()} title="Print timeline">
+          <Button variant="secondary" size="sm" onClick={() => window.print()} title="Print timeline">
             Print
-          </button>
+          </Button>
         </div>
         <p className="view-subtitle">Timeline</p>
         <div className="view-rule-thick" />

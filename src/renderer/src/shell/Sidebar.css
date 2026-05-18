@@ -58,36 +58,6 @@
   margin-bottom: 10px;
 }
 
-.sidebar-action-btn {
-  width: 100%;
-  padding: 6px 10px;
-  background: var(--color-primary);
-  color: var(--color-bg);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sidebar-action-btn:hover {
-  background: var(--color-primary-hover);
-}
-
-.sidebar-action-btn--secondary {
-  background: none;
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-}
-
-.sidebar-action-btn--secondary:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
 
 /* ── Workspace nav ────────────────────────────────── */
 .sidebar-nav {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ImportResult, Project } from '@shared/types';
 import Modal from '../shell/Modal';
+import Button from '../shell/Button';
 import './ImportCsvModal.css';
 
 interface Props {
@@ -87,12 +88,12 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
               international format on import.
             </p>
 
-            <button
-              className="icm-template-btn"
+            <Button
+              variant="secondary"
               onClick={() => window.sourcerer.downloadSampleCsv()}
             >
               ↓ Download blank template
-            </button>
+            </Button>
           </>
         ) : (
           <>
@@ -136,12 +137,12 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
         )}
 
       <div className="modal-actions">
-        <button className="modal-btn-cancel" onClick={onClose} disabled={importing}>
+        <Button variant="secondary" onClick={onClose} disabled={importing}>
           Cancel
-        </button>
-        <button className="modal-btn-create" onClick={handleImport} disabled={importing}>
+        </Button>
+        <Button variant="primary" onClick={handleImport} disabled={importing}>
           {importing ? 'Importing…' : 'Choose file & import'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

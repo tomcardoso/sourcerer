@@ -15,25 +15,6 @@
   flex: 1;
 }
 
-.reminders-cal-copy-btn {
-  height: 34px;
-  padding: 0 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  color: var(--color-text);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.reminders-cal-copy-btn:hover {
-  background: var(--color-bg);
-}
 
 .reminders-cal-setup-body {
   margin-top: 8px;

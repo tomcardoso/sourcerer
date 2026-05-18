@@ -123,20 +123,6 @@
   color: var(--color-danger);
 }
 
-.ac-add-row {
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  font-size: 11px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.14em;
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.ac-add-row:hover {
-  text-decoration: underline;
-}
 
 .ac-actions {
   display: flex;

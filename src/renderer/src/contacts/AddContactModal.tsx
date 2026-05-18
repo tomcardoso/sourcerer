@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
+import Button from '../shell/Button';
 import '../shell/Modal.css';
 import './AddContactModal.css';
 
@@ -93,9 +94,9 @@ function DynamicList({
           )}
         </div>
       ))}
-      <button type="button" className="ac-add-row" onClick={() => onChange([...values, ''])}>
+      <Button variant="ghost" type="button" onClick={() => onChange([...values, ''])}>
         + Add {label.toLowerCase()}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -374,9 +375,9 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 )}
               </div>
             ))}
-            <button type="button" className="ac-add-row" onClick={() => setEmails([...emails, { email: '', label: '' }])}>
+            <Button variant="ghost" type="button" onClick={() => setEmails([...emails, { email: '', label: '' }])}>
               + Add email
-            </button>
+            </Button>
           </div>
           <div className="ac-field">
             <label className="modal-label">Phone</label>
@@ -442,13 +443,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 )}
               </div>
             ))}
-            <button
+            <Button
+              variant="ghost"
               type="button"
-              className="ac-add-row"
               onClick={() => setPhones([...phones, { phone: '', label: '' }])}
             >
               + Add phone
-            </button>
+            </Button>
           </div>
 
           <div className="ac-field">
@@ -480,13 +481,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 ></button>
               </div>
             ))}
-            <button
+            <Button
+              variant="ghost"
               type="button"
-              className="ac-add-row"
               onClick={() => setHandles([...handles, { type: 'signal', handle: '' }])}
             >
               + Add handle
-            </button>
+            </Button>
           </div>
 
           <DynamicList
@@ -607,16 +608,16 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-actions">
-            <button type="button" className="modal-btn-cancel" onClick={onCancel} disabled={submitting}>
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="modal-btn-create"
+              variant="primary"
               disabled={!name.trim() || submitting || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}
             >
               {submitting ? 'Saving…' : 'Add contact'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
