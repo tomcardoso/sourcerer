@@ -291,7 +291,9 @@
   color: var(--color-text-muted);
   opacity: 0;
   padding: 0 2px;
+  border: none;
   border-radius: 0;
+  background: none;
   cursor: pointer;
   transition: opacity 0.1s, color 0.1s;
 }

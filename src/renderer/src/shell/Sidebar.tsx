@@ -187,7 +187,7 @@ export default function Sidebar({
         <div className="sidebar-section">
           <div className="sidebar-section-header-row">
             <span className="sidebar-section-label">Projects</span>
-            <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} title="New project">+</button>
+            <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} aria-label="New project">+</button>
           </div>
 
           {projects.length === 0 && (
@@ -228,32 +228,33 @@ export default function Sidebar({
                     <span
                       className="sidebar-project-dot"
                       style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
+                      aria-hidden="true"
                     />
                     <span className="sidebar-project-name">{project.name}</span>
                     {project.is_shared === 1 && (
-                      <span className="sidebar-project-shared-dot" title="Shared project" />
+                      <span className="sidebar-project-shared-dot" aria-label="Shared" role="img" />
                     )}
                     {project.is_archived === 1 ? (
-                      <span
+                      <button
+                        type="button"
                         className="sidebar-project-delete"
-                        role="button"
-                        title="Unarchive project"
+                        aria-label="Unarchive project"
                         onClick={(e) => { e.stopPropagation(); handleUnarchive(project.id); }}
-                      >↩</span>
+                      >↩</button>
                     ) : (
                       <>
-                        <span
+                        <button
+                          type="button"
                           className="sidebar-project-archive"
-                          role="button"
-                          title="Archive project"
+                          aria-label="Archive project"
                           onClick={(e) => { e.stopPropagation(); handleArchive(project.id); }}
-                        >⊘</span>
-                        <span
+                        >⊘</button>
+                        <button
+                          type="button"
                           className="sidebar-project-delete"
-                          role="button"
-                          title="Delete project"
+                          aria-label="Delete project"
                           onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
-                        >×</span>
+                        >×</button>
                       </>
                     )}
                   </button>

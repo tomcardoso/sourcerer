@@ -19,6 +19,7 @@ interface Props {
 type Tab = 'global' | 'project';
 
 export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated, user, closing }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<ContactDetailType | null>(null);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
@@ -33,6 +34,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   const isEditingRef = useRef(isEditing);
   onCloseRef.current = onClose;
   isEditingRef.current = isEditing;
+
+  useEffect(() => {
+    panelRef.current?.focus();
+  }, [contactId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -92,7 +97,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   }
 
   return (
-    <div className={`detail-panel${closing ? ' detail-panel--closing' : ''}`}>
+    <div ref={panelRef} tabIndex={-1} className={`detail-panel${closing ? ' detail-panel--closing' : ''}`}>
       <div className="detail-header">
         <div className="detail-header-main">
           {contact ? (
@@ -114,7 +119,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
             <div className="detail-loading">Loading…</div>
           )}
         </div>
-        <button className="detail-close" onClick={onClose}>×</button>
+        <button className="detail-close" onClick={onClose} aria-label="Close">×</button>
       </div>
       <div className="view-rule-thick" />
       <div className="view-rule-thin" />
