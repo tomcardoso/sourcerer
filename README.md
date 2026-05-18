@@ -3,7 +3,7 @@
 Source and contact management for journalists and researchers — local-first, encrypted, no cloud.
 
 [![Latest release](https://img.shields.io/github/v/release/tomcardoso/sourcerer?label=version&color=4b5563)](https://github.com/tomcardoso/sourcerer/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/tomcardoso/sourcerer/build.yml?label=build)](https://github.com/tomcardoso/sourcerer/actions/workflows/build.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/tomcardoso/sourcerer/ci.yml?label=build)](https://github.com/tomcardoso/sourcerer/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/tomcardoso/sourcerer?color=4b5563)](LICENSE)
 
 ![screenshot](docs/img/contact-details-2.png)

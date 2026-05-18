@@ -59,7 +59,7 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
 
   return (
     <div className="search-overlay" onClick={onClose}>
-      <div className="search-card" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Search" className="search-card" onClick={(e) => e.stopPropagation()}>
         <div className="search-input-row">
           <input
             ref={inputRef}
@@ -68,6 +68,7 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search contacts and projects…"
+            aria-label="Search contacts and projects"
           />
         </div>
 
@@ -154,7 +155,8 @@ function ResultRow({ result, selected, onMouseEnter, onClick }: {
   const excerpt = result.type === 'log' ? result.excerpt.replace(/\[\[/g, '').replace(/\]\]/g, '') : null;
 
   return (
-    <div
+    <button
+      type="button"
       className={`search-result-row${selected ? ' search-result-row--selected' : ''}`}
       onMouseEnter={onMouseEnter}
       onClick={onClick}
@@ -171,6 +173,6 @@ function ResultRow({ result, selected, onMouseEnter, onClick }: {
           <span className="search-result-excerpt">{excerpt}</span>
         )}
       </span>
-    </div>
+    </button>
   );
 }

@@ -198,10 +198,25 @@
   margin-bottom: 1px;
 }
 
+.sidebar-project-row {
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-project-row:hover,
+.sidebar-project-row--active {
+  background: var(--color-surface);
+}
+
+.sidebar-project-row--active {
+  background: var(--color-surface-2);
+}
+
 .sidebar-project-btn {
   display: flex;
   align-items: center;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 7px 8px;
   border: none;
   border-radius: 0;
@@ -213,19 +228,12 @@
   letter-spacing: normal;
   text-align: left;
   cursor: pointer;
-  transition: background 0.1s;
   gap: 8px;
 }
 
-.sidebar-project-btn:hover {
-  background: var(--color-surface);
-}
-
 .sidebar-project-btn.active {
-  background: var(--color-surface-2);
   box-shadow: inset 3px 0 0 var(--color-text);
   color: var(--color-text);
-  border-radius: 0;
 }
 
 /* Timeline sub-item under a selected project */
@@ -291,13 +299,15 @@
   color: var(--color-text-muted);
   opacity: 0;
   padding: 0 2px;
+  border: none;
   border-radius: 0;
+  background: none;
   cursor: pointer;
   transition: opacity 0.1s, color 0.1s;
 }
 
-.sidebar-project-btn:hover .sidebar-project-delete,
-.sidebar-project-btn:hover .sidebar-project-archive {
+.sidebar-project-row:hover .sidebar-project-delete,
+.sidebar-project-row:hover .sidebar-project-archive {
   opacity: 1;
 }
 
@@ -309,11 +319,11 @@
   color: var(--color-text);
 }
 
-.sidebar-project-item--archived .sidebar-project-btn {
+.sidebar-project-item--archived .sidebar-project-row {
   opacity: 0.45;
 }
 
-.sidebar-project-item--archived .sidebar-project-btn:hover {
+.sidebar-project-item--archived .sidebar-project-row:hover {
   opacity: 0.75;
 }
 

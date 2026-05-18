@@ -59,7 +59,8 @@ export default function ColumnHeader({
           ref={filterBtnRef}
           className={`col-filter-btn ${filterActive ? 'col-filter-btn-on' : ''}`}
           onClick={handleFilterClick}
-          title={filterActive ? `${label}: filter on` : `Filter ${label}`}
+          aria-label={filterActive ? `${label}: filter on` : `Filter ${label}`}
+          aria-pressed={filterActive ?? false}
         >
           {filterActive ? '●' : '▾'}
         </button>
@@ -68,7 +69,7 @@ export default function ColumnHeader({
         filterContent &&
         createPortal(
           <>
-            <div className="col-filter-overlay" onClick={() => onFilterToggle?.()} />
+            <div className="col-filter-overlay" aria-hidden="true" onClick={() => onFilterToggle?.()} />
             <div
               className="col-filter-dropdown"
               style={{ top: dropdownPos.top, left: dropdownPos.left }}
@@ -105,7 +106,7 @@ export function TextFilter({
         placeholder={placeholder}
       />
       {value && (
-        <button className="col-filter-clear" onClick={() => onChange('')}>
+        <button className="col-filter-clear" onClick={() => onChange('')} aria-label="Clear filter">
           ×
         </button>
       )}

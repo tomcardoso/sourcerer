@@ -187,7 +187,7 @@ export default function Sidebar({
         <div className="sidebar-section">
           <div className="sidebar-section-header-row">
             <span className="sidebar-section-label">Projects</span>
-            <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} title="New project">+</button>
+            <button className="sidebar-header-add" onClick={() => setShowNewProject(true)} aria-label="New project">+</button>
           </div>
 
           {projects.length === 0 && (
@@ -219,44 +219,50 @@ export default function Sidebar({
                   </div>
                 ) : (
                   <>
-                  <button
-                    className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
-                    onClick={() => onNav({ view: 'project', projectId: project.id })}
-                    onDoubleClick={() => project.is_archived === 0 && startRename(project)}
-                    title={project.is_archived === 0 ? 'Double-click to rename' : undefined}
-                  >
-                    <span
-                      className="sidebar-project-dot"
-                      style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
-                    />
-                    <span className="sidebar-project-name">{project.name}</span>
-                    {project.is_shared === 1 && (
-                      <span className="sidebar-project-shared-dot" title="Shared project" />
-                    )}
-                    {project.is_archived === 1 ? (
+                  <div className={`sidebar-project-row${isActive({ view: 'project', projectId: project.id }) ? ' sidebar-project-row--active' : ''}`}>
+                    <button
+                      className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
+                      onClick={() => onNav({ view: 'project', projectId: project.id })}
+                      onDoubleClick={() => project.is_archived === 0 && startRename(project)}
+                      title={project.is_archived === 0 ? 'Double-click to rename' : undefined}
+                    >
                       <span
+                        className="sidebar-project-dot"
+                        style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
+                        aria-hidden="true"
+                      />
+                      <span className="sidebar-project-name">{project.name}</span>
+                      {project.is_shared === 1 && (
+                        <span className="sidebar-project-shared-dot" aria-label="Shared" role="img" />
+                      )}
+                    </button>
+                    {project.is_archived === 1 ? (
+                      <button
+                        type="button"
                         className="sidebar-project-delete"
-                        role="button"
+                        aria-label="Unarchive project"
                         title="Unarchive project"
-                        onClick={(e) => { e.stopPropagation(); handleUnarchive(project.id); }}
-                      >↩</span>
+                        onClick={() => handleUnarchive(project.id)}
+                      >↩</button>
                     ) : (
                       <>
-                        <span
+                        <button
+                          type="button"
                           className="sidebar-project-archive"
-                          role="button"
+                          aria-label="Archive project"
                           title="Archive project"
-                          onClick={(e) => { e.stopPropagation(); handleArchive(project.id); }}
-                        >⊘</span>
-                        <span
+                          onClick={() => handleArchive(project.id)}
+                        >⊘</button>
+                        <button
+                          type="button"
                           className="sidebar-project-delete"
-                          role="button"
+                          aria-label="Delete project"
                           title="Delete project"
-                          onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
-                        >×</span>
+                          onClick={() => setDeletingId(project.id)}
+                        >×</button>
                       </>
                     )}
-                  </button>
+                  </div>
                   {isActive({ view: 'project', projectId: project.id }) && (
                     <button
                       className={`sidebar-project-sub-btn${'projectId' in nav && nav.view === 'timeline' && nav.projectId === project.id ? ' active' : ''}`}

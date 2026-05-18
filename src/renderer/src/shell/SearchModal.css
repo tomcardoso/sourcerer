@@ -75,6 +75,11 @@
   align-items: flex-start;
   gap: 8px;
   transition: background 0.1s;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  text-align: left;
 }
 
 .search-result-body {

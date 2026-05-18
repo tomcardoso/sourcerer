@@ -215,7 +215,7 @@ export default function AppShell() {
             </button>
           )}
           {updateState === 'downloading' && (
-            <span className="app-update-downloading">
+            <span className="app-update-downloading" role="status" aria-live="polite" aria-atomic="true">
               Downloading update{updatePercent !== null ? ` ${updatePercent}%` : '\u2026'}
             </span>
           )}
@@ -228,7 +228,7 @@ export default function AppShell() {
             </button>
           )}
           Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted
-          <button className="app-titlebar-lock" onClick={() => window.sourcerer.lock()} title="Lock Sourcerer">
+          <button className="app-titlebar-lock" onClick={() => window.sourcerer.lock()} aria-label="Lock Sourcerer">
             🔒
           </button>
         </div>
