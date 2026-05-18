@@ -219,27 +219,30 @@ export default function Sidebar({
                   </div>
                 ) : (
                   <>
-                  <button
-                    className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
-                    onClick={() => onNav({ view: 'project', projectId: project.id })}
-                    onDoubleClick={() => project.is_archived === 0 && startRename(project)}
-                    title={project.is_archived === 0 ? 'Double-click to rename' : undefined}
-                  >
-                    <span
-                      className="sidebar-project-dot"
-                      style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
-                      aria-hidden="true"
-                    />
-                    <span className="sidebar-project-name">{project.name}</span>
-                    {project.is_shared === 1 && (
-                      <span className="sidebar-project-shared-dot" aria-label="Shared" role="img" />
-                    )}
+                  <div className="sidebar-project-row">
+                    <button
+                      className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
+                      onClick={() => onNav({ view: 'project', projectId: project.id })}
+                      onDoubleClick={() => project.is_archived === 0 && startRename(project)}
+                      title={project.is_archived === 0 ? 'Double-click to rename' : undefined}
+                    >
+                      <span
+                        className="sidebar-project-dot"
+                        style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
+                        aria-hidden="true"
+                      />
+                      <span className="sidebar-project-name">{project.name}</span>
+                      {project.is_shared === 1 && (
+                        <span className="sidebar-project-shared-dot" aria-label="Shared" role="img" />
+                      )}
+                    </button>
                     {project.is_archived === 1 ? (
                       <button
                         type="button"
                         className="sidebar-project-delete"
                         aria-label="Unarchive project"
-                        onClick={(e) => { e.stopPropagation(); handleUnarchive(project.id); }}
+                        title="Unarchive project"
+                        onClick={() => handleUnarchive(project.id)}
                       >↩</button>
                     ) : (
                       <>
@@ -247,17 +250,19 @@ export default function Sidebar({
                           type="button"
                           className="sidebar-project-archive"
                           aria-label="Archive project"
-                          onClick={(e) => { e.stopPropagation(); handleArchive(project.id); }}
+                          title="Archive project"
+                          onClick={() => handleArchive(project.id)}
                         >⊘</button>
                         <button
                           type="button"
                           className="sidebar-project-delete"
                           aria-label="Delete project"
-                          onClick={(e) => { e.stopPropagation(); setDeletingId(project.id); }}
+                          title="Delete project"
+                          onClick={() => setDeletingId(project.id)}
                         >×</button>
                       </>
                     )}
-                  </button>
+                  </div>
                   {isActive({ view: 'project', projectId: project.id }) && (
                     <button
                       className={`sidebar-project-sub-btn${'projectId' in nav && nav.view === 'timeline' && nav.projectId === project.id ? ' active' : ''}`}
