@@ -572,17 +572,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               ✎ Edit
             </button>
           </div>
-          {project.is_shared === 1 && (
-            <div className="project-meta-item">
-              <button
-                className={`project-meta-action-btn${syncing ? ' project-meta-action-btn--syncing' : ''}`}
-                onClick={handleSyncNow}
-                disabled={syncing}
-              >
-                {syncing ? 'Syncing…' : '↻ Sync'}
-              </button>
-            </div>
-          )}
           <div className="project-meta-item export-menu-wrap" ref={exportMenuRef}>
             <button
               className="project-meta-action-btn"
@@ -620,15 +609,12 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
           )}
           {project.is_shared === 1 && (
             <div className="project-meta-item">
-              <button className="project-meta-action-btn" onClick={() => setShowUnshareModal(true)}>
-                Unshare project
-              </button>
-            </div>
-          )}
-          {project.is_shared === 1 && (
-            <div className="project-meta-item">
-              <button className="project-meta-action-btn" onClick={() => setShowRotateModal(true)}>
-                Rotate key…
+              <button
+                className={`project-meta-action-btn${syncing ? ' project-meta-action-btn--syncing' : ''}`}
+                onClick={handleSyncNow}
+                disabled={syncing}
+              >
+                {syncing ? 'Syncing…' : '↻ Sync'}
               </button>
             </div>
           )}
@@ -897,6 +883,19 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             </Button>
           </div>
         </form>
+        {project?.is_shared === 1 && (
+          <div className="modal-danger-zone">
+            <p className="modal-danger-zone-label">Danger zone</p>
+            <div className="modal-danger-zone-actions">
+              <Button variant="danger-outline" size="sm" onClick={() => { setShowEditProject(false); setShowUnshareModal(true); }}>
+                Unshare project
+              </Button>
+              <Button variant="danger-outline" size="sm" onClick={() => { setShowEditProject(false); setShowRotateModal(true); }}>
+                Rotate key…
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     )}
   </>
