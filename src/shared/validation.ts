@@ -6,7 +6,7 @@ export function validateEmail(raw: string): boolean {
 
 export function validateUrl(raw: string): boolean {
   const trimmed = raw.trim();
-  if (!trimmed) return false;
+  if (!trimmed || trimmed.includes(' ')) return false;
   try {
     const u = new URL(trimmed);
     return u.protocol === 'https:' || u.protocol === 'http:';

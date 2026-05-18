@@ -173,6 +173,10 @@ describe('validateUrl', () => {
   it('trims leading/trailing whitespace before validating', () => {
     expect(validateUrl('  https://example.com  ')).toBe(true);
   });
+
+  it('rejects a URL with an internal space', () => {
+    expect(validateUrl('https://example.com/path with spaces')).toBe(false);
+  });
 });
 
 describe('detectLinkType', () => {
