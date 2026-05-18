@@ -275,7 +275,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 )}
                 {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && !emailDuplicates.has(entry.email.trim().toLowerCase()) && emailCollisions[entry.email.trim()] && (
                   <div className="ac-collision-warn">
-                    Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
+                    Already on: <span>{emailCollisions[entry.email.trim()]}</span>
                   </div>
                 )}
               </div>

@@ -415,13 +415,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditEmails([...editEmails, { email: '', label: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditEmails([...editEmails, { email: '', label: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         <div className="ac-field">
@@ -494,13 +496,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         <div className="ac-field">
@@ -537,13 +541,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               ></button>
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         {NON_OTHER_SOCIAL_TYPES.map((type) => (
@@ -642,13 +648,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={() => setEditOtherSocials([...editOtherSocials, { url: '', label: '' }])}
-          >
-            + Add
-          </Button>
+          <div>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setEditOtherSocials([...editOtherSocials, { url: '', label: '' }])}
+            >
+              + Add
+            </Button>
+          </div>
         </div>
 
         <div className="ac-field">
