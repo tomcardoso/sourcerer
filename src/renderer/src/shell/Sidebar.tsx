@@ -219,7 +219,7 @@ export default function Sidebar({
                   </div>
                 ) : (
                   <>
-                  <div className="sidebar-project-row">
+                  <div className={`sidebar-project-row${isActive({ view: 'project', projectId: project.id }) ? ' sidebar-project-row--active' : ''}`}>
                     <button
                       className={`sidebar-project-btn ${isActive({ view: 'project', projectId: project.id }) ? 'active' : ''}`}
                       onClick={() => onNav({ view: 'project', projectId: project.id })}

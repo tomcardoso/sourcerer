@@ -203,8 +203,13 @@
   align-items: center;
 }
 
-.sidebar-project-row:hover {
+.sidebar-project-row:hover,
+.sidebar-project-row--active {
   background: var(--color-surface);
+}
+
+.sidebar-project-row--active {
+  background: var(--color-surface-2);
 }
 
 .sidebar-project-btn {
@@ -227,10 +232,8 @@
 }
 
 .sidebar-project-btn.active {
-  background: var(--color-surface-2);
   box-shadow: inset 3px 0 0 var(--color-text);
   color: var(--color-text);
-  border-radius: 0;
 }
 
 /* Timeline sub-item under a selected project */
