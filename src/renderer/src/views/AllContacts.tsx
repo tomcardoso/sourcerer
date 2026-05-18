@@ -62,6 +62,10 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   }, [refreshTrigger, refresh]);
 
   useEffect(() => {
+    return window.sourcerer.onContactsChanged(refresh);
+  }, [refresh]);
+
+  useEffect(() => {
     window.sourcerer.getDuplicatePairs().then((pairs) => {
       setDupPairs(pairs);
       setDupCount(pairs.length);
