@@ -501,7 +501,9 @@ export function registerContactHandlers(): void {
       ? data.outreachRemindersEnabled
       : (current?.outreach_reminders_enabled ?? 1);
 
-    const reporterChanging = data.reporterEmail !== undefined && data.reporterEmail !== current?.reporter_email;
+    const reporterChanging = data.reporterEmail !== undefined
+      && data.reporterEmail !== current?.reporter_email
+      && validateEmail(data.reporterEmail);
 
     db.prepare(
       `UPDATE project_memberships
@@ -518,7 +520,7 @@ export function registerContactHandlers(): void {
       data.priority ?? null,
       data.theme ?? null,
       newEnabled,
-      data.reporterEmail ?? null,
+      (data.reporterEmail && validateEmail(data.reporterEmail)) ? data.reporterEmail : null,
       data.reporterName ?? null,
       reporterChanging ? 1 : 0, now,
       reporterChanging ? 1 : 0, data.clearConflict ? 1 : 0,
@@ -566,6 +568,7 @@ export function registerContactHandlers(): void {
       db.transaction(() => {
         deleteReporters.run(membershipId);
         for (const r of reporters) {
+          if (!validateEmail(r.email)) continue;
           insertReporter.run(uuidv4(), membershipId, r.email, r.name);
         }
       })();
