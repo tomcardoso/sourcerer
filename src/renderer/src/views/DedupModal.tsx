@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { DedupContact, DuplicatePair } from '@shared/types';
+import '../shell/Modal.css';
 import './DedupModal.css';
 import '../contacts/AddContactModal.css';
 

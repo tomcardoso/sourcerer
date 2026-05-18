@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import type { ImportResult } from '@shared/types';
+import Modal from '../shell/Modal';
 import './ImportResultModal.css';
 
 interface Props {
@@ -11,18 +11,9 @@ export default function ImportResultModal({ result, onClose }: Props) {
   const nameCollisions = result.skipped.filter((s) => s.reason === 'name');
   const emailCollisions = result.skipped.filter((s) => s.reason === 'email');
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card import-result-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Import complete</h2>
-
-        <div className="ir-summary">
+    <Modal title="Import complete" onDismiss={onClose} className="import-result-modal">
+      <div className="ir-summary">
           <span className="ir-count">{result.imported}</span>
           <span className="ir-label">
             {result.imported === 1 ? 'contact imported' : 'contacts imported'}
@@ -61,12 +52,11 @@ export default function ImportResultModal({ result, onClose }: Props) {
           </div>
         )}
 
-        <div className="modal-actions">
-          <button className="modal-btn-create" onClick={onClose}>
-            Done
-          </button>
-        </div>
+      <div className="modal-actions">
+        <button className="modal-btn-create" onClick={onClose}>
+          Done
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

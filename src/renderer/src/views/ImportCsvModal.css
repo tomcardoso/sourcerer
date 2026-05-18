@@ -34,12 +34,6 @@
   border-bottom-color: var(--color-text);
 }
 
-.icm-intro {
-  font-size: 14px;
-  color: var(--color-text);
-  line-height: 1.55;
-  margin: 0 0 16px;
-}
 
 .icm-columns {
   display: flex;
