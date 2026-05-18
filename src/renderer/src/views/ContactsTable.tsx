@@ -208,6 +208,7 @@ export default function ContactsTable(props: ContactsTableProps) {
   }, [openFilter, toggleFilter]);
 
   const now = Math.floor(Date.now() / 1000);
+  const todayISO = new Date().toISOString().slice(0, 10);
   const stalenessEnabled = user?.staleness_enabled !== 0;
   const stalenessThresholdSecs = (user?.staleness_threshold_days ?? 90) * 86400;
   function isStale(ts: number | null) {
@@ -374,6 +375,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                       value={pf?.dateAddedFrom ?? ''}
                       onChange={(v) => setFilter('dateAddedFrom', v)}
                       showYear
+                      maxDate={todayISO}
                     />
                     <label className="date-filter-label">To</label>
                     <CalendarPicker
@@ -382,6 +384,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                       value={pf?.dateAddedTo ?? ''}
                       onChange={(v) => setFilter('dateAddedTo', v)}
                       showYear
+                      maxDate={todayISO}
                     />
                   </div>
                 }
@@ -506,6 +509,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                       value={af?.dateAddedFrom ?? ''}
                       onChange={(v) => setFilter('dateAddedFrom', v)}
                       showYear
+                      maxDate={todayISO}
                     />
                     <label className="date-filter-label">To</label>
                     <CalendarPicker
@@ -514,6 +518,7 @@ export default function ContactsTable(props: ContactsTableProps) {
                       value={af?.dateAddedTo ?? ''}
                       onChange={(v) => setFilter('dateAddedTo', v)}
                       showYear
+                      maxDate={todayISO}
                     />
                   </div>
                 }
