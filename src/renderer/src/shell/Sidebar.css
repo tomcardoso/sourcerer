@@ -58,6 +58,10 @@
   margin-bottom: 10px;
 }
 
+.sidebar-action-btns .btn {
+  height: 26px;
+}
+
 
 /* ── Workspace nav ────────────────────────────────── */
 .sidebar-nav {

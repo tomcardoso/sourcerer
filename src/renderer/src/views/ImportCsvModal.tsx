@@ -90,6 +90,7 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
 
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => window.sourcerer.downloadSampleCsv()}
             >
               ↓ Download blank template

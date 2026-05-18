@@ -434,6 +434,10 @@
   flex: 1;
 }
 
+.sv-key-row > .btn {
+  margin-bottom: 2px;
+}
+
 .sv-hint--top {
   margin-top: 10px;
   margin-bottom: 0;
