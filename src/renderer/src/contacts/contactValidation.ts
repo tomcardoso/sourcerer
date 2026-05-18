@@ -1,15 +1,4 @@
-export function isValidEmail(raw: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw.trim());
-}
-
-export function isValidUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw.trim());
-    return u.protocol === 'https:' || u.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
+export { validateEmail as isValidEmail, validateUrl as isValidUrl } from '@shared/validation';
 
 // Allowed phone chars: digits, +, -, (, ), ., whitespace, and extension
 // notation letters (e, x, t for "ext", # for US-style extensions).
