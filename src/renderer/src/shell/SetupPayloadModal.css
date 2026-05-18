@@ -5,8 +5,18 @@
 .setup-payload-intro {
   font-size: 14px;
   color: var(--color-text);
+  margin: 0 0 12px;
+  line-height: 1.55;
+}
+
+.setup-payload-location-note {
+  font-size: 13px;
+  color: var(--color-text-muted);
   margin: 0 0 16px;
   line-height: 1.55;
+  padding: 8px 10px;
+  background: var(--color-surface-2);
+  border-left: 2px solid var(--color-amber);
 }
 
 .setup-payload-link-row {

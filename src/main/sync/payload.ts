@@ -1,8 +1,10 @@
+import path from 'node:path';
+
 interface SetupPayload {
   v: number;
   name: string;
   description: string | null;
-  path: string;
+  filename: string;
   key: string; // base64-encoded 32-byte key
 }
 
@@ -12,14 +14,20 @@ export function encodePayload(
   filePath: string,
   keyBytes: Buffer,
 ): string {
-  const payload: SetupPayload = { v: 1, name, description, path: filePath, key: keyBytes.toString('base64') };
+  const payload: SetupPayload = {
+    v: 1,
+    name,
+    description,
+    filename: path.basename(filePath),
+    key: keyBytes.toString('base64'),
+  };
   return Buffer.from(JSON.stringify(payload)).toString('base64url');
 }
 
 export function decodePayload(encoded: string): {
   name: string;
   description: string | null;
-  originalPath: string;
+  originalFilename: string;
   keyHex: string;
 } {
   let json: string;
@@ -41,10 +49,12 @@ export function decodePayload(encoded: string): {
   const keyBytes = Buffer.from(payload.key, 'base64');
   if (keyBytes.length !== 32) throw new Error('Invalid key length in payload.');
 
+  const originalFilename = payload.filename ?? 'shared.sourcerer';
+
   return {
     name: payload.name ?? 'Shared Project',
     description: payload.description ?? null,
-    originalPath: payload.path,
+    originalFilename,
     keyHex: keyBytes.toString('hex'),
   };
 }

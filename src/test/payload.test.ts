@@ -5,17 +5,17 @@ import { encodePayload, decodePayload } from '../main/sync/payload';
 describe('encodePayload / decodePayload — round-trip', () => {
   it('preserves all fields through encode → decode', () => {
     const key = randomBytes(32);
-    const encoded = encodePayload('Test Project', 'A description', '/path/to/file.db', key);
+    const encoded = encodePayload('Test Project', 'A description', '/path/to/file.sourcerer', key);
     const decoded = decodePayload(encoded);
     expect(decoded.name).toBe('Test Project');
     expect(decoded.description).toBe('A description');
-    expect(decoded.originalPath).toBe('/path/to/file.db');
+    expect(decoded.originalFilename).toBe('file.sourcerer');
     expect(decoded.keyHex).toBe(key.toString('hex'));
   });
 
   it('round-trips with null description', () => {
     const key = randomBytes(32);
-    const encoded = encodePayload('Minimal', null, '/db.db', key);
+    const encoded = encodePayload('Minimal', null, '/db.sourcerer', key);
     const decoded = decodePayload(encoded);
     expect(decoded.description).toBeNull();
     expect(decoded.name).toBe('Minimal');
@@ -24,7 +24,7 @@ describe('encodePayload / decodePayload — round-trip', () => {
 
   it('tolerates leading and trailing whitespace around the encoded string', () => {
     const key = randomBytes(32);
-    const encoded = encodePayload('Trim Test', null, '/db.db', key);
+    const encoded = encodePayload('Trim Test', null, '/db.sourcerer', key);
     const decoded = decodePayload(`  ${encoded}  `);
     expect(decoded.name).toBe('Trim Test');
     expect(decoded.keyHex).toBe(key.toString('hex'));

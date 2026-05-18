@@ -265,7 +265,7 @@ export interface DecodePayloadResult {
   success: boolean;
   name?: string;
   description?: string | null;
-  originalPath?: string;
+  originalFilename?: string;
   keyHex?: string;
   error?: string;
 }

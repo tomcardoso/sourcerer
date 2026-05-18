@@ -9,7 +9,7 @@ interface Props {
 
 export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   const [payload, setPayload] = useState('');
-  const [preview, setPreview] = useState<{ name: string; originalPath: string } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; originalFilename: string } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -29,17 +29,15 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
     const trimmed = value.trim();
     if (!trimmed) return;
     const result = await window.sourcerer.decodePayload(trimmed);
-    if (result.success && result.name && result.originalPath) {
-      setPreview({ name: result.name, originalPath: result.originalPath });
+    if (result.success && result.name) {
+      setPreview({ name: result.name, originalFilename: result.originalFilename ?? '' });
     } else if (!result.success) {
       setPreviewError(result.error ?? 'Invalid setup link.');
     }
   }
 
   async function handleLocate() {
-    const path = await window.sourcerer.openFileDialog({
-      defaultPath: preview?.originalPath,
-    });
+    const path = await window.sourcerer.openFileDialog();
     if (path) setSelectedPath(path);
   }
 
@@ -96,18 +94,24 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
                 <span className="join-preview-label">Project</span>
                 <span className="join-preview-value">{preview.name}</span>
               </div>
-              <div className="join-preview-row">
-                <span className="join-preview-label">Original location</span>
-                <span className="join-preview-path">{preview.originalPath}</span>
-              </div>
+              {preview.originalFilename && (
+                <div className="join-preview-row">
+                  <span className="join-preview-label">Filename</span>
+                  <span className="join-preview-path">{preview.originalFilename}</span>
+                </div>
+              )}
             </div>
           )}
 
           {canLocate && (
             <div className="join-locate-row">
               <p className="join-locate-hint">
-                The shared file is likely in your Dropbox or OneDrive folder. Click below to locate
-                it on your machine.
+                {preview?.originalFilename
+                  ? <>Locate the shared file (<code>{preview.originalFilename}</code>) on this machine. </>
+                  : <>Locate the shared file on this machine. </>
+                }
+                It must live permanently in a synced folder (Dropbox, OneDrive, iCloud Drive) —
+                sync breaks if it is moved.
               </p>
               <button type="button" className="join-locate-btn" onClick={handleLocate} disabled={submitting}>
                 {selectedPath ? 'Change file…' : 'Locate shared file…'}

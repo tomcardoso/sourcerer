@@ -107,4 +107,9 @@ export const SHARED_SCHEMA_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_guid ON contact_alert_mentions(contact_id, guid);
   CREATE INDEX IF NOT EXISTS idx_shared_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_shared_project_memberships_contact_id ON project_memberships(contact_id);
+
+  CREATE TABLE IF NOT EXISTS shared_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `;

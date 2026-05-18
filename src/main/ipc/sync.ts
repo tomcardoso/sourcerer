@@ -31,7 +31,7 @@ export function registerSyncHandlers(): void {
       const result = await dialog.showOpenDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Locate shared project file',
         defaultPath: options?.defaultPath,
-        filters: [{ name: 'Sourcerer Shared Project', extensions: ['db'] }],
+        filters: [{ name: 'Sourcerer Shared Project', extensions: ['sourcerer'] }],
         properties: ['openFile'],
       });
       return result.canceled ? null : result.filePaths[0] ?? null;

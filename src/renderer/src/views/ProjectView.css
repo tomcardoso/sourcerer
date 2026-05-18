@@ -150,13 +150,13 @@
 
 /* Sync error banner */
 .sync-error-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
   border-radius: 0;
   padding: 10px 14px;
   margin: 0 0 16px;
   font-size: 12px;
-  color: #fca5a5;
+  color: var(--color-danger);
   line-height: 1.4;
 }
 
