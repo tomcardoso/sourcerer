@@ -62,9 +62,9 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [confirmUnshare, setConfirmUnshare] = useState(false);
+  const [showUnshareModal, setShowUnshareModal] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
-  const [confirmRotate, setConfirmRotate] = useState(false);
+  const [showRotateModal, setShowRotateModal] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -230,11 +230,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     if (!project) return;
     try {
       const updated = await window.sourcerer.unshareProject(project.id);
-      setConfirmUnshare(false);
+      setShowUnshareModal(false);
       onProjectUpdated(updated);
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Failed to unshare project.');
-      setConfirmUnshare(false);
+      setShowUnshareModal(false);
     }
   }
 
@@ -253,7 +253,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   async function handleRotateKey() {
     if (!project) return;
     const result = await window.sourcerer.rotateSharedKey(project.id);
-    setConfirmRotate(false);
+    setShowRotateModal(false);
     if (!result) return;
     setRegenPayload({ projectName: project.name, payload: result.payload });
   }
@@ -613,36 +613,18 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               </button>
             </div>
           )}
-          {project.is_shared === 1 && !confirmUnshare && !confirmRotate && (
+          {project.is_shared === 1 && (
             <div className="project-meta-item">
-              <button className="project-meta-action-btn" onClick={() => setConfirmUnshare(true)}>
-                  Unshare project
+              <button className="project-meta-action-btn" onClick={() => setShowUnshareModal(true)}>
+                Unshare project
               </button>
             </div>
           )}
-          {confirmUnshare && (
+          {project.is_shared === 1 && (
             <div className="project-meta-item">
-              <span className="inline-confirm">
-                Stop syncing?
-                <button className="inline-confirm-yes" onClick={handleUnshare}>Yes</button>
-                <button className="inline-confirm-no" onClick={() => setConfirmUnshare(false)}>Cancel</button>
-              </span>
-            </div>
-          )}
-          {project.is_shared === 1 && !confirmRotate && !confirmUnshare && (
-            <div className="project-meta-item">
-              <button className="project-meta-action-btn" onClick={() => setConfirmRotate(true)}>
+              <button className="project-meta-action-btn" onClick={() => setShowRotateModal(true)}>
                 Rotate key…
               </button>
-            </div>
-          )}
-          {confirmRotate && (
-            <div className="project-meta-item">
-              <span className="inline-confirm">
-                Revokes all collaborator access. Continue?
-                <button className="inline-confirm-yes" onClick={handleRotateKey}>Yes, rotate</button>
-                <button className="inline-confirm-no" onClick={() => setConfirmRotate(false)}>Cancel</button>
-              </span>
             </div>
           )}
           </div>
@@ -861,6 +843,22 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
     )}
 
+    {showUnshareModal && project && (
+      <UnshareProjectModal
+        projectName={project.name}
+        onDismiss={() => setShowUnshareModal(false)}
+        onConfirm={handleUnshare}
+      />
+    )}
+
+    {showRotateModal && project && (
+      <RotateKeyModal
+        projectName={project.name}
+        onDismiss={() => setShowRotateModal(false)}
+        onConfirm={handleRotateKey}
+      />
+    )}
+
     {showEditProject && (
       <Modal title="Edit project" onDismiss={() => setShowEditProject(false)}>
         <form onSubmit={handleEditProjectSubmit}>
@@ -897,5 +895,75 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       </Modal>
     )}
   </>
+  );
+}
+
+function UnshareProjectModal({
+  projectName,
+  onDismiss,
+  onConfirm,
+}: {
+  projectName: string;
+  onDismiss: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [working, setWorking] = useState(false);
+
+  async function handleConfirm() {
+    setWorking(true);
+    try { await onConfirm(); } finally { setWorking(false); }
+  }
+
+  return (
+    <Modal title="Unshare project" onDismiss={onDismiss}>
+      <p className="modal-description">
+        <strong>{projectName}</strong> will be converted back to a local-only project. All
+        collaborators will immediately lose access and the shared file will no longer be updated.
+        Your local data is unaffected.
+      </p>
+      <div className="modal-actions">
+        <button className="modal-btn-cancel" onClick={onDismiss} disabled={working}>
+          Cancel
+        </button>
+        <button className="modal-btn-danger" onClick={handleConfirm} disabled={working}>
+          {working ? 'Unsharing…' : 'Unshare project'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function RotateKeyModal({
+  projectName,
+  onDismiss,
+  onConfirm,
+}: {
+  projectName: string;
+  onDismiss: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [working, setWorking] = useState(false);
+
+  async function handleConfirm() {
+    setWorking(true);
+    try { await onConfirm(); } finally { setWorking(false); }
+  }
+
+  return (
+    <Modal title="Rotate encryption key" onDismiss={onDismiss}>
+      <p className="modal-description">
+        This will generate a new encryption key for <strong>{projectName}</strong>. All current
+        collaborators will immediately lose access. You'll be shown a new share link to redistribute
+        out-of-band.
+      </p>
+      <div className="modal-actions">
+        <button className="modal-btn-cancel" onClick={onDismiss} disabled={working}>
+          Cancel
+        </button>
+        <button className="modal-btn-danger" onClick={handleConfirm} disabled={working}>
+          {working ? 'Rotating…' : 'Rotate key'}
+        </button>
+      </div>
+    </Modal>
   );
 }
