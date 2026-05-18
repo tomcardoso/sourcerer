@@ -90,7 +90,7 @@ All design tokens are CSS custom properties defined in `src/renderer/src/global.
 
 **Components:**
 - Always use `CalendarPicker` (`src/renderer/src/views/CalendarPicker.tsx`) for any date input — never use `<input type="date">` (see issue #46 for outstanding cases)
-- Always use `Modal` (`src/renderer/src/shell/Modal.tsx`) for any new modal — never reimplement the overlay/card/title/Escape scaffold by hand. Pass `title`, `onDismiss`, and optionally `className` (appended to `modal-card`); put all content including `.modal-actions` as children
+- Always use `Modal` (`src/renderer/src/shell/Modal.tsx`) for any new modal — never reimplement the overlay/card/title/Escape scaffold by hand. Pass `title`, `onDismiss`, and optionally `className` (appended to `modal-card`); put all content including `.modal-actions` as children. Use `modal-description` for the primary intro paragraph beneath the title
 
 **Hard rules — do not break these:**
 - All interactive elements (buttons, inputs, selects, textareas) use `border-radius: 0` — square corners everywhere, no exceptions
