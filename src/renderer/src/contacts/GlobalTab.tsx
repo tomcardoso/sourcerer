@@ -751,7 +751,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="detail-edit-actions-bottom">
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()))}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setEditingAndNotify(false)} disabled={saving}>
