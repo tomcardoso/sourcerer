@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow, net } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
-import { normalizeEmail, normalizePhone } from '../sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
 import type {
   ContactListItem,
@@ -280,7 +280,7 @@ export function registerContactHandlers(): void {
 
       const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
-        .filter((e) => e.email);
+        .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
         db.prepare(
           'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -297,7 +297,7 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, p.phone, p.label, i, now);
       });
 
-      const links = (data.links ?? []).filter((l) => l.url.trim());
+      const links = (data.links ?? []).filter((l) => l.url.trim() && validateUrl(l.url));
       links.forEach((link, i) => {
         db.prepare(
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -433,7 +433,7 @@ export function registerContactHandlers(): void {
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
       const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
-        .filter((e) => e.email);
+        .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
         db.prepare(
           'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -452,7 +452,7 @@ export function registerContactHandlers(): void {
       });
 
       db.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
-      const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim());
+      const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim() && validateUrl(l.url));
       links.forEach((link: ContactLinkInput, i: number) => {
         db.prepare(
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
