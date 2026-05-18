@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import type { User } from '@shared/types';
+import Button from '../shell/Button';
 import './View.css';
 import './SettingsView.css';
 
@@ -365,13 +366,14 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             </div>
           </div>
           <div className="sv-profile-actions">
-            <button
-              className="sv-save-btn"
+            <Button
+              variant="accent"
+              size="sm"
               onClick={handleProfileSave}
               disabled={profileSaving || !profileDirty || !firstName.trim() || !email.trim()}
             >
               {profileSaved ? 'Saved!' : profileSaving ? 'Saving…' : 'Save profile'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -423,13 +425,14 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             </p>
           )}
           <div className="sv-profile-actions">
-            <button
-              className="sv-save-btn"
+            <Button
+              variant="accent"
+              size="sm"
               onClick={handleChangePassword}
               disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
             >
               {passwordSaving ? 'Updating…' : 'Update password'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -598,9 +601,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 disabled={!waybackEnabled}
               />
             </div>
-            <button className="sv-save-btn" onClick={handleArchiveKeysSave} disabled={!waybackEnabled}>
+            <Button variant="accent" size="sm" onClick={handleArchiveKeysSave} disabled={!waybackEnabled}>
               Save keys
-            </button>
+            </Button>
           </div>
           {archiveKeysSaved && (
             <p className="sv-success">Keys saved.</p>
@@ -626,25 +629,26 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               readOnly
               value={calendarUrl}
             />
-            <button
-              className="sv-copy-btn"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 if (calendarUrl) navigator.clipboard.writeText(calendarUrl);
               }}
             >
               Copy
-            </button>
+            </Button>
           </div>
           {calendarRegenConfirm ? (
             <div className="sv-regen-confirm">
               <span>This invalidates your existing calendar subscription. Continue?</span>
-              <button className="sv-save-btn" onClick={handleRegenerateToken}>Yes, regenerate</button>
-              <button className="sv-cancel-small-btn" onClick={() => setCalendarRegenConfirm(false)}>Cancel</button>
+              <Button variant="accent" size="sm" onClick={handleRegenerateToken}>Yes, regenerate</Button>
+              <Button variant="secondary" size="sm" onClick={() => setCalendarRegenConfirm(false)}>Cancel</Button>
             </div>
           ) : (
-            <button className="sv-add-btn" onClick={() => setCalendarRegenConfirm(true)}>
+            <Button variant="ghost" onClick={() => setCalendarRegenConfirm(true)}>
               Regenerate token
-            </button>
+            </Button>
           )}
         </div>
 
@@ -662,9 +666,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 ? `${(screenshotFolderBytes / (1024 * 1024)).toFixed(1)} MB`
                 : `${(screenshotFolderBytes / 1024).toFixed(0)} KB`}
             </span>
-            <button className="sv-add-btn" onClick={async () => { try { await window.sourcerer.openScreenshotFolder(); } catch (err) { console.error('Failed to open screenshot folder:', err); } }}>
+            <Button variant="ghost" onClick={async () => { try { await window.sourcerer.openScreenshotFolder(); } catch (err) { console.error('Failed to open screenshot folder:', err); } }}>
               Open folder
-            </button>
+            </Button>
           </div>
           {screenshotFolderBytes >= 1024 * 1024 * 1024 && (
             <div className="sv-storage-warning">
@@ -682,9 +686,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 <div className="sv-hint">
                   Save your encrypted database as a <code>.sourcerer-backup</code> file. The backup is encrypted with your master password — only someone with your password can restore it.
                 </div>
-                <button className="sv-save-btn" onClick={() => { setExportConfirm(true); setBackupError(null); setExportPassword(''); }}>
+                <Button variant="accent" size="sm" onClick={() => { setExportConfirm(true); setBackupError(null); setExportPassword(''); }}>
                   Export backup
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -702,20 +706,22 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 disabled={backingUp}
               />
               <div className="sv-wipe-row">
-                <button
-                  className="sv-wipe-confirm-btn"
+                <Button
+                  variant="accent"
+                  size="sm"
                   onClick={handleExportBackup}
                   disabled={backingUp || !exportPassword}
                 >
                   {backingUp ? 'Exporting…' : 'Export backup'}
-                </button>
-                <button
-                  className="sv-cancel-small-btn"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => { setExportConfirm(false); setExportPassword(''); setBackupError(null); }}
                   disabled={backingUp}
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
               {backupError && <div className="sv-error-inline">{backupError}</div>}
             </div>
@@ -726,12 +732,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 <div className="sv-hint">
                   Restore a <code>.sourcerer-backup</code> file. Your current database will be permanently replaced.
                 </div>
-                <button
-                  className="sv-save-btn"
+                <Button
+                  variant="accent"
+                  size="sm"
                   onClick={() => { setRestoreConfirm(true); setRestoreError(null); setRestorePassword(''); }}
                 >
                   Restore from backup
-                </button>
+                </Button>
                 {restoreError && <div className="sv-error-inline">{restoreError}</div>}
               </div>
             </div>
@@ -751,20 +758,22 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                   autoComplete="current-password"
                   disabled={restoringBackup}
                 />
-                <button
-                  className="sv-wipe-confirm-btn"
+                <Button
+                  variant="accent"
+                  size="sm"
                   onClick={handleRestoreBackup}
                   disabled={restoringBackup || !restorePassword}
                 >
                   {restoringBackup ? 'Restoring…' : 'Choose backup file…'}
-                </button>
-                <button
-                  className="sv-cancel-small-btn"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => { setRestoreConfirm(false); setRestorePassword(''); setRestoreError(null); }}
                   disabled={restoringBackup}
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
               {restoreError && <div className="sv-error-inline">{restoreError}</div>}
             </div>
@@ -787,12 +796,13 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               <code className="sv-path-code">
                 {autoBackupDestPath ?? 'No folder selected'}
               </code>
-              <button
-                className="sv-save-btn"
+              <Button
+                variant="accent"
+                size="sm"
                 onClick={handleChooseBackupFolder}
               >
                 Choose folder…
-              </button>
+              </Button>
             </div>
           </div>
           <Toggle
@@ -814,13 +824,14 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 onBlur={handleAutoBackupMaxCountBlur}
                 disabled={!autoBackupDestPath || !autoBackupEnabled}
               />
-              <button
-                className="sv-save-btn"
+              <Button
+                variant="accent"
+                size="sm"
                 onClick={handleRunAutoBackupNow}
                 disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
               >
                 {autoBackupRunning ? 'Backing up…' : 'Back up now'}
-              </button>
+              </Button>
               {autoBackupResult && (
                 <span className="sv-hint sv-hint--inline">{autoBackupResult}</span>
               )}
@@ -839,9 +850,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                   Permanently deletes the database and encryption key. This cannot be undone.
                 </div>
               </div>
-              <button className="sv-wipe-btn" onClick={() => { setPanicWipeConfirm(true); setPanicWipeInput(''); }}>
+              <Button variant="danger-outline" size="sm" onClick={() => { setPanicWipeConfirm(true); setPanicWipeInput(''); }}>
                 Wipe all data
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="sv-wipe-confirm">
@@ -857,20 +868,22 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                   onChange={(e) => setPanicWipeInput(e.target.value)}
                   autoFocus
                 />
-                <button
-                  className="sv-wipe-confirm-btn"
+                <Button
+                  variant="danger"
+                  size="sm"
                   disabled={panicWipeInput !== 'WIPE' || panicWiping}
                   onClick={handlePanicWipe}
                 >
                   {panicWiping ? 'Wiping…' : 'Destroy all data'}
-                </button>
-                <button
-                  className="sv-cancel-small-btn"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => { setPanicWipeConfirm(false); setPanicWipeInput(''); }}
                   disabled={panicWiping}
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
 import Modal from './Modal';
+import Button from './Button';
 import './JoinProjectModal.css';
 
 interface Props {
@@ -105,9 +106,9 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
                 It must live permanently in a synced folder (Dropbox, OneDrive, iCloud Drive) —
                 sync breaks if it is moved.
               </p>
-              <button type="button" className="join-locate-btn" onClick={handleLocate} disabled={submitting}>
+              <Button type="button" variant="secondary" onClick={handleLocate} disabled={submitting}>
                 {selectedPath ? 'Change file…' : 'Locate shared file…'}
-              </button>
+              </Button>
               {selectedPath && (
                 <p className="join-selected-path">{selectedPath}</p>
               )}
@@ -117,12 +118,12 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
           {error && <p className="join-error">{error}</p>}
 
           <div className="modal-actions">
-            <button type="button" className="modal-btn-cancel" onClick={onCancel} disabled={submitting}>
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
               Cancel
-            </button>
-            <button type="submit" className="modal-btn-create" disabled={!canJoin}>
+            </Button>
+            <Button type="submit" variant="primary" disabled={!canJoin}>
               {submitting ? 'Joining…' : 'Join project'}
-            </button>
+            </Button>
           </div>
       </form>
     </Modal>

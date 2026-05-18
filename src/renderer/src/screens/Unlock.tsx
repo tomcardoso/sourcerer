@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { WordmarkLogo } from '../components/WordmarkLogo';
+import Button from '../shell/Button';
 import './Unlock.css';
 
 interface Props {
@@ -71,9 +72,9 @@ export default function Unlock({ onUnlocked }: Props) {
             </div>
           )}
 
-          <button className="unlock-submit" type="submit" disabled={submitting || !password}>
+          <Button variant="primary" full type="submit" disabled={submitting || !password}>
             {submitting ? 'Unlocking…' : 'Unlock'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

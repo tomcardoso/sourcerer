@@ -71,22 +71,6 @@
   line-height: 1.5;
 }
 
-.join-locate-btn {
-  padding: 7px 14px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.join-locate-btn:hover:not(:disabled) {
-  background: var(--color-bg);
-}
 
 .join-selected-path {
   font-family: var(--font-mono);

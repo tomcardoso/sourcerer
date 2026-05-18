@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project, User } from '@shared/types';
+import Button from '../shell/Button';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -141,9 +142,9 @@ function DynamicList({
           )}
         </div>
       ))}
-      <button className="ac-add-row" type="button" onClick={() => onChange([...values, ''])}>
+      <Button variant="ghost" type="button" onClick={() => onChange([...values, ''])}>
         + Add
-      </button>
+      </Button>
     </div>
   );
 }
@@ -541,13 +542,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <button
-            className="ac-add-row"
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setEditEmails([...editEmails, { email: '', label: '' }])}
           >
             + Add
-          </button>
+          </Button>
         </div>
 
         <div className="ac-field">
@@ -620,13 +621,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <button
-            className="ac-add-row"
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setEditPhones([...editPhones, { phone: '', label: '' }])}
           >
             + Add
-          </button>
+          </Button>
         </div>
 
         <div className="ac-field">
@@ -663,13 +664,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               ></button>
             </div>
           ))}
-          <button
-            className="ac-add-row"
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setEditHandles([...editHandles, { type: 'signal', handle: '' }])}
           >
             + Add
-          </button>
+          </Button>
         </div>
 
         {NON_OTHER_SOCIAL_TYPES.map((type) => (
@@ -767,13 +768,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
             </div>
           ))}
-          <button
-            className="ac-add-row"
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setEditOtherSocials([...editOtherSocials, { url: '', label: '' }])}
           >
             + Add
-          </button>
+          </Button>
         </div>
 
         <div className="ac-field">
@@ -836,12 +837,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="detail-edit-actions-bottom">
-          <button className="detail-save-btn" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}>
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button className="detail-cancel-btn" onClick={() => setEditingAndNotify(false)} disabled={saving}>
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setEditingAndNotify(false)} disabled={saving}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -1009,7 +1010,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               ))}
             </select>
             {addingToProject && (
-              <button className="detail-add-btn" onClick={handleAddToProject}>Add</button>
+              <Button variant="primary" size="sm" onClick={handleAddToProject}>Add</Button>
             )}
           </div>
         )}
@@ -1143,32 +1144,34 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <div className="detail-confirm-delete">
             <p>Delete {contact.name}? This removes them from all projects and cannot be undone.</p>
             <div className="detail-confirm-actions">
-              <button className="detail-delete-confirm-btn" onClick={handleDelete}>Yes, delete</button>
-              <button className="detail-cancel-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <Button variant="danger" size="sm" onClick={handleDelete}>Yes, delete</Button>
+              <Button variant="secondary" size="sm" onClick={() => setConfirmDelete(false)}>Cancel</Button>
             </div>
           </div>
         ) : (
           <div className="detail-bottom-actions">
             <div className="detail-bottom-left">
-              <button
-                className="detail-print-btn"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => window.print()}
                 title="Print contact sheet"
               >
                 Print
-              </button>
-              <button
-                className="detail-vcard-btn"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => window.sourcerer.exportVCardContact(contact.id)}
                 title="Export as vCard (.vcf)"
               >
                 ↓ vCard
-              </button>
-              <button className="detail-edit-btn" onClick={startEdit}>Edit</button>
+              </Button>
+              <Button variant="secondary" size="sm" onClick={startEdit}>Edit</Button>
             </div>
-            <button className="detail-delete-btn" onClick={() => setConfirmDelete(true)}>
+            <Button variant="danger-outline" size="sm" onClick={() => setConfirmDelete(true)}>
               Delete contact
-            </button>
+            </Button>
           </div>
         )}
       </div>

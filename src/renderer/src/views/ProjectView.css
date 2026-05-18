@@ -41,31 +41,6 @@
   50% { opacity: 0.4; }
 }
 
-/* Sync now button */
-.sync-now-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  transition: background 0.1s, color 0.1s;
-}
-
-.sync-now-btn:hover:not(:disabled) {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.sync-now-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* Recovery banner */
 .recovery-banner {
   background: rgba(245, 158, 11, 0.1);
@@ -92,60 +67,9 @@
   flex-shrink: 0;
 }
 
-.recovery-btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 0;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  white-space: nowrap;
-}
-
-.recovery-btn:hover {
-  background: var(--color-surface);
-}
-
-.recovery-btn-danger {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-}
-
-.recovery-btn-danger:hover {
-  background: rgba(185, 28, 28, 0.08);
-}
-
 /* Export button + dropdown — shared styles in View.css */
 .export-menu-wrap {
   position: relative;
-}
-
-.export-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  transition: background 0.1s, color 0.1s;
-}
-
-.export-btn:hover:not(:disabled) {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.export-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 /* Sync error banner */
@@ -160,21 +84,3 @@
   line-height: 1.4;
 }
 
-.share-project-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  transition: background 0.1s, color 0.1s;
-}
-
-.share-project-btn:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-}

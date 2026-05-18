@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { DedupContact, DuplicatePair } from '@shared/types';
+import Button from '../shell/Button';
 import '../shell/Modal.css';
 import './DedupModal.css';
 import '../contacts/AddContactModal.css';
@@ -145,9 +146,9 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
           </div>
           <p className="dedup-empty">No duplicate pairs to review.</p>
           <div className="dedup-actions">
-            <button className="dedup-btn dedup-btn--primary" onClick={onClose}>
+            <Button variant="accent" onClick={onClose}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -191,34 +192,34 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
         </div>
 
         <div className="dedup-actions">
-          <button
-            className="dedup-btn dedup-btn--secondary"
+          <Button
+            variant="secondary"
             onClick={() => handleAction(null, null, 'skip')}
             disabled={working}
           >
             Skip
-          </button>
-          <button
-            className="dedup-btn dedup-btn--secondary"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => handleAction(a.id, b.id, 'keep')}
             disabled={working}
           >
             Keep left
-          </button>
-          <button
-            className="dedup-btn dedup-btn--secondary"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => handleAction(b.id, a.id, 'keep')}
             disabled={working}
           >
             Keep right
-          </button>
-          <button
-            className="dedup-btn dedup-btn--primary"
+          </Button>
+          <Button
+            variant="accent"
             onClick={() => handleAction(a.id, b.id, 'merge')}
             disabled={working}
           >
             Merge both
-          </button>
+          </Button>
         </div>
       </div>
     </div>

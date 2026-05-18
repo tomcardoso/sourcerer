@@ -3,6 +3,7 @@ import type { ContactListItem, DuplicatePair, Project, User } from '@shared/type
 import { useClickOutside } from '../hooks/useClickOutside';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
+import Button from '../shell/Button';
 import ContactsTable, {
   type AllContactsFilters as Filters,
   DEFAULT_ALL_CONTACTS_FILTERS as DEFAULT_FILTERS,
@@ -340,13 +341,14 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
 
           {projects.length > 0 && (
             <div className="bulk-project-wrap" ref={bulkProjectMenuRef}>
-              <button
-                className="btn-secondary bulk-bar-btn"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setBulkProjectMenuOpen((v) => !v)}
                 disabled={bulkWorking}
               >
                 Add to project
-              </button>
+              </Button>
               {bulkProjectMenuOpen && (
                 <div className="bulk-project-menu">
                   {projects.map((p) => (
@@ -368,29 +370,32 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
               <span className="bulk-delete-confirm-text">
                 Delete {checkedCount} contact{checkedCount !== 1 ? 's' : ''}?
               </span>
-              <button
-                className="bulk-delete-confirm-btn"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={handleBulkDelete}
                 disabled={bulkWorking}
               >
                 {bulkWorking ? 'Deleting…' : 'Confirm delete'}
-              </button>
-              <button
-                className="btn-secondary bulk-bar-btn"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setConfirmDelete(false)}
                 disabled={bulkWorking}
               >
                 Cancel
-              </button>
+              </Button>
             </>
           ) : (
-            <button
-              className="bulk-delete-btn"
+            <Button
+              variant="danger-outline"
+              size="sm"
               onClick={() => setConfirmDelete(true)}
               disabled={bulkWorking}
             >
               Delete
-            </button>
+            </Button>
           )}
         </div>
       )}

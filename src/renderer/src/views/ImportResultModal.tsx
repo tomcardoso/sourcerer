@@ -1,5 +1,6 @@
 import type { ImportResult } from '@shared/types';
 import Modal from '../shell/Modal';
+import Button from '../shell/Button';
 import './ImportResultModal.css';
 
 interface Props {
@@ -53,9 +54,9 @@ export default function ImportResultModal({ result, onClose }: Props) {
         )}
 
       <div className="modal-actions">
-        <button className="modal-btn-create" onClick={onClose}>
+        <Button variant="primary" onClick={onClose}>
           Done
-        </button>
+        </Button>
       </div>
     </Modal>
   );

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { fmtDateFull } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
+import Button from '../shell/Button';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -195,16 +196,16 @@ function LogSection({
         <span className="pt-reminders-label">Interaction Log</span>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
           {entries.length > 0 && (
-            <button className="pt-reminder-add-btn" onClick={() => setShowAll(true)}>
+            <Button variant="ghost" onClick={() => setShowAll(true)}>
               View all ({entries.length})
-            </button>
+            </Button>
           )}
-          <button className="pt-reminder-add-btn" onClick={() => {
+          <Button variant="ghost" onClick={() => {
             if (!adding) setLogDate(today);
             setAdding((v) => !v);
           }}>
             {adding ? '× Cancel' : '+ Add'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -344,9 +345,9 @@ function ScratchpadSection({
     <div className="pt-section">
       <div className="pt-reminders-header">
         <span className="pt-reminders-label">Message Scratchpad</span>
-        <button className="pt-reminder-add-btn" onClick={handleNewDraft}>
+        <Button variant="ghost" onClick={handleNewDraft}>
           + Add
-        </button>
+        </Button>
       </div>
       {drafts.length === 0 && <p className="pt-reminders-empty">No drafts yet.</p>}
       {drafts.map((draft) => {
@@ -505,9 +506,9 @@ function RemindersSection({
     <div className="pt-section">
       <div className="pt-reminders-header">
         <span className="pt-reminders-label">Reminders</span>
-        <button className="pt-reminder-add-btn" onClick={() => { setAdding((v) => !v); setEditingId(null); }}>
+        <Button variant="ghost" onClick={() => { setAdding((v) => !v); setEditingId(null); }}>
           {adding ? '× CANCEL' : '+ ADD'}
-        </button>
+        </Button>
       </div>
       {reminders.length === 0 && !adding && (
         <p className="pt-reminders-empty">No reminders set.</p>

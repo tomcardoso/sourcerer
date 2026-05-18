@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { WordmarkLogo } from '../components/WordmarkLogo';
+import Button from '../shell/Button';
 import './Setup.css';
 
 interface Props {
@@ -178,9 +179,9 @@ export default function Setup({ onComplete }: Props) {
 
           {error && <div className="setup-error">{error}</div>}
 
-          <button className="setup-submit" type="submit" disabled={submitting || !form.acknowledgedNoRecovery}>
+          <Button variant="primary" full type="submit" disabled={submitting || !form.acknowledgedNoRecovery}>
             {submitting ? 'Setting up…' : 'Create my vault'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

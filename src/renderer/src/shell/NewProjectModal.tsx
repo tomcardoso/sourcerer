@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
 import Modal from './Modal';
+import Button from './Button';
 import './NewProjectModal.css';
 
 interface Props {
@@ -93,21 +94,21 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
           </div>
 
           <div className="modal-actions">
-            <button
+            <Button
               type="button"
-              className="modal-btn-cancel"
+              variant="secondary"
               onClick={onCancel}
               disabled={submitting}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="modal-btn-create"
+              variant="primary"
               disabled={!name.trim() || submitting}
             >
               {submitting ? 'Creating…' : 'Create project'}
-            </button>
+            </Button>
           </div>
       </form>
     </Modal>

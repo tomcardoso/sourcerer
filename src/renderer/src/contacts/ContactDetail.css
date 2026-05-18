@@ -79,26 +79,6 @@
   white-space: nowrap;
 }
 
-.detail-vcard-btn {
-  height: 28px;
-  padding: 0 10px;
-  background: none;
-  border: 1px solid var(--color-border-strong);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.detail-vcard-btn:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: var(--color-text);
-}
 
 .detail-close {
   background: none;
@@ -300,23 +280,6 @@
   outline: none;
 }
 
-.detail-add-btn {
-  height: 30px;
-  padding: 0 12px;
-  background: var(--color-text);
-  color: var(--color-bg);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.detail-add-btn:hover {
-  background: var(--color-text-muted);
-}
 
 /* Danger zone */
 .detail-danger-zone {
@@ -325,22 +288,6 @@
   margin-top: 4px;
 }
 
-.detail-delete-btn {
-  background: none;
-  border: 1px solid var(--color-danger);
-  color: var(--color-danger);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.detail-delete-btn:hover {
-  background: rgba(185, 28, 28, 0.06);
-}
 
 .detail-confirm-delete p {
   font-size: 13px;
@@ -354,42 +301,6 @@
   gap: 8px;
 }
 
-.detail-delete-confirm-btn {
-  height: 30px;
-  padding: 0 12px;
-  background: var(--color-danger);
-  color: var(--color-bg);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.detail-delete-confirm-btn:hover {
-  background: #991b1b;
-}
-
-.detail-cancel-btn {
-  height: 30px;
-  padding: 0 12px;
-  background: none;
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border-strong);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.detail-cancel-btn:hover {
-  color: var(--color-text);
-  border-color: var(--color-text);
-}
 
 /* Tab bar */
 .detail-tabs {
@@ -437,24 +348,6 @@
   gap: 8px;
 }
 
-.detail-edit-btn {
-  height: 28px;
-  padding: 0 12px;
-  background: none;
-  border: 1px solid var(--color-border-strong);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.detail-edit-btn:hover {
-  border-color: var(--color-text);
-  color: var(--color-text);
-}
 
 /* Edit mode bottom action bar */
 .detail-edit-actions-bottom {
@@ -465,28 +358,6 @@
   border-top: 1px solid var(--color-border);
 }
 
-.detail-save-btn {
-  height: 30px;
-  padding: 0 14px;
-  background: var(--color-text);
-  color: var(--color-bg);
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.detail-save-btn:hover:not(:disabled) {
-  background: var(--color-text-muted);
-}
-
-.detail-save-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* Project tab styles */
 .pt-project-name-header {
@@ -1029,19 +900,6 @@
   background: rgba(200, 122, 26, 0.08);
 }
 
-.pt-new-draft-btn {
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  font-size: 12px;
-  font-family: var(--font-mono);
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.pt-new-draft-btn:hover {
-  text-decoration: underline;
-}
 
 .detail-rss-invalid {
   color: var(--color-warning-border);
@@ -1083,22 +941,6 @@
   color: var(--color-text);
 }
 
-.pt-reminder-add-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  cursor: pointer;
-}
-
-.pt-reminder-add-btn:hover {
-  opacity: 0.75;
-}
 
 .pt-reminders-empty {
   font-size: 13px;
@@ -1396,25 +1238,6 @@
   color: var(--color-text);
 }
 
-.pt-assign-btn {
-  background: none;
-  border: 1px solid var(--color-border);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  padding: 2px 8px;
-  cursor: pointer;
-  margin-left: 8px;
-  transition: background 0.1s, color 0.1s;
-}
-
-.pt-assign-btn:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
 
 /* ── Screenshot viewer (portal-rendered, full-app overlay) ──────────────── */
 .sv-overlay {
@@ -1557,30 +1380,6 @@
   border-radius: 0;
   user-select: none;
   -webkit-user-drag: none;
-}
-
-/* ── Print button ───────────────────────────────── */
-
-.detail-print-btn {
-  height: 28px;
-  padding: 0 10px;
-  background: none;
-  border: 1px solid var(--color-border-strong);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.detail-print-btn:hover {
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-color: var(--color-text);
 }
 
 /* Print layout is handled entirely by ContactPrintSheet.css */

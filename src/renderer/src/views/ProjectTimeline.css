@@ -145,30 +145,6 @@
     color: #000;
   }}
 
-/* ── Print button ──────────────────────────────────────────── */
-
-.ptl-print-btn {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--color-text-muted);
-  height: 28px;
-  padding: 0 12px;
-  background: none;
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  white-space: nowrap;
-  align-self: center;
-  flex-shrink: 0;
-}
-
-.ptl-print-btn:hover {
-  border-color: var(--color-text);
-  color: var(--color-text);
-}
-
 /* ── Multi-select (matches reporter selectize in ProjectTab) ── */
 
 .ptl-ms {

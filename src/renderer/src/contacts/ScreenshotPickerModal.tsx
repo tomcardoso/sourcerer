@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ContactListItem } from '@shared/types';
+import Button from '../shell/Button';
 import './ScreenshotPickerModal.css';
 
 interface Props {
@@ -74,9 +75,9 @@ export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
           )}
         </div>
         <div className="spm-footer">
-          <button className="modal-btn-cancel" onClick={onClose} disabled={saving}>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>
