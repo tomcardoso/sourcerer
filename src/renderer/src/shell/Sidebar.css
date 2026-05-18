@@ -290,6 +290,15 @@
   display: inline-block;
 }
 
+.sidebar-project-shared-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 .sidebar-project-name {
   flex: 1;
   overflow: hidden;
