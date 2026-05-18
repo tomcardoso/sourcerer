@@ -177,6 +177,14 @@ describe('validateUrl', () => {
   it('rejects a URL with an internal space', () => {
     expect(validateUrl('https://example.com/path with spaces')).toBe(false);
   });
+
+  it('rejects a URL with an embedded tab', () => {
+    expect(validateUrl('https://example.com/path\twith\ttabs')).toBe(false);
+  });
+
+  it('rejects a URL with an embedded newline', () => {
+    expect(validateUrl('https://example.com/path\nwith\nnewlines')).toBe(false);
+  });
 });
 
 describe('detectLinkType', () => {

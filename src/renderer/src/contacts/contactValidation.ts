@@ -1,9 +1,11 @@
 export { validateEmail as isValidEmail, validateUrl as isValidUrl } from '@shared/validation';
 
-// Allowed phone chars: digits, +, -, (, ), ., whitespace, and extension
-// notation letters (e, x, t for "ext", # for US-style extensions).
+// Allowed phone chars: digits, +, -, (, ), ., whitespace, # for US extensions,
+// and "ext"/"x" as an extension prefix. Strip any trailing extension first so
+// lone letters like 't' or 'ex' inside the number body are still caught.
 export function hasDisallowedPhoneChars(raw: string): boolean {
-  return /[^0-9+\-(). \t#extEXT]/.test(raw);
+  const stripped = raw.replace(/\s*(?:ext\.?\s*|x)\d+$/i, '');
+  return /[^0-9+\-(). \t#]/.test(stripped);
 }
 
 // Strip separators so spacing variants of the same number compare equal.

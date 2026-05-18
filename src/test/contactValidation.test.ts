@@ -24,13 +24,14 @@ describe('hasDisallowedPhoneChars', () => {
 
   it('rejects letters outside extension notation', () => {
     expect(hasDisallowedPhoneChars('555-CALL-NOW')).toBe(true);
+    expect(hasDisallowedPhoneChars('555-text')).toBe(true);
   });
 
   it('rejects @', () => {
     expect(hasDisallowedPhoneChars('555@1234')).toBe(true);
   });
 
-  it('rejects an empty string', () => {
+  it('returns false for an empty string (no chars to disallow)', () => {
     expect(hasDisallowedPhoneChars('')).toBe(false);
   });
 });

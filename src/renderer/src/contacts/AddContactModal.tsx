@@ -343,7 +343,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 )}
                 {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && !phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && phoneCollisions[entry.phone.trim()] && (
                   <div className="ac-collision-warn">
-                    Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
+                    Already on: <span>{phoneCollisions[entry.phone.trim()]}</span>
                   </div>
                 )}
               </div>

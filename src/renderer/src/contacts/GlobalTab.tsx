@@ -410,7 +410,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
               {entry.email.trim() && !emailFormatWarnings[entry.email.trim()] && !emailDuplicates.has(entry.email.trim().toLowerCase()) && emailCollisions[entry.email.trim()] && (
                 <div className="ac-collision-warn">
-                  Already on: <strong>{emailCollisions[entry.email.trim()]}</strong>
+                  Already on: <span>{emailCollisions[entry.email.trim()]}</span>
                 </div>
               )}
             </div>
@@ -491,7 +491,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               )}
               {entry.phone.trim() && !phoneFormatWarnings[entry.phone.trim()] && !phoneDuplicates.has(normalizePhoneForComparison(entry.phone)) && phoneCollisions[entry.phone.trim()] && (
                 <div className="ac-collision-warn">
-                  Already on: <strong>{phoneCollisions[entry.phone.trim()]}</strong>
+                  Already on: <span>{phoneCollisions[entry.phone.trim()]}</span>
                 </div>
               )}
             </div>
@@ -714,7 +714,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             placeholder="https://news.google.com/rss/search?q=…"
           />
           {editRssUrl.trim() && !isValidUrl(editRssUrl.trim()) && (
-            <div className="ac-collision-warn">Invalid URL — must start with https:// or http://</div>
+            <div className="ac-collision-warn">Invalid URL — must be a valid https:// or http:// address</div>
           )}
           <p className="ac-field-hint">
             Paste a Google Alerts RSS URL to automatically track mentions.

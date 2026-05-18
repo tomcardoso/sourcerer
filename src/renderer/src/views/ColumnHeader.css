@@ -58,6 +58,10 @@
   opacity: 0.75;
 }
 
+.col-header:hover .col-filter-btn-on {
+  opacity: 1;
+}
+
 .col-filter-btn-on {
   opacity: 1;
   color: var(--color-primary);

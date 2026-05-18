@@ -316,7 +316,7 @@ export function registerContactHandlers(): void {
     runDedupScan();
 
     if (wayback_enabled) {
-      const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim());
+      const websiteLinks = (data.links ?? []).filter((l) => l.type === 'website' && l.url.trim() && validateUrl(l.url));
       for (const link of websiteLinks) {
         triggerWaybackSave(id, link.url.trim()).catch(() => {});
       }
@@ -327,11 +327,11 @@ export function registerContactHandlers(): void {
       organization: data.organization?.trim() || null,
       notes: data.notes?.trim() || null,
       created_at: now,
-      has_email: (data.emails?.length ?? 0) > 0 ? 1 : 0,
+      has_email: emails.length > 0 ? 1 : 0,
       has_phone: phones.length > 0 ? 1 : 0,
       date_first_contacted: null,
       date_last_contacted: null,
-      emails_raw: (data.emails ?? []).map((e) => normalizeEmail(e.email)).filter(Boolean).join(' ') || null,
+      emails_raw: emails.map((e) => e.email).join(' ') || null,
       phones_raw: phones.length > 0 ? phones.map((p) => p.phone).join(' ') : null,
       projects: [],
     };
@@ -481,7 +481,7 @@ export function registerContactHandlers(): void {
 
     if (wayback_enabled) {
       const newWebsiteUrls = (data.links ?? [])
-        .filter((l) => l.type === 'website' && l.url.trim() && !existingWaybacks.has(l.url.trim()))
+        .filter((l) => l.type === 'website' && l.url.trim() && validateUrl(l.url) && !existingWaybacks.has(l.url.trim()))
         .map((l) => l.url.trim());
       for (const url of newWebsiteUrls) {
         triggerWaybackSave(data.id, url).catch(() => {});
