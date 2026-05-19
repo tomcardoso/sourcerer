@@ -712,10 +712,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="ac-field">
           <label className="ac-label">Alert RSS Feeds</label>
           {alertRssList.map((feed) => (
-            <div key={feed.id} className="ac-rss-feed-row">
-              <span className="ac-rss-feed-url" title={feed.rss_url}>
-                {feed.rss_url.length > 55 ? feed.rss_url.slice(0, 55) + '…' : feed.rss_url}
-              </span>
+            <div key={feed.id} className="ac-dynamic-row">
+              <input
+                className="ac-input"
+                value={feed.rss_url}
+                readOnly
+                title={feed.rss_url}
+              />
               <button
                 className="ac-remove"
                 type="button"
@@ -723,27 +726,26 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               ></button>
             </div>
           ))}
-          <div className="ac-rss-add-row">
+          <div>
             <input
-              className="ac-input ac-rss-url-input"
-              type="url"
+              className="ac-input"
               value={newRssUrl}
               onChange={(e) => setNewRssUrl(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRss(); } }}
               placeholder="https://news.google.com/rss/search?q=…"
             />
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={handleAddRss}
-              disabled={!newRssUrl.trim() || !isGoogleAlertUrl(newRssUrl.trim())}
-            >
-              + Add
-            </Button>
+            {newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()) && (
+              <div className="ac-collision-warn">Must be a Google Alerts or Google News RSS URL</div>
+            )}
           </div>
-          {newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()) && (
-            <div className="ac-collision-warn">Must be a Google Alerts or Google News RSS URL</div>
-          )}
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={handleAddRss}
+            disabled={!newRssUrl.trim() || !isGoogleAlertUrl(newRssUrl.trim())}
+          >
+            + Add
+          </Button>
           <p className="ac-field-hint">
             Paste a Google Alerts RSS URL to automatically track mentions.
             To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
