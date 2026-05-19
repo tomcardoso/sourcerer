@@ -30,11 +30,10 @@ export function syncProject(
     const now = Math.floor(Date.now() / 1000);
 
     localDb.transaction(() => {
-      let idMap: Map<string, string> = new Map();
       sharedDb.transaction(() => {
-        idMap = pullContacts(localDb, sharedDb);
-        pullMemberships(localDb, sharedDb, projectId, now, idMap);
-        pullAppendOnly(localDb, sharedDb, idMap);
+        pullContacts(localDb, sharedDb);
+        pullMemberships(localDb, sharedDb, projectId, now);
+        pullAppendOnly(localDb, sharedDb);
       })();
 
       const memberRows = localDb
@@ -103,10 +102,7 @@ function adoptSharedUuid(local: Database.Database, fromId: string, toId: string)
   local.prepare('DELETE FROM contacts WHERE id = ?').run(fromId);
 }
 
-function pullContacts(local: Database.Database, shared: Database.Database): Map<string, string> {
-  // sharedId → localId; same when no remap is needed
-  const idMap = new Map<string, string>();
-
+function pullContacts(local: Database.Database, shared: Database.Database): void {
   const sharedContacts = shared.prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
@@ -133,12 +129,14 @@ function pullContacts(local: Database.Database, shared: Database.Database): Map<
       .map((r) => [r.phone, r.contact_id]),
   );
 
+  // Guard against two shared contacts both matching the same local contact.
+  const adoptedIds = new Set<string>();
+
   for (const sc of sharedContacts) {
     const localUpdatedAt = localMap.get(sc.id);
 
     if (localUpdatedAt !== undefined) {
       // Contact already exists by ID — normal LWW path
-      idMap.set(sc.id, sc.id);
       if (sc.updated_at > localUpdatedAt) {
         local
           .prepare(
@@ -175,11 +173,14 @@ function pullContacts(local: Database.Database, shared: Database.Database): Map<
       }
       const matchedLocalId = candidateIds.size === 1 ? [...candidateIds][0] : undefined;
 
-      if (matchedLocalId) {
+      if (matchedLocalId && !adoptedIds.has(matchedLocalId)) {
         // Adopt the shared UUID so both sides agree on one primary key.
         // This prevents pushContacts from inserting a second contact row in the shared DB.
         adoptSharedUuid(local, matchedLocalId, sc.id);
-        idMap.set(sc.id, sc.id);
+        // Store both: the old local UUID (guards stale identity-index entries) and
+        // the new shared UUID (guards updated identity-index entries after adoption).
+        adoptedIds.add(matchedLocalId);
+        adoptedIds.add(sc.id);
 
         const matchedUpdatedAt = localMap.get(matchedLocalId) ?? 0;
         if (sc.updated_at > matchedUpdatedAt) {
@@ -192,8 +193,7 @@ function pullContacts(local: Database.Database, shared: Database.Database): Map<
         }
         mergeSubTablesFromShared(local, shared, sc.id, sc.id);
       } else {
-        // Genuinely new contact
-        idMap.set(sc.id, sc.id);
+        // Genuinely new contact (or ambiguous multi-match / already-adopted local contact)
         local
           .prepare(
             `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
@@ -217,8 +217,6 @@ function pullContacts(local: Database.Database, shared: Database.Database): Map<
       }
     }
   }
-
-  return idMap;
 }
 
 function mergeSubTablesFromShared(
@@ -335,7 +333,6 @@ function pullMemberships(
   shared: Database.Database,
   projectId: string,
   now: number,
-  idMap: Map<string, string>,
 ): void {
   const CONFLICT_WINDOW_SECS = 24 * 3600;
 
@@ -366,21 +363,29 @@ function pullMemberships(
 
   for (const sm of sharedMemberships) {
     const lm = localMembershipMap.get(sm.id);
-    // Resolve to local contact ID in case the shared contact was merged into an existing one
-    const localContactId = idMap.get(sm.contact_id) ?? sm.contact_id;
+    // adoptSharedUuid always renames local UUID → shared UUID, so sm.contact_id is correct locally.
+    const localContactId = sm.contact_id;
 
     if (!lm || sm.updated_at > lm.updated_at) {
       // Guard: if there's already a membership for this (contact, project) under a different id
-      // (can happen when adoptSharedUuid renamed a local contact to the shared UUID), re-key
-      // its interaction log entries to the shared membership id, then remove it so the INSERT
-      // below lands cleanly rather than hitting the UNIQUE(contact_id, project_id) constraint.
+      // (can happen when adoptSharedUuid renamed a local contact to the shared UUID), save its
+      // children, delete it, then INSERT sm.id so the re-attach below satisfies FK constraints.
       const conflicting = local
         .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ? AND id != ?')
         .get(localContactId, projectId, sm.id) as { id: string } | undefined;
+
+      type LogEntry = { id: string; reporter_email: string; reporter_name: string; body: string; created_at: number; synced_at: number | null };
+      type MemberReporter = { id: string; reporter_email: string; reporter_name: string };
+      type SavedReminder = { id: string; contact_id: string; project_id: string; due_date: number; note: string | null; is_auto_outreach: number; created_at: number; completed_at: number | null; last_notified_at: number | null };
+      let savedLogEntries: LogEntry[] = [];
+      let savedReporters: MemberReporter[] = [];
+      let savedReminders: SavedReminder[] = [];
+
       if (conflicting) {
-        local.prepare('UPDATE interaction_log_entries SET membership_id = ? WHERE membership_id = ?').run(sm.id, conflicting.id);
-        local.prepare('UPDATE reminders SET membership_id = ? WHERE membership_id = ?').run(sm.id, conflicting.id);
-        local.prepare('UPDATE membership_reporters SET membership_id = ? WHERE membership_id = ?').run(sm.id, conflicting.id);
+        // Read children before the CASCADE delete removes them
+        savedLogEntries = local.prepare('SELECT id, reporter_email, reporter_name, body, created_at, synced_at FROM interaction_log_entries WHERE membership_id = ?').all(conflicting.id) as LogEntry[];
+        savedReporters = local.prepare('SELECT id, reporter_email, reporter_name FROM membership_reporters WHERE membership_id = ?').all(conflicting.id) as MemberReporter[];
+        savedReminders = local.prepare('SELECT id, contact_id, project_id, due_date, note, is_auto_outreach, created_at, completed_at, last_notified_at FROM reminders WHERE membership_id = ?').all(conflicting.id) as SavedReminder[];
         local.prepare('DELETE FROM project_memberships WHERE id = ?').run(conflicting.id);
       }
 
@@ -416,6 +421,19 @@ function pullMemberships(
           now,
           hasConflict,
         );
+
+      // Re-attach children that were cascade-deleted with conflicting membership
+      if (conflicting) {
+        for (const e of savedLogEntries) {
+          local.prepare('INSERT OR IGNORE INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(e.id, sm.id, e.reporter_email, e.reporter_name, e.body, e.created_at, e.synced_at);
+        }
+        for (const mr of savedReporters) {
+          local.prepare('INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name) VALUES (?, ?, ?, ?)').run(mr.id, sm.id, mr.reporter_email, mr.reporter_name);
+        }
+        for (const r of savedReminders) {
+          local.prepare('INSERT OR IGNORE INTO reminders (id, contact_id, project_id, membership_id, due_date, note, is_auto_outreach, created_at, completed_at, last_notified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(r.id, r.contact_id, r.project_id, sm.id, r.due_date, r.note, r.is_auto_outreach, r.created_at, r.completed_at, r.last_notified_at);
+        }
+      }
     }
 
     if (!existingReporterEmails.has(sm.reporter_email)) {
@@ -432,7 +450,6 @@ function pullMemberships(
 function pullAppendOnly(
   local: Database.Database,
   shared: Database.Database,
-  idMap: Map<string, string>,
 ): void {
   for (const sm of shared.prepare('SELECT * FROM contact_alert_mentions').all() as {
     id: string;
@@ -444,7 +461,7 @@ function pullAppendOnly(
     guid: string;
     seen: number;
   }[]) {
-    const localContactId = idMap.get(sm.contact_id) ?? sm.contact_id;
+    const localContactId = sm.contact_id;
     local
       .prepare(
         `INSERT OR IGNORE INTO contact_alert_mentions
