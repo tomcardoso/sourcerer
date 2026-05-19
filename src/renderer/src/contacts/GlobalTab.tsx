@@ -285,7 +285,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
       });
       const pendingRss = newRssUrl.trim();
-      if (pendingRss && isGoogleAlertUrl(pendingRss)) {
+      if (pendingRss && isGoogleAlertUrl(pendingRss) && !alertRssList.some((f) => f.rss_url === pendingRss)) {
         await window.sourcerer.addAlertRss(contact.id, pendingRss);
       }
       onRefresh();
@@ -316,6 +316,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   async function handleAddRss() {
     const url = newRssUrl.trim();
     if (!url || !isGoogleAlertUrl(url)) return;
+    if (alertRssList.some((f) => f.rss_url === url)) return;
     await window.sourcerer.addAlertRss(contact.id, url);
     setNewRssUrl('');
     const updated = await window.sourcerer.listAlertRss(contact.id);
@@ -741,12 +742,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             {newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()) && (
               <div className="ac-collision-warn">Must be a Google Alerts or Google News RSS URL</div>
             )}
+            {newRssUrl.trim() && isGoogleAlertUrl(newRssUrl.trim()) && alertRssList.some((f) => f.rss_url === newRssUrl.trim()) && (
+              <div className="ac-collision-warn">⚠ Already added</div>
+            )}
           </div>
           <Button
             variant="ghost"
             type="button"
             onClick={handleAddRss}
-            disabled={!newRssUrl.trim() || !isGoogleAlertUrl(newRssUrl.trim())}
+            disabled={!newRssUrl.trim() || !isGoogleAlertUrl(newRssUrl.trim()) || alertRssList.some((f) => f.rss_url === newRssUrl.trim())}
           >
             + Add
           </Button>
@@ -757,7 +761,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="detail-edit-actions-bottom">
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()))}>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim())) || (!!newRssUrl.trim() && alertRssList.some((f) => f.rss_url === newRssUrl.trim()))}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setEditingAndNotify(false)} disabled={saving}>

@@ -17,6 +17,8 @@ export function registerAlertHandlers(): void {
     (_, { contactId, rssUrl }: { contactId: string; rssUrl: string }): void => {
       if (!validateUrl(rssUrl)) throw new Error('Invalid RSS URL');
       const db = getDatabase();
+      const existing = db.prepare(`SELECT 1 FROM contact_alert_rss WHERE contact_id = ? AND rss_url = ?`).get(contactId, rssUrl);
+      if (existing) return;
       const id = uuidv4();
       db.prepare(
         `INSERT INTO contact_alert_rss (id, contact_id, rss_url) VALUES (?, ?, ?)`,
