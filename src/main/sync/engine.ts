@@ -372,8 +372,6 @@ function pullMemberships(
 
   for (const sm of sharedMemberships) {
     const lm = localMembershipMap.get(sm.id);
-    // adoptSharedUuid always renames local UUID → shared UUID, so sm.contact_id is correct locally.
-    const localContactId = sm.contact_id;
 
     if (!lm || sm.updated_at > lm.updated_at) {
       // Guard: if there's already a membership for this (contact, project) under a different id
@@ -381,7 +379,7 @@ function pullMemberships(
       // children, delete it, then INSERT sm.id so the re-attach below satisfies FK constraints.
       const conflicting = local
         .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ? AND id != ?')
-        .get(localContactId, projectId, sm.id) as { id: string } | undefined;
+        .get(sm.contact_id, projectId, sm.id) as { id: string } | undefined;
 
       type LogEntry = { id: string; reporter_email: string; reporter_name: string; body: string; created_at: number; synced_at: number | null };
       type MemberReporter = { id: string; reporter_email: string; reporter_name: string };
@@ -417,7 +415,7 @@ function pullMemberships(
         )
         .run(
           sm.id,
-          localContactId,
+          sm.contact_id,
           projectId,
           sm.reporter_email,
           sm.reporter_name,
@@ -470,7 +468,6 @@ function pullAppendOnly(
     guid: string;
     seen: number;
   }[]) {
-    const localContactId = sm.contact_id;
     local
       .prepare(
         `INSERT OR IGNORE INTO contact_alert_mentions
@@ -479,7 +476,7 @@ function pullAppendOnly(
       )
       .run(
         sm.id,
-        localContactId,
+        sm.contact_id,
         sm.headline,
         sm.source_url,
         sm.published_at,
