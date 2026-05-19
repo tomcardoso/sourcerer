@@ -284,6 +284,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         links,
         handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
       });
+      const pendingRss = newRssUrl.trim();
+      if (pendingRss && isGoogleAlertUrl(pendingRss)) {
+        await window.sourcerer.addAlertRss(contact.id, pendingRss);
+      }
       onRefresh();
       setEditingAndNotify(false);
     } finally {
