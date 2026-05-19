@@ -178,7 +178,8 @@ declare global {
 
       // vCard export
       exportVCardContact: (contactId: string) => Promise<void>;
-      exportVCardProject: (projectId: string) => Promise<void>;
+      exportVCardProject: (projectId: string, contactIds?: string[]) => Promise<void>;
+      exportVCardAllContacts: (contactIds?: string[]) => Promise<void>;
       exportAllContacts: (contactIds?: string[]) => Promise<{ success: boolean; error?: string }>;
 
       // CSV / vCard import

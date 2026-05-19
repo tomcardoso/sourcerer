@@ -301,8 +301,10 @@ const sourcererApi = {
   // vCard export
   exportVCardContact: (contactId: string): Promise<void> =>
     ipcRenderer.invoke('export:vcard-contact', contactId),
-  exportVCardProject: (projectId: string): Promise<void> =>
-    ipcRenderer.invoke('export:vcard-project', projectId),
+  exportVCardProject: (projectId: string, contactIds?: string[]): Promise<void> =>
+    ipcRenderer.invoke('export:vcard-project', { projectId, contactIds }),
+  exportVCardAllContacts: (contactIds?: string[]): Promise<void> =>
+    ipcRenderer.invoke('export:vcard-all-contacts', { contactIds }),
   exportAllContacts: (contactIds?: string[]): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('export:all-contacts', { contactIds }),
 

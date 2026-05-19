@@ -25,6 +25,12 @@ interface ExportRow {
 
 type ExportMode = 'full' | 'sanitized';
 
+function dateStamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
 export function registerExportHandlers(): void {
   ipcMain.handle(
     'export:project',
@@ -42,7 +48,7 @@ export function registerExportHandlers(): void {
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Export project contacts',
-        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-contacts`,
+        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-contacts-${dateStamp()}`,
         filters: [
           { name: 'CSV', extensions: ['csv'] },
           { name: 'Excel', extensions: ['xlsx'] },
@@ -171,7 +177,7 @@ export function registerExportHandlers(): void {
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Export contacts',
-        defaultPath: filterIds?.length ? 'selected-contacts' : 'all-contacts',
+        defaultPath: filterIds?.length ? `selected-contacts-${dateStamp()}` : `all-contacts-${dateStamp()}`,
         filters: [
           { name: 'CSV', extensions: ['csv'] },
           { name: 'Excel', extensions: ['xlsx'] },
@@ -236,20 +242,21 @@ export function registerExportHandlers(): void {
 
     const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
       title: 'Export contact as vCard',
-      defaultPath: `${safeName}.vcf`,
+      defaultPath: `${safeName}-${dateStamp()}.vcf`,
       filters: [{ name: 'vCard', extensions: ['vcf'] }],
     });
     if (canceled || !filePath) return;
     await fs.writeFile(filePath, card, 'utf-8');
   });
 
-  ipcMain.handle('export:vcard-project', async (event, projectId: string): Promise<void> => {
+  ipcMain.handle('export:vcard-project', async (event, { projectId, contactIds: filterIds }: { projectId: string; contactIds?: string[] }): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const db = getDatabase();
     const project = db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId) as { name: string } | undefined;
-    const contactIds = (
+    let contactIds = (
       db.prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?').all(projectId) as { contact_id: string }[]
     ).map((r) => r.contact_id);
+    if (filterIds?.length) contactIds = contactIds.filter((id) => filterIds.includes(id));
 
     const cards = contactIds.map((id) => buildVCard(db, id)).filter(Boolean).join('\r\n');
     if (!cards) return;
@@ -257,7 +264,30 @@ export function registerExportHandlers(): void {
     const safeName = (project?.name ?? 'project').replace(/[^a-z0-9]/gi, '-').toLowerCase();
     const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
       title: 'Export project contacts as vCard',
-      defaultPath: `${safeName}-contacts.vcf`,
+      defaultPath: `${safeName}-contacts-${dateStamp()}.vcf`,
+      filters: [{ name: 'vCard', extensions: ['vcf'] }],
+    });
+    if (canceled || !filePath) return;
+    await fs.writeFile(filePath, cards, 'utf-8');
+  });
+
+  ipcMain.handle('export:vcard-all-contacts', async (event, { contactIds: filterIds }: { contactIds?: string[] } = {}): Promise<void> => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const db = getDatabase();
+    const selectionClause = filterIds?.length
+      ? `WHERE id IN (${filterIds.map(() => '?').join(',')})`
+      : '';
+    const contactIds = (
+      db.prepare(`SELECT id FROM contacts ${selectionClause} ORDER BY name COLLATE NOCASE`).all(...(filterIds ?? [])) as { id: string }[]
+    ).map((r) => r.id);
+
+    const cards = contactIds.map((id) => buildVCard(db, id)).filter(Boolean).join('\r\n');
+    if (!cards) return;
+
+    const defaultName = filterIds?.length ? `selected-contacts-${dateStamp()}.vcf` : `all-contacts-${dateStamp()}.vcf`;
+    const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+      title: 'Export contacts as vCard',
+      defaultPath: defaultName,
       filters: [{ name: 'vCard', extensions: ['vcf'] }],
     });
     if (canceled || !filePath) return;

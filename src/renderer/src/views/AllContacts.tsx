@@ -322,6 +322,13 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                     <span className="export-menu-label">Export as CSV / Excel</span>
                     <span className="export-menu-desc">Name, organization, emails, phones, notes</span>
                   </button>
+                  <button
+                    className="export-menu-item"
+                    onClick={() => { setShowExportMenu(false); window.sourcerer.exportVCardAllContacts(checkedIds.size > 0 ? [...checkedIds] : undefined); }}
+                  >
+                    <span className="export-menu-label">Export as vCard</span>
+                    <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
+                  </button>
                 </div>
               )}
             </div>
