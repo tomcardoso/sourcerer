@@ -66,6 +66,42 @@ export function syncProject(
 // Pull helpers
 // ---------------------------------------------------------------------------
 
+// Rename a local contact's primary key from fromId to toId, remapping every FK table.
+// Used when a shared contact is discovered to match a local contact that was created
+// under a different UUID — adopting the shared UUID eliminates the push-side duplicate.
+function adoptSharedUuid(local: Database.Database, fromId: string, toId: string): void {
+  const c = local.prepare('SELECT * FROM contacts WHERE id = ?').get(fromId) as {
+    name: string; organization: string | null; title: string | null; dob: string | null;
+    notes: string | null; created_at: number; updated_at: number; synced_at: number | null;
+  };
+  local
+    .prepare(
+      'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    )
+    .run(toId, c.name, c.organization, c.title ?? null, c.dob ?? null, c.notes, c.created_at, c.updated_at, null);
+  // Remap every table with a contact_id FK — derived at runtime so new tables are never missed.
+  const allTableNames = (local.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
+  for (const table of allTableNames) {
+    const fks = local.prepare(`PRAGMA foreign_key_list("${table}")`).all() as { from: string; table: string }[];
+    if (fks.some((fk) => fk.from === 'contact_id' && fk.table === 'contacts')) {
+      local.prepare(`UPDATE "${table}" SET contact_id = ? WHERE contact_id = ?`).run(toId, fromId);
+    }
+  }
+  // dedup_dismissed_pairs has two separate contact FK columns — remap before delete
+  const dedupRows = local
+    .prepare('SELECT contact_a_id, contact_b_id, dismissed_at FROM dedup_dismissed_pairs WHERE contact_a_id = ? OR contact_b_id = ?')
+    .all(fromId, fromId) as { contact_a_id: string; contact_b_id: string; dismissed_at: number }[];
+  for (const row of dedupRows) {
+    const rawA = row.contact_a_id === fromId ? toId : row.contact_a_id;
+    const rawB = row.contact_b_id === fromId ? toId : row.contact_b_id;
+    local.prepare('DELETE FROM dedup_dismissed_pairs WHERE contact_a_id = ? AND contact_b_id = ?').run(row.contact_a_id, row.contact_b_id);
+    if (rawA === rawB) continue; // self-pair after remap — discard
+    const [a, b] = rawA < rawB ? [rawA, rawB] : [rawB, rawA];
+    local.prepare('INSERT OR IGNORE INTO dedup_dismissed_pairs (contact_a_id, contact_b_id, dismissed_at) VALUES (?, ?, ?)').run(a, b, row.dismissed_at);
+  }
+  local.prepare('DELETE FROM contacts WHERE id = ?').run(fromId);
+}
+
 function pullContacts(local: Database.Database, shared: Database.Database): void {
   const sharedContacts = shared.prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
@@ -83,22 +119,112 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
       .map((r) => [r.id, r.updated_at]),
   );
 
+  // Identity indexes: email/phone → Set of local contact_ids.
+  // Using a Set per key so that if two local contacts share an identifier, both are
+  // collected into candidateIds — keeping the candidateIds.size === 1 guard accurate.
+  const localEmailToId = new Map<string, Set<string>>();
+  for (const { email, contact_id } of local.prepare('SELECT email, contact_id FROM contact_emails').all() as { email: string; contact_id: string }[]) {
+    const s = localEmailToId.get(email) ?? new Set<string>();
+    s.add(contact_id);
+    localEmailToId.set(email, s);
+  }
+  const localPhoneToId = new Map<string, Set<string>>();
+  for (const { phone, contact_id } of local.prepare('SELECT phone, contact_id FROM contact_phones').all() as { phone: string; contact_id: string }[]) {
+    const s = localPhoneToId.get(phone) ?? new Set<string>();
+    s.add(contact_id);
+    localPhoneToId.set(phone, s);
+  }
+
+  // Guard against two shared contacts both matching the same local contact.
+  const adoptedIds = new Set<string>();
+
   for (const sc of sharedContacts) {
     const localUpdatedAt = localMap.get(sc.id);
 
-    if (localUpdatedAt === undefined || sc.updated_at > localUpdatedAt) {
-      local
-        .prepare(
-          `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-             name = excluded.name, organization = excluded.organization,
-             title = excluded.title, dob = excluded.dob, notes = excluded.notes,
-             updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
-        )
-        .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
+    if (localUpdatedAt !== undefined) {
+      // Contact already exists by ID — normal LWW path
+      if (sc.updated_at > localUpdatedAt) {
+        local
+          .prepare(
+            `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               name = excluded.name, organization = excluded.organization,
+               title = excluded.title, dob = excluded.dob, notes = excluded.notes,
+               updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
+          )
+          .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
-      mergeSubTablesFromShared(local, shared, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id);
+      }
+    } else {
+      // No local contact with this UUID — check for an identity match by email/phone
+      const sharedEmails = shared
+        .prepare('SELECT email FROM contact_emails WHERE contact_id = ?')
+        .all(sc.id) as { email: string }[];
+      const sharedPhones = shared
+        .prepare('SELECT phone FROM contact_phones WHERE contact_id = ?')
+        .all(sc.id) as { phone: string }[];
+
+      // Collect all candidate local IDs matching any shared email/phone.
+      // Only adopt when signals converge on exactly one local contact.
+      const candidateIds = new Set<string>();
+      for (const { email } of sharedEmails) {
+        const found = localEmailToId.get(email);
+        if (found) for (const id of found) candidateIds.add(id);
+      }
+      for (const { phone } of sharedPhones) {
+        const found = localPhoneToId.get(phone);
+        if (found) for (const id of found) candidateIds.add(id);
+      }
+      const matchedLocalId = candidateIds.size === 1 ? [...candidateIds][0] : undefined;
+
+      if (matchedLocalId && !adoptedIds.has(matchedLocalId)) {
+        // Adopt the shared UUID so both sides agree on one primary key.
+        // This prevents pushContacts from inserting a second contact row in the shared DB.
+        adoptSharedUuid(local, matchedLocalId, sc.id);
+        // Store both: the old local UUID (guards stale identity-index entries) and
+        // the new shared UUID (guards updated identity-index entries after adoption).
+        adoptedIds.add(matchedLocalId);
+        adoptedIds.add(sc.id);
+
+        const matchedUpdatedAt = localMap.get(matchedLocalId) ?? 0;
+        if (sc.updated_at > matchedUpdatedAt) {
+          local
+            .prepare(
+              `UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ?, synced_at = ?
+               WHERE id = ?`,
+            )
+            .run(sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.updated_at, 0, sc.id);
+        }
+        mergeSubTablesFromShared(local, shared, sc.id);
+      } else {
+        // Genuinely new contact (or ambiguous multi-match / already-adopted local contact)
+        local
+          .prepare(
+            `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               name = excluded.name, organization = excluded.organization,
+               title = excluded.title, dob = excluded.dob, notes = excluded.notes,
+               updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
+          )
+          .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
+
+        mergeSubTablesFromShared(local, shared, sc.id);
+      }
+
+      // Keep identity indexes current so later iterations in this sync see updated state
+      for (const { email } of (local.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(sc.id) as { email: string }[])) {
+        const s = localEmailToId.get(email) ?? new Set<string>();
+        s.add(sc.id);
+        localEmailToId.set(email, s);
+      }
+      for (const { phone } of (local.prepare('SELECT phone FROM contact_phones WHERE contact_id = ?').all(sc.id) as { phone: string }[])) {
+        const s = localPhoneToId.get(phone) ?? new Set<string>();
+        s.add(sc.id);
+        localPhoneToId.set(phone, s);
+      }
     }
   }
 }
@@ -248,6 +374,28 @@ function pullMemberships(
     const lm = localMembershipMap.get(sm.id);
 
     if (!lm || sm.updated_at > lm.updated_at) {
+      // Guard: if there's already a membership for this (contact, project) under a different id
+      // (can happen when adoptSharedUuid renamed a local contact to the shared UUID), save its
+      // children, delete it, then INSERT sm.id so the re-attach below satisfies FK constraints.
+      const conflicting = local
+        .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ? AND id != ?')
+        .get(sm.contact_id, projectId, sm.id) as { id: string } | undefined;
+
+      type LogEntry = { id: string; reporter_email: string; reporter_name: string; body: string; created_at: number; synced_at: number | null };
+      type MemberReporter = { id: string; reporter_email: string; reporter_name: string };
+      type SavedReminder = { id: string; contact_id: string; project_id: string; due_date: number; note: string | null; is_auto_outreach: number; created_at: number; completed_at: number | null; last_notified_at: number | null };
+      let savedLogEntries: LogEntry[] = [];
+      let savedReporters: MemberReporter[] = [];
+      let savedReminders: SavedReminder[] = [];
+
+      if (conflicting) {
+        // Read children before the CASCADE delete removes them
+        savedLogEntries = local.prepare('SELECT id, reporter_email, reporter_name, body, created_at, synced_at FROM interaction_log_entries WHERE membership_id = ?').all(conflicting.id) as LogEntry[];
+        savedReporters = local.prepare('SELECT id, reporter_email, reporter_name FROM membership_reporters WHERE membership_id = ?').all(conflicting.id) as MemberReporter[];
+        savedReminders = local.prepare('SELECT id, contact_id, project_id, due_date, note, is_auto_outreach, created_at, completed_at, last_notified_at FROM reminders WHERE membership_id = ?').all(conflicting.id) as SavedReminder[];
+        local.prepare('DELETE FROM project_memberships WHERE id = ?').run(conflicting.id);
+      }
+
       const reporterChanging = lm && lm.reporter_email !== sm.reporter_email;
       const recentlyAssigned = lm?.reporter_assigned_at && (now - lm.reporter_assigned_at) < CONFLICT_WINDOW_SECS;
       const hasConflict = reporterChanging && recentlyAssigned ? 1 : 0;
@@ -280,6 +428,19 @@ function pullMemberships(
           now,
           hasConflict,
         );
+
+      // Re-attach children that were cascade-deleted with conflicting membership
+      if (conflicting) {
+        for (const e of savedLogEntries) {
+          local.prepare('INSERT OR IGNORE INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(e.id, sm.id, e.reporter_email, e.reporter_name, e.body, e.created_at, e.synced_at);
+        }
+        for (const mr of savedReporters) {
+          local.prepare('INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name) VALUES (?, ?, ?, ?)').run(mr.id, sm.id, mr.reporter_email, mr.reporter_name);
+        }
+        for (const r of savedReminders) {
+          local.prepare('INSERT OR IGNORE INTO reminders (id, contact_id, project_id, membership_id, due_date, note, is_auto_outreach, created_at, completed_at, last_notified_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(r.id, r.contact_id, r.project_id, sm.id, r.due_date, r.note, r.is_auto_outreach, r.created_at, r.completed_at, r.last_notified_at);
+        }
+      }
     }
 
     if (!existingReporterEmails.has(sm.reporter_email)) {
