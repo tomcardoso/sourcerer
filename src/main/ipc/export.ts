@@ -10,10 +10,12 @@ interface ExportRow {
   Title: string;
   Emails: string;
   Phones: string;
+  Handles: string;
   LinkedIn: string;
   Facebook: string;
   Instagram: string;
   X: string;
+  Website: string;
   'Other links': string;
   Notes: string;
   Reporter: string;
@@ -105,6 +107,12 @@ export function registerExportHandlers(): void {
       const linksByContact = new Map<string, { type: string; url: string }[]>();
       for (const r of bulkLinks) { const a = linksByContact.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksByContact.set(r.contact_id, a); }
 
+      const bulkHandles = contactIds.length
+        ? (db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; type: string; handle: string }[])
+        : [];
+      const handlesByContact = new Map<string, { type: string; handle: string }[]>();
+      for (const r of bulkHandles) { const a = handlesByContact.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesByContact.set(r.contact_id, a); }
+
       const bulkLogs: { membership_id: string; reporter_name: string; body: string; created_at: number }[] =
         mode === 'full' && membershipIds.length
           ? (db.prepare(`SELECT membership_id, reporter_name, body, created_at FROM interaction_log_entries WHERE membership_id IN (${ph(membershipIds)}) ORDER BY created_at ASC`).all(...membershipIds) as { membership_id: string; reporter_name: string; body: string; created_at: number }[])
@@ -117,6 +125,7 @@ export function registerExportHandlers(): void {
       for (const m of memberships) {
         const emails = (emailsByContact.get(m.contact_id) ?? []).join('; ');
         const phones = (phonesByContact.get(m.contact_id) ?? []).join('; ');
+        const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
         const links = linksByContact.get(m.contact_id) ?? [];
         const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
         const interactionLog = mode === 'full'
@@ -131,10 +140,12 @@ export function registerExportHandlers(): void {
           Title: m.title ?? '',
           Emails: emails,
           Phones: phones,
+          Handles: handles,
           LinkedIn: byType('linkedin'),
           Facebook: byType('facebook'),
           Instagram: byType('instagram'),
           X: byType('x'),
+          Website: byType('website'),
           'Other links': byType('other'),
           Notes: mode === 'full' ? (m.notes ?? '') : '',
           Reporter: m.reporter_name,
@@ -206,14 +217,37 @@ export function registerExportHandlers(): void {
       const phonesById = new Map<string, string[]>();
       for (const r of allPhones2) { const a = phonesById.get(r.contact_id) ?? []; a.push(r.phone); phonesById.set(r.contact_id, a); }
 
-      const rows: { Name: string; Organization: string; Title: string; Emails: string; Phones: string; Notes: string }[] = contacts.map((c) => ({
-        Name: c.name,
-        Organization: c.organization ?? '',
-        Title: c.title ?? '',
-        Emails: (emailsById.get(c.id) ?? []).join('; '),
-        Phones: (phonesById.get(c.id) ?? []).join('; '),
-        Notes: c.notes ?? '',
-      }));
+      const allLinks2 = allContactIds.length
+        ? (db.prepare(`SELECT contact_id, type, url FROM contact_links WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; type: string; url: string }[])
+        : [];
+      const linksById = new Map<string, { type: string; url: string }[]>();
+      for (const r of allLinks2) { const a = linksById.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksById.set(r.contact_id, a); }
+
+      const allHandles2 = allContactIds.length
+        ? (db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; type: string; handle: string }[])
+        : [];
+      const handlesById = new Map<string, { type: string; handle: string }[]>();
+      for (const r of allHandles2) { const a = handlesById.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesById.set(r.contact_id, a); }
+
+      const rows: { Name: string; Organization: string; Title: string; Emails: string; Phones: string; Handles: string; LinkedIn: string; Facebook: string; Instagram: string; X: string; Website: string; 'Other links': string; Notes: string }[] = contacts.map((c) => {
+        const links = linksById.get(c.id) ?? [];
+        const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+        return {
+          Name: c.name,
+          Organization: c.organization ?? '',
+          Title: c.title ?? '',
+          Emails: (emailsById.get(c.id) ?? []).join('; '),
+          Phones: (phonesById.get(c.id) ?? []).join('; '),
+          Handles: (handlesById.get(c.id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; '),
+          LinkedIn: byType2('linkedin'),
+          Facebook: byType2('facebook'),
+          Instagram: byType2('instagram'),
+          X: byType2('x'),
+          Website: byType2('website'),
+          'Other links': byType2('other'),
+          Notes: c.notes ?? '',
+        };
+      });
 
       try {
         const ws = utils.json_to_sheet(rows);
