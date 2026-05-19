@@ -6,7 +6,7 @@ import zlib from 'zlib';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
@@ -34,7 +34,7 @@ export function registerBackupHandlers(): void {
       const win = BrowserWindow.getFocusedWindow();
       const { canceled, filePath } = await dialog.showSaveDialog(win!, {
         title: 'Export backup',
-        defaultPath: `sourcerer-backup-${new Date().toISOString().slice(0, 10)}.sourcerer-backup`,
+        defaultPath: `sourcerer-backup-${filenameDateStamp()}.sourcerer-backup`,
         filters: [{ name: 'Sourcerer Backup', extensions: ['sourcerer-backup'] }],
       });
       if (canceled || !filePath) return { success: false };
