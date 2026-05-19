@@ -67,11 +67,12 @@ export function syncProject(
 // ---------------------------------------------------------------------------
 
 function pullContacts(local: Database.Database, shared: Database.Database): void {
-  const sharedContacts = shared.prepare('SELECT id, name, organization, title, notes, created_at, updated_at FROM contacts').all() as {
+  const sharedContacts = shared.prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
     organization: string | null;
     title: string | null;
+    dob: string | null;
     notes: string | null;
     created_at: number;
     updated_at: number;
@@ -88,14 +89,14 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
     if (localUpdatedAt === undefined || sc.updated_at > localUpdatedAt) {
       local
         .prepare(
-          `INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at, synced_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, organization = excluded.organization,
-             title = excluded.title, notes = excluded.notes,
+             title = excluded.title, dob = excluded.dob, notes = excluded.notes,
              updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
         )
-        .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
+        .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
       mergeSubTablesFromShared(local, shared, sc.id);
     }
@@ -359,6 +360,7 @@ function pushContacts(
           name: string;
           organization: string | null;
           title: string | null;
+          dob: string | null;
           notes: string | null;
           created_at: number;
           updated_at: number;
@@ -370,14 +372,14 @@ function pushContacts(
     if (!lc.synced_at || lc.updated_at > lc.synced_at) {
       shared
         .prepare(
-          `INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              name = excluded.name, organization = excluded.organization,
-             title = excluded.title, notes = excluded.notes,
+             title = excluded.title, dob = excluded.dob, notes = excluded.notes,
              updated_at = excluded.updated_at`,
         )
-        .run(lc.id, lc.name, lc.organization, lc.title, lc.notes, lc.created_at, lc.updated_at);
+        .run(lc.id, lc.name, lc.organization, lc.title, lc.dob ?? null, lc.notes, lc.created_at, lc.updated_at);
 
       pushSubTablesToShared(local, shared, contactId);
 

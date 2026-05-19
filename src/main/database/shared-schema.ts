@@ -13,6 +13,7 @@ export const SHARED_SCHEMA_SQL = `
     name         TEXT    NOT NULL,
     organization TEXT,
     title        TEXT,
+    dob          TEXT,
     notes        TEXT,
     created_at   INTEGER NOT NULL,
     updated_at   INTEGER NOT NULL
