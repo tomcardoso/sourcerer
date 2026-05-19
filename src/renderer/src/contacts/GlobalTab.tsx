@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project, User } from '@shared/types';
+import type { ContactDetail as ContactDetailType, ContactAlertRss, Project, User } from '@shared/types';
 import Button from '../shell/Button';
 import DynamicList, { useDragReorder } from './DynamicList';
-import { CalendarPicker } from '../views/CalendarPicker';
 import {
   isValidEmail,
   isValidUrl,
@@ -14,6 +12,9 @@ import {
   OTHER_LABEL_MAX,
   findDuplicates,
 } from './contactValidation';
+import { CalendarPicker } from '../views/CalendarPicker';
+import RssAlertPanel from './RssAlertPanel';
+import ScreenshotPanel from './ScreenshotPanel';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -58,19 +59,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [addingToProject, setAddingToProject] = useState('');
   const [confirmRemoveProjectId, setConfirmRemoveProjectId] = useState<string | null>(null);
   const [alertRssList, setAlertRssList] = useState<ContactAlertRss[]>([]);
-  const [screenshots, setScreenshots] = useState<ContactScreenshot[]>([]);
-  const [screenshotImages, setScreenshotImages] = useState<Record<string, string>>({});
-  const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
-  const [hoveredScreenshotId, setHoveredScreenshotId] = useState<string | null>(null);
-  const [confirmDeleteScreenshotId, setConfirmDeleteScreenshotId] = useState<string | null>(null);
-  const [zoomMode, setZoomMode] = useState<'fit' | 'actual'>('fit');
   const [waybackStatus, setWaybackStatus] = useState<Map<string, 'pending' | 'failed'>>(new Map());
-  const viewerRef = useRef<HTMLDivElement>(null);
-  const imageAreaRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
-
 
   useEffect(() => {
     return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
@@ -98,13 +88,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       return next;
     });
   }, [contact.links]);
-
-  useEffect(() => {
-    if (viewingScreenshot) {
-      viewerRef.current?.focus();
-      setZoomMode('fit');
-    }
-  }, [viewingScreenshot]);
 
   // Edit form state
   const [editName, setEditName] = useState('');
@@ -152,70 +135,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   useEffect(() => {
     window.sourcerer.listAlertRss(contact.id).then(setAlertRssList);
-    window.sourcerer.listScreenshots(contact.id).then(setScreenshots);
   }, [contact.id]);
-
-  useEffect(() => {
-    return window.sourcerer.onScreenshotAssigned((assignedId) => {
-      if (assignedId === contact.id) {
-        window.sourcerer.listScreenshots(contact.id).then(setScreenshots);
-      }
-    });
-  }, [contact.id]);
-
-  useEffect(() => {
-    for (const s of screenshots) {
-      loadScreenshotImage(s.id);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenshots]);
-
-  async function loadScreenshotImage(id: string) {
-    if (screenshotImages[id]) return;
-    const result = await window.sourcerer.loadScreenshot(id);
-    if ('data' in result) {
-      setScreenshotImages((prev) => ({ ...prev, [id]: result.data }));
-    } else {
-      console.error('[screenshot] load failed for', id, '—', result.error);
-      setScreenshotImages((prev) => ({ ...prev, [id]: `error:${result.error}` }));
-    }
-  }
-
-  async function handleDeleteScreenshot(id: string) {
-    await window.sourcerer.deleteScreenshot(id);
-    setScreenshots((prev) => prev.filter((s) => s.id !== id));
-    setScreenshotImages((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    if (viewingScreenshot === id) setViewingScreenshot(null);
-  }
-
-  function startEdit() {
-    setEditName(contact.name);
-    setEditOrg(contact.organization ?? '');
-    setEditTitle(contact.title ?? '');
-    setEditDob(contact.dob ?? '');
-    setEditNotes(contact.notes ?? '');
-    setEditHandles(contact.handles.map((h) => ({ type: h.type, handle: h.handle })));
-    setEditEmails(contact.emails.map((e) => ({ email: e.email, label: e.label ?? '' })));
-    setEditPhones(contact.phones.map((p) => ({ phone: p.phone, label: p.label ?? '' })));
-    const socialsByType = Object.fromEntries(
-      NON_OTHER_SOCIAL_TYPES.map((type) => [
-        type,
-        contact.links.filter((l) => l.type === type).map((l) => l.url),
-      ]),
-    ) as Record<NonOtherSocialType, string[]>;
-    setEditSocials(socialsByType);
-    setEditOtherSocials(
-      contact.links.filter((l) => l.type === 'other').map((l) => ({ url: l.url, label: l.label ?? '' })),
-    );
-    setEditWebsites(contact.links.filter((l) => l.type === 'website').map((l) => l.url));
-    setNewRssUrl('');
-    setEmailCollisions({});
-    setPhoneCollisions({});
-    setEmailFormatWarnings({});
-    setPhoneFormatWarnings({});
-    setUrlFormatWarnings({});
-    setEditingAndNotify(true);
-  }
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
@@ -254,6 +174,35 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   function setSocial(type: NonOtherSocialType, values: string[]) {
     setEditSocials((prev) => ({ ...prev, [type]: values }));
+  }
+
+  function startEdit() {
+    setEditName(contact.name);
+    setEditOrg(contact.organization ?? '');
+    setEditTitle(contact.title ?? '');
+    setEditDob(contact.dob ?? '');
+    setEditNotes(contact.notes ?? '');
+    setEditHandles(contact.handles.map((h) => ({ type: h.type, handle: h.handle })));
+    setEditEmails(contact.emails.map((e) => ({ email: e.email, label: e.label ?? '' })));
+    setEditPhones(contact.phones.map((p) => ({ phone: p.phone, label: p.label ?? '' })));
+    const socialsByType = Object.fromEntries(
+      NON_OTHER_SOCIAL_TYPES.map((type) => [
+        type,
+        contact.links.filter((l) => l.type === type).map((l) => l.url),
+      ]),
+    ) as Record<NonOtherSocialType, string[]>;
+    setEditSocials(socialsByType);
+    setEditOtherSocials(
+      contact.links.filter((l) => l.type === 'other').map((l) => ({ url: l.url, label: l.label ?? '' })),
+    );
+    setEditWebsites(contact.links.filter((l) => l.type === 'website').map((l) => l.url));
+    setNewRssUrl('');
+    setEmailCollisions({});
+    setPhoneCollisions({});
+    setEmailFormatWarnings({});
+    setPhoneFormatWarnings({});
+    setUrlFormatWarnings({});
+    setEditingAndNotify(true);
   }
 
   async function handleSave() {
@@ -389,8 +338,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                     const next = [...editEmails];
                     next[i] = { ...next[i], email: e.target.value };
                     setEditEmails(next);
-                    // Clear any stale warning keyed to the old value so the
-                    // save button doesn't stay locked after the user edits the field.
                     if (prev) {
                       setEmailFormatWarnings((w) => {
                         if (!w[prev]) return w;
@@ -729,51 +676,14 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           />
         </div>
 
-        <div className="ac-field">
-          <label className="ac-label">Alert RSS Feeds</label>
-          {alertRssList.map((feed) => (
-            <div key={feed.id} className="ac-dynamic-row">
-              <input
-                className="ac-input"
-                value={feed.rss_url}
-                readOnly
-                title={feed.rss_url}
-              />
-              <button
-                className="ac-remove"
-                type="button"
-                onClick={() => handleRemoveRss(feed.id)}
-              ></button>
-            </div>
-          ))}
-          <div>
-            <input
-              className="ac-input"
-              value={newRssUrl}
-              onChange={(e) => setNewRssUrl(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRss(); } }}
-              placeholder="https://news.google.com/rss/search?q=…"
-            />
-            {newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()) && (
-              <div className="ac-collision-warn">Must be a Google Alerts or Google News RSS URL</div>
-            )}
-            {newRssUrl.trim() && isGoogleAlertUrl(newRssUrl.trim()) && alertRssList.some((f) => f.rss_url === newRssUrl.trim()) && (
-              <div className="ac-collision-warn">⚠ Already added</div>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={handleAddRss}
-            disabled={!newRssUrl.trim() || !isGoogleAlertUrl(newRssUrl.trim()) || alertRssList.some((f) => f.rss_url === newRssUrl.trim())}
-          >
-            + Add
-          </Button>
-          <p className="ac-field-hint">
-            Paste a Google Alerts RSS URL to automatically track mentions.
-            To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
-          </p>
-        </div>
+        <RssAlertPanel
+          editing
+          alertRssList={alertRssList}
+          newRssUrl={newRssUrl}
+          onNewRssUrlChange={setNewRssUrl}
+          onAddRss={handleAddRss}
+          onRemoveRss={handleRemoveRss}
+        />
 
         <div className="detail-edit-actions-bottom">
           <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim())) || (!!newRssUrl.trim() && alertRssList.some((f) => f.rss_url === newRssUrl.trim()))}>
@@ -895,33 +805,14 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
       )}
 
-      {alertRssList.length > 0 && (
-        <div className="detail-section">
-          <div className="detail-section-label">Alert RSS</div>
-          {alertRssList.map((feed) => (
-            <div key={feed.id} className="detail-rss-feed">
-              <a
-                href={feed.rss_url}
-                className="detail-link detail-rss-url"
-                onClick={(e) => { e.preventDefault(); window.open(feed.rss_url); }}
-                title={feed.rss_url}
-              >
-                {feed.rss_url.length > 60
-                  ? feed.rss_url.slice(0, 60) + '…'
-                  : feed.rss_url}
-              </a>
-              {feed.is_invalid === 1 && (
-                <span className="detail-rss-invalid" title="Feed could not be fetched"> ⚠</span>
-              )}
-              {feed.last_polled_at && (
-                <span className="detail-rss-polled">
-                  Last polled {new Date(feed.last_polled_at * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <RssAlertPanel
+        editing={false}
+        alertRssList={alertRssList}
+        newRssUrl={newRssUrl}
+        onNewRssUrlChange={setNewRssUrl}
+        onAddRss={handleAddRss}
+        onRemoveRss={handleRemoveRss}
+      />
 
       <div className="detail-section">
         <div className="detail-section-label">Projects</div>
@@ -975,128 +866,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         )}
       </div>
 
-      {screenshots.length > 0 && (
-        <div className="detail-section detail-section--screenshots">
-          <div className="detail-section-label">Screenshots</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-            {screenshots.map((s) => (
-              <div
-                key={s.id}
-                style={{ position: 'relative', width: 80, height: 56, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-bg)' }}
-                onClick={() => { if (confirmDeleteScreenshotId === s.id) return; setViewingScreenshot(s.id); loadScreenshotImage(s.id); }}
-                onMouseEnter={() => { loadScreenshotImage(s.id); setHoveredScreenshotId(s.id); }}
-                onMouseLeave={() => setHoveredScreenshotId(null)}
-                title={new Date(s.captured_at * 1000).toLocaleString()}
-              >
-                {screenshotImages[s.id]?.startsWith('error:') ? (
-                  <div title={screenshotImages[s.id].slice(6)} style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--color-danger)', padding: '0 4px', textAlign: 'center' }}>Failed to load</div>
-                ) : screenshotImages[s.id] ? (
-                  <img src={screenshotImages[s.id]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="screenshot" />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--color-text-muted)' }}>⬜</div>
-                )}
-                {confirmDeleteScreenshotId === s.id ? (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 10, color: '#fff', fontWeight: 600 }}>Delete?</span>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: 'var(--color-danger)', border: 'none', color: '#fff', borderRadius: 3 }} onClick={(e) => { e.stopPropagation(); setConfirmDeleteScreenshotId(null); handleDeleteScreenshot(s.id); }}>Yes</button>
-                      <button style={{ fontSize: 10, padding: '2px 6px', cursor: 'pointer', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 3 }} onClick={(e) => { e.stopPropagation(); setConfirmDeleteScreenshotId(null); }}>No</button>
-                    </div>
-                  </div>
-                ) : hoveredScreenshotId === s.id && (
-                  <button
-                    style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, background: 'rgba(0,0,0,0.55)', border: 'none', color: '#fff', borderRadius: 3, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
-                    onClick={(e) => { e.stopPropagation(); setConfirmDeleteScreenshotId(s.id); }}
-                    title="Delete screenshot"
-                  >×</button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {viewingScreenshot && screenshotImages[viewingScreenshot] && !screenshotImages[viewingScreenshot].startsWith('error:') && createPortal(
-        <div
-          ref={viewerRef}
-          className="sv-overlay"
-          tabIndex={-1}
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setViewingScreenshot(null); } }}
-        >
-          <div className="sv-toolbar" onClick={(e) => e.stopPropagation()}>
-            <span className="sv-toolbar-url">
-              {screenshots.find((s) => s.id === viewingScreenshot)?.tab_url ?? ''}
-            </span>
-            {(() => {
-              const shot = screenshots.find((s) => s.id === viewingScreenshot);
-              return shot ? (
-                <span className="sv-toolbar-date">
-                  {new Date(shot.captured_at * 1000).toLocaleString(undefined, {
-                    year: 'numeric', month: 'short', day: 'numeric',
-                    hour: 'numeric', minute: '2-digit', second: '2-digit',
-                  })}
-                </span>
-              ) : null;
-            })()}
-            <div className="sv-toolbar-actions">
-              <div className="sv-zoom-toggle">
-                <button
-                  className={`sv-zoom-btn${zoomMode === 'fit' ? ' sv-zoom-btn--active' : ''}`}
-                  onClick={() => setZoomMode('fit')}
-                >Fit</button>
-                <button
-                  className={`sv-zoom-btn${zoomMode === 'actual' ? ' sv-zoom-btn--active' : ''}`}
-                  onClick={() => setZoomMode('actual')}
-                >1:1</button>
-              </div>
-              <button className="sv-action-btn" onClick={() => window.sourcerer.saveScreenshot(viewingScreenshot)}>Download</button>
-              <button className="sv-action-btn sv-action-btn--danger" onClick={() => handleDeleteScreenshot(viewingScreenshot)}>Delete</button>
-              <button className="sv-action-btn" onClick={() => setViewingScreenshot(null)}>Close</button>
-            </div>
-          </div>
-          <div
-            ref={imageAreaRef}
-            className={`sv-image-area${zoomMode === 'actual' ? ' sv-image-area--actual' : ' sv-image-area--fit'}`}
-            onClick={(e) => {
-              if (zoomMode === 'fit' && e.target === imageAreaRef.current) setViewingScreenshot(null);
-            }}
-            onMouseDown={(e) => {
-              if (zoomMode !== 'actual' || !imageAreaRef.current) return;
-              isDragging.current = true;
-              dragStart.current = {
-                x: e.clientX,
-                y: e.clientY,
-                scrollLeft: imageAreaRef.current.scrollLeft,
-                scrollTop: imageAreaRef.current.scrollTop,
-              };
-            }}
-            onMouseMove={(e) => {
-              if (!isDragging.current || !imageAreaRef.current) return;
-              e.preventDefault();
-              imageAreaRef.current.scrollLeft = dragStart.current.scrollLeft - (e.clientX - dragStart.current.x);
-              imageAreaRef.current.scrollTop = dragStart.current.scrollTop - (e.clientY - dragStart.current.y);
-            }}
-            onMouseUp={() => { isDragging.current = false; }}
-            onMouseLeave={() => { isDragging.current = false; }}
-          >
-            <img
-              className="sv-image"
-              src={screenshotImages[viewingScreenshot]}
-              alt="screenshot"
-              draggable={false}
-              style={{ cursor: zoomMode === 'fit' ? 'zoom-in' : 'zoom-out' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (zoomMode === 'fit') {
-                  setZoomMode('actual');
-                } else {
-                  setZoomMode('fit');
-                }
-              }}
-            />
-          </div>
-        </div>
-      , document.body)}
+      <ScreenshotPanel contactId={contact.id} />
 
       <div className="detail-section detail-danger-zone">
         {confirmDelete ? (

@@ -1369,6 +1369,7 @@
   user-select: none;
   -webkit-user-drag: none;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
 }
 
 .sv-image-area--actual {
@@ -1387,6 +1388,7 @@
   border-radius: 0;
   user-select: none;
   -webkit-user-drag: none;
+  cursor: zoom-out;
 }
 
 /* Print layout is handled entirely by ContactPrintSheet.css */
