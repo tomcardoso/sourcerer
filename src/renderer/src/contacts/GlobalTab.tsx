@@ -870,7 +870,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               <a
                 href={feed.rss_url}
                 className="detail-link detail-rss-url"
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => { e.preventDefault(); window.open(feed.rss_url); }}
                 title={feed.rss_url}
               >
                 {feed.rss_url.length > 60
