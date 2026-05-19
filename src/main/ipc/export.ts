@@ -2,6 +2,7 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import { utils, writeFile } from 'xlsx';
 import { getDatabase } from '../database';
+import { filenameDateStamp } from '../utils';
 
 interface ExportRow {
   Name: string;
@@ -9,10 +10,12 @@ interface ExportRow {
   Title: string;
   Emails: string;
   Phones: string;
+  Handles: string;
   LinkedIn: string;
   Facebook: string;
   Instagram: string;
   X: string;
+  Website: string;
   'Other links': string;
   Notes: string;
   Reporter: string;
@@ -25,12 +28,13 @@ interface ExportRow {
 
 type ExportMode = 'full' | 'sanitized';
 
+
 export function registerExportHandlers(): void {
   ipcMain.handle(
     'export:project',
     async (
       event,
-      { projectId, mode }: { projectId: string; mode: ExportMode },
+      { projectId, mode, contactIds: filterIds }: { projectId: string; mode: ExportMode; contactIds?: string[] },
     ): Promise<{ success: boolean; error?: string }> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const db = getDatabase();
@@ -42,7 +46,7 @@ export function registerExportHandlers(): void {
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
         title: 'Export project contacts',
-        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-contacts`,
+        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-contacts-${filenameDateStamp()}`,
         filters: [
           { name: 'CSV', extensions: ['csv'] },
           { name: 'Excel', extensions: ['xlsx'] },
@@ -53,7 +57,9 @@ export function registerExportHandlers(): void {
       const filePath = saveResult.filePath;
       const isXlsx = filePath.endsWith('.xlsx');
 
-      // Fetch all memberships + contacts for this project
+      const selectionClause = filterIds?.length
+        ? `AND c.id IN (${filterIds.map(() => '?').join(',')})`
+        : '';
       const memberships = db
         .prepare(
           `SELECT pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status,
@@ -62,10 +68,10 @@ export function registerExportHandlers(): void {
                   c.id AS contact_id, c.name, c.organization, c.title, c.notes
            FROM project_memberships pm
            JOIN contacts c ON c.id = pm.contact_id
-           WHERE pm.project_id = ?
+           WHERE pm.project_id = ? ${selectionClause}
            ORDER BY c.name COLLATE NOCASE ASC`,
         )
-        .all(projectId) as {
+        .all(projectId, ...(filterIds ?? [])) as {
         membership_id: string;
         reporter_name: string;
         theme: string | null;
@@ -101,6 +107,12 @@ export function registerExportHandlers(): void {
       const linksByContact = new Map<string, { type: string; url: string }[]>();
       for (const r of bulkLinks) { const a = linksByContact.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksByContact.set(r.contact_id, a); }
 
+      const bulkHandles = contactIds.length
+        ? (db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; type: string; handle: string }[])
+        : [];
+      const handlesByContact = new Map<string, { type: string; handle: string }[]>();
+      for (const r of bulkHandles) { const a = handlesByContact.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesByContact.set(r.contact_id, a); }
+
       const bulkLogs: { membership_id: string; reporter_name: string; body: string; created_at: number }[] =
         mode === 'full' && membershipIds.length
           ? (db.prepare(`SELECT membership_id, reporter_name, body, created_at FROM interaction_log_entries WHERE membership_id IN (${ph(membershipIds)}) ORDER BY created_at ASC`).all(...membershipIds) as { membership_id: string; reporter_name: string; body: string; created_at: number }[])
@@ -113,6 +125,7 @@ export function registerExportHandlers(): void {
       for (const m of memberships) {
         const emails = (emailsByContact.get(m.contact_id) ?? []).join('; ');
         const phones = (phonesByContact.get(m.contact_id) ?? []).join('; ');
+        const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
         const links = linksByContact.get(m.contact_id) ?? [];
         const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
         const interactionLog = mode === 'full'
@@ -127,10 +140,12 @@ export function registerExportHandlers(): void {
           Title: m.title ?? '',
           Emails: emails,
           Phones: phones,
+          Handles: handles,
           LinkedIn: byType('linkedin'),
           Facebook: byType('facebook'),
           Instagram: byType('instagram'),
           X: byType('x'),
+          Website: byType('website'),
           'Other links': byType('other'),
           Notes: mode === 'full' ? (m.notes ?? '') : '',
           Reporter: m.reporter_name,
@@ -163,13 +178,13 @@ export function registerExportHandlers(): void {
 
   ipcMain.handle(
     'export:all-contacts',
-    async (event): Promise<{ success: boolean; error?: string }> => {
+    async (event, { contactIds: filterIds }: { contactIds?: string[] } = {}): Promise<{ success: boolean; error?: string }> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const db = getDatabase();
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
-        title: 'Export all contacts',
-        defaultPath: 'all-contacts',
+        title: 'Export contacts',
+        defaultPath: filterIds?.length ? `selected-contacts-${filenameDateStamp()}` : `all-contacts-${filenameDateStamp()}`,
         filters: [
           { name: 'CSV', extensions: ['csv'] },
           { name: 'Excel', extensions: ['xlsx'] },
@@ -180,9 +195,12 @@ export function registerExportHandlers(): void {
       const filePath = saveResult.filePath;
       const isXlsx = filePath.endsWith('.xlsx');
 
+      const selectionClause2 = filterIds?.length
+        ? `WHERE id IN (${filterIds.map(() => '?').join(',')})`
+        : '';
       const contacts = db
-        .prepare('SELECT id, name, organization, title, notes FROM contacts ORDER BY name COLLATE NOCASE')
-        .all() as { id: string; name: string; organization: string | null; title: string | null; notes: string | null }[];
+        .prepare(`SELECT id, name, organization, title, notes FROM contacts ${selectionClause2} ORDER BY name COLLATE NOCASE`)
+        .all(...(filterIds ?? [])) as { id: string; name: string; organization: string | null; title: string | null; notes: string | null }[];
 
       const allContactIds = contacts.map((c) => c.id);
       const ph2 = (arr: unknown[]) => arr.map(() => '?').join(',');
@@ -199,14 +217,37 @@ export function registerExportHandlers(): void {
       const phonesById = new Map<string, string[]>();
       for (const r of allPhones2) { const a = phonesById.get(r.contact_id) ?? []; a.push(r.phone); phonesById.set(r.contact_id, a); }
 
-      const rows: { Name: string; Organization: string; Title: string; Emails: string; Phones: string; Notes: string }[] = contacts.map((c) => ({
-        Name: c.name,
-        Organization: c.organization ?? '',
-        Title: c.title ?? '',
-        Emails: (emailsById.get(c.id) ?? []).join('; '),
-        Phones: (phonesById.get(c.id) ?? []).join('; '),
-        Notes: c.notes ?? '',
-      }));
+      const allLinks2 = allContactIds.length
+        ? (db.prepare(`SELECT contact_id, type, url FROM contact_links WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; type: string; url: string }[])
+        : [];
+      const linksById = new Map<string, { type: string; url: string }[]>();
+      for (const r of allLinks2) { const a = linksById.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksById.set(r.contact_id, a); }
+
+      const allHandles2 = allContactIds.length
+        ? (db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; type: string; handle: string }[])
+        : [];
+      const handlesById = new Map<string, { type: string; handle: string }[]>();
+      for (const r of allHandles2) { const a = handlesById.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesById.set(r.contact_id, a); }
+
+      const rows: { Name: string; Organization: string; Title: string; Emails: string; Phones: string; Handles: string; LinkedIn: string; Facebook: string; Instagram: string; X: string; Website: string; 'Other links': string; Notes: string }[] = contacts.map((c) => {
+        const links = linksById.get(c.id) ?? [];
+        const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+        return {
+          Name: c.name,
+          Organization: c.organization ?? '',
+          Title: c.title ?? '',
+          Emails: (emailsById.get(c.id) ?? []).join('; '),
+          Phones: (phonesById.get(c.id) ?? []).join('; '),
+          Handles: (handlesById.get(c.id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; '),
+          LinkedIn: byType2('linkedin'),
+          Facebook: byType2('facebook'),
+          Instagram: byType2('instagram'),
+          X: byType2('x'),
+          Website: byType2('website'),
+          'Other links': byType2('other'),
+          Notes: c.notes ?? '',
+        };
+      });
 
       try {
         const ws = utils.json_to_sheet(rows);
@@ -231,20 +272,21 @@ export function registerExportHandlers(): void {
 
     const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
       title: 'Export contact as vCard',
-      defaultPath: `${safeName}.vcf`,
+      defaultPath: `${safeName}-${filenameDateStamp()}.vcf`,
       filters: [{ name: 'vCard', extensions: ['vcf'] }],
     });
     if (canceled || !filePath) return;
     await fs.writeFile(filePath, card, 'utf-8');
   });
 
-  ipcMain.handle('export:vcard-project', async (event, projectId: string): Promise<void> => {
+  ipcMain.handle('export:vcard-project', async (event, { projectId, contactIds: filterIds }: { projectId: string; contactIds?: string[] }): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const db = getDatabase();
     const project = db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId) as { name: string } | undefined;
-    const contactIds = (
+    let contactIds = (
       db.prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?').all(projectId) as { contact_id: string }[]
     ).map((r) => r.contact_id);
+    if (filterIds?.length) contactIds = contactIds.filter((id) => filterIds.includes(id));
 
     const cards = contactIds.map((id) => buildVCard(db, id)).filter(Boolean).join('\r\n');
     if (!cards) return;
@@ -252,7 +294,30 @@ export function registerExportHandlers(): void {
     const safeName = (project?.name ?? 'project').replace(/[^a-z0-9]/gi, '-').toLowerCase();
     const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
       title: 'Export project contacts as vCard',
-      defaultPath: `${safeName}-contacts.vcf`,
+      defaultPath: `${safeName}-contacts-${filenameDateStamp()}.vcf`,
+      filters: [{ name: 'vCard', extensions: ['vcf'] }],
+    });
+    if (canceled || !filePath) return;
+    await fs.writeFile(filePath, cards, 'utf-8');
+  });
+
+  ipcMain.handle('export:vcard-all-contacts', async (event, { contactIds: filterIds }: { contactIds?: string[] } = {}): Promise<void> => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const db = getDatabase();
+    const selectionClause = filterIds?.length
+      ? `WHERE id IN (${filterIds.map(() => '?').join(',')})`
+      : '';
+    const contactIds = (
+      db.prepare(`SELECT id FROM contacts ${selectionClause} ORDER BY name COLLATE NOCASE`).all(...(filterIds ?? [])) as { id: string }[]
+    ).map((r) => r.id);
+
+    const cards = contactIds.map((id) => buildVCard(db, id)).filter(Boolean).join('\r\n');
+    if (!cards) return;
+
+    const defaultName = filterIds?.length ? `selected-contacts-${filenameDateStamp()}.vcf` : `all-contacts-${filenameDateStamp()}.vcf`;
+    const { canceled, filePath } = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+      title: 'Export contacts as vCard',
+      defaultPath: defaultName,
       filters: [{ name: 'vCard', extensions: ['vcf'] }],
     });
     if (canceled || !filePath) return;

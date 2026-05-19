@@ -89,7 +89,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   async function handleExportAll() {
     setShowExportMenu(false);
     setExporting(true);
-    await window.sourcerer.exportAllContacts();
+    await window.sourcerer.exportAllContacts(checkedIds.size > 0 ? [...checkedIds] : undefined);
     setExporting(false);
   }
 
@@ -314,13 +314,20 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                 onClick={() => setShowExportMenu((v) => !v)}
                 disabled={exporting || contacts.length === 0}
               >
-                {exporting ? 'Exporting…' : '↓ Export'}
+                {exporting ? 'Exporting…' : checkedIds.size > 0 ? `↓ Export selected (${checkedIds.size})` : '↓ Export'}
               </button>
               {showExportMenu && (
                 <div className="export-menu">
                   <button className="export-menu-item" onClick={handleExportAll}>
                     <span className="export-menu-label">Export as CSV / Excel</span>
                     <span className="export-menu-desc">Name, organization, emails, phones, notes</span>
+                  </button>
+                  <button
+                    className="export-menu-item"
+                    onClick={() => { setShowExportMenu(false); window.sourcerer.exportVCardAllContacts(checkedIds.size > 0 ? [...checkedIds] : undefined); }}
+                  >
+                    <span className="export-menu-label">Export as vCard</span>
+                    <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
                   </button>
                 </div>
               )}

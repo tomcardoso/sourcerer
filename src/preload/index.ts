@@ -196,8 +196,8 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-idle-timeout', seconds),
 
   // Export
-  exportProject: (projectId: string, mode: 'full' | 'sanitized'): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('export:project', { projectId, mode }),
+  exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('export:project', { projectId, mode, contactIds }),
   exportBackup: (password: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('backup:export', { password }),
   restoreBackup: (password: string): Promise<{ success: boolean; canceled?: boolean; error?: string }> =>
@@ -301,10 +301,12 @@ const sourcererApi = {
   // vCard export
   exportVCardContact: (contactId: string): Promise<void> =>
     ipcRenderer.invoke('export:vcard-contact', contactId),
-  exportVCardProject: (projectId: string): Promise<void> =>
-    ipcRenderer.invoke('export:vcard-project', projectId),
-  exportAllContacts: (): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('export:all-contacts'),
+  exportVCardProject: (projectId: string, contactIds?: string[]): Promise<void> =>
+    ipcRenderer.invoke('export:vcard-project', { projectId, contactIds }),
+  exportVCardAllContacts: (contactIds?: string[]): Promise<void> =>
+    ipcRenderer.invoke('export:vcard-all-contacts', { contactIds }),
+  exportAllContacts: (contactIds?: string[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('export:all-contacts', { contactIds }),
 
   // CSV / vCard import
   importCsv: (data: { projectId?: string }): Promise<ImportResult> =>

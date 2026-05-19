@@ -2,6 +2,12 @@ import { app } from 'electron';
 import path from 'path';
 import argon2 from 'argon2';
 
+export function filenameDateStamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
 export function getPaths(): { dbPath: string; saltPath: string } {
   const userData = app.getPath('userData');
   return {
