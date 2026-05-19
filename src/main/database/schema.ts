@@ -90,7 +90,7 @@ export const LOCAL_SCHEMA_SQL = `
 
   CREATE TABLE IF NOT EXISTS contact_alert_rss (
     id             TEXT    PRIMARY KEY,
-    contact_id     TEXT    NOT NULL UNIQUE REFERENCES contacts(id) ON DELETE CASCADE,
+    contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     rss_url        TEXT    NOT NULL,
     last_polled_at INTEGER,
     is_invalid     INTEGER NOT NULL DEFAULT 0,

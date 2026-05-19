@@ -196,14 +196,12 @@ function mergeSubTablesFromShared(
       .run(h.id, contactId, h.type, h.handle, i, h.created_at);
   });
 
-  // ── Alert RSS (one per contact — last-write-wins is fine here) ────────────
+  // ── Alert RSS ──────────────────────────────────────────────────────────────
   local.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);
-  const rss = shared
+  const rssFeeds = shared
     .prepare('SELECT * FROM contact_alert_rss WHERE contact_id = ?')
-    .get(contactId) as
-    | { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }
-    | undefined;
-  if (rss) {
+    .all(contactId) as { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }[];
+  for (const rss of rssFeeds) {
     local
       .prepare(
         'INSERT INTO contact_alert_rss (id, contact_id, rss_url, last_polled_at, is_invalid) VALUES (?, ?, ?, ?, ?)',
@@ -445,12 +443,10 @@ function pushSubTablesToShared(
   }
 
   shared.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);
-  const rss = local
+  const rssFeeds = local
     .prepare('SELECT * FROM contact_alert_rss WHERE contact_id = ?')
-    .get(contactId) as
-    | { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }
-    | undefined;
-  if (rss) {
+    .all(contactId) as { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }[];
+  for (const rss of rssFeeds) {
     shared
       .prepare(
         'INSERT INTO contact_alert_rss (id, contact_id, rss_url, last_polled_at, is_invalid) VALUES (?, ?, ?, ?, ?)',

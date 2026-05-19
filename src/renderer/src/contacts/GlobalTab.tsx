@@ -6,6 +6,7 @@ import DynamicList, { useDragReorder } from './DynamicList';
 import {
   isValidEmail,
   isValidUrl,
+  isGoogleAlertUrl,
   hasDisallowedPhoneChars,
   normalizePhoneForComparison,
   sanitizeOtherLabel,
@@ -55,7 +56,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingToProject, setAddingToProject] = useState('');
   const [confirmRemoveProjectId, setConfirmRemoveProjectId] = useState<string | null>(null);
-  const [alertRss, setAlertRss] = useState<ContactAlertRss | null>(null);
+  const [alertRssList, setAlertRssList] = useState<ContactAlertRss[]>([]);
   const [screenshots, setScreenshots] = useState<ContactScreenshot[]>([]);
   const [screenshotImages, setScreenshotImages] = useState<Record<string, string>>({});
   const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const { getDragProps: phoneDragProps, handleProps: phoneHandleProps } = useDragReorder(editPhones, setEditPhones);
   const { getDragProps: otherSocialDragProps, handleProps: otherSocialHandleProps } = useDragReorder(editOtherSocials, setEditOtherSocials);
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
-  const [editRssUrl, setEditRssUrl] = useState('');
+  const [newRssUrl, setNewRssUrl] = useState('');
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
   const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
@@ -148,7 +149,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   );
 
   useEffect(() => {
-    window.sourcerer.getAlertRss(contact.id).then(setAlertRss);
+    window.sourcerer.listAlertRss(contact.id).then(setAlertRssList);
     window.sourcerer.listScreenshots(contact.id).then(setScreenshots);
   }, [contact.id]);
 
@@ -204,7 +205,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       contact.links.filter((l) => l.type === 'other').map((l) => ({ url: l.url, label: l.label ?? '' })),
     );
     setEditWebsites(contact.links.filter((l) => l.type === 'website').map((l) => l.url));
-    setEditRssUrl(alertRss?.rss_url ?? '');
+    setNewRssUrl('');
     setEmailCollisions({});
     setPhoneCollisions({});
     setEmailFormatWarnings({});
@@ -283,15 +284,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         links,
         handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
       });
-      // Persist RSS URL change
-      const trimmedRss = editRssUrl.trim();
-      if (trimmedRss && trimmedRss !== alertRss?.rss_url) {
-        await window.sourcerer.setAlertRss(contact.id, trimmedRss);
-        const updated = await window.sourcerer.getAlertRss(contact.id);
-        setAlertRss(updated);
-      } else if (!trimmedRss && alertRss) {
-        await window.sourcerer.clearAlertRss(contact.id);
-        setAlertRss(null);
+      const pendingRss = newRssUrl.trim();
+      if (pendingRss && isGoogleAlertUrl(pendingRss) && !alertRssList.some((f) => f.rss_url === pendingRss)) {
+        await window.sourcerer.addAlertRss(contact.id, pendingRss);
       }
       onRefresh();
       setEditingAndNotify(false);
@@ -316,6 +311,21 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   async function handleDelete() {
     await window.sourcerer.deleteContact(contact.id);
     onDeleted(contact.id);
+  }
+
+  async function handleAddRss() {
+    const url = newRssUrl.trim();
+    if (!url || !isGoogleAlertUrl(url)) return;
+    if (alertRssList.some((f) => f.rss_url === url)) return;
+    await window.sourcerer.addAlertRss(contact.id, url);
+    setNewRssUrl('');
+    const updated = await window.sourcerer.listAlertRss(contact.id);
+    setAlertRssList(updated);
+  }
+
+  async function handleRemoveRss(id: string) {
+    await window.sourcerer.removeAlertRss(id);
+    setAlertRssList((prev) => prev.filter((f) => f.id !== id));
   }
 
   // View mode: group links by type
@@ -705,17 +715,45 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Alert RSS URL</label>
-          <input
-            className="ac-input"
-            type="url"
-            value={editRssUrl}
-            onChange={(e) => setEditRssUrl(e.target.value)}
-            placeholder="https://news.google.com/rss/search?q=…"
-          />
-          {editRssUrl.trim() && !isValidUrl(editRssUrl.trim()) && (
-            <div className="ac-collision-warn">Invalid URL — must be a valid https:// or http:// address</div>
-          )}
+          <label className="ac-label">Alert RSS Feeds</label>
+          {alertRssList.map((feed) => (
+            <div key={feed.id} className="ac-dynamic-row">
+              <input
+                className="ac-input"
+                value={feed.rss_url}
+                readOnly
+                title={feed.rss_url}
+              />
+              <button
+                className="ac-remove"
+                type="button"
+                onClick={() => handleRemoveRss(feed.id)}
+              ></button>
+            </div>
+          ))}
+          <div>
+            <input
+              className="ac-input"
+              value={newRssUrl}
+              onChange={(e) => setNewRssUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRss(); } }}
+              placeholder="https://news.google.com/rss/search?q=…"
+            />
+            {newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim()) && (
+              <div className="ac-collision-warn">Must be a Google Alerts or Google News RSS URL</div>
+            )}
+            {newRssUrl.trim() && isGoogleAlertUrl(newRssUrl.trim()) && alertRssList.some((f) => f.rss_url === newRssUrl.trim()) && (
+              <div className="ac-collision-warn">⚠ Already added</div>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={handleAddRss}
+            disabled={!newRssUrl.trim() || !isGoogleAlertUrl(newRssUrl.trim()) || alertRssList.some((f) => f.rss_url === newRssUrl.trim())}
+          >
+            + Add
+          </Button>
           <p className="ac-field-hint">
             Paste a Google Alerts RSS URL to automatically track mentions.
             To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
@@ -723,7 +761,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="detail-edit-actions-bottom">
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!editRssUrl.trim() && !isValidUrl(editRssUrl.trim()))}>
+          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim())) || (!!newRssUrl.trim() && alertRssList.some((f) => f.rss_url === newRssUrl.trim()))}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setEditingAndNotify(false)} disabled={saving}>
@@ -824,29 +862,31 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
       )}
 
-      {alertRss && (
+      {alertRssList.length > 0 && (
         <div className="detail-section">
-          <div className="detail-section-label">
-            Alert RSS
-            {alertRss.is_invalid === 1 && (
-              <span className="detail-rss-invalid" title="Feed could not be fetched"> ⚠</span>
-            )}
-          </div>
-          <a
-            href={alertRss.rss_url}
-            className="detail-link detail-rss-url"
-            onClick={(e) => e.preventDefault()}
-            title={alertRss.rss_url}
-          >
-            {alertRss.rss_url.length > 60
-              ? alertRss.rss_url.slice(0, 60) + '…'
-              : alertRss.rss_url}
-          </a>
-          {alertRss.last_polled_at && (
-            <span className="detail-rss-polled">
-              Last polled {new Date(alertRss.last_polled_at * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-            </span>
-          )}
+          <div className="detail-section-label">Alert RSS</div>
+          {alertRssList.map((feed) => (
+            <div key={feed.id} className="detail-rss-feed">
+              <a
+                href={feed.rss_url}
+                className="detail-link detail-rss-url"
+                onClick={(e) => { e.preventDefault(); window.open(feed.rss_url); }}
+                title={feed.rss_url}
+              >
+                {feed.rss_url.length > 60
+                  ? feed.rss_url.slice(0, 60) + '…'
+                  : feed.rss_url}
+              </a>
+              {feed.is_invalid === 1 && (
+                <span className="detail-rss-invalid" title="Feed could not be fetched"> ⚠</span>
+              )}
+              {feed.last_polled_at && (
+                <span className="detail-rss-polled">
+                  Last polled {new Date(feed.last_polled_at * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

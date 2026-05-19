@@ -45,16 +45,16 @@ export async function pollAllRss(): Promise<void> {
 
   const feeds = db
     .prepare(
-      `SELECT car.contact_id, car.rss_url, c.name AS contact_name
+      `SELECT car.id, car.contact_id, car.rss_url, c.name AS contact_name
        FROM contact_alert_rss car
        JOIN contacts c ON c.id = car.contact_id
        WHERE car.is_invalid = 0`,
     )
-    .all() as { contact_id: string; rss_url: string; contact_name: string }[];
+    .all() as { id: string; contact_id: string; rss_url: string; contact_name: string }[];
 
   let anyNew = false;
   for (const feed of feeds) {
-    const newCount = await pollOneFeed(feed.contact_id, feed.rss_url);
+    const newCount = await pollOneFeed(feed.id, feed.contact_id, feed.rss_url);
     if (newCount > 0) {
       anyNew = true;
       if (alertNotificationsEnabled && Notification.isSupported()) {
@@ -80,15 +80,18 @@ export async function pollAllRss(): Promise<void> {
 export async function pollContactRss(contactId: string): Promise<void> {
   if (!isDatabaseOpen()) return;
   const db = getDatabase();
-  const row = db
-    .prepare(`SELECT rss_url FROM contact_alert_rss WHERE contact_id = ?`)
-    .get(contactId) as { rss_url: string } | undefined;
-  if (!row) return;
-  const newCount = await pollOneFeed(contactId, row.rss_url);
-  if (newCount > 0) emitMentionsUpdated();
+  const feeds = db
+    .prepare(`SELECT id, rss_url FROM contact_alert_rss WHERE contact_id = ? AND is_invalid = 0`)
+    .all(contactId) as { id: string; rss_url: string }[];
+  let anyNew = false;
+  for (const feed of feeds) {
+    const newCount = await pollOneFeed(feed.id, contactId, feed.rss_url);
+    if (newCount > 0) anyNew = true;
+  }
+  if (anyNew) emitMentionsUpdated();
 }
 
-async function pollOneFeed(contactId: string, rssUrl: string): Promise<number> {
+async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): Promise<number> {
   // Reject non-HTTP(S) URLs and loopback/private addresses to prevent SSRF
   try {
     const parsed = new URL(rssUrl);
@@ -130,12 +133,12 @@ async function pollOneFeed(contactId: string, rssUrl: string): Promise<number> {
     }
 
     db.prepare(
-      `UPDATE contact_alert_rss SET last_polled_at = ?, is_invalid = 0 WHERE contact_id = ?`,
-    ).run(now, contactId);
+      `UPDATE contact_alert_rss SET last_polled_at = ?, is_invalid = 0 WHERE id = ?`,
+    ).run(now, feedId);
 
     return newCount;
   } catch {
-    db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE contact_id = ?`).run(contactId);
+    db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
     return 0;
   }
 }
