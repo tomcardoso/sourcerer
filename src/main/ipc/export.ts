@@ -1,6 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
-import { utils, writeFile } from 'xlsx';
+import ExcelJS from 'exceljs';
 import { getDatabase } from '../database';
 import { filenameDateStamp } from '../utils';
 
@@ -163,14 +163,16 @@ export function registerExportHandlers(): void {
       }
 
       try {
-        const ws = utils.json_to_sheet(rows);
-        const wb = utils.book_new();
-        utils.book_append_sheet(wb, ws, 'Contacts');
-
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Contacts');
+        if (rows.length > 0) {
+          ws.columns = (Object.keys(rows[0]) as (keyof ExportRow)[]).map((k) => ({ header: k, key: k }));
+        }
+        ws.addRows(rows);
         if (isXlsx) {
-          writeFile(wb, filePath);
+          await wb.xlsx.writeFile(filePath);
         } else {
-          writeFile(wb, filePath, { bookType: 'csv' });
+          await wb.csv.writeFile(filePath);
         }
         return { success: true };
       } catch (err) {
@@ -254,10 +256,17 @@ export function registerExportHandlers(): void {
       });
 
       try {
-        const ws = utils.json_to_sheet(rows);
-        const wb = utils.book_new();
-        utils.book_append_sheet(wb, ws, 'Contacts');
-        writeFile(wb, filePath, isXlsx ? undefined : { bookType: 'csv' });
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Contacts');
+        if (rows.length > 0) {
+          ws.columns = Object.keys(rows[0]).map((k) => ({ header: k, key: k }));
+        }
+        ws.addRows(rows);
+        if (isXlsx) {
+          await wb.xlsx.writeFile(filePath);
+        } else {
+          await wb.csv.writeFile(filePath);
+        }
         return { success: true };
       } catch (err) {
         return { success: false, error: String(err) };
