@@ -198,6 +198,43 @@ describe('parseVcf — TITLE', () => {
   });
 });
 
+describe('parseVcf — BDAY', () => {
+  it('parses YYYYMMDD format', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'BDAY:19790322', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBe('1979-03-22');
+  });
+
+  it('parses YYYY-MM-DD format (ISO 8601)', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'BDAY:1979-03-22', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBe('1979-03-22');
+  });
+
+  it('strips time component from YYYYMMDDTHHMMSSZ', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'BDAY:19790322T000000Z', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBe('1979-03-22');
+  });
+
+  it('returns null for year-unknown --MMDD format', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'BDAY:--0322', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBeNull();
+  });
+
+  it('returns null for year-unknown --MM-DD format', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'BDAY:--03-22', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBeNull();
+  });
+
+  it('returns null for an unrecognised format', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'BDAY:March 22 1979', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBeNull();
+  });
+
+  it('returns null when BDAY is absent', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'END:VCARD'].join('\n');
+    expect(parseVcf(vcf)[0].dob).toBeNull();
+  });
+});
+
 describe('parseVcf — IMPP handles', () => {
   it('parses a Signal IMPP field', () => {
     const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'IMPP;X-SERVICE-TYPE=Signal:signal:%2B1%20555%200001', 'END:VCARD'].join('\n');
@@ -247,6 +284,7 @@ function makeContact(overrides: Partial<VcfContact> = {}): VcfContact {
     name: 'Alice Smith',
     organization: null,
     title: null,
+    dob: null,
     notes: null,
     emails: [],
     phones: [],
@@ -284,6 +322,22 @@ describe('processVcfContacts — basic import', () => {
       .get('Alice Smith') as { organization: string | null; notes: string | null };
     expect(row.organization).toBe('Acme Corp');
     expect(row.notes).toBe('A note.');
+  });
+
+  it('stores a valid dob in the database', () => {
+    processVcfContacts([makeContact({ dob: '1979-03-22' })], db, BASE_OPTS);
+    const row = db
+      .prepare('SELECT dob FROM contacts WHERE name = ?')
+      .get('Alice Smith') as { dob: string | null };
+    expect(row.dob).toBe('1979-03-22');
+  });
+
+  it('stores null dob when absent', () => {
+    processVcfContacts([makeContact()], db, BASE_OPTS);
+    const row = db
+      .prepare('SELECT dob FROM contacts WHERE name = ?')
+      .get('Alice Smith') as { dob: string | null };
+    expect(row.dob).toBeNull();
   });
 
   it('stores all email addresses', () => {
