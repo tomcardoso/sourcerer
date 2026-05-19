@@ -30,7 +30,7 @@ export function registerExportHandlers(): void {
     'export:project',
     async (
       event,
-      { projectId, mode }: { projectId: string; mode: ExportMode },
+      { projectId, mode, contactIds: filterIds }: { projectId: string; mode: ExportMode; contactIds?: string[] },
     ): Promise<{ success: boolean; error?: string }> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const db = getDatabase();
@@ -53,7 +53,9 @@ export function registerExportHandlers(): void {
       const filePath = saveResult.filePath;
       const isXlsx = filePath.endsWith('.xlsx');
 
-      // Fetch all memberships + contacts for this project
+      const selectionClause = filterIds?.length
+        ? `AND c.id IN (${filterIds.map(() => '?').join(',')})`
+        : '';
       const memberships = db
         .prepare(
           `SELECT pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status,
@@ -62,10 +64,10 @@ export function registerExportHandlers(): void {
                   c.id AS contact_id, c.name, c.organization, c.title, c.notes
            FROM project_memberships pm
            JOIN contacts c ON c.id = pm.contact_id
-           WHERE pm.project_id = ?
+           WHERE pm.project_id = ? ${selectionClause}
            ORDER BY c.name COLLATE NOCASE ASC`,
         )
-        .all(projectId) as {
+        .all(projectId, ...(filterIds ?? [])) as {
         membership_id: string;
         reporter_name: string;
         theme: string | null;
@@ -163,13 +165,13 @@ export function registerExportHandlers(): void {
 
   ipcMain.handle(
     'export:all-contacts',
-    async (event): Promise<{ success: boolean; error?: string }> => {
+    async (event, { contactIds: filterIds }: { contactIds?: string[] } = {}): Promise<{ success: boolean; error?: string }> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const db = getDatabase();
 
       const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
-        title: 'Export all contacts',
-        defaultPath: 'all-contacts',
+        title: 'Export contacts',
+        defaultPath: filterIds?.length ? 'selected-contacts' : 'all-contacts',
         filters: [
           { name: 'CSV', extensions: ['csv'] },
           { name: 'Excel', extensions: ['xlsx'] },
@@ -180,9 +182,12 @@ export function registerExportHandlers(): void {
       const filePath = saveResult.filePath;
       const isXlsx = filePath.endsWith('.xlsx');
 
+      const selectionClause2 = filterIds?.length
+        ? `WHERE id IN (${filterIds.map(() => '?').join(',')})`
+        : '';
       const contacts = db
-        .prepare('SELECT id, name, organization, title, notes FROM contacts ORDER BY name COLLATE NOCASE')
-        .all() as { id: string; name: string; organization: string | null; title: string | null; notes: string | null }[];
+        .prepare(`SELECT id, name, organization, title, notes FROM contacts ${selectionClause2} ORDER BY name COLLATE NOCASE`)
+        .all(...(filterIds ?? [])) as { id: string; name: string; organization: string | null; title: string | null; notes: string | null }[];
 
       const allContactIds = contacts.map((c) => c.id);
       const ph2 = (arr: unknown[]) => arr.map(() => '?').join(',');

@@ -137,7 +137,7 @@ declare global {
       setIdleTimeout: (seconds: number) => Promise<void>;
 
       // Export
-      exportProject: (projectId: string, mode: 'full' | 'sanitized') => Promise<{ success: boolean; error?: string }>;
+      exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[]) => Promise<{ success: boolean; error?: string }>;
 
       // Sync
       triggerSync: (projectId: string) => Promise<SyncStatusEvent>;
@@ -179,7 +179,7 @@ declare global {
       // vCard export
       exportVCardContact: (contactId: string) => Promise<void>;
       exportVCardProject: (projectId: string) => Promise<void>;
-      exportAllContacts: () => Promise<{ success: boolean; error?: string }>;
+      exportAllContacts: (contactIds?: string[]) => Promise<{ success: boolean; error?: string }>;
 
       // CSV / vCard import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;

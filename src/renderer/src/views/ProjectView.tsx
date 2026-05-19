@@ -214,7 +214,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     if (!project) return;
     setShowExportMenu(false);
     setExporting(true);
-    await window.sourcerer.exportProject(project.id, mode);
+    await window.sourcerer.exportProject(project.id, mode, checkedIds.size > 0 ? [...checkedIds] : undefined);
     setExporting(false);
   }
 
@@ -578,7 +578,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               onClick={() => setShowExportMenu((v) => !v)}
               disabled={exporting || rows.length === 0}
             >
-              {exporting ? 'Exporting…' : '↓ Export'}
+              {exporting ? 'Exporting…' : checkedIds.size > 0 ? `↓ Export selected (${checkedIds.size})` : '↓ Export'}
             </button>
             {showExportMenu && (
               <div className="export-menu">

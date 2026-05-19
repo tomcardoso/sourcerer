@@ -89,7 +89,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   async function handleExportAll() {
     setShowExportMenu(false);
     setExporting(true);
-    await window.sourcerer.exportAllContacts();
+    await window.sourcerer.exportAllContacts(checkedIds.size > 0 ? [...checkedIds] : undefined);
     setExporting(false);
   }
 
@@ -314,7 +314,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                 onClick={() => setShowExportMenu((v) => !v)}
                 disabled={exporting || contacts.length === 0}
               >
-                {exporting ? 'Exporting…' : '↓ Export'}
+                {exporting ? 'Exporting…' : checkedIds.size > 0 ? `↓ Export selected (${checkedIds.size})` : '↓ Export'}
               </button>
               {showExportMenu && (
                 <div className="export-menu">
