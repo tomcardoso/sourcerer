@@ -36,8 +36,8 @@ export function seedDevData(db: Database.Database, email: string, name: string):
   const doSeed = db.transaction(() => {
     const stmts = {
       insertContact: db.prepare(
-        `INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       ),
       insertEmail: db.prepare(
         `INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)`,
@@ -80,7 +80,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       const id = uuidv4();
       idByName.set(c.name, id);
       const updatedAt = STALE_NAMES.has(c.name) ? NOW - 120 * DAY : NOW;
-      stmts.insertContact.run(id, c.name, c.organization ?? null, c.title ?? null, c.notes ?? null, NOW, updatedAt);
+      stmts.insertContact.run(id, c.name, c.organization ?? null, c.title ?? null, c.dob ?? null, c.notes ?? null, NOW, updatedAt);
 
       c.emails.forEach((e, i) => stmts.insertEmail.run(uuidv4(), id, e, i, NOW + i));
       c.phones.forEach((p, i) => stmts.insertPhone.run(uuidv4(), id, p, i, NOW + i));

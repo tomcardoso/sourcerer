@@ -2,6 +2,7 @@ interface SeedContact {
   name: string;
   organization: string | null;
   title?: string | null;
+  dob?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
@@ -14,6 +15,7 @@ export const CONTACTS_3: SeedContact[] = [
     name: 'Randall Chu-Nakamura',
     organization: 'Ridgemont Asset Management',
     title: 'Senior Vice-President',
+    dob: '1975-06-28',
     notes:
       'Senior VP overseeing an infrastructure fund with positions in three privatized long-term care chains. Has avoided all press contact since a parliamentary committee hearing. His EA sometimes passes messages.',
     emails: ['rchu@ridgemont-am.example', 'rchu.nakamura@securemail.example'],
@@ -26,6 +28,7 @@ export const CONTACTS_3: SeedContact[] = [
     name: 'Dominique Paquin-Sévigny',
     organization: 'Groupe Immobilier Paquin',
     title: 'Real Estate Developer',
+    dob: '1971-10-04',
     notes:
       'Principal of a Laurentie developer linked to three municipal zoning amendments that bypassed public consultation. Donated to the mayor\'s campaign within 30 days of each approval.',
     emails: ['d.paquin@groupepaquin.example'],
@@ -136,6 +139,7 @@ export const CONTACTS_3: SeedContact[] = [
   {
     name: 'Adrienne Kozlowski',
     organization: 'Vantrel Commerce Inc.',
+    dob: '1983-01-17',
     notes: null,
     emails: ['a.kozlowski@vantrel.example'],
     phones: ['+1 582 555 6028'],

@@ -2,6 +2,7 @@ interface SeedContact {
   name: string;
   organization: string | null;
   title?: string | null;
+  dob?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
@@ -14,6 +15,7 @@ export const CONTACTS_2: SeedContact[] = [
     name: 'Bertrand Lacombe',
     organization: 'Fédération des syndicats de Laurentie',
     title: 'Lead Negotiator',
+    dob: '1969-09-03',
     notes:
       'Lead negotiator on the nursing shortage file. Has internal grievance data from three hospital regions that has not been made public. Prefers contact after 5 p.m.',
     emails: ['b.lacombe@fsl-laurentie.example'],
@@ -24,6 +26,7 @@ export const CONTACTS_2: SeedContact[] = [
     name: 'Dr. Patience Adusei-Mensah',
     organization: 'Westmarch General Hospital — Infectious Disease',
     title: 'Infectious Disease Specialist',
+    dob: '1981-04-27',
     notes:
       'Published a dissenting memo on pandemic PPE procurement. Her research institution received reduced funding the following fiscal year. Willing to speak on background.',
     emails: ['p.adusei-mensah@wgh.example'],
@@ -45,6 +48,7 @@ export const CONTACTS_2: SeedContact[] = [
     name: 'Prof. Miriam Goldstein-Lau',
     organization: 'Ridgecrest University — School of Law, Indigenous Rights Clinic',
     title: 'Professor of Law',
+    dob: '1968-12-15',
     notes:
       'Specialist in resource extraction and treaty rights. Has reviewed confidential co-management agreements at the centre of the pipeline dispute. Will testify as expert witness.',
     emails: ['m.goldstein@law.ridgecrest.example'],
@@ -58,6 +62,7 @@ export const CONTACTS_2: SeedContact[] = [
     name: 'Theresa Ouellet-Gauvin',
     organization: 'Centre hospitalier universitaire de Laurentie',
     title: 'Chief Nursing Officer',
+    dob: '1977-08-30',
     notes:
       'Chief nursing officer. Filed an internal report on understaffing that the hospital board buried. Union rep confirmed she was subsequently passed over for promotion.',
     emails: ['t.ouellet-gauvin@chul.example', 'theresa.ouellet@securemail.example'],
