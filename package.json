@@ -107,9 +107,7 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "notarize": {
-        "teamId": "6A628PNYB7"
-      }
+      "notarize": true
     },
     "dmg": {
       "contents": [
