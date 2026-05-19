@@ -366,7 +366,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             value={editDob}
             onChange={setEditDob}
             showYear
-            maxDate={new Date().toISOString().slice(0, 10)}
+            maxDate={localToday()}
           />
         </div>
 
@@ -788,16 +788,21 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   }
 
   function formatDob(dob: string): string {
-    const [year, month, day] = dob.split('-').map(Number);
-    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    return `${months[month - 1]} ${day}, ${year}`;
+    const d = new Date(`${dob}T12:00:00`);
+    if (isNaN(d.getTime())) return dob;
+    return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+  }
+
+  function localToday(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   return (
     <div className="detail-body">
 
       {contact.dob && (
-        <div className="detail-section">
+        <div className="detail-section detail-section--inline">
           <div className="detail-section-label">Date of birth</div>
           <span className="detail-value">{formatDob(contact.dob)}</span>
         </div>

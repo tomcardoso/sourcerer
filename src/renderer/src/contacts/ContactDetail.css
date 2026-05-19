@@ -116,6 +116,20 @@
   margin-bottom: 18px;
 }
 
+.detail-section--inline {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.detail-section--inline .detail-section-label {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .detail-section-label {
   font-family: var(--font-mono);
   font-size: 11px;

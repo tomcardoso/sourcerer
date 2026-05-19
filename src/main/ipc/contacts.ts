@@ -278,7 +278,7 @@ export function registerContactHandlers(): void {
     const insert = db.transaction(() => {
       db.prepare(
         'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.dob?.trim() || null, data.notes?.trim() || null, now, now);
+      ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, now);
 
       emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
@@ -430,7 +430,7 @@ export function registerContactHandlers(): void {
     const run = db.transaction(() => {
       db.prepare(
         'UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ? WHERE id = ?',
-      ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.dob?.trim() || null, data.notes?.trim() || null, now, data.id);
+      ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, data.id);
 
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
       const emails = (data.emails ?? [])

@@ -32,6 +32,11 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
 import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
 import type { HandleType } from './handleMeta';
 
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
@@ -232,13 +237,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </div>
 
           <div className="ac-field">
-            <label htmlFor="ac-dob" className="modal-label">Date of birth</label>
+            <label className="modal-label">Date of birth</label>
             <CalendarPicker
               label="Select date"
               value={dob}
               onChange={setDob}
               showYear
-              maxDate={new Date().toISOString().slice(0, 10)}
+              maxDate={localToday()}
               ariaLabel="Date of birth"
             />
           </div>
