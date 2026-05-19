@@ -802,7 +802,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     <div className="detail-body">
 
       {contact.dob && (
-        <div className="detail-section detail-section--inline">
+        <div className="detail-section">
           <div className="detail-section-label">Date of birth</div>
           <span className="detail-value">{formatDob(contact.dob)}</span>
         </div>
