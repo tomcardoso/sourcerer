@@ -13,6 +13,7 @@ export const SHARED_SCHEMA_SQL = `
     name         TEXT    NOT NULL,
     organization TEXT,
     title        TEXT,
+    dob          TEXT,
     notes        TEXT,
     created_at   INTEGER NOT NULL,
     updated_at   INTEGER NOT NULL
@@ -96,6 +97,12 @@ export const SHARED_SCHEMA_SQL = `
     body           TEXT    NOT NULL,
     created_at     INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS shared_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_id     ON contact_emails(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_email ON contact_emails(contact_id, email);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_id     ON contact_phones(contact_id);
@@ -107,9 +114,4 @@ export const SHARED_SCHEMA_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_guid ON contact_alert_mentions(contact_id, guid);
   CREATE INDEX IF NOT EXISTS idx_shared_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_shared_project_memberships_contact_id ON project_memberships(contact_id);
-
-  CREATE TABLE IF NOT EXISTS shared_meta (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
 `;

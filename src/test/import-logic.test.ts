@@ -119,6 +119,44 @@ describe('processImportRows — intra-file duplicate detection', () => {
   });
 });
 
+describe('processImportRows — DOB', () => {
+  it('stores a valid YYYY-MM-DD dob', () => {
+    processImportRows(
+      [['Name', 'DOB'], ['Alice Smith', '1979-03-22']],
+      db,
+      BASE_OPTS,
+    );
+    const row = db
+      .prepare('SELECT dob FROM contacts WHERE name = ?')
+      .get('Alice Smith') as { dob: string | null };
+    expect(row.dob).toBe('1979-03-22');
+  });
+
+  it('stores null for an invalid dob format', () => {
+    processImportRows(
+      [['Name', 'DOB'], ['Alice Smith', '22/03/1979']],
+      db,
+      BASE_OPTS,
+    );
+    const row = db
+      .prepare('SELECT dob FROM contacts WHERE name = ?')
+      .get('Alice Smith') as { dob: string | null };
+    expect(row.dob).toBeNull();
+  });
+
+  it('stores null when the DOB column is absent', () => {
+    processImportRows(
+      [['Name', 'Email'], ['Alice Smith', 'alice@example.com']],
+      db,
+      BASE_OPTS,
+    );
+    const row = db
+      .prepare('SELECT dob FROM contacts WHERE name = ?')
+      .get('Alice Smith') as { dob: string | null };
+    expect(row.dob).toBeNull();
+  });
+});
+
 describe('processImportRows — phone normalisation', () => {
   it('imports a contact without a phone when the phone format is unrecognised', () => {
     const result = processImportRows(

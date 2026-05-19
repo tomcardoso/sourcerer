@@ -7,7 +7,7 @@ import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../s
 import type { User, ImportResult } from '@shared/types';
 
 const SAMPLE_HEADERS =
-  'Name,Organization,Title,Notes,Email,Phone,LinkedIn,X,Website,Theme,Status,Priority\n';
+  'Name,Organization,Title,DOB,Notes,Email,Phone,LinkedIn,X,Website,Theme,Status,Priority\n';
 
 export function parseCsv(text: string): string[][] {
   const result: string[][] = [];
@@ -64,11 +64,20 @@ export interface VcfContact {
   name: string;
   organization: string | null;
   title: string | null;
+  dob: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
   urls: string[];
   handles: Array<{ type: string; handle: string }>;
+}
+
+function parseBday(value: string): string | null {
+  const v = value.trim().split('T')[0]; // strip time component if present
+  if (v.startsWith('--')) return null;  // year-unknown (--MMDD or --MM-DD)
+  if (/^\d{8}$/.test(v)) return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  return null;
 }
 
 function decodeVcfValue(v: string): string {
@@ -86,7 +95,7 @@ export function parseVcf(text: string): VcfContact[] {
   for (const raw of lines) {
     const upper = raw.trimEnd().toUpperCase();
     if (upper === 'BEGIN:VCARD') {
-      cur = { name: '', organization: null, title: null, notes: null, emails: [], phones: [], urls: [], handles: [] };
+      cur = { name: '', organization: null, title: null, dob: null, notes: null, emails: [], phones: [], urls: [], handles: [] };
       continue;
     }
     if (upper === 'END:VCARD') {
@@ -117,6 +126,9 @@ export function parseVcf(text: string): VcfContact[] {
         break;
       case 'NOTE':
         cur.notes = decodeVcfValue(value).replace(/\\n/gi, '\n') || null;
+        break;
+      case 'BDAY':
+        cur.dob = parseBday(decodeVcfValue(value));
         break;
       case 'EMAIL':
         { const e = decodeVcfValue(value); if (e) cur.emails.push(e); }
@@ -159,7 +171,7 @@ export function processVcfContacts(
   );
 
   const stmtContact = db.prepare(
-    'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const stmtEmail = db.prepare(
     'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -212,7 +224,7 @@ export function processVcfContacts(
       const id = uuidv4();
       const now = Math.floor(Date.now() / 1000);
 
-      stmtContact.run(id, c.name, c.organization, c.title, c.notes, now, now);
+      stmtContact.run(id, c.name, c.organization, c.title, c.dob, c.notes, now, now);
 
       emails.forEach((email, i) => {
         stmtEmail.run(uuidv4(), id, email, i, now);
@@ -286,7 +298,7 @@ export function processImportRows(
   let imported = 0;
 
   const stmtContact = db.prepare(
-    'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const stmtEmail = db.prepare(
     'INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -333,7 +345,9 @@ export function processImportRows(
       const id = uuidv4();
       const now = Math.floor(Date.now() / 1000);
 
-      stmtContact.run(id, name, get('organization') || null, get('title') || null, get('notes') || null, now, now);
+      const dobRaw = get('dob').trim();
+      const dob = /^\d{4}-\d{2}-\d{2}$/.test(dobRaw) ? dobRaw : null;
+      stmtContact.run(id, name, get('organization') || null, get('title') || null, dob, get('notes') || null, now, now);
 
       emails.forEach((email, i) => {
         stmtEmail.run(uuidv4(), id, email, i, now);

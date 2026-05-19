@@ -129,6 +129,7 @@ export interface ContactDetail {
   name: string;
   organization: string | null;
   title: string | null;
+  dob: string | null;
   notes: string | null;
   created_at: number;
   updated_at: number;
@@ -149,6 +150,7 @@ export interface CreateContactInput {
   name: string;
   organization?: string;
   title?: string;
+  dob?: string;
   notes?: string;
   emails?: Array<{ email: string; label?: string }>;
   phones?: Array<{ phone: string; label?: string }>;
@@ -161,6 +163,7 @@ export interface UpdateContactInput {
   name: string;
   organization?: string;
   title?: string;
+  dob?: string;
   notes?: string;
   emails?: Array<{ email: string; label?: string }>;
   phones?: Array<{ phone: string; label?: string }>;

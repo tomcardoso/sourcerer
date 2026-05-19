@@ -2,6 +2,7 @@ interface SeedContact {
   name: string;
   organization: string | null;
   title?: string | null;
+  dob?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
@@ -75,6 +76,7 @@ export const CONTACTS_4: SeedContact[] = [
     name: 'Jocelyn Paré-Vachon',
     organization: 'Halloway & Prescott LLP — Laurentie',
     title: 'Partner, Class Actions',
+    dob: '1979-03-22',
     notes:
       'Partner, class actions. Represents 340 former residents of the contaminated housing development. Has filed a motion to compel document production from the Ministry of Environment.',
     emails: ['jpare-vachon@hallowayprescott.example'],
@@ -108,6 +110,7 @@ export const CONTACTS_4: SeedContact[] = [
     name: 'Sen. (ret.) Gérald Marquette',
     organization: null,
     title: 'Retired Senator',
+    dob: '1952-07-09',
     notes:
       'Retired senator who sat on the banking committee during the period under scrutiny. Has written an unpublished memoir chapter that he shared selectively. Willing to speak on background about internal committee dynamics.',
     emails: ['gerald.marquette@securemail.example'],
@@ -180,6 +183,7 @@ export const CONTACTS_4: SeedContact[] = [
   {
     name: 'Rebecca Stowe-Almeida',
     organization: 'Abernathy & Bryce LLP — Cascadia',
+    dob: '1988-11-30',
     notes: null,
     emails: ['rstowe-almeida@aberbryce.example'],
     phones: ['+1 265 555 8364'],

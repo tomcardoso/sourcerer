@@ -2,6 +2,7 @@ interface SeedContact {
   name: string;
   organization: string | null;
   title?: string | null;
+  dob?: string | null;
   notes: string | null;
   emails: string[];
   phones: string[];
@@ -14,6 +15,7 @@ export const CONTACTS_1: SeedContact[] = [
     name: 'Councillor Diane Ferreira',
     organization: 'City of Westmarch — Ward 9',
     title: 'Infrastructure Committee Chair',
+    dob: '1972-03-14',
     notes:
       'Chairs the infrastructure committee and has received significant developer donations. Her office has stonewalled three freedom-of-information requests. Personal cell reportedly routed through a campaign staffer.',
     emails: ['d.ferreira@westmarch.example', 'ferreira.ward9@pressbox.example'],
@@ -56,6 +58,7 @@ export const CONTACTS_1: SeedContact[] = [
     name: 'Dr. Ananya Krishnamurthy',
     organization: 'Cascadia Public Health Agency',
     title: 'Epidemiologist',
+    dob: '1980-07-22',
     notes:
       'Epidemiologist specializing in environmental health. Authored a suppressed internal report on industrial contamination near the Lakeview industrial corridor. Currently on secondment to the federal health ministry.',
     emails: ['a.krishnamurthy@cpha.example', 'ananya.k@fedhealth.example'],
@@ -149,6 +152,7 @@ export const CONTACTS_1: SeedContact[] = [
     name: 'Dr. Jean-Paul Hébert',
     organization: 'Université de Laurentie — School of Public Policy',
     title: 'Professor of Public Policy',
+    dob: '1966-11-08',
     notes:
       'Former federal deputy minister, now academic. Published critical analysis of pension fund governance failures. Happy to speak on background.',
     emails: ['jp.hebert@univ-laurentie.example'],
@@ -237,6 +241,7 @@ export const CONTACTS_1: SeedContact[] = [
     name: 'Renata Filipowicz',
     organization: 'Office of the Auditor General — Infrastructure Division',
     title: 'Principal Auditor',
+    dob: '1985-02-11',
     notes:
       'Principal auditor on the infrastructure transfers file. Spoke briefly at a conference. Will not confirm specifics but usefully indicates areas of focus.',
     emails: ['r.filipowicz@auditor-general.example'],
@@ -255,6 +260,7 @@ export const CONTACTS_1: SeedContact[] = [
     name: 'Mayor Colette Abara',
     organization: 'City of Harbourne',
     title: 'Mayor',
+    dob: '1974-05-19',
     notes:
       'Elected on a transparency platform but has since blocked several open-data initiatives. Her Chief of Staff, Rahul Nair, is the real gatekeeper. Press office is aggressive — document all interactions.',
     emails: ['mayor@harbourne.example'],

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactScreenshot, Project, User } from '@shared/types';
 import Button from '../shell/Button';
 import DynamicList, { useDragReorder } from './DynamicList';
+import { CalendarPicker } from '../views/CalendarPicker';
 import {
   isValidEmail,
   isValidUrl,
@@ -109,6 +110,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editName, setEditName] = useState('');
   const [editOrg, setEditOrg] = useState('');
   const [editTitle, setEditTitle] = useState('');
+  const [editDob, setEditDob] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editHandles, setEditHandles] = useState<Array<{ type: string; handle: string }>>([]);
   const [editEmails, setEditEmails] = useState<Array<{ email: string; label: string }>>([]);
@@ -190,6 +192,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setEditName(contact.name);
     setEditOrg(contact.organization ?? '');
     setEditTitle(contact.title ?? '');
+    setEditDob(contact.dob ?? '');
     setEditNotes(contact.notes ?? '');
     setEditHandles(contact.handles.map((h) => ({ type: h.type, handle: h.handle })));
     setEditEmails(contact.emails.map((e) => ({ email: e.email, label: e.label ?? '' })));
@@ -278,6 +281,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         name: editName,
         organization: editOrg,
         title: editTitle,
+        dob: editDob || undefined,
         notes: editNotes,
         emails: editEmails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
         phones: editPhones.map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
@@ -353,6 +357,17 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="ac-field">
           <label className="ac-label">Title / Role</label>
           <input className="ac-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="e.g. Senior Editor" />
+        </div>
+
+        <div className="ac-field">
+          <label className="ac-label">Date of birth</label>
+          <CalendarPicker
+            label="Select date"
+            value={editDob}
+            onChange={setEditDob}
+            showYear
+            maxDate={localToday()}
+          />
         </div>
 
         <div className="ac-field">
@@ -772,8 +787,26 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     );
   }
 
+  function formatDob(dob: string): string {
+    const d = new Date(`${dob}T12:00:00`);
+    if (isNaN(d.getTime())) return dob;
+    return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+  }
+
+  function localToday(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   return (
     <div className="detail-body">
+
+      {contact.dob && (
+        <div className="detail-section">
+          <div className="detail-section-label">Date of birth</div>
+          <span className="detail-value">{formatDob(contact.dob)}</span>
+        </div>
+      )}
 
       {contact.emails.length > 0 && (
         <div className="detail-section">

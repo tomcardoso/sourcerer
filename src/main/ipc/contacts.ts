@@ -208,12 +208,13 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:get', (_, id: string): ContactDetail => {
     const db = getDatabase();
     const contact = db
-      .prepare('SELECT id, name, organization, title, notes, created_at, updated_at FROM contacts WHERE id = ?')
+      .prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts WHERE id = ?')
       .get(id) as {
       id: string;
       name: string;
       organization: string | null;
       title: string | null;
+      dob: string | null;
       notes: string | null;
       created_at: number;
       updated_at: number;
@@ -276,8 +277,8 @@ export function registerContactHandlers(): void {
 
     const insert = db.transaction(() => {
       db.prepare(
-        'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.notes?.trim() || null, now, now);
+        'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, now);
 
       emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
@@ -428,8 +429,8 @@ export function registerContactHandlers(): void {
 
     const run = db.transaction(() => {
       db.prepare(
-        'UPDATE contacts SET name = ?, organization = ?, title = ?, notes = ?, updated_at = ? WHERE id = ?',
-      ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, data.notes?.trim() || null, now, data.id);
+        'UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ? WHERE id = ?',
+      ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, data.id);
 
       db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
       const emails = (data.emails ?? [])

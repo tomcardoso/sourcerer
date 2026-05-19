@@ -3,6 +3,7 @@ import type { ContactListItem, CreateContactInput, Project } from '@shared/types
 import { useClickOutside } from '../hooks/useClickOutside';
 import Button from '../shell/Button';
 import DynamicList from './DynamicList';
+import { CalendarPicker } from '../views/CalendarPicker';
 import {
   isValidEmail,
   isValidUrl,
@@ -31,10 +32,16 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
 import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
 import type { HandleType } from './handleMeta';
 
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [name, setName] = useState('');
   const [org, setOrg] = useState('');
   const [title, setTitle] = useState('');
+  const [dob, setDob] = useState('');
   const [emails, setEmails] = useState<Array<{ email: string; label: string }>>([{ email: '', label: '' }]);
   const [phones, setPhones] = useState<Array<{ phone: string; label: string }>>([{ phone: '', label: '' }]);
   const [websites, setWebsites] = useState<string[]>(['']);
@@ -162,6 +169,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       name: name.trim(),
       organization: org.trim() || undefined,
       title: title.trim() || undefined,
+      dob: dob || undefined,
       notes: notes.trim() || undefined,
       emails: emails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
       phones: phones.filter((p) => p.phone.trim()).map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
@@ -225,6 +233,18 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Senior Editor"
               disabled={submitting}
+            />
+          </div>
+
+          <div className="ac-field">
+            <label className="modal-label">Date of birth</label>
+            <CalendarPicker
+              label="Select date"
+              value={dob}
+              onChange={setDob}
+              showYear
+              maxDate={localToday()}
+              ariaLabel="Date of birth"
             />
           </div>
 
