@@ -119,15 +119,21 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
       .map((r) => [r.id, r.updated_at]),
   );
 
-  // Identity indexes for resolving contacts that exist locally under a different UUID
-  const localEmailToId = new Map<string, string>(
-    (local.prepare('SELECT email, contact_id FROM contact_emails').all() as { email: string; contact_id: string }[])
-      .map((r) => [r.email, r.contact_id]),
-  );
-  const localPhoneToId = new Map<string, string>(
-    (local.prepare('SELECT phone, contact_id FROM contact_phones').all() as { phone: string; contact_id: string }[])
-      .map((r) => [r.phone, r.contact_id]),
-  );
+  // Identity indexes: email/phone → Set of local contact_ids.
+  // Using a Set per key so that if two local contacts share an identifier, both are
+  // collected into candidateIds — keeping the candidateIds.size === 1 guard accurate.
+  const localEmailToId = new Map<string, Set<string>>();
+  for (const { email, contact_id } of local.prepare('SELECT email, contact_id FROM contact_emails').all() as { email: string; contact_id: string }[]) {
+    const s = localEmailToId.get(email) ?? new Set<string>();
+    s.add(contact_id);
+    localEmailToId.set(email, s);
+  }
+  const localPhoneToId = new Map<string, Set<string>>();
+  for (const { phone, contact_id } of local.prepare('SELECT phone, contact_id FROM contact_phones').all() as { phone: string; contact_id: string }[]) {
+    const s = localPhoneToId.get(phone) ?? new Set<string>();
+    s.add(contact_id);
+    localPhoneToId.set(phone, s);
+  }
 
   // Guard against two shared contacts both matching the same local contact.
   const adoptedIds = new Set<string>();
@@ -149,7 +155,7 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
           )
           .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
-        mergeSubTablesFromShared(local, shared, sc.id, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id);
       }
     } else {
       // No local contact with this UUID — check for an identity match by email/phone
@@ -165,11 +171,11 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
       const candidateIds = new Set<string>();
       for (const { email } of sharedEmails) {
         const found = localEmailToId.get(email);
-        if (found) candidateIds.add(found);
+        if (found) for (const id of found) candidateIds.add(id);
       }
       for (const { phone } of sharedPhones) {
         const found = localPhoneToId.get(phone);
-        if (found) candidateIds.add(found);
+        if (found) for (const id of found) candidateIds.add(id);
       }
       const matchedLocalId = candidateIds.size === 1 ? [...candidateIds][0] : undefined;
 
@@ -191,7 +197,7 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
             )
             .run(sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.updated_at, 0, sc.id);
         }
-        mergeSubTablesFromShared(local, shared, sc.id, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id);
       } else {
         // Genuinely new contact (or ambiguous multi-match / already-adopted local contact)
         local
@@ -205,15 +211,19 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
           )
           .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
-        mergeSubTablesFromShared(local, shared, sc.id, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id);
       }
 
       // Keep identity indexes current so later iterations in this sync see updated state
       for (const { email } of (local.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(sc.id) as { email: string }[])) {
-        localEmailToId.set(email, sc.id);
+        const s = localEmailToId.get(email) ?? new Set<string>();
+        s.add(sc.id);
+        localEmailToId.set(email, s);
       }
       for (const { phone } of (local.prepare('SELECT phone FROM contact_phones WHERE contact_id = ?').all(sc.id) as { phone: string }[])) {
-        localPhoneToId.set(phone, sc.id);
+        const s = localPhoneToId.get(phone) ?? new Set<string>();
+        s.add(sc.id);
+        localPhoneToId.set(phone, s);
       }
     }
   }
@@ -222,17 +232,16 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
 function mergeSubTablesFromShared(
   local: Database.Database,
   shared: Database.Database,
-  sharedContactId: string,
-  localContactId: string,
+  contactId: string,
 ): void {
   // ── Emails ────────────────────────────────────────────────────────────────
   // Stored emails are already normalised (lowercased, trimmed) — compare directly.
   const sharedEmails = shared
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
-    .all(sharedContactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
   const localEmails = local
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
-    .all(localContactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
 
   const sharedEmailValues = new Set(sharedEmails.map((e) => e.email));
   const localOnlyEmails = localEmails.filter((e) => !sharedEmailValues.has(e.email));
@@ -240,42 +249,42 @@ function mergeSubTablesFromShared(
   // Merge and sort by insertion time so rows appear in the order they were added.
   const mergedEmails = [...sharedEmails, ...localOnlyEmails].sort((a, b) => a.created_at - b.created_at);
 
-  local.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(localContactId);
+  local.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
   mergedEmails.forEach((e, i) => {
     local
       .prepare('INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(e.id, localContactId, e.email, e.label, i, e.created_at);
+      .run(e.id, contactId, e.email, e.label, i, e.created_at);
   });
 
   // ── Phones ────────────────────────────────────────────────────────────────
   // Stored phones are already normalised on save — compare stored values directly.
   const sharedPhones = shared
     .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
-    .all(sharedContactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
   const localPhones = local
     .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
-    .all(localContactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
 
   const sharedPhoneValues = new Set(sharedPhones.map((p) => p.phone));
   const localOnlyPhones = localPhones.filter((p) => !sharedPhoneValues.has(p.phone));
 
   const mergedPhones = [...sharedPhones, ...localOnlyPhones].sort((a, b) => a.created_at - b.created_at);
 
-  local.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(localContactId);
+  local.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(contactId);
   mergedPhones.forEach((p, i) => {
     local
       .prepare('INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(p.id, localContactId, p.phone, p.label, i, p.created_at);
+      .run(p.id, contactId, p.phone, p.label, i, p.created_at);
   });
 
   // ── Links ─────────────────────────────────────────────────────────────────
   // wayback_url is local-only — snapshot it before DELETE and restore after.
   const sharedLinks = shared
     .prepare('SELECT * FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
-    .all(sharedContactId) as { id: string; type: string; label: string | null; url: string; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; type: string; label: string | null; url: string; sort_order: number; created_at: number }[];
   const localLinks = local
     .prepare('SELECT id, type, label, url, wayback_url, sort_order, created_at FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
-    .all(localContactId) as { id: string; type: string; label: string | null; url: string; wayback_url: string | null; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; type: string; label: string | null; url: string; wayback_url: string | null; sort_order: number; created_at: number }[];
 
   const sharedUrlValues = new Set(sharedLinks.map((l) => l.url.trim()));
   const localWaybacks = new Map(localLinks.filter((l) => l.wayback_url).map((l) => [l.url.trim(), l.wayback_url]));
@@ -287,44 +296,44 @@ function mergeSubTablesFromShared(
     ...localOnlyLinks,
   ].sort((a, b) => a.created_at - b.created_at);
 
-  local.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(localContactId);
+  local.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(contactId);
   mergedLinks.forEach((l, i) => {
     local
       .prepare('INSERT INTO contact_links (id, contact_id, type, label, url, wayback_url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(l.id, localContactId, l.type, l.label, l.url, l.wayback_url, i, l.created_at);
+      .run(l.id, contactId, l.type, l.label, l.url, l.wayback_url, i, l.created_at);
   });
 
   // ── Handles ───────────────────────────────────────────────────────────────
   const sharedHandles = shared
     .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
-    .all(sharedContactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
   const localHandles = local
     .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
-    .all(localContactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
+    .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
 
   const sharedHandleKeys = new Set(sharedHandles.map((h) => `${h.type}:${h.handle}`));
   const localOnlyHandles = localHandles.filter((h) => !sharedHandleKeys.has(`${h.type}:${h.handle}`));
 
   const mergedHandles = [...sharedHandles, ...localOnlyHandles].sort((a, b) => a.created_at - b.created_at);
 
-  local.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(localContactId);
+  local.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(contactId);
   mergedHandles.forEach((h, i) => {
     local
       .prepare('INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(h.id, localContactId, h.type, h.handle, i, h.created_at);
+      .run(h.id, contactId, h.type, h.handle, i, h.created_at);
   });
 
   // ── Alert RSS ──────────────────────────────────────────────────────────────
-  local.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(localContactId);
+  local.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);
   const rssFeeds = shared
     .prepare('SELECT * FROM contact_alert_rss WHERE contact_id = ?')
-    .all(sharedContactId) as { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }[];
+    .all(contactId) as { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }[];
   for (const rss of rssFeeds) {
     local
       .prepare(
         'INSERT INTO contact_alert_rss (id, contact_id, rss_url, last_polled_at, is_invalid) VALUES (?, ?, ?, ?, ?)',
       )
-      .run(rss.id, localContactId, rss.rss_url, rss.last_polled_at, rss.is_invalid);
+      .run(rss.id, contactId, rss.rss_url, rss.last_polled_at, rss.is_invalid);
   }
 }
 

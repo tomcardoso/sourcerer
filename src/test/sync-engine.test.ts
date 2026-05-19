@@ -126,6 +126,41 @@ describe('syncProject — contact identity matching', () => {
     expect(ids).not.toContain(localId2);
   });
 
+  it('inserts shared contact as new when two local contacts share the same identifier', () => {
+    // Guards against the Map<string,string> index collapsing duplicate local entries:
+    // if L1 and L2 both have email e@e.com, the index must retain both so candidateIds
+    // has size 2 and the ambiguity guard fires correctly.
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Test Project');
+
+    // Insert directly so both local contacts share the same email (DB only enforces
+    // uniqueness per contact_id, not across contacts)
+    const now = Math.floor(Date.now() / 1000);
+    const localId1 = uuidv4();
+    const localId2 = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(localId1, 'Dup1', now, now);
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(localId2, 'Dup2', now, now);
+    localDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)').run(uuidv4(), localId1, 'dup@example.com', 0);
+    localDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)').run(uuidv4(), localId2, 'dup@example.com', 0);
+    localInsertMembership(localDb, localId1, projectId);
+    localInsertMembership(localDb, localId2, projectId);
+
+    const sharedId = uuidv4();
+    sharedInsertContact(sharedDb, sharedId, 'Dup', { emails: ['dup@example.com'], updatedAt: NOW });
+    sharedInsertMembership(sharedDb, uuidv4(), sharedId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const all = localDb.prepare('SELECT id FROM contacts').all() as { id: string }[];
+    // Dup1 + Dup2 stay as-is; shared Dup inserted as genuinely new (no adoption)
+    expect(all).toHaveLength(3);
+    expect(all.map((r) => r.id)).toContain(sharedId);
+    expect(all.map((r) => r.id)).toContain(localId1);
+    expect(all.map((r) => r.id)).toContain(localId2);
+  });
+
   it('inserts shared contact as new when identity signals are ambiguous (multi-match)', () => {
     const localDb = createTestDb();
     const sharedDb = createSharedDb();
