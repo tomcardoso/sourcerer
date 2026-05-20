@@ -125,6 +125,11 @@
     },
     "win": {
       "icon": "build/icons/256x256.png",
+      "azureSignOptions": {
+        "endpoint": "https://eus.codesigning.azure.net",
+        "certificateProfileName": "sourcerer-public",
+        "codeSigningAccountName": "sourcerer-signing"
+      },
       "target": [
         {
           "target": "nsis",
