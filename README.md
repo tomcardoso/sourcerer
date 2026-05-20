@@ -97,8 +97,7 @@ Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux
 **Windows**
 
 1. Download `Sourcerer Setup <version>.exe`.
-2. Run the installer. Windows SmartScreen may warn you the publisher is unknown — click **More info → Run anyway**.
-3. Sourcerer will be installed to your user profile and a Start Menu shortcut will be created.
+2. Run the installer. Sourcerer will be installed to your user profile and a Start Menu shortcut will be created.
 
 **Linux**
 

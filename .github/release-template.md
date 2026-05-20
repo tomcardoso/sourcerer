@@ -28,8 +28,6 @@ chmod +x Sourcerer-{version}.AppImage
 
 Run the installer.
 
-> **Note:** Windows may display a SmartScreen warning. Click **More info → Run anyway** to proceed.
-
 ---
 
 ## Updating
