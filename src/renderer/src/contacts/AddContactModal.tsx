@@ -177,9 +177,14 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       handles: handles.filter((h) => h.handle.trim() && h.type.trim()),
     };
 
-    const contact = await window.sourcerer.createContact(data);
-    await Promise.all([...selectedProjectIds].map((pid) => window.sourcerer.addToProject(contact.id, pid)));
-    onCreated(contact);
+    try {
+      const contact = await window.sourcerer.createContact(data);
+      await Promise.all([...selectedProjectIds].map((pid) => window.sourcerer.addToProject(contact.id, pid)));
+      onCreated(contact);
+    } catch (err) {
+      console.error('Failed to create contact:', err);
+      setSubmitting(false);
+    }
   }
 
   return (
