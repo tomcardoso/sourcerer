@@ -325,6 +325,7 @@ export default function AppShell() {
         <AddContactModal
           onCreated={(contact) => {
             setShowAddContact(false);
+            setImportRefreshTrigger((n) => n + 1);
             setNav({ view: 'all-contacts' });
             setOpenContactId(contact.id);
             window.sourcerer.getContactCount().then(setTotalContacts);
