@@ -5,9 +5,8 @@ module.exports = {
   ...build,
   win: {
     ...build.win,
-    azureSignOptions: {
-      ...build.win.azureSignOptions,
-      publisherName: process.env.AZURE_PUBLISHER_NAME,
-    },
+    azureSignOptions: process.env.AZURE_PUBLISHER_NAME
+      ? { ...build.win.azureSignOptions, publisherName: process.env.AZURE_PUBLISHER_NAME }
+      : null,
   },
 }
