@@ -174,7 +174,20 @@ export function registerUpdaterHandlers(): void {
     }
     return autoUpdater.downloadUpdate();
   });
-  ipcMain.handle('update:quit-and-install', () => {
+  ipcMain.handle('update:quit-and-install', async () => {
+    // On Electron 39+, Squirrel.Mac may not be ready to handle quitAndInstall
+    // immediately after electron-updater fires update-downloaded. Retry with
+    // backoff until Squirrel accepts the command.
+    let delay = 200;
+    for (let i = 0; i < 8; i++) {
+      try {
+        autoUpdater.quitAndInstall(false, true);
+        return;
+      } catch {
+        await new Promise((r) => setTimeout(r, delay));
+        delay = Math.min(delay * 2, 2000);
+      }
+    }
     autoUpdater.quitAndInstall(false, true);
   });
   ipcMain.handle('update:get-state', () => cachedUpdateInfo);
