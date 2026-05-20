@@ -72,8 +72,18 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run dist:mac -- --publish never
 
+      - name: Install Azure Artifact Signing module (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Install-Module -Name TrustedSigning -Force -AllowClobber -Scope CurrentUser
+
       - name: Package (Windows)
         if: runner.os == 'Windows'
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_PUBLISHER_NAME: ${{ secrets.AZURE_PUBLISHER_NAME }}
         run: npm run dist:win -- --publish never
 
       - name: Package (Linux)
