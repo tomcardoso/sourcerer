@@ -177,18 +177,29 @@ export function registerUpdaterHandlers(): void {
   ipcMain.handle('update:quit-and-install', async () => {
     // On Electron 39+, Squirrel.Mac may not be ready to handle quitAndInstall
     // immediately after electron-updater fires update-downloaded. Retry with
-    // backoff until Squirrel accepts the command.
+    // backoff until Squirrel accepts the command, but only for the known
+    // transient error — fail fast for anything else.
     let delay = 200;
     for (let i = 0; i < 8; i++) {
       try {
         autoUpdater.quitAndInstall(false, true);
         return;
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.includes('command is disabled')) {
+          log.error('quitAndInstall failed with unexpected error:', err);
+          return;
+        }
         await new Promise((r) => setTimeout(r, delay));
         delay = Math.min(delay * 2, 2000);
       }
     }
-    autoUpdater.quitAndInstall(false, true);
+    try {
+      autoUpdater.quitAndInstall(false, true);
+    } catch (err) {
+      log.error('quitAndInstall failed after retries:', err);
+      sendToWindow('update:error', { message: 'Unable to restart and install the update. Please restart Sourcerer manually.' });
+    }
   });
   ipcMain.handle('update:get-state', () => cachedUpdateInfo);
   ipcMain.handle('update:show-error', (_event, message: string) => {

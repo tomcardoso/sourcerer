@@ -51,6 +51,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [handles, setHandles] = useState<Array<{ type: string; handle: string }>>([]);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
   const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
   const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
@@ -183,6 +184,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       onCreated(contact);
     } catch (err) {
       console.error('Failed to create contact:', err);
+      setSubmitError('Something went wrong. Please try again.');
       setSubmitting(false);
     }
   }
@@ -537,6 +539,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
+          {submitError && <div className="ac-submit-error">{submitError}</div>}
+
           <div className="ac-actions">
             <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
               Cancel
@@ -545,6 +549,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               type="submit"
               variant="primary"
               disabled={!name.trim() || submitting || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0}
+              onClick={() => setSubmitError(null)}
             >
               {submitting ? 'Saving…' : 'Add contact'}
             </Button>
