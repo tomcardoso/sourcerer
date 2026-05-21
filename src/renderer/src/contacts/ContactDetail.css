@@ -203,6 +203,7 @@
   white-space: nowrap;
   flex-shrink: 0;
   align-self: center;
+  margin-top: 1px;
 }
 
 .detail-project-remove {
@@ -831,6 +832,7 @@
   background: none;
   cursor: pointer;
   transition: opacity 0.1s, color 0.1s;
+  margin-top: -2px;
 }
 
 .detail-project-item:hover .detail-project-default {
