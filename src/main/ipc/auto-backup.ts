@@ -2,7 +2,6 @@ import { ipcMain } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import JSZip from 'jszip';
 import { getPaths, deriveKey } from '../utils';
 import { getDatabase, isDatabaseOpen, getPassword } from '../database';
 
@@ -35,19 +34,25 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     const { dbPath, saltPath, screenshotsPath } = getPaths();
     const password = getPassword();
 
-    const zip = new JSZip();
-    zip.file('db.sqlite', await fs.readFile(dbPath));
-    zip.file('salt', await fs.readFile(saltPath));
-
+    const entries: Array<{ name: string; data: Buffer }> = [
+      { name: 'db.sqlite', data: await fs.readFile(dbPath) },
+      { name: 'salt', data: await fs.readFile(saltPath) },
+    ];
     try {
-      const files = await fs.readdir(screenshotsPath);
-      for (const file of files) {
-        zip.file(`screenshots/${file}`, await fs.readFile(path.join(screenshotsPath, file)));
+      for (const file of await fs.readdir(screenshotsPath)) {
+        entries.push({ name: `screenshots/${file}`, data: await fs.readFile(path.join(screenshotsPath, file)) });
       }
     } catch { /* screenshots dir may not exist */ }
 
-    // STORE (no compression) — all contents are AES-encrypted and already incompressible
-    const zipBuf = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
+    const parts: Buffer[] = [];
+    for (const { name, data } of entries) {
+      const nameBuf = Buffer.from(name, 'utf8');
+      const header = Buffer.allocUnsafe(8);
+      header.writeUInt32LE(nameBuf.length, 0);
+      header.writeUInt32LE(data.length, 4);
+      parts.push(header, nameBuf, data);
+    }
+    const payload = Buffer.concat(parts);
 
     const backupSalt = crypto.randomBytes(32);
     const backupKeyHex = await deriveKey(password, backupSalt);
@@ -55,7 +60,7 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
 
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-    const ciphertext = Buffer.concat([cipher.update(zipBuf), cipher.final()]);
+    const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
     const authTag = cipher.getAuthTag();
 
     const bundle = JSON.stringify({

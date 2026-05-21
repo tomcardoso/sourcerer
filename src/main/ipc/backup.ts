@@ -5,7 +5,6 @@ import os from 'os';
 import zlib from 'zlib';
 import crypto from 'crypto';
 import { promisify } from 'util';
-import JSZip from 'jszip';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
@@ -17,20 +16,32 @@ const gunzip = promisify(zlib.gunzip);
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
 
-async function buildBackupZip(dbPath: string, saltPath: string, screenshotsPath: string): Promise<Buffer> {
-  const zip = new JSZip();
-  zip.file('db.sqlite', await fs.readFile(dbPath));
-  zip.file('salt', await fs.readFile(saltPath));
+// v3 inner payload: concatenated length-prefixed entries.
+// Each entry: [4-byte LE name length][name bytes][4-byte LE data length][data bytes]
 
-  try {
-    const files = await fs.readdir(screenshotsPath);
-    for (const file of files) {
-      zip.file(`screenshots/${file}`, await fs.readFile(path.join(screenshotsPath, file)));
-    }
-  } catch { /* screenshots dir may not exist */ }
+function packFiles(entries: Array<{ name: string; data: Buffer }>): Buffer {
+  const parts: Buffer[] = [];
+  for (const { name, data } of entries) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const header = Buffer.allocUnsafe(8);
+    header.writeUInt32LE(nameBuf.length, 0);
+    header.writeUInt32LE(data.length, 4);
+    parts.push(header, nameBuf, data);
+  }
+  return Buffer.concat(parts);
+}
 
-  // STORE (no compression) — all contents are AES-encrypted and already incompressible
-  return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
+function unpackFiles(buf: Buffer): Array<{ name: string; data: Buffer }> {
+  const entries: Array<{ name: string; data: Buffer }> = [];
+  let offset = 0;
+  while (offset < buf.length) {
+    const nameLen = buf.readUInt32LE(offset); offset += 4;
+    const dataLen = buf.readUInt32LE(offset); offset += 4;
+    const name = buf.subarray(offset, offset + nameLen).toString('utf8'); offset += nameLen;
+    const data = buf.subarray(offset, offset + dataLen); offset += dataLen;
+    entries.push({ name, data });
+  }
+  return entries;
 }
 
 export function registerBackupHandlers(): void {
@@ -54,7 +65,17 @@ export function registerBackupHandlers(): void {
       if (canceled || !filePath) return { success: false };
 
       try {
-        const zipBuf = await buildBackupZip(dbPath, saltPath, screenshotsPath);
+        const entries: Array<{ name: string; data: Buffer }> = [
+          { name: 'db.sqlite', data: await fs.readFile(dbPath) },
+          { name: 'salt', data: dbSalt },
+        ];
+        try {
+          for (const file of await fs.readdir(screenshotsPath)) {
+            entries.push({ name: `screenshots/${file}`, data: await fs.readFile(path.join(screenshotsPath, file)) });
+          }
+        } catch { /* screenshots dir may not exist */ }
+
+        const payload = packFiles(entries);
 
         const backupSalt = crypto.randomBytes(32);
         const backupKeyHex = await deriveKey(password, backupSalt);
@@ -62,7 +83,7 @@ export function registerBackupHandlers(): void {
 
         const iv = crypto.randomBytes(12);
         const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-        const ciphertext = Buffer.concat([cipher.update(zipBuf), cipher.final()]);
+        const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
         const authTag = cipher.getAuthTag();
 
         const bundle = JSON.stringify({
@@ -138,21 +159,17 @@ export function registerBackupHandlers(): void {
         let dbSalt: Buffer;
 
         if (bundle.version === 3) {
-          const zip = await JSZip.loadAsync(decrypted);
-
-          const dbEntry = zip.file('db.sqlite');
-          const saltEntry = zip.file('salt');
+          const entries = unpackFiles(decrypted);
+          const dbEntry = entries.find(e => e.name === 'db.sqlite');
+          const saltEntry = entries.find(e => e.name === 'salt');
           if (!dbEntry || !saltEntry) return { success: false, error: 'Corrupted backup file.' };
+          dbBuf = dbEntry.data;
+          dbSalt = saltEntry.data;
 
-          dbBuf = await dbEntry.async('nodebuffer');
-          dbSalt = await saltEntry.async('nodebuffer');
-
-          // Restore screenshots
           await fs.mkdir(screenshotsPath, { recursive: true });
-          for (const [name, entry] of Object.entries(zip.files)) {
-            if (name.startsWith('screenshots/') && !entry.dir) {
-              const buf = await entry.async('nodebuffer');
-              await fs.writeFile(path.join(screenshotsPath, path.basename(name)), buf, { mode: 0o600 });
+          for (const { name, data } of entries) {
+            if (name.startsWith('screenshots/')) {
+              await fs.writeFile(path.join(screenshotsPath, path.basename(name)), data, { mode: 0o600 });
             }
           }
         } else {
