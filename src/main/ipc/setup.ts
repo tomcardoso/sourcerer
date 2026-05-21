@@ -19,6 +19,13 @@ export function registerSetupHandlers(): void {
 
   ipcMain.handle('setup:use-default-vault', async (): Promise<{ error: string } | null> => {
     const bundlePath = path.join(app.getPath('userData'), 'Vault.sourcerer');
+    const alreadyHasVault = await fs
+      .access(path.join(bundlePath, 'db.sqlite'))
+      .then(() => true)
+      .catch(() => false);
+    if (alreadyHasVault) {
+      return { error: 'A vault already exists at the default location. Use "Open existing vault…" to open it.' };
+    }
     try {
       await fs.mkdir(bundlePath, { recursive: true });
       writeVaultConfig(bundlePath);

@@ -177,7 +177,9 @@ export function registerSettingsHandlers(): void {
         await fs.writeFile(saltTmpPath, newSalt, { mode: 0o600 });
 
         // Rekey the active database connection in-place.
+        // PRAGMA rekey fails in WAL mode, so force DELETE journal mode first.
         const db = getDatabase();
+        db.pragma('journal_mode=DELETE');
         db.pragma(`rekey="x'${newKeyHex}'"`);
 
 
@@ -264,7 +266,7 @@ export function registerSettingsHandlers(): void {
 
     const newNorm = newBundlePath.replace(/\\/g, '/');
     const oldNorm = (oldBundlePath ?? '').replace(/\\/g, '/');
-    if (oldNorm && newNorm === oldNorm) return { success: false };
+    if (oldNorm && newNorm === oldNorm) return { success: false, error: 'The vault is already at that location.' };
 
     const destHasVault = await fs
       .access(path.join(newBundlePath, 'db.sqlite'))
@@ -277,6 +279,8 @@ export function registerSettingsHandlers(): void {
     try {
       await fs.mkdir(newBundlePath, { recursive: true });
 
+      // Safe to copy while the DB is open: DELETE journal mode keeps the file
+      // in a consistent committed state at all times (no -wal/-shm sidecars).
       await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
 
