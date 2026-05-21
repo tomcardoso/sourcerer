@@ -151,26 +151,42 @@ export async function* readBackupFile(
     const backupSalt = fileHeaderBuf.subarray(8, 40);
     const baseIV = fileHeaderBuf.subarray(40, 48);
     const chunkSize = fileHeaderBuf.readUInt32LE(48);
+    if (chunkSize !== CHUNK_SIZE) throw new Error('Corrupted backup: unexpected chunk size in header.');
 
     const backupKey = Buffer.from(await deriveKey(password, backupSalt), 'hex');
 
-    // Streaming unpack: accumulate decrypted bytes and yield complete entries as they arrive
-    let unpackBuf = Buffer.alloc(0);
+    // Buffer list for streaming unpack — avoids O(n²) copies when a large entry spans many chunks.
+    // We only call Buffer.concat once per complete entry, not once per incoming chunk.
+    const pendingBufs: Buffer[] = [];
+    let pendingLen = 0;
 
     function* drainEntries(): Generator<{ name: string; data: Buffer }> {
-      while (unpackBuf.length >= 8) {
-        const nameLen = unpackBuf.readUInt32LE(0);
-        const dataLen = unpackBuf.readUInt32LE(4);
-        if (unpackBuf.length < 8 + nameLen + dataLen) break;
-        const name = unpackBuf.subarray(8, 8 + nameLen).toString('utf8');
-        const data = Buffer.from(unpackBuf.subarray(8 + nameLen, 8 + nameLen + dataLen));
-        unpackBuf = unpackBuf.subarray(8 + nameLen + dataLen);
+      while (pendingLen >= 8) {
+        // Peek at the 8-byte entry header without flattening the full list.
+        // CHUNK_SIZE >> 8, so pendingBufs[0] is almost always ≥ 8 bytes; only
+        // flatten in the rare case it isn't (e.g. tests with tiny synthetic chunks).
+        if (pendingBufs[0].length < 8) {
+          const flat = Buffer.concat(pendingBufs);
+          pendingBufs.length = 0;
+          pendingBufs.push(flat);
+        }
+        const nameLen = pendingBufs[0].readUInt32LE(0);
+        const dataLen = pendingBufs[0].readUInt32LE(4);
+        const entrySize = 8 + nameLen + dataLen;
+        if (pendingLen < entrySize) break;
+        // Flatten exactly once per complete entry
+        const flat = Buffer.concat(pendingBufs);
+        const name = flat.subarray(8, 8 + nameLen).toString('utf8');
+        const data = Buffer.from(flat.subarray(8 + nameLen, entrySize));
+        pendingBufs.length = 0;
+        if (flat.length > entrySize) pendingBufs.push(flat.subarray(entrySize));
+        pendingLen -= entrySize;
         yield { name, data };
       }
     }
 
     const chunkHeaderBuf = Buffer.allocUnsafe(CHUNK_HDR_SIZE);
-    const ciphertextBuf = Buffer.allocUnsafe(chunkSize);
+    const ciphertextBuf = Buffer.allocUnsafe(CHUNK_SIZE);
     let filePos = HEADER_SIZE;
     let expectedIndex = 0;
 
@@ -202,12 +218,13 @@ export async function* readBackupFile(
         throw new Error('Incorrect password or corrupted backup.');
       }
 
-      unpackBuf = Buffer.concat([unpackBuf, plaintext]);
+      pendingBufs.push(plaintext);
+      pendingLen += plaintext.length;
       yield* drainEntries();
       expectedIndex++;
     }
 
-    if (unpackBuf.length > 0) throw new Error('Corrupted backup: trailing bytes in payload.');
+    if (pendingLen > 0) throw new Error('Corrupted backup: trailing bytes in payload.');
   } finally {
     await fh.close();
   }

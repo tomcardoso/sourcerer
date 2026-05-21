@@ -134,11 +134,14 @@ export function registerBackupHandlers(): void {
         await fs.mkdir(screenshotsPath, { recursive: true });
         if (screensWritten) {
           for (const file of await fs.readdir(tmpScreensDir)) {
-            await fs.writeFile(
-              path.join(screenshotsPath, file),
-              await fs.readFile(path.join(tmpScreensDir, file)),
-              { mode: 0o600 },
-            );
+            const src = path.join(tmpScreensDir, file);
+            const dst = path.join(screenshotsPath, file);
+            try {
+              await fs.rename(src, dst);
+            } catch (err) {
+              if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+              await fs.copyFile(src, dst);
+            }
           }
         }
 

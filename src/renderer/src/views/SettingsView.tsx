@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import type { User } from '@shared/types';
 import { isValidEmail } from '../contacts/contactValidation';
@@ -93,7 +93,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [autoBackupMaxCount, setAutoBackupMaxCount] = useState(10);
   const [autoBackupMaxCountInput, setAutoBackupMaxCountInput] = useState('10');
   const [autoBackupRunning, setAutoBackupRunning] = useState(false);
-  const [autoBackupResult, setAutoBackupResult] = useState<string | null>(null);
+  const [autoBackupResult, setAutoBackupResult] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+
+  const profileSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backupSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const archiveKeysSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoBackupResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [vaultPath, setVaultPath] = useState<string>('');
   const [movingVault, setMovingVault] = useState(false);
@@ -141,6 +146,15 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     });
   }, [user?.id]);
 
+  useEffect(() => {
+    return () => {
+      if (profileSavedTimerRef.current) clearTimeout(profileSavedTimerRef.current);
+      if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
+      if (archiveKeysSavedTimerRef.current) clearTimeout(archiveKeysSavedTimerRef.current);
+      if (autoBackupResultTimerRef.current) clearTimeout(autoBackupResultTimerRef.current);
+    };
+  }, []);
+
   async function handleProfileSave() {
     if (!firstName.trim() || !email.trim() || !isValidEmail(email)) return;
     setProfileSaving(true);
@@ -148,7 +162,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       const updated = await window.sourcerer.updateUser({ firstName, lastName, email });
       onUserUpdated(updated);
       setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 2000);
+      if (profileSavedTimerRef.current) clearTimeout(profileSavedTimerRef.current);
+      profileSavedTimerRef.current = setTimeout(() => setProfileSaved(false), 2000);
     } finally {
       setProfileSaving(false);
     }
@@ -190,7 +205,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setExportConfirm(false);
       setExportPassword('');
       setBackupSaved(true);
-      setTimeout(() => setBackupSaved(false), 3000);
+      if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
+      backupSavedTimerRef.current = setTimeout(() => setBackupSaved(false), 3000);
     } else if (result.error) {
       setBackupError(result.error);
     }
@@ -270,7 +286,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     const updated = await window.sourcerer.setArchiveKeys(archiveAccessKey, archiveSecretKey);
     onUserUpdated(updated);
     setArchiveKeysSaved(true);
-    setTimeout(() => setArchiveKeysSaved(false), 2000);
+    if (archiveKeysSavedTimerRef.current) clearTimeout(archiveKeysSavedTimerRef.current);
+    archiveKeysSavedTimerRef.current = setTimeout(() => setArchiveKeysSaved(false), 2000);
   }
 
   async function handleReminderNotificationsToggle(enabled: boolean) {
@@ -338,8 +355,11 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     setAutoBackupResult(null);
     const result = await window.sourcerer.runAutoBackup();
     setAutoBackupRunning(false);
-    setAutoBackupResult(result.success ? 'Backup saved.' : (result.error ?? 'Backup failed.'));
-    setTimeout(() => setAutoBackupResult(null), 3000);
+    setAutoBackupResult(result.success
+      ? { kind: 'success', message: 'Backup saved.' }
+      : { kind: 'error', message: result.error ?? 'Backup failed.' });
+    if (autoBackupResultTimerRef.current) clearTimeout(autoBackupResultTimerRef.current);
+    autoBackupResultTimerRef.current = setTimeout(() => setAutoBackupResult(null), 3000);
   }
 
   const profileDirty =
@@ -892,7 +912,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 {autoBackupRunning ? 'Backing up…' : 'Back up now'}
               </Button>
               {autoBackupResult && (
-                <span className={autoBackupResult === 'Backup saved.' ? 'sv-backup-saved' : 'sv-error-inline'}>{autoBackupResult}</span>
+                <span className={autoBackupResult.kind === 'success' ? 'sv-backup-saved' : 'sv-error-inline'}>{autoBackupResult.message}</span>
               )}
             </div>
           </div>

@@ -414,6 +414,12 @@
   animation: sv-fade-out 3s ease forwards;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .sv-backup-saved {
+    animation: none;
+  }
+}
+
 
 .sv-credit {
   margin-top: 24px;
