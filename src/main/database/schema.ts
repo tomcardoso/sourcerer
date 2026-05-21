@@ -34,6 +34,7 @@ export const LOCAL_SCHEMA_SQL = `
     title        TEXT,
     dob          TEXT,
     notes        TEXT,
+    default_membership_id TEXT REFERENCES project_memberships(id) ON DELETE SET NULL,
     created_at   INTEGER NOT NULL,
     updated_at   INTEGER NOT NULL,
     synced_at    INTEGER

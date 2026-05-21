@@ -148,6 +148,8 @@ const sourcererApi = {
     ipcRenderer.invoke('interaction-log:delete', interactionId),
   addGlobalLogEntry: (contactId: string, body: string, createdAt?: number, membershipIds?: string[]): Promise<ContactLogEntry> =>
     ipcRenderer.invoke('interaction-log:add-global', { contactId, body, createdAt, membershipIds }),
+  setContactDefaultProject: (contactId: string, membershipId: string | null): Promise<void> =>
+    ipcRenderer.invoke('contacts:set-default-project', { contactId, membershipId }),
   getContactCount: (): Promise<number> => ipcRenderer.invoke('contacts:count'),
   getContactInteractionCount: (contactId: string): Promise<number> =>
     ipcRenderer.invoke('contacts:interaction-count', contactId),

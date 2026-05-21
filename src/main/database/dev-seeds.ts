@@ -121,6 +121,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
 
     // ── Membership helpers ────────────────────────────────────────────────────
     const membIds: Record<string, string> = {};
+    const firstMembByContact = new Map<string, string>();
 
     function addMembership(
       contactName: string,
@@ -130,6 +131,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     ): string {
       const id = uuidv4();
       membIds[`${contactName}:${projectId}`] = id;
+      if (!firstMembByContact.has(contactName)) firstMembByContact.set(contactName, id);
       stmts.insertMembership.run(
         id,
         projectId,
@@ -505,6 +507,12 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       'Check in — agency counsel may have issued guidance that affects what she can share.');
     addReminder('Theresa Ouellet-Gauvin', healthId, 10,
       'Complete cross-reference of falsified staffing records against her redacted report.');
+
+    // ── Default project per contact ───────────────────────────────────────────
+    const updateDefault = db.prepare('UPDATE contacts SET default_membership_id = ? WHERE id = ?');
+    for (const [contactName, membershipId] of firstMembByContact) {
+      updateDefault.run(membershipId, cid(contactName));
+    }
   });
 
   doSeed();

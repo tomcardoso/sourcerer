@@ -876,6 +876,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             {!logAdding && (
               <Button variant="ghost" onClick={() => {
                 setLogDate(new Date().toISOString().slice(0, 10));
+                const effectiveDefault = contact.projects.find(
+                  (p) => p.membership_id === contact.default_membership_id,
+                );
+                setLogSelectedMembershipIds(effectiveDefault ? [effectiveDefault.membership_id] : []);
                 setLogAdding(true);
               }}>
                 + Add
@@ -883,6 +887,25 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             )}
           </div>
         </div>
+
+        {contact.projects.length > 0 && (
+          <div className="pt-log-default-project">
+            <span className="pt-log-default-label">Default project</span>
+            <select
+              className="pt-log-default-select"
+              value={contact.default_membership_id ?? ''}
+              onChange={async (e) => {
+                await window.sourcerer.setContactDefaultProject(contact.id, e.target.value || null);
+                onRefresh();
+              }}
+            >
+              <option value="">None</option>
+              {contact.projects.map((p) => (
+                <option key={p.membership_id} value={p.membership_id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {logEntries.length === 0 && !logAdding && (
           <p className="pt-reminders-empty">No entries yet.</p>

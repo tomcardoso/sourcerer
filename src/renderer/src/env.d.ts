@@ -102,6 +102,7 @@ declare global {
       listContactLog: (contactId: string) => Promise<ContactLogEntry[]>;
       deleteInteractionLogEntry: (interactionId: string) => Promise<void>;
       addGlobalLogEntry: (contactId: string, body: string, createdAt?: number, membershipIds?: string[]) => Promise<ContactLogEntry>;
+      setContactDefaultProject: (contactId: string, membershipId: string | null) => Promise<void>;
       getContactCount: () => Promise<number>;
       getContactInteractionCount: (contactId: string) => Promise<number>;
       validatePhone: (raw: string) => Promise<boolean>;

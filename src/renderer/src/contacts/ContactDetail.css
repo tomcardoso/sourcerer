@@ -816,6 +816,43 @@
   gap: 10px;
 }
 
+.pt-log-default-project {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 2px;
+}
+
+.pt-log-default-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.pt-log-default-select {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  padding: 2px 4px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.pt-log-default-select:focus {
+  outline: none;
+  border-bottom-color: var(--color-text-muted);
+}
+
 
 .pt-log-date-row {
   display: flex;

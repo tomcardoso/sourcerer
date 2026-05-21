@@ -208,7 +208,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:get', (_, id: string): ContactDetail => {
     const db = getDatabase();
     const contact = db
-      .prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts WHERE id = ?')
+      .prepare('SELECT id, name, organization, title, dob, notes, default_membership_id, created_at, updated_at FROM contacts WHERE id = ?')
       .get(id) as {
       id: string;
       name: string;
@@ -216,6 +216,7 @@ export function registerContactHandlers(): void {
       title: string | null;
       dob: string | null;
       notes: string | null;
+      default_membership_id: string | null;
       created_at: number;
       updated_at: number;
     } | undefined;
@@ -265,7 +266,7 @@ export function registerContactHandlers(): void {
       reporters: allReporters.filter((r) => r.membership_id === p.membership_id),
     }));
 
-    return { ...contact, emails, phones, links, handles, projects: projectsWithReporters };
+    return { ...contact, emails, phones, links, handles, projects: projectsWithReporters } as ContactDetail;
   });
 
   ipcMain.handle('contacts:create', (_, data: CreateContactInput): ContactListItem => {
@@ -354,21 +355,16 @@ export function registerContactHandlers(): void {
       const defaultStatus = db
         .prepare('SELECT label FROM status_options ORDER BY sort_order LIMIT 1')
         .get() as { label: string } | undefined;
-
-      db.prepare(
+      const membershipId = uuidv4();
+      const now = Math.floor(Date.now() / 1000);
+      const result = db.prepare(
         `INSERT OR IGNORE INTO project_memberships
          (id, contact_id, project_id, reporter_email, reporter_name, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        uuidv4(),
-        contactId,
-        projectId,
-        user.email,
-        `${user.first_name} ${user.last_name}`,
-        defaultStatus?.label ?? null,
-        Math.floor(Date.now() / 1000),
-        Math.floor(Date.now() / 1000),
-      );
+      ).run(membershipId, contactId, projectId, user.email, `${user.first_name} ${user.last_name}`, defaultStatus?.label ?? null, now, now);
+      if (result.changes > 0) {
+        db.prepare('UPDATE contacts SET default_membership_id = ? WHERE id = ? AND default_membership_id IS NULL').run(membershipId, contactId);
+      }
       broadcastContactsChanged();
     },
   );
@@ -376,9 +372,31 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'memberships:remove',
     (_, { contactId, projectId }: { contactId: string; projectId: string }): void => {
-      getDatabase()
-        .prepare('DELETE FROM project_memberships WHERE contact_id = ? AND project_id = ?')
-        .run(contactId, projectId);
+      const db = getDatabase();
+      const membership = db
+        .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ?')
+        .get(contactId, projectId) as { id: string } | undefined;
+      db.prepare('DELETE FROM project_memberships WHERE contact_id = ? AND project_id = ?').run(contactId, projectId);
+      if (membership) {
+        db.prepare(
+          'UPDATE contacts SET default_membership_id = NULL WHERE id = ? AND default_membership_id = ?',
+        ).run(contactId, membership.id);
+      }
+      broadcastContactsChanged();
+    },
+  );
+
+  ipcMain.handle(
+    'contacts:set-default-project',
+    (_, { contactId, membershipId }: { contactId: string; membershipId: string | null }): void => {
+      const db = getDatabase();
+      if (membershipId !== null) {
+        const valid = db
+          .prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?')
+          .get(membershipId, contactId);
+        if (!valid) return;
+      }
+      db.prepare('UPDATE contacts SET default_membership_id = ? WHERE id = ?').run(membershipId, contactId);
       broadcastContactsChanged();
     },
   );
