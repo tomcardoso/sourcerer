@@ -23,7 +23,7 @@
 .setup-subtitle {
   font-size: 14px;
   color: var(--color-text-muted);
-  margin-bottom: 24px;
+  margin-bottom: 10px;
 }
 
 .setup-warning {

@@ -242,7 +242,7 @@ export function registerSettingsHandlers(): void {
         type: 'warning',
         title: 'Cloud sync detected',
         message: `This location is inside ${provider}.`,
-        detail: 'Sourcerer can store your vault here, but opening it on more than one device at the same time will corrupt your data.',
+        detail: 'Sourcerer can store your vault here, but opening it on more than one device at the same time may corrupt your data.',
         buttons: ['Continue', 'Choose different location'],
         defaultId: 0,
         cancelId: 1,
@@ -250,6 +250,7 @@ export function registerSettingsHandlers(): void {
       if (response === 1) return { success: false };
     }
 
+    const oldBundlePath = getVaultBundlePath();
     const { dbPath, saltPath, screenshotsPath } = getPaths();
 
     try {
@@ -265,6 +266,24 @@ export function registerSettingsHandlers(): void {
 
       // Lock the app so the next unlock uses the new path
       autoLock.lock();
+
+      // Clean up old vault location — non-fatal if this fails
+      try {
+        const newNorm = newBundlePath.replace(/\\/g, '/');
+        if (oldBundlePath) {
+          const oldNorm = oldBundlePath.replace(/\\/g, '/');
+          // Guard: don't delete old bundle if new path is inside it
+          if (!newNorm.startsWith(oldNorm + '/')) {
+            await fs.rm(oldBundlePath, { recursive: true, force: true });
+          }
+        } else {
+          // Legacy userData paths — delete individual files
+          await fs.unlink(dbPath).catch(() => {});
+          await fs.unlink(saltPath).catch(() => {});
+          await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
+        }
+      } catch { /* move succeeded; cleanup failure is non-fatal */ }
+
       return { success: true, newPath: newBundlePath };
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Move failed.' };
