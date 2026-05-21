@@ -912,7 +912,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             />
             {contact.projects.length > 0 && (
               <div className="pt-log-projects">
-                <label className="pt-log-date-label">Projects</label>
                 <LogProjectPicker
                   projects={contact.projects}
                   selectedIds={logSelectedMembershipIds}
