@@ -65,7 +65,8 @@ export function registerExportHandlers(): void {
         .prepare(
           `SELECT pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status,
                   (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
-                   WHERE ile.membership_id = pm.id) AS first_log_at,
+                   JOIN interaction_projects ip ON ip.interaction_id = ile.id
+                   WHERE ip.membership_id = pm.id) AS first_log_at,
                   c.id AS contact_id, c.name, c.organization, c.title, c.dob, c.notes
            FROM project_memberships pm
            JOIN contacts c ON c.id = pm.contact_id
@@ -117,7 +118,7 @@ export function registerExportHandlers(): void {
 
       const bulkLogs: { membership_id: string; reporter_name: string; body: string; created_at: number }[] =
         mode === 'full' && membershipIds.length
-          ? (db.prepare(`SELECT membership_id, reporter_name, body, created_at FROM interaction_log_entries WHERE membership_id IN (${ph(membershipIds)}) ORDER BY created_at ASC`).all(...membershipIds) as { membership_id: string; reporter_name: string; body: string; created_at: number }[])
+          ? (db.prepare(`SELECT ip.membership_id, ile.reporter_name, ile.body, ile.created_at FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id IN (${ph(membershipIds)}) ORDER BY ile.created_at ASC`).all(...membershipIds) as { membership_id: string; reporter_name: string; body: string; created_at: number }[])
           : [];
       const logsByMembership = new Map<string, { reporter_name: string; body: string; created_at: number }[]>();
       for (const r of bulkLogs) { const a = logsByMembership.get(r.membership_id) ?? []; a.push(r); logsByMembership.set(r.membership_id, a); }

@@ -381,16 +381,16 @@ function pullMemberships(
         .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ? AND id != ?')
         .get(sm.contact_id, projectId, sm.id) as { id: string } | undefined;
 
-      type LogEntry = { id: string; reporter_email: string; reporter_name: string; body: string; created_at: number; synced_at: number | null };
       type MemberReporter = { id: string; reporter_email: string; reporter_name: string };
       type SavedReminder = { id: string; contact_id: string; project_id: string; due_date: number; note: string | null; is_auto_outreach: number; created_at: number; completed_at: number | null; last_notified_at: number | null };
-      let savedLogEntries: LogEntry[] = [];
+      let savedLogEntryIds: string[] = [];
       let savedReporters: MemberReporter[] = [];
       let savedReminders: SavedReminder[] = [];
 
       if (conflicting) {
-        // Read children before the CASCADE delete removes them
-        savedLogEntries = local.prepare('SELECT id, reporter_email, reporter_name, body, created_at, synced_at FROM interaction_log_entries WHERE membership_id = ?').all(conflicting.id) as LogEntry[];
+        // Read children before the CASCADE delete removes them.
+        // Log entries themselves survive (contact_id FK); only interaction_projects rows are cascade-deleted.
+        savedLogEntryIds = (local.prepare('SELECT interaction_id FROM interaction_projects WHERE membership_id = ?').all(conflicting.id) as { interaction_id: string }[]).map((r) => r.interaction_id);
         savedReporters = local.prepare('SELECT id, reporter_email, reporter_name FROM membership_reporters WHERE membership_id = ?').all(conflicting.id) as MemberReporter[];
         savedReminders = local.prepare('SELECT id, contact_id, project_id, due_date, note, is_auto_outreach, created_at, completed_at, last_notified_at FROM reminders WHERE membership_id = ?').all(conflicting.id) as SavedReminder[];
         local.prepare('DELETE FROM project_memberships WHERE id = ?').run(conflicting.id);
@@ -431,8 +431,8 @@ function pullMemberships(
 
       // Re-attach children that were cascade-deleted with conflicting membership
       if (conflicting) {
-        for (const e of savedLogEntries) {
-          local.prepare('INSERT OR IGNORE INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(e.id, sm.id, e.reporter_email, e.reporter_name, e.body, e.created_at, e.synced_at);
+        for (const entryId of savedLogEntryIds) {
+          local.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(entryId, sm.id);
         }
         for (const mr of savedReporters) {
           local.prepare('INSERT OR IGNORE INTO membership_reporters (id, membership_id, reporter_email, reporter_name) VALUES (?, ?, ?, ?)').run(mr.id, sm.id, mr.reporter_email, mr.reporter_name);
@@ -488,7 +488,7 @@ function pullAppendOnly(
 
   for (const se of shared.prepare('SELECT * FROM interaction_log_entries').all() as {
     id: string;
-    membership_id: string;
+    contact_id: string;
     reporter_email: string;
     reporter_name: string;
     body: string;
@@ -497,10 +497,19 @@ function pullAppendOnly(
     local
       .prepare(
         `INSERT OR IGNORE INTO interaction_log_entries
-           (id, membership_id, reporter_email, reporter_name, body, created_at)
+           (id, contact_id, reporter_email, reporter_name, body, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(se.id, se.membership_id, se.reporter_email, se.reporter_name, se.body, se.created_at);
+      .run(se.id, se.contact_id, se.reporter_email, se.reporter_name, se.body, se.created_at);
+  }
+
+  for (const sip of shared.prepare('SELECT * FROM interaction_projects').all() as {
+    interaction_id: string;
+    membership_id: string;
+  }[]) {
+    local
+      .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
+      .run(sip.interaction_id, sip.membership_id);
   }
 }
 
@@ -720,14 +729,17 @@ function pushAppendOnly(
   if (membershipIds.length > 0) {
     const mPlaceholders = membershipIds.map(() => '?').join(',');
 
-    // Interaction log entries
+    // Interaction log entries (push entries not yet synced that are linked to these memberships)
     for (const e of local
       .prepare(
-        `SELECT * FROM interaction_log_entries WHERE membership_id IN (${mPlaceholders}) AND synced_at IS NULL`,
+        `SELECT DISTINCT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at
+         FROM interaction_log_entries ile
+         JOIN interaction_projects ip ON ip.interaction_id = ile.id
+         WHERE ip.membership_id IN (${mPlaceholders}) AND ile.synced_at IS NULL`,
       )
       .all(...membershipIds) as {
       id: string;
-      membership_id: string;
+      contact_id: string;
       reporter_email: string;
       reporter_name: string;
       body: string;
@@ -736,10 +748,18 @@ function pushAppendOnly(
       shared
         .prepare(
           `INSERT OR IGNORE INTO interaction_log_entries
-             (id, membership_id, reporter_email, reporter_name, body, created_at)
+             (id, contact_id, reporter_email, reporter_name, body, created_at)
            VALUES (?, ?, ?, ?, ?, ?)`,
         )
-        .run(e.id, e.membership_id, e.reporter_email, e.reporter_name, e.body, e.created_at);
+        .run(e.id, e.contact_id, e.reporter_email, e.reporter_name, e.body, e.created_at);
+      // Push all interaction_projects rows for this entry
+      for (const ip of local
+        .prepare('SELECT interaction_id, membership_id FROM interaction_projects WHERE interaction_id = ?')
+        .all(e.id) as { interaction_id: string; membership_id: string }[]) {
+        shared
+          .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
+          .run(ip.interaction_id, ip.membership_id);
+      }
       local
         .prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?')
         .run(now, e.id);

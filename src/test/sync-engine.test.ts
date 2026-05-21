@@ -221,11 +221,14 @@ describe('syncProject — membership conflict guard', () => {
     const localContactId = insertContact(localDb, 'Carol', { emails: ['carol@example.com'] });
     const localMembershipId = localInsertMembership(localDb, localContactId, projectId, { updatedAt: NOW - 100 });
 
-    // Local interaction log entry under the local membership
+    // Local interaction log entry associated with the local membership
     const logEntryId = uuidv4();
     localDb.prepare(
-      'INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(logEntryId, localMembershipId, 'r@r.com', 'Reporter', 'Called on Monday', NOW - 50);
+      'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(logEntryId, localContactId, 'r@r.com', 'Reporter', 'Called on Monday', NOW - 50);
+    localDb.prepare(
+      'INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
+    ).run(logEntryId, localMembershipId);
 
     // Shared DB: same contact (matched by email) under a different membership UUID
     const sharedContactId = uuidv4();
@@ -244,8 +247,10 @@ describe('syncProject — membership conflict guard', () => {
     expect(localDb.prepare('SELECT id FROM project_memberships WHERE id = ?').get(localMembershipId)).toBeUndefined();
     expect(localDb.prepare('SELECT id FROM project_memberships WHERE id = ?').get(sharedMembershipId)).toBeDefined();
 
-    // Interaction log entry re-attached to shared membership
-    const entry = localDb.prepare('SELECT membership_id FROM interaction_log_entries WHERE id = ?').get(logEntryId) as { membership_id: string } | undefined;
-    expect(entry?.membership_id).toBe(sharedMembershipId);
+    // Interaction log entry still exists (contact_id FK survives) and is re-linked to shared membership
+    const entry = localDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logEntryId) as { id: string } | undefined;
+    expect(entry?.id).toBe(logEntryId);
+    const ip = localDb.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').get(logEntryId) as { membership_id: string } | undefined;
+    expect(ip?.membership_id).toBe(sharedMembershipId);
   });
 });

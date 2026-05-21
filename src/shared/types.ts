@@ -184,11 +184,19 @@ export interface UpdateMembershipInput {
 
 export interface InteractionLogEntry {
   id: string;
-  membership_id: string;
+  contact_id: string;
   reporter_name: string;
   reporter_email: string;
   body: string;
   created_at: number;
+}
+
+export interface TimelineEntryProject {
+  project_id: string;
+  project_name: string;
+  membership_id: string;
+  theme: string | null;
+  priority: string | null;
 }
 
 export interface TimelineEntry {
@@ -200,10 +208,7 @@ export interface TimelineEntry {
   contact_id: string;
   contact_name: string;
   contact_organization: string | null;
-  project_id: string | null;
-  project_name: string | null;
-  theme: string | null;
-  priority: string | null;
+  projects: TimelineEntryProject[];
 }
 
 export interface ScratchpadDraft {

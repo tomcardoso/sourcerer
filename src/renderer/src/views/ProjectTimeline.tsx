@@ -79,12 +79,12 @@ function TimelinePrintSheet({
                   {entry.contact_organization && (
                     <span className="ptl-ps-badge">{entry.contact_organization}</span>
                   )}
-                  {isGlobal && entry.project_name && (
-                    <span className="ptl-ps-badge">{entry.project_name}</span>
-                  )}
-                  {entry.priority && (
-                    <span className="ptl-ps-badge">{entry.priority}</span>
-                  )}
+                  {isGlobal && entry.projects.map((p) => (
+                    <span key={p.project_id} className="ptl-ps-badge">{p.project_name}</span>
+                  ))}
+                  {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
+                    <span key={priority} className="ptl-ps-badge">{priority}</span>
+                  ))}
                 </div>
                 <p className="ptl-ps-body-text">{entry.body}</p>
                 <div className="ptl-ps-footer">
@@ -234,20 +234,20 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
     [entries],
   );
   const projectOptions = useMemo(
-    () => [...new Set(entries.map((e) => e.project_name).filter(Boolean) as string[])].sort(),
+    () => [...new Set(entries.flatMap((e) => e.projects.map((p) => p.project_name)))].sort(),
     [entries],
   );
   const priorityOptions = useMemo(
-    () => [...new Set(entries.map((e) => e.priority).filter(Boolean) as string[])].sort(),
+    () => [...new Set(entries.flatMap((e) => e.projects.map((p) => p.priority).filter(Boolean) as string[]))].sort(),
     [entries],
   );
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
       if (selectedReporters.length > 0 && !selectedReporters.includes(e.reporter_name)) return false;
-      if (selectedProjects.length > 0 && (!e.project_name || !selectedProjects.includes(e.project_name))) return false;
-      if (selectedPriorities.length > 0 && (!e.priority || !selectedPriorities.includes(e.priority))) return false;
-      if (themeFilter && !(e.theme ?? '').toLowerCase().includes(themeFilter.toLowerCase())) return false;
+      if (selectedProjects.length > 0 && !e.projects.some((p) => selectedProjects.includes(p.project_name))) return false;
+      if (selectedPriorities.length > 0 && !e.projects.some((p) => p.priority && selectedPriorities.includes(p.priority))) return false;
+      if (themeFilter && !e.projects.some((p) => (p.theme ?? '').toLowerCase().includes(themeFilter.toLowerCase()))) return false;
       if (orgFilter && !(e.contact_organization ?? '').toLowerCase().includes(orgFilter.toLowerCase())) return false;
       if (notesFilter && !e.body.toLowerCase().includes(notesFilter.toLowerCase())) return false;
       if (dateFrom) {
@@ -504,12 +504,12 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                       {entry.contact_organization && (
                         <span className="ptl-contact-org">{entry.contact_organization}</span>
                       )}
-                      {isGlobal && entry.project_name && (
-                        <span className="ptl-project-badge">{entry.project_name}</span>
-                      )}
-                      {entry.priority && (
-                        <span className="ptl-priority-badge">{entry.priority}</span>
-                      )}
+                      {isGlobal && entry.projects.map((p) => (
+                        <span key={p.project_id} className="ptl-project-badge">{p.project_name}</span>
+                      ))}
+                      {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
+                        <span key={priority} className="ptl-priority-badge">{priority}</span>
+                      ))}
                     </div>
                     <p className="ptl-entry-body">{entry.body}</p>
                     <div className="ptl-entry-footer">
