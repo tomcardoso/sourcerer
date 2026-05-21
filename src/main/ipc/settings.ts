@@ -1,11 +1,11 @@
-import { ipcMain, app, dialog } from 'electron';
+import { ipcMain, app, dialog, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } from '../database';
-import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig } from '../utils';
+import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig, detectSyncProvider } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
 import { validateEmail } from '@shared/validation';
@@ -222,7 +222,7 @@ export function registerSettingsHandlers(): void {
     return getVaultBundlePath();
   });
 
-  ipcMain.handle('settings:move-vault', async (): Promise<{ success: boolean; error?: string; newPath?: string }> => {
+  ipcMain.handle('settings:move-vault', async (event): Promise<{ success: boolean; error?: string; newPath?: string }> => {
     const result = await dialog.showSaveDialog({
       title: 'Move vault',
       message: 'Choose where to move your Sourcerer vault',
@@ -234,6 +234,22 @@ export function registerSettingsHandlers(): void {
     const newBundlePath = result.filePath.toLowerCase().endsWith('.sourcerer')
       ? result.filePath
       : result.filePath + '.sourcerer';
+
+    const provider = detectSyncProvider(newBundlePath);
+    if (provider) {
+      const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+      const { response } = await dialog.showMessageBox(win!, {
+        type: 'warning',
+        title: 'Cloud sync detected',
+        message: `This location is inside ${provider}.`,
+        detail: 'Sourcerer can store your vault here, but opening it on more than one device at the same time will corrupt your data.',
+        buttons: ['Continue', 'Choose different location'],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (response === 1) return { success: false };
+    }
+
     const { dbPath, saltPath, screenshotsPath } = getPaths();
 
     try {

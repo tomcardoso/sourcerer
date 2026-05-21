@@ -1,9 +1,9 @@
-import { ipcMain, dialog, app } from 'electron';
+import { ipcMain, dialog, app, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { getPaths, writeVaultConfig, deriveKey } from '../utils';
+import { getPaths, writeVaultConfig, deriveKey, detectSyncProvider } from '../utils';
 import { initDatabase, closeDatabase } from '../database';
 import type { SetupFormData, SetupResult, FirstLaunchResult } from '@shared/types';
 
@@ -17,7 +17,7 @@ export function registerSetupHandlers(): void {
     return { isFirstLaunch: !exists };
   });
 
-  ipcMain.handle('setup:pick-vault-location', async (): Promise<{ path: string } | null> => {
+  ipcMain.handle('setup:pick-vault-location', async (event): Promise<{ path: string } | null> => {
     const result = await dialog.showSaveDialog({
       title: 'Create vault',
       message: 'Choose where to save your Sourcerer vault',
@@ -29,6 +29,22 @@ export function registerSetupHandlers(): void {
     const bundlePath = result.filePath.toLowerCase().endsWith('.sourcerer')
       ? result.filePath
       : result.filePath + '.sourcerer';
+
+    const provider = detectSyncProvider(bundlePath);
+    if (provider) {
+      const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+      const { response } = await dialog.showMessageBox(win!, {
+        type: 'warning',
+        title: 'Cloud sync detected',
+        message: `This location is inside ${provider}.`,
+        detail: 'Sourcerer can store your vault here, but opening it on more than one device at the same time will corrupt your data.',
+        buttons: ['Continue', 'Choose different location'],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (response === 1) return null;
+    }
+
     await fs.mkdir(bundlePath, { recursive: true });
     writeVaultConfig(bundlePath);
     return { path: bundlePath };

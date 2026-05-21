@@ -1,6 +1,20 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import { getPaths, deriveKey } from '../utils';
+
+async function checkVaultFiles(dbPath: string, saltPath: string): Promise<string | null> {
+  const [dbStat, saltStat] = await Promise.all([
+    fs.stat(dbPath).catch(() => null),
+    fs.stat(saltPath).catch(() => null),
+  ]);
+  if (!dbStat) return 'Database file not found. Your vault may have been moved or deleted.';
+  if (!saltStat) return 'Vault key file not found. Your vault may have been moved or deleted.';
+  // Cloud sync placeholder files are typically 0 bytes; a valid cipher database is at least one page (4096 bytes)
+  if (dbStat.size < 4096) return 'The database appears to be a cloud sync placeholder. Make sure your sync client has finished downloading the vault before unlocking.';
+  // The salt is always exactly 32 bytes
+  if (saltStat.size !== 32) return 'The vault key file appears to be a cloud sync placeholder. Make sure your sync client has finished downloading the vault before unlocking.';
+  return null;
+}
 import { unlockDatabase, maybeRunDevSeeds, setActivePassword } from '../database';
 import { autoLock } from '../auto-lock';
 import { startPoller } from '../sync/poller';
@@ -17,16 +31,8 @@ export function registerUnlockHandlers(): void {
   ipcMain.handle('unlock:attempt', async (event, password: string): Promise<UnlockResult> => {
     const { dbPath, saltPath } = getPaths();
 
-    const dbExists = await fs
-      .access(dbPath)
-      .then(() => true)
-      .catch(() => false);
-    if (!dbExists) {
-      return {
-        success: false,
-        error: 'Database file not found. Your data may have been moved or deleted.',
-      };
-    }
+    const vaultError = await checkVaultFiles(dbPath, saltPath);
+    if (vaultError) return { success: false, error: vaultError };
 
     try {
       let salt = await fs.readFile(saltPath);

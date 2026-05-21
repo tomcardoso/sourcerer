@@ -52,6 +52,30 @@ export function getPaths(): { dbPath: string; saltPath: string; screenshotsPath:
   };
 }
 
+export function detectSyncProvider(vaultPath: string): string | null {
+  const p = vaultPath.replace(/\\/g, '/');
+
+  if (p.includes('/Library/Mobile Documents/')) return 'iCloud Drive';
+  if (p.includes('/Library/CloudStorage/')) return 'iCloud Drive';
+  if (/[/\\]OneDrive([/\\ -]|$)/i.test(vaultPath)) return 'OneDrive';
+  if (/[/\\]Google Drive[/\\]/i.test(vaultPath)) return 'Google Drive';
+  if (/[/\\]Box Sync[/\\]/i.test(vaultPath)) return 'Box';
+
+  // Dropbox: check info.json for custom install path, then common path
+  try {
+    const info = JSON.parse(
+      fs.readFileSync(path.join(app.getPath('home'), '.dropbox', 'info.json'), 'utf8'),
+    ) as Record<string, { path?: string }>;
+    for (const account of Object.values(info)) {
+      if (account?.path && p.startsWith(account.path.replace(/\\/g, '/') + '/')) return 'Dropbox';
+    }
+  } catch { /* Dropbox not installed or info.json unreadable */ }
+
+  if (/[/\\]Dropbox[/\\]/i.test(vaultPath)) return 'Dropbox';
+
+  return null;
+}
+
 export async function deriveKey(password: string, salt: Buffer): Promise<string> {
   // Argon2id parameters: 64 MiB memory (well above OWASP's 19 MiB minimum),
   // 3 time iterations, parallelism 1. These were chosen to keep unlock latency
