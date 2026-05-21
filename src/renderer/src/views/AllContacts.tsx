@@ -219,9 +219,11 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
       if (anchorIdx !== -1 && targetIdx !== -1) {
         const [lo, hi] = anchorIdx < targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
         const rangeIds = displayed.slice(lo, hi + 1).map((r) => r.id);
+        const removing = checkedIds.has(id);
         setCheckedIds((prev) => {
           const next = new Set(prev);
-          rangeIds.forEach((rid) => next.add(rid));
+          if (removing) rangeIds.forEach((rid) => next.delete(rid));
+          else rangeIds.forEach((rid) => next.add(rid));
           return next;
         });
         setConfirmDelete(false);
