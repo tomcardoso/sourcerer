@@ -813,6 +813,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                   placeholder="Backup password"
                   value={restorePassword}
                   onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && restorePassword && !restoringBackup) handleRestoreBackup(); }}
                   autoComplete="current-password"
                   disabled={restoringBackup}
                 />
