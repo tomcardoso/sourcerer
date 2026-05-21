@@ -44,6 +44,7 @@ declare global {
       openExistingVault: () => Promise<{ success: boolean; error?: string } | null>;
       unlock: (password: string) => Promise<{ success: boolean; error?: string }>;
       lock: () => Promise<void>;
+      expandForSetup: () => Promise<void>;
       onLocked: (callback: () => void) => () => void;
       onExtensionAccessRequest: (callback: () => void) => () => void;
       approveExtension: () => Promise<void>;

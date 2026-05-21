@@ -46,6 +46,8 @@ const sourcererApi = {
     ipcRenderer.invoke('unlock:attempt', password),
   lock: (): Promise<void> =>
     ipcRenderer.invoke('app:lock'),
+  expandForSetup: (): Promise<void> =>
+    ipcRenderer.invoke('app:expand-for-setup'),
   onLocked: (callback: () => void): (() => void) => {
     const handler = () => callback();
     ipcRenderer.on('app:locked', handler);

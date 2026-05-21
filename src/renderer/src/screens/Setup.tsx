@@ -46,12 +46,17 @@ export default function Setup({ onComplete }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function advanceToProfile() {
+    await window.sourcerer.expandForSetup();
+    setStep('profile');
+  }
+
   async function handlePickVaultLocation() {
     setVaultLoading(true);
     setVaultError(null);
     const result = await window.sourcerer.pickVaultLocation();
     setVaultLoading(false);
-    if (result) setStep('profile');
+    if (result) advanceToProfile();
   }
 
   async function handleOpenExistingVault() {
@@ -131,7 +136,7 @@ export default function Setup({ onComplete }: Props) {
           <button
             type="button"
             className="setup-default-link"
-            onClick={() => setStep('profile')}
+            onClick={advanceToProfile}
             disabled={vaultLoading}
           >
             Use default location
