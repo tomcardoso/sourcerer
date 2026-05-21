@@ -2,16 +2,12 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import zlib from 'zlib';
 import crypto from 'crypto';
-import { promisify } from 'util';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
-
-const gunzip = promisify(zlib.gunzip);
 
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
@@ -128,7 +124,7 @@ export function registerBackupHandlers(): void {
         const raw = await fs.readFile(filePaths[0], 'utf-8');
         const bundle = JSON.parse(raw);
 
-        if (bundle.version !== 2 && bundle.version !== 3) {
+        if (bundle.version !== 3) {
           return {
             success: false,
             error: 'This backup format is not supported. Please create a new backup.',
@@ -155,30 +151,18 @@ export function registerBackupHandlers(): void {
           return { success: false, error: 'Incorrect password or corrupted backup.' };
         }
 
-        let dbBuf: Buffer;
-        let dbSalt: Buffer;
+        const entries = unpackFiles(decrypted);
+        const dbEntry = entries.find(e => e.name === 'db.sqlite');
+        const saltEntry = entries.find(e => e.name === 'salt');
+        if (!dbEntry || !saltEntry) return { success: false, error: 'Corrupted backup file.' };
+        const dbBuf = dbEntry.data;
+        const dbSalt = saltEntry.data;
 
-        if (bundle.version === 3) {
-          const entries = unpackFiles(decrypted);
-          const dbEntry = entries.find(e => e.name === 'db.sqlite');
-          const saltEntry = entries.find(e => e.name === 'salt');
-          if (!dbEntry || !saltEntry) return { success: false, error: 'Corrupted backup file.' };
-          dbBuf = dbEntry.data;
-          dbSalt = saltEntry.data;
-
-          await fs.mkdir(screenshotsPath, { recursive: true });
-          for (const { name, data } of entries) {
-            if (name.startsWith('screenshots/')) {
-              await fs.writeFile(path.join(screenshotsPath, path.basename(name)), data, { mode: 0o600 });
-            }
+        await fs.mkdir(screenshotsPath, { recursive: true });
+        for (const { name, data } of entries) {
+          if (name.startsWith('screenshots/')) {
+            await fs.writeFile(path.join(screenshotsPath, path.basename(name)), data, { mode: 0o600 });
           }
-        } else {
-          // v2: gzipped JSON payload
-          const innerRaw = await gunzip(decrypted);
-          const inner = JSON.parse(innerRaw.toString('utf-8'));
-          if (!inner.db || !inner.salt) return { success: false, error: 'Corrupted backup file.' };
-          dbBuf = Buffer.from(inner.db, 'base64');
-          dbSalt = Buffer.from(inner.salt, 'base64');
         }
 
         // Verify the DB can be opened with the key derived from the backup password + DB salt.
