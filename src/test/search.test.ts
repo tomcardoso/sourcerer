@@ -23,11 +23,13 @@ function insertMembership(contactId: string, projId: string): string {
 function insertLogEntry(membershipId: string, body: string): string {
   const id = uuidv4();
   const now = Math.floor(Date.now() / 1000);
+  const membership = testDb.prepare('SELECT contact_id FROM project_memberships WHERE id = ?').get(membershipId) as { contact_id: string };
   testDb.prepare(
     `INSERT INTO interaction_log_entries
-       (id, membership_id, reporter_email, reporter_name, body, created_at)
+       (id, contact_id, reporter_email, reporter_name, body, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(id, membershipId, TEST_REPORTER.email, TEST_REPORTER.name, body, now);
+  ).run(id, membership.contact_id, TEST_REPORTER.email, TEST_REPORTER.name, body, now);
+  testDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(id, membershipId);
   return id;
 }
 

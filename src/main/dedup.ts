@@ -355,7 +355,7 @@ export function mergeContacts(
 
       if (winnerMembership) {
         db.prepare(
-          'UPDATE interaction_log_entries SET membership_id = ? WHERE membership_id = ?',
+          'UPDATE OR IGNORE interaction_projects SET membership_id = ? WHERE membership_id = ?',
         ).run(winnerMembership.id, membership.id);
         db.prepare('DELETE FROM project_memberships WHERE id = ?').run(membership.id);
       } else {

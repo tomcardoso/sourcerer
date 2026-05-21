@@ -13,6 +13,7 @@ import type {
   UpdateMembershipInput,
   ProjectContactRow,
   InteractionLogEntry,
+  ContactLogEntry,
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
@@ -139,8 +140,14 @@ const sourcererApi = {
   // Interaction log
   listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
     ipcRenderer.invoke('interaction-log:list', membershipId),
-  addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number): Promise<InteractionLogEntry> =>
-    ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt }),
+  addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number, extraMembershipIds?: string[]): Promise<InteractionLogEntry> =>
+    ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt, extraMembershipIds }),
+  listContactLog: (contactId: string): Promise<ContactLogEntry[]> =>
+    ipcRenderer.invoke('interaction-log:list-for-contact', contactId),
+  deleteInteractionLogEntry: (interactionId: string): Promise<void> =>
+    ipcRenderer.invoke('interaction-log:delete', interactionId),
+  addGlobalLogEntry: (contactId: string, body: string, createdAt?: number, membershipIds?: string[]): Promise<ContactLogEntry> =>
+    ipcRenderer.invoke('interaction-log:add-global', { contactId, body, createdAt, membershipIds }),
   getContactCount: (): Promise<number> => ipcRenderer.invoke('contacts:count'),
   getContactInteractionCount: (contactId: string): Promise<number> =>
     ipcRenderer.invoke('contacts:interaction-count', contactId),

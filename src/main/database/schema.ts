@@ -163,12 +163,18 @@ export const LOCAL_SCHEMA_SQL = `
 
   CREATE TABLE IF NOT EXISTS interaction_log_entries (
     id             TEXT    PRIMARY KEY,
-    membership_id  TEXT    NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
+    contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     reporter_email TEXT    NOT NULL,
     reporter_name  TEXT    NOT NULL,
     body           TEXT    NOT NULL,
     created_at     INTEGER NOT NULL,
     synced_at      INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS interaction_projects (
+    interaction_id TEXT NOT NULL REFERENCES interaction_log_entries(id) ON DELETE CASCADE,
+    membership_id  TEXT NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
+    PRIMARY KEY (interaction_id, membership_id)
   );
 
   CREATE TABLE IF NOT EXISTS message_scratchpad_drafts (
@@ -227,7 +233,8 @@ export const LOCAL_SCHEMA_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_handles_contact_type_handle ON contact_handles(contact_id, type, handle);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_links_contact_url      ON contact_links(contact_id, url);
   CREATE INDEX IF NOT EXISTS idx_contact_screenshots_contact_id   ON contact_screenshots(contact_id);
-  CREATE INDEX IF NOT EXISTS idx_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_interaction_log_contact_created ON interaction_log_entries(contact_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_interaction_projects_membership ON interaction_projects(membership_id);
   CREATE INDEX IF NOT EXISTS idx_project_memberships_contact_id   ON project_memberships(contact_id);
   CREATE INDEX IF NOT EXISTS idx_project_memberships_project_id      ON project_memberships(project_id);
   CREATE INDEX IF NOT EXISTS idx_project_memberships_reporter_email ON project_memberships(reporter_email);

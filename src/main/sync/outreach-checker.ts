@@ -50,7 +50,8 @@ export function checkOutreachReminders(): void {
        JOIN contacts c  ON c.id = pm.contact_id
        JOIN projects p  ON p.id = pm.project_id
        LEFT JOIN priority_options po ON po.label = pm.priority
-       LEFT JOIN interaction_log_entries ile ON ile.membership_id = pm.id
+       LEFT JOIN interaction_projects ip ON ip.membership_id = pm.id
+       LEFT JOIN interaction_log_entries ile ON ile.id = ip.interaction_id
        WHERE pm.outreach_reminders_enabled = 1
          AND COALESCE(pm.outreach_interval_days, po.outreach_interval_days) IS NOT NULL
          AND pm.reporter_email = (SELECT email FROM users WHERE id = 1)

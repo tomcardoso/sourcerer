@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { fmtDateFull } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
+import { LogRow, LogAllModal } from './logShared';
+import LogProjectPicker from './LogProjectPicker';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -24,90 +25,6 @@ interface Props {
 }
 
 
-function fmtLogDate(ts: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - ts;
-  if (diff < 86400) return 'today';
-  if (diff < 2 * 86400) return 'yesterday';
-  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)} days ago`;
-  const d = new Date(ts * 1000);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const thisYear = new Date().getFullYear();
-  if (d.getFullYear() !== thisYear) return `${mm}.${dd}.${String(d.getFullYear()).slice(2)}`;
-  return `${mm}.${dd}`;
-}
-
-function LogRow({ entry }: { entry: InteractionLogEntry }) {
-  return (
-    <div className="pt-log-row">
-      <div className="pt-log-row-date">{fmtLogDate(entry.created_at)}</div>
-      <div className="pt-log-row-content">
-        <p className="pt-log-row-body">{entry.body}</p>
-        <span className="pt-log-row-reporter">{entry.reporter_name}</span>
-      </div>
-    </div>
-  );
-}
-
-function LogAllModal({ entries, onClose }: { entries: InteractionLogEntry[]; onClose: () => void }) {
-  const [query, setQuery] = useState('');
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault(); // prevent ContactDetail's window handler from also closing the drawer
-        onClose();
-      }
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const reversed = [...entries].reverse();
-  const visible = query
-    ? reversed.filter((e) => e.body.toLowerCase().includes(query.toLowerCase()))
-    : reversed;
-
-  return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="pt-log-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="pt-log-modal-header">
-          <span className="pt-reminders-label">Interaction Log</span>
-          <button className="detail-close" onClick={onClose}>×</button>
-        </div>
-        {entries.length > 0 && (
-          <div className="pt-log-modal-search">
-            <input
-              className="pt-log-search-input"
-              type="text"
-              placeholder="Search entries…"
-              aria-label="Search log entries"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-            {query && (
-              <button className="pt-log-search-clear" aria-label="Clear search" onClick={() => setQuery('')}>×</button>
-            )}
-          </div>
-        )}
-        <div className="pt-log-modal-body">
-          {visible.length === 0
-            ? <p className="pt-reminders-empty">{query ? 'No entries match.' : 'No entries yet.'}</p>
-            : visible.map((e) => <LogRow key={e.id} entry={e} />)
-          }
-        </div>
-        {query && entries.length > 0 && (
-          <div className="pt-log-modal-footer">
-            {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body,
-  );
-}
 
 const LOG_PREVIEW = 3;
 
@@ -118,12 +35,14 @@ const TRIGGER_STATUSES = ['Not yet contacted', 'Contacted, no reply'];
 
 function LogSection({
   membership,
+  allProjects,
   membershipStatus,
   statusOptions,
   onStatusChange,
   onEntryAdded,
 }: {
   membership: ContactProject;
+  allProjects: ContactProject[];
   membershipStatus: string;
   statusOptions: StatusOption[];
   onStatusChange: (value: string) => Promise<void>;
@@ -134,6 +53,7 @@ function LogSection({
   const [logDate, setLogDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [showStatusPrompt, setShowStatusPrompt] = useState(false);
   const [promptStatus, setPromptStatus] = useState('');
@@ -145,8 +65,15 @@ function LogSection({
     setLogDate('');
     setAdding(false);
     setShowStatusPrompt(false);
+    setSelectedMembershipIds([membership.membership_id]);
     window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
+
+  async function handleDelete(id: string) {
+    await window.sourcerer.deleteInteractionLogEntry(id);
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    onEntryAdded?.();
+  }
 
   async function handleSubmit() {
     const body = text.trim();
@@ -155,10 +82,12 @@ function LogSection({
     try {
       const [y, m, d] = logDate.split('-').map(Number);
       const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
-      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body, createdAt);
+      const extras = selectedMembershipIds.filter((id) => id !== membership.membership_id);
+      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body, createdAt, extras);
       setEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
       setText('');
       setLogDate('');
+      setSelectedMembershipIds([membership.membership_id]);
       setAdding(false);
       onEntryAdded?.();
       if (TRIGGER_STATUSES.includes(membershipStatus)) {
@@ -200,12 +129,11 @@ function LogSection({
               View all ({entries.length})
             </Button>
           )}
-          <Button variant="ghost" onClick={() => {
-            if (!adding) setLogDate(today);
-            setAdding((v) => !v);
-          }}>
-            {adding ? '× Cancel' : '+ Add'}
-          </Button>
+          {!adding && (
+            <Button variant="ghost" onClick={() => { setLogDate(today); setAdding(true); }}>
+              + Add
+            </Button>
+          )}
         </div>
       </div>
 
@@ -213,7 +141,7 @@ function LogSection({
         <p className="pt-reminders-empty">No entries yet.</p>
       )}
 
-      {preview.map((e) => <LogRow key={e.id} entry={e} />)}
+      {preview.map((e) => <LogRow key={e.id} entry={e} onDelete={handleDelete} />)}
 
       {showStatusPrompt && (
         <div className="pt-status-prompt">
@@ -243,9 +171,8 @@ function LogSection({
       )}
 
       {adding && (
-        <div className="pt-log-compose">
+        <div className="pt-log-compose pt-log-compose--global">
           <div className="pt-log-date-row">
-            <label className="pt-log-date-label">Date</label>
             <CalendarPicker
               label="Select date"
               value={logDate}
@@ -265,18 +192,26 @@ function LogSection({
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
             }}
           />
+          <div className="pt-log-projects">
+            <LogProjectPicker
+              projects={allProjects}
+              selectedIds={selectedMembershipIds}
+              onChange={setSelectedMembershipIds}
+              lockedIds={[membership.membership_id]}
+            />
+          </div>
           <div className="pt-reminder-form-actions">
             <button className="pt-log-submit" onClick={handleSubmit} disabled={!text.trim() || !logDate || submitting}>
               {submitting ? 'Saving…' : 'Log'}
             </button>
-            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); setLogDate(''); }}>
+            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); setLogDate(''); setSelectedMembershipIds([membership.membership_id]); }}>
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {showAll && <LogAllModal entries={entries} onClose={() => setShowAll(false)} />}
+      {showAll && <LogAllModal title="Interaction Log" entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
     </div>
   );
 }
@@ -920,6 +855,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
       />
       <LogSection
         membership={membership}
+        allProjects={contact.projects}
         membershipStatus={localStatus}
         statusOptions={statusOptions}
         onStatusChange={handleStatusChange}

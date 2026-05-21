@@ -6,7 +6,7 @@ import { createSharedDb, openSharedDb, closeSharedDb, rekeySharedDb } from '../d
 import { encodePayload, decodePayload } from '../sync/payload';
 import { syncProject } from '../sync/engine';
 import { broadcastRemindersChanged } from './reminders';
-import type { Project, User } from '@shared/types';
+import type { Project, User, TimelineEntry, TimelineEntryProject } from '@shared/types';
 
 export function registerProjectHandlers(): void {
   ipcMain.handle('projects:list', (): Project[] => {
@@ -396,36 +396,58 @@ export function registerProjectHandlers(): void {
       .all(projectId) as Array<{ email: string; name: string }>;
   });
 
-  ipcMain.handle('projects:list-timeline', (_, projectId: string) => {
-    return getDatabase()
-      .prepare(
-        `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
-                c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization,
-                p.id AS project_id, p.name AS project_name,
-                pm.theme, pm.priority
-         FROM interaction_log_entries ile
-         JOIN project_memberships pm ON pm.id = ile.membership_id
-         JOIN contacts c ON c.id = pm.contact_id
-         JOIN projects p ON p.id = pm.project_id
-         WHERE pm.project_id = ?
-         ORDER BY ile.created_at DESC`,
-      )
-      .all(projectId);
+  ipcMain.handle('projects:list-timeline', (_, projectId: string): TimelineEntry[] => {
+    const db = getDatabase();
+    type BaseRow = Omit<TimelineEntry, 'projects'>;
+    const entries = db.prepare(
+      `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
+              c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization
+       FROM interaction_log_entries ile
+       JOIN contacts c ON c.id = ile.contact_id
+       JOIN interaction_projects ip ON ip.interaction_id = ile.id
+       JOIN project_memberships pm ON pm.id = ip.membership_id
+       WHERE pm.project_id = ?
+       ORDER BY ile.created_at DESC`,
+    ).all(projectId) as BaseRow[];
+    return attachProjects(db, entries);
   });
 
-  ipcMain.handle('contacts:list-timeline', () => {
-    return getDatabase()
-      .prepare(
-        `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
-                c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization,
-                p.id AS project_id, p.name AS project_name,
-                pm.theme, pm.priority
-         FROM interaction_log_entries ile
-         JOIN project_memberships pm ON pm.id = ile.membership_id
-         JOIN contacts c ON c.id = pm.contact_id
-         JOIN projects p ON p.id = pm.project_id
-         ORDER BY ile.created_at DESC`,
-      )
-      .all();
+  ipcMain.handle('contacts:list-timeline', (): TimelineEntry[] => {
+    const db = getDatabase();
+    type BaseRow = Omit<TimelineEntry, 'projects'>;
+    const entries = db.prepare(
+      `SELECT ile.id, ile.body, ile.created_at, ile.reporter_name, ile.reporter_email,
+              c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization
+       FROM interaction_log_entries ile
+       JOIN contacts c ON c.id = ile.contact_id
+       ORDER BY ile.created_at DESC`,
+    ).all() as BaseRow[];
+    return attachProjects(db, entries);
   });
+}
+
+function attachProjects(
+  db: ReturnType<typeof getDatabase>,
+  entries: Array<Omit<TimelineEntry, 'projects'>>,
+): TimelineEntry[] {
+  if (entries.length === 0) return [];
+  const ids = entries.map((e) => e.id);
+  const ph = ids.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT ip.interaction_id, p.id AS project_id, p.name AS project_name,
+            ip.membership_id, pm.theme, pm.priority
+     FROM interaction_projects ip
+     JOIN project_memberships pm ON pm.id = ip.membership_id
+     JOIN projects p ON p.id = pm.project_id
+     WHERE ip.interaction_id IN (${ph})
+     ORDER BY p.name ASC`,
+  ).all(...ids) as Array<{ interaction_id: string } & TimelineEntryProject>;
+
+  const projMap = new Map<string, TimelineEntryProject[]>();
+  for (const r of rows) {
+    const arr = projMap.get(r.interaction_id) ?? [];
+    arr.push({ project_id: r.project_id, project_name: r.project_name, membership_id: r.membership_id, theme: r.theme, priority: r.priority });
+    projMap.set(r.interaction_id, arr);
+  }
+  return entries.map((e) => ({ ...e, projects: projMap.get(e.id) ?? [] }));
 }

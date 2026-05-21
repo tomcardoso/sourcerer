@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ContactDetail as ContactDetailType, ContactAlertRss, Project, User } from '@shared/types';
+import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactLogEntry, Project, User } from '@shared/types';
 import Button from '../shell/Button';
+import { LogRow, LogAllModal } from './logShared';
+import LogProjectPicker from './LogProjectPicker';
 import DynamicList, { useDragReorder } from './DynamicList';
 import {
   isValidEmail,
@@ -61,6 +63,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [alertRssList, setAlertRssList] = useState<ContactAlertRss[]>([]);
   const [waybackStatus, setWaybackStatus] = useState<Map<string, 'pending' | 'failed'>>(new Map());
   const formRef = useRef<HTMLDivElement>(null);
+
+  const [logEntries, setLogEntries] = useState<ContactLogEntry[]>([]);
+  const [logAdding, setLogAdding] = useState(false);
+  const [logText, setLogText] = useState('');
+  const [logDate, setLogDate] = useState('');
+  const [logSubmitting, setLogSubmitting] = useState(false);
+  const [logShowAll, setLogShowAll] = useState(false);
+  const [logSelectedMembershipIds, setLogSelectedMembershipIds] = useState<string[]>([]);
+  const LOG_PREVIEW = 3;
 
   useEffect(() => {
     return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
@@ -135,6 +146,15 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   useEffect(() => {
     window.sourcerer.listAlertRss(contact.id).then(setAlertRssList);
+  }, [contact.id]);
+
+  useEffect(() => {
+    setLogEntries([]);
+    setLogAdding(false);
+    setLogText('');
+    setLogDate('');
+    setLogSelectedMembershipIds([]);
+    window.sourcerer.listContactLog(contact.id).then(setLogEntries);
   }, [contact.id]);
 
   async function checkEmailBlur(value: string) {
@@ -279,6 +299,36 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   async function handleRemoveRss(id: string) {
     await window.sourcerer.removeAlertRss(id);
     setAlertRssList((prev) => prev.filter((f) => f.id !== id));
+  }
+
+  async function handleLogDelete(id: string) {
+    await window.sourcerer.deleteInteractionLogEntry(id);
+    setLogEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  function cancelLog() {
+    setLogAdding(false);
+    setLogText('');
+    setLogDate('');
+    setLogSelectedMembershipIds([]);
+  }
+
+  async function handleLogSubmit() {
+    const body = logText.trim();
+    if (!body || !logDate) return;
+    setLogSubmitting(true);
+    try {
+      const [y, m, d] = logDate.split('-').map(Number);
+      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+      const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt, logSelectedMembershipIds);
+      setLogEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
+      setLogText('');
+      setLogDate('');
+      setLogSelectedMembershipIds([]);
+      setLogAdding(false);
+    } finally {
+      setLogSubmitting(false);
+    }
   }
 
   // View mode: group links by type
@@ -813,6 +863,91 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         onAddRss={handleAddRss}
         onRemoveRss={handleRemoveRss}
       />
+
+      <div className="pt-section">
+        <div className="pt-reminders-header">
+          <span className="pt-reminders-label">Interaction Log</span>
+          <div className="pt-log-header-actions">
+            {logEntries.length > 0 && (
+              <Button variant="ghost" onClick={() => setLogShowAll(true)}>
+                View all ({logEntries.length})
+              </Button>
+            )}
+            {!logAdding && (
+              <Button variant="ghost" onClick={() => {
+                setLogDate(new Date().toISOString().slice(0, 10));
+                setLogAdding(true);
+              }}>
+                + Add
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {logEntries.length === 0 && !logAdding && (
+          <p className="pt-reminders-empty">No entries yet.</p>
+        )}
+
+        {[...logEntries].reverse().slice(0, LOG_PREVIEW).map((e) => (
+          <LogRow key={e.id} entry={e} subtitle={e.project_name} onDelete={handleLogDelete} />
+        ))}
+
+        {logAdding && (
+          <div className="pt-log-compose pt-log-compose--global">
+            <div className="pt-log-date-row">
+              <CalendarPicker
+                label="Select date"
+                value={logDate}
+                onChange={setLogDate}
+                showYear
+                maxDate={new Date().toISOString().slice(0, 10)}
+              />
+            </div>
+            <textarea
+              className="pt-log-input"
+              placeholder="Log an interaction…"
+              value={logText}
+              onChange={(e) => setLogText(e.target.value)}
+              rows={3}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleLogSubmit();
+              }}
+            />
+            {contact.projects.length > 0 && (
+              <div className="pt-log-projects">
+                <LogProjectPicker
+                  projects={contact.projects}
+                  selectedIds={logSelectedMembershipIds}
+                  onChange={setLogSelectedMembershipIds}
+                />
+              </div>
+            )}
+            <div className="pt-reminder-form-actions">
+              <button
+                className="pt-log-submit"
+                onClick={handleLogSubmit}
+                disabled={!logText.trim() || !logDate || logSubmitting}
+              >
+                {logSubmitting ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className="pt-reminder-cancel" onClick={cancelLog}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {logShowAll && (
+          <LogAllModal
+            title="Interaction Log"
+            entries={logEntries}
+            getSubtitle={(e) => (e as ContactLogEntry).project_name}
+            onDelete={handleLogDelete}
+            onClose={() => setLogShowAll(false)}
+          />
+        )}
+      </div>
 
       <div className="detail-section">
         <div className="detail-section-label">Projects</div>

@@ -94,11 +94,14 @@ function insertMembership(
 }
 
 function insertInteractionLog(membId: string, createdAt: number): void {
+  const entryId = uuidv4();
+  const { contact_id } = testDb.prepare('SELECT contact_id FROM project_memberships WHERE id = ?').get(membId) as { contact_id: string };
   testDb.prepare(
     `INSERT INTO interaction_log_entries
-       (id, membership_id, reporter_email, reporter_name, body, created_at)
+       (id, contact_id, reporter_email, reporter_name, body, created_at)
      VALUES (?, ?, ?, ?, 'note', ?)`,
-  ).run(uuidv4(), membId, TEST_REPORTER.email, TEST_REPORTER.name, createdAt);
+  ).run(entryId, contact_id, TEST_REPORTER.email, TEST_REPORTER.name, createdAt);
+  testDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(entryId, membId);
 }
 
 beforeEach(() => {

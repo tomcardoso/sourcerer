@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
+import { checkOutreachReminders } from '../sync/outreach-checker';
 import type {
   ContactListItem,
   ContactDetail,
@@ -18,6 +19,7 @@ import type {
   ContactHandleInput,
   ProjectContactRow,
   InteractionLogEntry,
+  ContactLogEntry,
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
@@ -153,12 +155,10 @@ export function registerContactHandlers(): void {
                 (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
                 (SELECT MIN(ile.created_at)
                  FROM interaction_log_entries ile
-                 JOIN project_memberships pm2 ON pm2.id = ile.membership_id
-                 WHERE pm2.contact_id = c.id) AS date_first_contacted,
+                 WHERE ile.contact_id = c.id) AS date_first_contacted,
                 (SELECT MAX(ile.created_at)
                  FROM interaction_log_entries ile
-                 JOIN project_memberships pm2 ON pm2.id = ile.membership_id
-                 WHERE pm2.contact_id = c.id) AS date_last_contacted
+                 WHERE ile.contact_id = c.id) AS date_last_contacted
          FROM contacts c
          LEFT JOIN project_memberships pm ON pm.contact_id = c.id
          LEFT JOIN projects p ON p.id = pm.project_id
@@ -238,9 +238,11 @@ export function registerContactHandlers(): void {
                 pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
                 pm.outreach_reminders_enabled, pm.reporter_conflict,
                 (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
-                 WHERE ile.membership_id = pm.id) AS first_log_at,
+                 JOIN interaction_projects ip ON ip.interaction_id = ile.id
+                 WHERE ip.membership_id = pm.id) AS first_log_at,
                 (SELECT MAX(ile.created_at) FROM interaction_log_entries ile
-                 WHERE ile.membership_id = pm.id) AS date_last_contacted
+                 JOIN interaction_projects ip ON ip.interaction_id = ile.id
+                 WHERE ip.membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm
          JOIN projects p ON p.id = pm.project_id
          WHERE pm.contact_id = ?
@@ -392,8 +394,8 @@ export function registerContactHandlers(): void {
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
                 (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
                 (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
-                (SELECT MIN(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_first_contacted,
-                (SELECT MAX(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_last_contacted
+                (SELECT MIN(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_first_contacted,
+                (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm
          JOIN contacts c ON c.id = pm.contact_id
          WHERE pm.project_id = ?
@@ -580,29 +582,48 @@ export function registerContactHandlers(): void {
   ipcMain.handle('interaction-log:list', (_, membershipId: string): InteractionLogEntry[] => {
     return getDatabase()
       .prepare(
-        'SELECT * FROM interaction_log_entries WHERE membership_id = ? ORDER BY created_at ASC',
+        `SELECT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at
+         FROM interaction_log_entries ile
+         JOIN interaction_projects ip ON ip.interaction_id = ile.id
+         WHERE ip.membership_id = ?
+         ORDER BY ile.created_at ASC`,
       )
       .all(membershipId) as InteractionLogEntry[];
   });
 
   ipcMain.handle(
     'interaction-log:add',
-    (_, { membershipId, body, createdAt }: { membershipId: string; body: string; createdAt?: number }): InteractionLogEntry => {
+    (_, { membershipId, body, createdAt, extraMembershipIds }: { membershipId: string; body: string; createdAt?: number; extraMembershipIds?: string[] }): InteractionLogEntry => {
       const db = getDatabase();
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+      const membership = db
+        .prepare('SELECT contact_id FROM project_memberships WHERE id = ?')
+        .get(membershipId) as { contact_id: string } | undefined;
+      if (!membership) throw new Error('Membership not found');
       const id = uuidv4();
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
       if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
-      db.prepare(
-        'INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ).run(id, membershipId, user.email, reporterName, body.trim(), ts);
-      // Clear any auto-outreach calendar reminder — source is no longer overdue.
-      db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1').run(membershipId);
+      const validMid = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
+      const insertProject = db.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)');
+      db.transaction(() => {
+        db.prepare(
+          'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(id, membership.contact_id, user.email, reporterName, body.trim(), ts);
+        insertProject.run(id, membershipId);
+        for (const mid of extraMembershipIds ?? []) {
+          if (mid !== membershipId && validMid.get(mid, membership.contact_id)) insertProject.run(id, mid);
+        }
+      })();
+      // Clear auto-outreach reminders for all associated memberships.
+      const allMids = [membershipId, ...(extraMembershipIds ?? [])];
+      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
+      for (const mid of allMids) clearReminder.run(mid);
+      broadcastRemindersChanged();
       broadcastContactsChanged();
       return {
         id,
-        membership_id: membershipId,
+        contact_id: membership.contact_id,
         reporter_email: user.email,
         reporter_name: reporterName,
         body: body.trim(),
@@ -611,6 +632,76 @@ export function registerContactHandlers(): void {
     },
   );
 
+  ipcMain.handle('interaction-log:list-for-contact', (_, contactId: string): ContactLogEntry[] => {
+    return getDatabase()
+      .prepare(
+        `SELECT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at,
+                (SELECT p.name FROM interaction_projects ip
+                 JOIN project_memberships pm ON pm.id = ip.membership_id
+                 JOIN projects p ON p.id = pm.project_id
+                 WHERE ip.interaction_id = ile.id ORDER BY p.name LIMIT 1) AS project_name
+         FROM interaction_log_entries ile
+         WHERE ile.contact_id = ?
+         ORDER BY ile.created_at ASC`,
+      )
+      .all(contactId) as ContactLogEntry[];
+  });
+
+  ipcMain.handle(
+    'interaction-log:add-global',
+    (_, { contactId, body, createdAt, membershipIds }: { contactId: string; body: string; createdAt?: number; membershipIds?: string[] }): ContactLogEntry => {
+      const db = getDatabase();
+      const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+      const id = uuidv4();
+      const ts = createdAt ?? Math.floor(Date.now() / 1000);
+      if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
+      const reporterName = `${user.first_name} ${user.last_name}`;
+      const insertEntry = db.prepare(
+        'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      );
+      const insertProject = db.prepare(
+        'INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
+      );
+      const validMidGlobal = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
+      db.transaction(() => {
+        insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts);
+        for (const mid of membershipIds ?? []) {
+          if (validMidGlobal.get(mid, contactId)) insertProject.run(id, mid);
+        }
+      })();
+      const firstProject = (membershipIds ?? []).length > 0
+        ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ? AND pm.contact_id = ?').get(membershipIds![0], contactId) as { name: string } | undefined)?.name ?? null
+        : null;
+      // Clear auto-outreach reminders for all associated memberships.
+      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
+      for (const mid of membershipIds ?? []) clearReminder.run(mid);
+      broadcastRemindersChanged();
+      broadcastContactsChanged();
+      return {
+        id,
+        contact_id: contactId,
+        reporter_email: user.email,
+        reporter_name: reporterName,
+        body: body.trim(),
+        created_at: ts,
+        project_name: firstProject,
+      };
+    },
+  );
+
+  ipcMain.handle('interaction-log:delete', (_, interactionId: string): void => {
+    const db = getDatabase();
+    // Collect affected memberships before deleting so we can re-evaluate reminders.
+    const membershipIds = (
+      db.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').all(interactionId) as Array<{ membership_id: string }>
+    ).map((r) => r.membership_id);
+    db.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(interactionId);
+    // Re-run outreach checker so reminders are recreated if this was the last log.
+    checkOutreachReminders();
+    broadcastContactsChanged();
+    if (membershipIds.length > 0) broadcastRemindersChanged();
+  });
+
   ipcMain.handle('contacts:count', (): number => {
     const row = getDatabase().prepare('SELECT COUNT(*) as n FROM contacts').get() as { n: number };
     return row.n;
@@ -618,9 +709,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:interaction-count', (_, contactId: string): number => {
     const row = getDatabase().prepare(
-      `SELECT COUNT(*) as n FROM interaction_log_entries ile
-       JOIN project_memberships pm ON pm.id = ile.membership_id
-       WHERE pm.contact_id = ?`,
+      'SELECT COUNT(*) as n FROM interaction_log_entries WHERE contact_id = ?',
     ).get(contactId) as { n: number };
     return row.n;
   });

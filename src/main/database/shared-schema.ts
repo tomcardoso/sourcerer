@@ -91,11 +91,17 @@ export const SHARED_SCHEMA_SQL = `
 
   CREATE TABLE IF NOT EXISTS interaction_log_entries (
     id             TEXT    PRIMARY KEY,
-    membership_id  TEXT    NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
+    contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     reporter_email TEXT    NOT NULL,
     reporter_name  TEXT    NOT NULL,
     body           TEXT    NOT NULL,
     created_at     INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS interaction_projects (
+    interaction_id TEXT NOT NULL REFERENCES interaction_log_entries(id) ON DELETE CASCADE,
+    membership_id  TEXT NOT NULL REFERENCES project_memberships(id) ON DELETE CASCADE,
+    PRIMARY KEY (interaction_id, membership_id)
   );
 
   CREATE TABLE IF NOT EXISTS shared_meta (
@@ -112,6 +118,7 @@ export const SHARED_SCHEMA_SQL = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_handles_contact_type_handle ON contact_handles(contact_id, type, handle);
   CREATE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_id     ON contact_alert_mentions(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_alert_mentions_contact_guid ON contact_alert_mentions(contact_id, guid);
-  CREATE INDEX IF NOT EXISTS idx_shared_interaction_log_membership_created ON interaction_log_entries(membership_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_shared_interaction_log_contact_created ON interaction_log_entries(contact_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_shared_interaction_projects_membership ON interaction_projects(membership_id);
   CREATE INDEX IF NOT EXISTS idx_shared_project_memberships_contact_id ON project_memberships(contact_id);
 `;

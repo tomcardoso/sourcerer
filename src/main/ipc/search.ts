@@ -52,13 +52,15 @@ export function performSearch(query: string, db: Database.Database): SearchResul
     logResults = db
       .prepare(
         `SELECT e.id AS entry_id, c.id AS contact_id, c.name AS contact_name,
-                p.name AS project_name,
+                (SELECT p.name FROM interaction_projects ip
+                 JOIN project_memberships pm ON pm.id = ip.membership_id
+                 JOIN projects p ON p.id = pm.project_id
+                 WHERE ip.interaction_id = e.id
+                 LIMIT 1) AS project_name,
                 snippet(interaction_log_fts, 0, '[[', ']]', '...', 20) AS excerpt
          FROM interaction_log_fts fts
          JOIN interaction_log_entries e ON e.rowid = fts.rowid
-         JOIN project_memberships pm ON pm.id = e.membership_id
-         JOIN contacts c ON c.id = pm.contact_id
-         JOIN projects p ON p.id = pm.project_id
+         JOIN contacts c ON c.id = e.contact_id
          WHERE fts.body MATCH ?
          ORDER BY fts.rank, e.created_at DESC
          LIMIT 5`,

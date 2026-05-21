@@ -63,8 +63,11 @@ export function seedDevData(db: Database.Database, email: string, name: string):
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ),
       insertLog: db.prepare(
-        `INSERT INTO interaction_log_entries (id, membership_id, reporter_email, reporter_name, body, created_at)
+        `INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
+      ),
+      insertInteractionProject: db.prepare(
+        `INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)`,
       ),
       insertReminder: db.prepare(
         `INSERT INTO reminders (id, contact_id, project_id, membership_id, due_date, note, is_auto_outreach, created_at, completed_at)
@@ -152,9 +155,27 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       reporter: { name: string; email: string },
       body: string,
       daysAgo: number,
+      extraProjectIds: string[] = [],
     ): void {
       const membId = membIds[`${contactName}:${projectId}`];
-      stmts.insertLog.run(uuidv4(), membId, reporter.email, reporter.name, body, NOW - daysAgo * DAY);
+      const id = uuidv4();
+      stmts.insertLog.run(id, cid(contactName), reporter.email, reporter.name, body, NOW - daysAgo * DAY);
+      stmts.insertInteractionProject.run(id, membId);
+      for (const extraPid of extraProjectIds) {
+        const extraMembId = membIds[`${contactName}:${extraPid}`];
+        if (extraMembId) stmts.insertInteractionProject.run(id, extraMembId);
+      }
+    }
+
+    function addGlobalLog(
+      contactName: string,
+      reporter: { name: string; email: string },
+      body: string,
+      daysAgo: number,
+    ): void {
+      const id = uuidv4();
+      stmts.insertLog.run(id, cid(contactName), reporter.email, reporter.name, body, NOW - daysAgo * DAY);
+      // No interaction_projects row — this is a contact-level log not tied to any project
     }
 
     function addReminder(
@@ -339,6 +360,7 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     });
 
     // ── Interaction logs ─────────────────────────────────────────────────────
+    // Distribution: many global (no project), most with one project, a handful with two
     addLog('Darnell Okafor', millgateId, me(),
       'Made initial contact through intermediary. Confirmed willingness to speak. Agreed to Signal only — no email.',
       21);
@@ -375,7 +397,6 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       35);
     addLog('Eunice Addo-Yeboah', pensionId, me(),
       'Second call — she described the contents in detail. Enough to corroborate the securities commission filing.',
-
       19);
     addLog('Eunice Addo-Yeboah', pensionId, me(),
       "Her lawyer has asked us to pause direct contact for two weeks. Respect the ask.",
@@ -431,9 +452,45 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       'He provided the grievance data in a spreadsheet. Three hospital regions, 2021–2024.',
       38);
 
+    // Cross-project entry: Dr. Jean-Paul Hébert appears in both Millgate and Health
     addLog('Dr. Jean-Paul Hébert', healthId, MARCUS,
       'On-record interview. Agreed to be quoted on governance failures and the pension fund overlap.',
-      50);
+      50, [millgateId]);
+    addLog('Dr. Jean-Paul Hébert', healthId, MARCUS,
+      'Follow-up call to clarify the governance section. Confirmed his quotes stand.',
+      22);
+
+    // Global logs (no project) — contact-level notes not tied to any investigation
+    addGlobalLog('Priya Subramaniam', me(),
+      'Met at a press conference. Exchanged cards. Might be useful background on the waterfront development story.',
+      60);
+    addGlobalLog('Gordon Whitfield', me(),
+      'Brief phone call — he reached out to clarify comments in a previous piece. Good relationship to maintain.',
+      55);
+    addGlobalLog('Zach Pendergast', me(),
+      'Coffee meeting. Caught up on the media landscape, nothing on the record.',
+      48);
+    addGlobalLog('Emil Rosenqvist', me(),
+      'Email exchange about the European regulatory situation. Sent him background materials.',
+      43);
+    addGlobalLog('Callum Forsythe', me(),
+      'Initial outreach — recommended by a mutual contact. Wants to meet in person before committing to anything.',
+      37);
+    addGlobalLog('Philip Gauthier-Lessard', me(),
+      'Spoke at a conference panel. Introduced myself afterward — agreed to follow up.',
+      32);
+    addGlobalLog('Tyler Deschênes', me(),
+      'Ran into him at a court filing. Exchanged numbers. Keeping him warm.',
+      29);
+    addGlobalLog('Chantal Beaubien', me(),
+      'Left a voicemail. No reply yet. Trying again next week.',
+      25);
+    addGlobalLog('Antoine Durocher', SARAH,
+      'He flagged a document in a public registry that we had missed. Worth following up independently.',
+      18);
+    addGlobalLog('Kevin Stelmach', me(),
+      'Initial contact via union newsletter. He expressed interest in speaking but wants anonymity.',
+      14);
 
     // ── Manual reminders ─────────────────────────────────────────────────────
     addReminder('Catherine Mwangi', millgateId, 5,

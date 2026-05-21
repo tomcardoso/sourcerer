@@ -634,12 +634,93 @@
   margin-bottom: 4px;
 }
 
+.pt-log-row-footer {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pt-log-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.pt-log-row-delete {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.pt-log-row:hover .pt-log-row-delete {
+  opacity: 1;
+}
+
+.pt-log-row-delete:hover {
+  color: var(--color-danger);
+}
+
+.pt-log-row-confirm-yes,
+.pt-log-row-confirm-no {
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+  white-space: nowrap;
+}
+
+.pt-log-row-confirm-yes {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.pt-log-row-confirm-yes:hover {
+  background: var(--color-danger);
+  color: var(--color-bg);
+}
+
+.pt-log-row-confirm-no {
+  color: var(--color-text-muted);
+}
+
+.pt-log-row-confirm-no:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+
 .pt-log-row-reporter {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-text-muted);
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.pt-log-row-project-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-border);
+  border-radius: 3px;
+  padding: 0px 4px;
 }
 
 /* ── Log modal ── */
@@ -725,9 +806,16 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 0 4px;
+  padding: 12px 0 12px;
   border-bottom: 1px solid var(--color-border);
 }
+
+.pt-log-projects {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 
 .pt-log-date-row {
   display: flex;
@@ -937,6 +1025,12 @@
   padding-bottom: 6px;
   border-bottom: 1px solid var(--color-text);
   margin-bottom: 0;
+}
+
+.pt-log-header-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .pt-reminders-label {
