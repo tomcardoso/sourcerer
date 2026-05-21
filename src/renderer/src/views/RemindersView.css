@@ -250,7 +250,7 @@
   border-radius: 3px;
   padding: 1px 4px;
   color: var(--color-text-muted);
-  background: var(--color-border);
+  background: var(--color-surface-2);
   align-self: flex-start;
 }
 
