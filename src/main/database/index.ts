@@ -30,9 +30,6 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
 
   // Must be set per-connection — not persisted in the file
   db.pragma('foreign_keys = ON');
-  // Switch existing WAL-mode databases to DELETE journal mode so no -wal/-shm
-  // sidecars are created. SQLite checkpoints the WAL automatically on the switch.
-  db.pragma('journal_mode = DELETE');
 
   return db;
 }
