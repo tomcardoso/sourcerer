@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { validateEmail } from '@shared/validation';
 import { WordmarkLogo } from '../components/WordmarkLogo';
 import Button from '../shell/Button';
 import './Setup.css';
@@ -29,7 +30,7 @@ function validate(form: FormState): string | null {
   if (!form.firstName.trim()) return 'First name is required.';
   if (!form.lastName.trim()) return 'Last name is required.';
   if (!form.email.trim()) return 'Email address is required.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid email address.';
+  if (!validateEmail(form.email)) return 'Enter a valid email address.';
   if (form.password.length < 12) return 'Password must be at least 12 characters.';
   if (form.password !== form.confirmPassword) return 'Passwords do not match.';
   if (!form.acknowledgedNoRecovery)
