@@ -321,6 +321,10 @@ export function registerSettingsHandlers(): void {
     // Remove encrypted screenshots
     await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
 
+    // Remove the vault bundle directory itself if one was configured
+    const bundlePath = getVaultBundlePath();
+    if (bundlePath) await fs.rm(bundlePath, { recursive: true, force: true }).catch(() => {});
+
     clearVaultConfig();
     app.quit();
   });
