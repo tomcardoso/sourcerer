@@ -73,6 +73,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [backingUp, setBackingUp] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [exportConfirm, setExportConfirm] = useState(false);
+  const [backupSaved, setBackupSaved] = useState(false);
   const [exportPassword, setExportPassword] = useState('');
   const [restoreConfirm, setRestoreConfirm] = useState(false);
   const [restorePassword, setRestorePassword] = useState('');
@@ -188,6 +189,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     if (result.success) {
       setExportConfirm(false);
       setExportPassword('');
+      setBackupSaved(true);
+      setTimeout(() => setBackupSaved(false), 3000);
     } else if (result.error) {
       setBackupError(result.error);
     }
@@ -737,9 +740,12 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 <div className="sv-hint">
                   Save your encrypted database as a <code>.sourcerer-backup</code> file. The backup is encrypted with your master password — only someone with your password can restore it.
                 </div>
-                <Button variant="accent" size="sm" onClick={() => { setExportConfirm(true); setBackupError(null); setExportPassword(''); }}>
-                  Export backup
-                </Button>
+                <div className="sv-inline-actions">
+                  <Button variant="accent" size="sm" onClick={() => { setExportConfirm(true); setBackupError(null); setExportPassword(''); setBackupSaved(false); }}>
+                    Export backup
+                  </Button>
+                  {backupSaved && <span className="sv-backup-saved">Backup saved.</span>}
+                </div>
               </div>
             </div>
           ) : (
