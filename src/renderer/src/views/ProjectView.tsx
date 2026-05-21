@@ -60,6 +60,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const lastCheckedIdRef = useRef<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [showUnshareModal, setShowUnshareModal] = useState(false);
@@ -268,6 +269,23 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
 
   function toggleCheck(id: string, e: React.MouseEvent) {
     e.stopPropagation();
+    if (e.shiftKey && lastCheckedIdRef.current !== null) {
+      const anchorIdx = displayed.findIndex((r) => r.id === lastCheckedIdRef.current);
+      const targetIdx = displayed.findIndex((r) => r.id === id);
+      if (anchorIdx !== -1 && targetIdx !== -1) {
+        const [lo, hi] = anchorIdx < targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
+        const rangeIds = displayed.slice(lo, hi + 1).map((r) => r.id);
+        setCheckedIds((prev) => {
+          const next = new Set(prev);
+          rangeIds.forEach((rid) => next.add(rid));
+          return next;
+        });
+        setConfirmDelete(false);
+        setConfirmRemove(false);
+        return;
+      }
+    }
+    lastCheckedIdRef.current = id;
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
