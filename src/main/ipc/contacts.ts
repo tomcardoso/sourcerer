@@ -392,8 +392,8 @@ export function registerContactHandlers(): void {
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
                 (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
                 (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
-                (SELECT MIN(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_first_contacted,
-                (SELECT MAX(created_at) FROM interaction_log_entries WHERE membership_id = pm.id) AS date_last_contacted
+                (SELECT MIN(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_first_contacted,
+                (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted
          FROM project_memberships pm
          JOIN contacts c ON c.id = pm.contact_id
          WHERE pm.project_id = ?
