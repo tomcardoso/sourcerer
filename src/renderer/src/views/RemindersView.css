@@ -175,7 +175,7 @@
 }
 
 .reminders-item-contact {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
   overflow: hidden;
@@ -191,7 +191,7 @@
   border: none;
   padding: 0;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
   text-transform: none;
@@ -255,6 +255,7 @@
 }
 
 .reminders-item-note {
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
