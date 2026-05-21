@@ -140,6 +140,7 @@ export default function Setup({ onComplete }: Props) {
               <Button variant="secondary" full onClick={handlePickVaultLocation} disabled={vaultLoading}>
                 Choose a folder…
               </Button>
+              <span className="setup-hint">Useful if you want to store your vault on an external drive or in Dropbox, OneDrive, or a similar folder to access it from multiple machines.</span>
             </div>
           </div>
           {vaultError && <div className="setup-error">{vaultError}</div>}
