@@ -67,7 +67,14 @@
             <p>Pre-built installers for macOS (Apple Silicon) and Windows (x64) are available on the <a href="https://github.com/tomcardoso/sourcerer/releases/latest">releases page</a>. Download the <code>.dmg</code> (macOS) or <code>.exe</code> (Windows) and follow the standard installation steps for your platform.</p>
 
             <h3>First launch</h3>
-            <p>The first time you open Sourcerer, you will see a setup screen asking for three things:</p>
+            <p>The first time you open Sourcerer, setup happens in two steps.</p>
+            <p><strong>Step 1 — Vault location.</strong> Choose where to store your vault. The vault is a self-contained <code>.sourcerer</code> bundle — a folder containing the encrypted database, key file, and screenshots. On macOS, Finder shows it as a single opaque file. You have three options:</p>
+            <ul>
+              <li><strong>Choose a folder…</strong> — opens a dialog to name and place the bundle. Recommended if you want full control over where your data lives, or plan to carry it to another machine.</li>
+              <li><strong>Open existing vault…</strong> — for reinstalls or moving from another computer. Point Sourcerer at your existing <code>.sourcerer</code> bundle and the app will go straight to the unlock screen.</li>
+              <li><strong>Use default location</strong> — places the vault in your system's application data folder without prompting (<code>~/Library/Application Support/sourcerer</code> on macOS).</li>
+            </ul>
+            <p><strong>Step 2 — Profile and password.</strong> Enter your name, email address, and master password.</p>
             <ul>
               <li><strong>Your name</strong> — used to attribute interactions and project membership</li>
               <li><strong>Email address</strong> — used as your identity in shared projects</li>
@@ -76,7 +83,6 @@
             <div class="warn">
               <strong>The master password cannot be recovered.</strong> There is no reset mechanism and no fallback. If you forget it, your data is gone. Choose a passphrase — four or more random words are easier to remember and just as strong as a complex string.
             </div>
-            <p>After setup, Sourcerer creates an encrypted SQLite database in your system's application data folder (<code>~/Library/Application Support/sourcerer</code> on macOS). Everything you store from that point is encrypted on disk.</p>
 
             <h3>Unlocking</h3>
             <p>Every time you open Sourcerer, you will be prompted for your master password. The app derives the encryption key fresh each time — the key is never stored anywhere. If the password is wrong, the database cannot be opened.</p>
@@ -271,6 +277,10 @@
           <section id="settings">
             <h2>Settings</h2>
 
+            <h3>Vault location</h3>
+            <p>The vault location section shows the path to your current <code>.sourcerer</code> bundle. Click <strong>Move vault…</strong> to relocate it — Sourcerer copies the database, key file, and screenshots to the new location, updates its internal config, and locks the app so the next unlock reads from the new path. The old vault is deleted after a successful copy.</p>
+            <p>If you choose a location inside a cloud-synced folder (Dropbox, OneDrive, iCloud Drive, Google Drive, or Box), Sourcerer will warn you that opening the vault on more than one device at the same time may corrupt the database. The vault is a live SQLite file, not a document — simultaneous writes from two machines are not safe.</p>
+
             <h3>Changing your master password</h3>
             <p>Sourcerer re-encrypts the entire database with a new key derived from your new password. All database pages are re-written. You will need to use the new password on all machines that share the same database file.</p>
 
@@ -283,7 +293,7 @@
             <h3>Panic wipe</h3>
             <p>The panic wipe button irreversibly destroys:</p>
             <ul>
-              <li>The encrypted database and its WAL/journal files</li>
+              <li>The encrypted database</li>
               <li>The salt file</li>
               <li>All stored screenshots</li>
             </ul>
@@ -294,11 +304,14 @@
             </div>
 
             <h3>Backup and restore</h3>
-            <p>The backup function exports an encrypted copy of your database. The backup uses the same master password as the current database. Store backups somewhere separate from the live database — on an encrypted external drive or in a password-protected archive.</p>
+            <p>The backup function exports an encrypted copy of your database. The backup uses the same master password as the current database. Store backups somewhere separate from the live vault — on an encrypted external drive or in a password-protected archive.</p>
             <p>To restore, select a backup file. Sourcerer will validate the backup before overwriting the live database. The backup must have been made with the same password (or a password you still know).</p>
             <div class="note">
               <strong>Backup size limit:</strong> Sourcerer will not restore a backup file larger than 250 MB, as a safeguard against accidentally selecting the wrong file.
             </div>
+
+            <h3>Automatic backup</h3>
+            <p>Sourcerer can back up your vault automatically once per day. In Settings, enable auto-backup, choose a destination folder, and set how many backup files to keep (the oldest are pruned once the limit is reached). A backup also runs automatically when you quit the app, if auto-backup is enabled and a destination is set.</p>
 
             <h3>Redaction mode</h3>
             <p>Press <strong>Ctrl+Shift+R</strong> at any time to toggle redaction mode. While active, all contact names, organisations, emails, phones, handles, links, and notes are blurred on screen. This is useful when working in a public place or sharing your screen. Press the shortcut again to disable it.</p>
