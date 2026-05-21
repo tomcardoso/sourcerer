@@ -429,6 +429,10 @@
   align-self: flex-start;
 }
 
+.sv-move-vault-msg {
+  margin-top: 8px;
+}
+
 .sv-field--inline-row {
   flex-direction: column;
 }

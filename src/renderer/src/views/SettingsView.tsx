@@ -724,8 +724,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               </Button>
             </div>
           </div>
-          {moveVaultError && <div className="sv-error-inline">{moveVaultError}</div>}
-          {moveVaultSuccess && <p className="sv-success">Vault moved. You&apos;ll be asked to unlock again.</p>}
+          {moveVaultError && <div className="sv-error-inline sv-move-vault-msg">{moveVaultError}</div>}
+          {moveVaultSuccess && <p className="sv-success sv-move-vault-msg">Vault moved. You&apos;ll be asked to unlock again.</p>}
         </div>
 
         {/* Backup */}
