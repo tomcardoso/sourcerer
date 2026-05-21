@@ -28,15 +28,11 @@ Output lands in `dist-electron/`. Run `npm run build` first if you want to check
 
 ### Code signing
 
-The current config has `"identity": null` and `"hardenedRuntime": false` on macOS, meaning the build is **unsigned**. Users will need to allow it via System Settings → Privacy & Security → Open Anyway.
+Both platforms are signed in CI. Local builds are unsigned.
 
-To sign for distribution:
-1. Enrol in the Apple Developer Program ($99/year).
-2. In developer.apple.com → Certificates, create a **Developer ID Application** certificate (the one explicitly for distribution outside the Mac App Store). Download and double-click it to add it to your keychain.
-3. In `package.json` → `build.mac`, remove the `"identity": null` line and set `"hardenedRuntime": true`. Add a `"notarize"` hook (electron-builder supports `@electron/notarize`).
-4. Re-run `npm run dist:mac`. The build will sign and notarize automatically if your certificate is in the keychain.
+**macOS** — signed and notarized via Apple Developer ID. Requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` secrets in the GitHub repo.
 
-On Windows, signing requires a code-signing certificate (EV or OV) from a CA such as DigiCert or Sectigo. Set the `CSC_LINK` and `CSC_KEY_PASSWORD` environment variables before running `npm run dist:win`.
+**Windows** — signed via Azure Artifact Signing. Requires `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, and `AZURE_PUBLISHER_NAME` secrets in the GitHub repo. Signing is configured in `electron-builder.config.js` and only activates when `AZURE_PUBLISHER_NAME` is set.
 
 ### Publishing a release
 
