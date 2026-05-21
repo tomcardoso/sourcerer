@@ -23,10 +23,10 @@ export function LogRow({ entry, subtitle }: { entry: InteractionLogEntry; subtit
       <div className="pt-log-row-date">{fmtLogDate(entry.created_at)}</div>
       <div className="pt-log-row-content">
         <p className="pt-log-row-body">{entry.body}</p>
-        <span className="pt-log-row-reporter">
-          {entry.reporter_name}
-          {subtitle && <span className="pt-log-row-subtitle"> · {subtitle}</span>}
-        </span>
+        <div className="pt-log-row-footer">
+          <span className="pt-log-row-reporter">{entry.reporter_name}</span>
+          {subtitle && <span className="pt-log-row-project-badge">{subtitle}</span>}
+        </div>
       </div>
     </div>
   );

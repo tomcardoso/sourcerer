@@ -95,6 +95,7 @@ All design tokens are CSS custom properties defined in `src/renderer/src/global.
 **Hard rules — do not break these:**
 - All interactive elements (buttons, inputs, selects, textareas) use `border-radius: 0` — square corners everywhere, no exceptions
 - Mono type is almost always `text-transform: uppercase` — exceptions only for body-level mono (e.g. code snippets)
+- **Never use `text-transform: uppercase` on serif (`--font-serif`) text** — all-caps serif is never used anywhere in the UI
 - Do not introduce colours outside the palette above; do not use system fonts or web-safe fallbacks
 - Never use inline styles. Always write a dedicated `.css` file co-located with the component
 

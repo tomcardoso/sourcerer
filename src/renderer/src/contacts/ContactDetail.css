@@ -634,12 +634,29 @@
   margin-bottom: 4px;
 }
 
+.pt-log-row-footer {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .pt-log-row-reporter {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-text-muted);
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.pt-log-row-project-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  background: var(--color-border);
+  border-radius: 3px;
+  padding: 0px 4px;
 }
 
 /* ── Log modal ── */
