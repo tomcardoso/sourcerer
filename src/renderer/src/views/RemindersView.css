@@ -241,6 +241,19 @@
   margin-top: 2px;
 }
 
+.reminders-item-project {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: var(--color-text-muted);
+  background: var(--color-border);
+  align-self: flex-start;
+}
+
 .reminders-item-note {
   overflow: hidden;
   text-overflow: ellipsis;
