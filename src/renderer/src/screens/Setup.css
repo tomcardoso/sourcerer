@@ -3,6 +3,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  padding-top: 28px;
   -webkit-app-region: drag;
 }
 
@@ -126,6 +127,7 @@
 }
 
 .setup-vault-hint {
+  font-size: 14px;
   margin-bottom: 24px;
 }
 

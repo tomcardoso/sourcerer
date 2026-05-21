@@ -32,7 +32,7 @@ function createWindow(): BrowserWindow {
   );
   const win = new BrowserWindow({
     width: 560,
-    height: 480,
+    height: 520,
     show: false,
     resizable: false,
     center: true,
