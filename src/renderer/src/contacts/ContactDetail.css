@@ -198,7 +198,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  padding: 2px 6px;
+  padding: 0 6px;
   white-space: nowrap;
   flex-shrink: 0;
 }
