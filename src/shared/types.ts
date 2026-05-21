@@ -294,10 +294,10 @@ export interface ProjectReporter {
 export interface Reminder {
   id: string;
   contact_id: string;
-  project_id: string;
+  project_id: string | null;
   membership_id: string | null;
   contact_name: string;
-  project_name: string;
+  project_name: string | null;
   due_date: number;
   note: string | null;
   is_auto_outreach: 0 | 1;

@@ -14,6 +14,11 @@ const SELECT_COLS = `
   c.name AS contact_name, p.name AS project_name,
   r.due_date, r.note, r.is_auto_outreach, r.created_at, r.completed_at`;
 
+const FROM_JOINS = `
+  FROM reminders r
+  JOIN contacts c ON c.id = r.contact_id
+  LEFT JOIN projects p ON p.id = r.project_id`;
+
 export function registerReminderHandlers(): void {
   ipcMain.handle(
     'reminders:list-for-contact-project',
@@ -21,9 +26,7 @@ export function registerReminderHandlers(): void {
       return getDatabase()
         .prepare(
           `SELECT ${SELECT_COLS}
-           FROM reminders r
-           JOIN contacts c ON c.id = r.contact_id
-           JOIN projects p ON p.id = r.project_id
+           ${FROM_JOINS}
            WHERE r.contact_id = ? AND r.project_id = ?
            ORDER BY r.is_auto_outreach DESC, r.due_date ASC`,
         )
@@ -31,14 +34,26 @@ export function registerReminderHandlers(): void {
     },
   );
 
+  ipcMain.handle(
+    'reminders:list-for-contact',
+    (_, contactId: string): Reminder[] => {
+      return getDatabase()
+        .prepare(
+          `SELECT ${SELECT_COLS}
+           ${FROM_JOINS}
+           WHERE r.contact_id = ?
+           ORDER BY r.is_auto_outreach DESC, r.due_date ASC`,
+        )
+        .all(contactId) as Reminder[];
+    },
+  );
+
   ipcMain.handle('reminders:list-all', (): Reminder[] => {
     return getDatabase()
       .prepare(
         `SELECT ${SELECT_COLS}
-         FROM reminders r
-         JOIN contacts c ON c.id = r.contact_id
-         JOIN projects p ON p.id = r.project_id
-         WHERE r.completed_at IS NULL AND p.is_archived = 0
+         ${FROM_JOINS}
+         WHERE r.completed_at IS NULL AND (r.project_id IS NULL OR p.is_archived = 0)
          ORDER BY r.due_date ASC`,
       )
       .all() as Reminder[];
@@ -53,7 +68,7 @@ export function registerReminderHandlers(): void {
         projectId,
         dueDate,
         note,
-      }: { contactId: string; projectId: string; dueDate: number; note?: string },
+      }: { contactId: string; projectId?: string; dueDate: number; note?: string },
     ): Reminder => {
       const db = getDatabase();
       if (!Number.isFinite(dueDate) || dueDate <= 0) throw new Error('invalid due_date');
@@ -62,13 +77,11 @@ export function registerReminderHandlers(): void {
       db.prepare(
         `INSERT INTO reminders (id, contact_id, project_id, due_date, note, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-      ).run(id, contactId, projectId, dueDate, note ?? null, now);
+      ).run(id, contactId, projectId ?? null, dueDate, note ?? null, now);
       const reminder = db
         .prepare(
           `SELECT ${SELECT_COLS}
-           FROM reminders r
-           JOIN contacts c ON c.id = r.contact_id
-           JOIN projects p ON p.id = r.project_id
+           ${FROM_JOINS}
            WHERE r.id = ?`,
         )
         .get(id) as Reminder;
@@ -106,9 +119,7 @@ export function registerReminderHandlers(): void {
       const reminder = db
         .prepare(
           `SELECT ${SELECT_COLS}
-           FROM reminders r
-           JOIN contacts c ON c.id = r.contact_id
-           JOIN projects p ON p.id = r.project_id
+           ${FROM_JOINS}
            WHERE r.id = ?`,
         )
         .get(id) as Reminder;

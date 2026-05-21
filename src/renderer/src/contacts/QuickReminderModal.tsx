@@ -74,7 +74,7 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
       const ts = Math.floor(new Date(`${date}T09:00:00`).getTime() / 1000);
       await window.sourcerer.createReminder({
         contactId: selectedContactId,
-        projectId: selectedProjectId,
+        projectId: selectedProjectId ?? undefined,
         dueDate: ts,
         note: note.trim() || undefined,
       });
@@ -84,7 +84,7 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
     }
   }
 
-  const canSave = !!selectedContactId && !!selectedProjectId && !!date && note.trim().length > 0 && !saving;
+  const canSave = !!selectedContactId && !!date && note.trim().length > 0 && !saving;
 
   return (
     <Modal title="Set reminder" onDismiss={onClose} className="quick-reminder-modal">
@@ -127,12 +127,13 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
 
       {detail && detail.projects.length > 0 && (
         <div className="qlm-field">
-          <label className="qlm-label">Project <span className="qlm-required">*</span></label>
+          <label className="qlm-label">Project</label>
           <select
             className="qlm-select"
             value={selectedProjectId ?? ''}
             onChange={(e) => setSelectedProjectId(e.target.value || null)}
           >
+            <option value="">No project</option>
             {detail.projects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
