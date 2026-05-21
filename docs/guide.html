@@ -92,10 +92,11 @@
             <h3>Contact fields</h3>
             <p>Each contact can hold:</p>
             <ul>
-              <li><strong>Name</strong> and <strong>organisation</strong></li>
+              <li><strong>Name</strong>, <strong>organisation</strong>, and <strong>title / role</strong></li>
               <li><strong>Notes</strong> — a freeform scratchpad, not shared in sanitised exports</li>
               <li><strong>Email addresses</strong> — as many as needed; mark one as primary</li>
               <li><strong>Phone numbers</strong> — with labels (mobile, work, etc.); extensions are preserved (e.g., <code>+1 202 456 1111 ext. 567</code>)</li>
+              <li><strong>Messaging handles</strong> — Signal, WhatsApp, Telegram, and others, with a type label</li>
               <li><strong>Links</strong> — LinkedIn, X, Instagram, Facebook, personal website, or a custom label</li>
             </ul>
 
@@ -184,7 +185,7 @@
                 <tr><td>Monitor-only</td><td>No automatic reminder</td></tr>
               </tbody>
             </table>
-            <p>Reminders appear in the <strong>Reminders</strong> view. You can also subscribe to them as a calendar feed — see <a href="#settings">Settings</a>.</p>
+            <p>Reminders appear in the <strong>Reminders</strong> view, and Sourcerer fires a desktop notification when a reminder becomes overdue. You can also subscribe to upcoming reminders as a calendar feed — see <a href="#settings">Settings</a>.</p>
 
             <h3>Logging interactions</h3>
             <p>Each project membership has an interaction log. Every entry records the date, which reporter made the contact, and a freeform note. The log is included in full exports but stripped from sanitised exports.</p>
@@ -240,6 +241,9 @@
 
             <h3>Sanitised export</h3>
             <p>The sanitised export mode strips <strong>notes</strong> and the <strong>interaction log</strong> from every contact. Use this when sharing a contact list with someone who should not see reporter notes or the history of outreach attempts.</p>
+
+            <h3>Printing a contact sheet</h3>
+            <p>From any contact's detail panel, click the print icon to open a formatted contact sheet in the system print dialog. The sheet includes the contact's name, organisation, all contact details, and their project memberships. Notes and interaction logs are not included.</p>
           </section>
 
           <section id="extension">
@@ -248,13 +252,9 @@
             <p>The Sourcerer browser extension lets you capture full-page screenshots, save selected text as contact fields, and add new contacts — all without leaving your browser. It works in Chrome, Edge, Brave, Arc, and Firefox. See the <a href="extension.html">extension guide</a> for full details.</p>
 
             <h3>Installation</h3>
-            <p><strong>Chrome / Edge / Brave / Arc:</strong> load it from the <code>extension/</code> folder in the Sourcerer repository.</p>
-            <ol>
-              <li>Go to <code>chrome://extensions</code></li>
-              <li>Enable <strong>Developer mode</strong> (toggle in the top-right corner)</li>
-              <li>Click <strong>Load unpacked</strong> and select the <code>extension/</code> folder</li>
-            </ol>
-            <p><strong>Firefox:</strong> go to <code>about:debugging#/runtime/this-firefox</code>, click <strong>Load Temporary Add-on</strong>, and select <code>extension/manifest.firefox.json</code>. See the <a href="extension.html">extension guide</a> for permanent installation options.</p>
+            <p><strong>Chrome / Edge / Brave / Arc:</strong> <a href="https://chromewebstore.google.com/detail/sourcerer/pipgdnekoknjbghnmhilapocpchdcadm" target="_blank" rel="noopener">Install from the Chrome Web Store ↗</a></p>
+            <p><strong>Firefox:</strong> <a href="https://addons.mozilla.org/en-CA/firefox/addon/sourcerer-for-journalists/" target="_blank" rel="noopener">Install from Firefox Add-ons ↗</a></p>
+            <p>See the <a href="extension.html">extension guide</a> for connection instructions and full feature details.</p>
 
             <h3>Connecting</h3>
             <p>Click the Sourcerer icon in the browser toolbar. If this is your first time, click <strong>Connect to Sourcerer</strong> — an approval prompt will appear in the app. Click <strong>Approve</strong>. The session token persists until the app is reinstalled or you revoke it manually.</p>
@@ -300,6 +300,9 @@
               <strong>Backup size limit:</strong> Sourcerer will not restore a backup file larger than 250 MB, as a safeguard against accidentally selecting the wrong file.
             </div>
 
+            <h3>Redaction mode</h3>
+            <p>Press <strong>Ctrl+Shift+R</strong> at any time to toggle redaction mode. While active, all contact names, organisations, emails, phones, handles, links, and notes are blurred on screen. This is useful when working in a public place or sharing your screen. Press the shortcut again to disable it.</p>
+
             <h3>Calendar feed</h3>
             <p>Sourcerer can expose your upcoming reminders as a calendar feed, which you can subscribe to from any local calendar app (Apple Calendar, Outlook, Thunderbird, and others). Copy the calendar URL from Settings and paste it into your calendar app's “Subscribe to calendar” dialog. The feed is served over <code>webcal://</code> on your local machine — it is only accessible while Sourcerer is running, and only from this computer. The feed URL contains a token — if you believe it has been compromised, click <strong>Regenerate token</strong> to invalidate the old URL.</p>
           </section>
@@ -336,7 +339,7 @@
 
   <footer>
     <div class="container">
-      <p class="footer-text">AGPL-3.0 &mdash; open source &mdash; <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a></p>
+      <p class="footer-text"><a href="https://github.com/tomcardoso/sourcerer/releases/latest"><img src="https://img.shields.io/github/v/release/tomcardoso/sourcerer?label=version&amp;color=4b5563" alt="Latest release"></a> &mdash; AGPL-3.0 &mdash; open source &mdash; <a href="https://github.com/tomcardoso/sourcerer">github.com/tomcardoso/sourcerer</a></p>
     </div>
   </footer>
 
