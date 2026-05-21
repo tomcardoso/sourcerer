@@ -182,11 +182,11 @@ export function seedDevData(db: Database.Database, email: string, name: string):
 
     function addReminder(
       contactName: string,
-      projectId: string,
+      projectId: string | null,
       daysFromNow: number,
       note: string,
     ): void {
-      const membId = membIds[`${contactName}:${projectId}`];
+      const membId = projectId ? (membIds[`${contactName}:${projectId}`] ?? null) : null;
       stmts.insertReminder.run(uuidv4(), cid(contactName), projectId, membId, NOW + daysFromNow * DAY, note, NOW);
     }
 
@@ -499,11 +499,11 @@ export function seedDevData(db: Database.Database, email: string, name: string):
       'Follow up on secure-form submission — has she had a chance to upload the documents?');
     addReminder('Darnell Okafor', millgateId, 3,
       'Check in on legal review of handwritten notes — two-week window he mentioned is almost up.');
-    addReminder('Eunice Addo-Yeboah', pensionId, 14,
+    addReminder('Eunice Addo-Yeboah', null, 14,
       'Resume contact after lawyer-requested pause — confirm she is still willing to proceed.');
     addReminder('Sen. (ret.) Gérald Marquette', pensionId, 2,
       'Confirm he received the briefing notes and whether he stands by the key passage.');
-    addReminder('Dr. Ananya Krishnamurthy', healthId, 1,
+    addReminder('Dr. Ananya Krishnamurthy', null, 1,
       'Check in — agency counsel may have issued guidance that affects what she can share.');
     addReminder('Theresa Ouellet-Gauvin', healthId, 10,
       'Complete cross-reference of falsified staffing records against her redacted report.');

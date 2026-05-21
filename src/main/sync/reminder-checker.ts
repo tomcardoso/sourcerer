@@ -8,7 +8,7 @@ const notifiedThisSession = new Set<string>();
 interface DueReminder {
   id: string;
   contact_name: string;
-  project_name: string;
+  project_name: string | null;
   note: string | null;
 }
 
@@ -29,9 +29,9 @@ export function checkReminders(): void {
       `SELECT r.id, c.name AS contact_name, p.name AS project_name, r.note
        FROM reminders r
        JOIN contacts c ON c.id = r.contact_id
-       JOIN projects p ON p.id = r.project_id
+       LEFT JOIN projects p ON p.id = r.project_id
        WHERE r.due_date <= ? AND r.is_auto_outreach = 0 AND r.completed_at IS NULL
-         AND p.is_archived = 0
+         AND (r.project_id IS NULL OR p.is_archived = 0)
          AND (r.last_notified_at IS NULL OR r.last_notified_at < ?)`,
     )
     .all(now, oneDayAgo) as DueReminder[];
@@ -46,8 +46,8 @@ export function checkReminders(): void {
     if (!notificationsEnabled) continue;
 
     const body = row.note
-      ? `${row.project_name} · ${row.note}`
-      : row.project_name;
+      ? (row.project_name ? `${row.project_name} · ${row.note}` : row.note)
+      : (row.project_name ?? 'Reminder');
 
     const notif = new Notification({
       title: `Reminder: ${row.contact_name}`,

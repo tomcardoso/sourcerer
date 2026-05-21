@@ -294,10 +294,12 @@ const sourcererApi = {
     projectId: string,
   ): Promise<Reminder[]> =>
     ipcRenderer.invoke('reminders:list-for-contact-project', { contactId, projectId }),
+  listRemindersForContact: (contactId: string): Promise<Reminder[]> =>
+    ipcRenderer.invoke('reminders:list-for-contact', contactId),
   listAllReminders: (): Promise<Reminder[]> => ipcRenderer.invoke('reminders:list-all'),
   createReminder: (data: {
     contactId: string;
-    projectId: string;
+    projectId?: string;
     dueDate: number;
     note?: string;
   }): Promise<Reminder> => ipcRenderer.invoke('reminders:create', data),

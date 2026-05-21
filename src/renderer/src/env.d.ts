@@ -169,10 +169,11 @@ declare global {
 
       // Reminders
       listRemindersForContactProject: (contactId: string, projectId: string) => Promise<Reminder[]>;
+      listRemindersForContact: (contactId: string) => Promise<Reminder[]>;
       listAllReminders: () => Promise<Reminder[]>;
       createReminder: (data: {
         contactId: string;
-        projectId: string;
+        projectId?: string;
         dueDate: number;
         note?: string;
       }) => Promise<Reminder>;

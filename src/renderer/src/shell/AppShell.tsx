@@ -8,6 +8,8 @@ import ProjectView from '../views/ProjectView';
 import ImportCsvModal from '../views/ImportCsvModal';
 import ImportResultModal from '../views/ImportResultModal';
 import AddContactModal from '../contacts/AddContactModal';
+import QuickLogModal from '../contacts/QuickLogModal';
+import QuickReminderModal from '../contacts/QuickReminderModal';
 import AlertMentions from '../views/AlertMentions';
 import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
@@ -38,6 +40,8 @@ export default function AppShell() {
   const [openContactId, setOpenContactId] = useState<string | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showImportCsv, setShowImportCsv] = useState(false);
+  const [showQuickLog, setShowQuickLog] = useState(false);
+  const [showQuickReminder, setShowQuickReminder] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importRefreshTrigger, setImportRefreshTrigger] = useState(0);
   const [updateState, setUpdateState] = useState<'idle' | 'available' | 'downloading' | 'ready'>('idle');
@@ -252,6 +256,8 @@ export default function AppShell() {
         onProjectDeleted={handleProjectDeleted}
         onAddContact={() => setShowAddContact(true)}
         onImportCsv={() => setShowImportCsv(true)}
+        onQuickLog={() => setShowQuickLog(true)}
+        onQuickReminder={() => setShowQuickReminder(true)}
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && (
@@ -349,6 +355,27 @@ export default function AppShell() {
 
       {importResult && (
         <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
+      )}
+
+      {showQuickLog && (
+        <QuickLogModal
+          onClose={() => setShowQuickLog(false)}
+          onSaved={() => {
+            setShowQuickLog(false);
+            setImportRefreshTrigger((n) => n + 1);
+            refreshOverdue();
+          }}
+        />
+      )}
+
+      {showQuickReminder && (
+        <QuickReminderModal
+          onClose={() => setShowQuickReminder(false)}
+          onSaved={() => {
+            setShowQuickReminder(false);
+            refreshOverdue();
+          }}
+        />
       )}
       </div>
     </div>

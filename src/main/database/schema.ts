@@ -206,7 +206,7 @@ export const LOCAL_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS reminders (
     id               TEXT    PRIMARY KEY,
     contact_id       TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
-    project_id       TEXT    NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id       TEXT    REFERENCES projects(id) ON DELETE SET NULL,
     membership_id    TEXT    REFERENCES project_memberships(id) ON DELETE CASCADE,
     due_date         INTEGER NOT NULL,
     note             TEXT,
