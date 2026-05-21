@@ -28,6 +28,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   const [detailId, setDetailId] = useState<string | null>(null);
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const lastCheckedIdRef = useRef<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
@@ -212,6 +213,24 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
 
   function toggleCheck(id: string, e: React.MouseEvent) {
     e.stopPropagation();
+    if (e.shiftKey && lastCheckedIdRef.current !== null) {
+      const anchorIdx = displayed.findIndex((r) => r.id === lastCheckedIdRef.current);
+      const targetIdx = displayed.findIndex((r) => r.id === id);
+      if (anchorIdx !== -1 && targetIdx !== -1) {
+        const [lo, hi] = anchorIdx < targetIdx ? [anchorIdx, targetIdx] : [targetIdx, anchorIdx];
+        const rangeIds = displayed.slice(lo, hi + 1).map((r) => r.id);
+        const removing = checkedIds.has(id);
+        setCheckedIds((prev) => {
+          const next = new Set(prev);
+          if (removing) rangeIds.forEach((rid) => next.delete(rid));
+          else rangeIds.forEach((rid) => next.add(rid));
+          return next;
+        });
+        setConfirmDelete(false);
+        return;
+      }
+    }
+    lastCheckedIdRef.current = id;
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
