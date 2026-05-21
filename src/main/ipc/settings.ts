@@ -177,9 +177,7 @@ export function registerSettingsHandlers(): void {
         await fs.writeFile(saltTmpPath, newSalt, { mode: 0o600 });
 
         // Rekey the active database connection in-place.
-        // PRAGMA rekey fails in WAL mode, so force DELETE journal mode first.
         const db = getDatabase();
-        db.pragma('journal_mode=DELETE');
         db.pragma(`rekey="x'${newKeyHex}'"`);
 
 
