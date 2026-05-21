@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Sourcerer">
+  
+  <rect width="64" height="64" rx="13" fill="#f5f0e8"></rect>
+  
+  <text x="32" y="48" text-anchor="middle" font-family="Spectral, Georgia, &#39;Times New Roman&#39;, serif" font-weight="700" font-size="48" letter-spacing="-1" fill="#1a1815">S</text>
+  
+  <g transform="translate(44, 10)" fill="#e8a840">
+    <path d="M 5 0 L 6 4 L 10 5 L 6 6 L 5 10 L 4 6 L 0 5 L 4 4 Z"></path>
+  </g>
+</svg>
