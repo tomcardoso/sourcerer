@@ -27,12 +27,10 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
 
   function pick(result: SearchResult) {
     if (result.type === 'contact') {
-      onNav({ view: 'all-contacts' });
       onOpenContact(result.id);
     } else if (result.type === 'project') {
       onNav({ view: 'project', projectId: result.id });
     } else {
-      onNav({ view: 'all-contacts' });
       onOpenContact(result.contactId);
     }
     onClose();
