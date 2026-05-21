@@ -819,7 +819,6 @@
 .detail-project-default {
   flex-shrink: 0;
   font-size: 14px;
-  line-height: 1;
   color: var(--color-text-muted);
   opacity: 0;
   padding: 0 2px;
