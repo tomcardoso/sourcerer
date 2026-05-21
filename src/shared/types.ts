@@ -191,6 +191,10 @@ export interface InteractionLogEntry {
   created_at: number;
 }
 
+export interface ContactLogEntry extends InteractionLogEntry {
+  project_name: string | null;
+}
+
 export interface TimelineEntryProject {
   project_id: string;
   project_name: string;

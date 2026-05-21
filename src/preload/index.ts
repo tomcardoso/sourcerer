@@ -13,6 +13,7 @@ import type {
   UpdateMembershipInput,
   ProjectContactRow,
   InteractionLogEntry,
+  ContactLogEntry,
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
@@ -141,6 +142,10 @@ const sourcererApi = {
     ipcRenderer.invoke('interaction-log:list', membershipId),
   addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number): Promise<InteractionLogEntry> =>
     ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt }),
+  listContactLog: (contactId: string): Promise<ContactLogEntry[]> =>
+    ipcRenderer.invoke('interaction-log:list-for-contact', contactId),
+  addGlobalLogEntry: (contactId: string, body: string, createdAt?: number): Promise<ContactLogEntry> =>
+    ipcRenderer.invoke('interaction-log:add-global', { contactId, body, createdAt }),
   getContactCount: (): Promise<number> => ipcRenderer.invoke('contacts:count'),
   getContactInteractionCount: (contactId: string): Promise<number> =>
     ipcRenderer.invoke('contacts:interaction-count', contactId),

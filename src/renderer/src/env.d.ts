@@ -10,6 +10,7 @@ import type {
   UpdateMembershipInput,
   ProjectContactRow,
   InteractionLogEntry,
+  ContactLogEntry,
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
@@ -98,6 +99,8 @@ declare global {
       // Interaction log
       listInteractionLog: (membershipId: string) => Promise<InteractionLogEntry[]>;
       addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number) => Promise<InteractionLogEntry>;
+      listContactLog: (contactId: string) => Promise<ContactLogEntry[]>;
+      addGlobalLogEntry: (contactId: string, body: string, createdAt?: number) => Promise<ContactLogEntry>;
       getContactCount: () => Promise<number>;
       getContactInteractionCount: (contactId: string) => Promise<number>;
       validatePhone: (raw: string) => Promise<boolean>;

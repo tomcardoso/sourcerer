@@ -18,6 +18,7 @@ import type {
   ContactHandleInput,
   ProjectContactRow,
   InteractionLogEntry,
+  ContactLogEntry,
   ScratchpadDraft,
   StatusOption,
   PriorityOption,
@@ -620,6 +621,46 @@ export function registerContactHandlers(): void {
         reporter_name: reporterName,
         body: body.trim(),
         created_at: ts,
+      };
+    },
+  );
+
+  ipcMain.handle('interaction-log:list-for-contact', (_, contactId: string): ContactLogEntry[] => {
+    return getDatabase()
+      .prepare(
+        `SELECT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at,
+                (SELECT p.name FROM interaction_projects ip
+                 JOIN project_memberships pm ON pm.id = ip.membership_id
+                 JOIN projects p ON p.id = pm.project_id
+                 WHERE ip.interaction_id = ile.id LIMIT 1) AS project_name
+         FROM interaction_log_entries ile
+         WHERE ile.contact_id = ?
+         ORDER BY ile.created_at ASC`,
+      )
+      .all(contactId) as ContactLogEntry[];
+  });
+
+  ipcMain.handle(
+    'interaction-log:add-global',
+    (_, { contactId, body, createdAt }: { contactId: string; body: string; createdAt?: number }): ContactLogEntry => {
+      const db = getDatabase();
+      const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+      const id = uuidv4();
+      const ts = createdAt ?? Math.floor(Date.now() / 1000);
+      if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
+      const reporterName = `${user.first_name} ${user.last_name}`;
+      db.prepare(
+        'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(id, contactId, user.email, reporterName, body.trim(), ts);
+      broadcastContactsChanged();
+      return {
+        id,
+        contact_id: contactId,
+        reporter_email: user.email,
+        reporter_name: reporterName,
+        body: body.trim(),
+        created_at: ts,
+        project_name: null,
       };
     },
   );
