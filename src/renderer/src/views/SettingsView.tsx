@@ -744,19 +744,16 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             </div>
           ) : (
             <div className="sv-wipe-confirm">
-              <p className="sv-wipe-warning">
-                Enter your master password to encrypt the backup file.
-              </p>
-              <input
-                className="sv-input"
-                type="password"
-                placeholder="Master password"
-                value={exportPassword}
-                onChange={(e) => { setExportPassword(e.target.value); setBackupError(null); }}
-                autoComplete="current-password"
-                disabled={backingUp}
-              />
               <div className="sv-wipe-row">
+                <input
+                  className="sv-input sv-backup-pw-input"
+                  type="password"
+                  placeholder="Master password"
+                  value={exportPassword}
+                  onChange={(e) => { setExportPassword(e.target.value); setBackupError(null); }}
+                  autoComplete="current-password"
+                  disabled={backingUp}
+                />
                 <Button
                   variant="accent"
                   size="sm"
