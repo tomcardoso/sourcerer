@@ -1,13 +1,10 @@
 import { ipcMain } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
-import zlib from 'zlib';
 import crypto from 'crypto';
-import { promisify } from 'util';
+import JSZip from 'jszip';
 import { getPaths, deriveKey } from '../utils';
 import { getDatabase, isDatabaseOpen, getPassword } from '../database';
-
-const gzip = promisify(zlib.gzip);
 
 const BACKUP_PREFIX = 'sourcerer-auto-backup-';
 const BACKUP_EXT = '.sourcerer-backup';
@@ -35,16 +32,22 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     // Ensure the destination folder exists (user may have moved it)
     await fs.mkdir(destPath, { recursive: true });
 
-    const { dbPath, saltPath } = getPaths();
+    const { dbPath, saltPath, screenshotsPath } = getPaths();
     const password = getPassword();
-    const dbSalt = await fs.readFile(saltPath);
-    const dbBuf = await fs.readFile(dbPath);
 
-    const innerJson = JSON.stringify({
-      db: dbBuf.toString('base64'),
-      salt: dbSalt.toString('base64'),
-    });
-    const compressed = await gzip(Buffer.from(innerJson, 'utf-8'));
+    const zip = new JSZip();
+    zip.file('db.sqlite', await fs.readFile(dbPath));
+    zip.file('salt', await fs.readFile(saltPath));
+
+    try {
+      const files = await fs.readdir(screenshotsPath);
+      for (const file of files) {
+        zip.file(`screenshots/${file}`, await fs.readFile(path.join(screenshotsPath, file)));
+      }
+    } catch { /* screenshots dir may not exist */ }
+
+    // STORE (no compression) — all contents are AES-encrypted and already incompressible
+    const zipBuf = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
 
     const backupSalt = crypto.randomBytes(32);
     const backupKeyHex = await deriveKey(password, backupSalt);
@@ -52,11 +55,11 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
 
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-    const ciphertext = Buffer.concat([cipher.update(compressed), cipher.final()]);
+    const ciphertext = Buffer.concat([cipher.update(zipBuf), cipher.final()]);
     const authTag = cipher.getAuthTag();
 
     const bundle = JSON.stringify({
-      version: 2,
+      version: 3,
       backup_salt: backupSalt.toString('base64'),
       iv: iv.toString('base64'),
       auth_tag: authTag.toString('base64'),

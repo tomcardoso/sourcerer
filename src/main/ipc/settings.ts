@@ -247,15 +247,16 @@ export function registerSettingsHandlers(): void {
     const provider = detectSyncProvider(newBundlePath);
     if (provider) {
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
-      const { response } = await dialog.showMessageBox(win, {
-        type: 'warning',
+      const msgOpts = {
+        type: 'warning' as const,
         title: 'Cloud sync detected',
         message: `This location is inside ${provider}.`,
         detail: 'Sourcerer can store your vault here, but opening it on more than one device at the same time may corrupt your data.',
         buttons: ['Continue', 'Choose different location'],
         defaultId: 0,
         cancelId: 1,
-      });
+      };
+      const { response } = await (win ? dialog.showMessageBox(win, msgOpts) : dialog.showMessageBox(msgOpts));
       if (response === 1) return { success: false };
     }
 
