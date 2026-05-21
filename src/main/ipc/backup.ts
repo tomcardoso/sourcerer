@@ -131,6 +131,9 @@ export function registerBackupHandlers(): void {
         await fs.writeFile(saltPath, dbSalt, { mode: 0o600 });
 
         // Restore screenshots only after the DB is confirmed and written.
+        // Clear the existing folder first so stale screenshots from the previous
+        // vault don't linger alongside the restored ones.
+        await fs.rm(screenshotsPath, { recursive: true, force: true });
         await fs.mkdir(screenshotsPath, { recursive: true });
         if (screensWritten) {
           for (const file of await fs.readdir(tmpScreensDir)) {
@@ -141,6 +144,7 @@ export function registerBackupHandlers(): void {
             } catch (err) {
               if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
               await fs.copyFile(src, dst);
+              await fs.chmod(dst, 0o600);
             }
           }
         }

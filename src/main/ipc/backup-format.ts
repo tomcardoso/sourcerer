@@ -57,11 +57,21 @@ export async function* createBackupEntries(
   yield { name: 'db.sqlite', data: await fs.readFile(dbPath) };
   yield { name: 'salt', data: await fs.readFile(saltPath) };
   try {
-    for (const file of await fs.readdir(screenshotsPath)) {
-      yield { name: `screenshots/${file}`, data: await fs.readFile(path.join(screenshotsPath, file)) };
+    for (const entry of await fs.readdir(screenshotsPath, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      yield { name: `screenshots/${entry.name}`, data: await fs.readFile(path.join(screenshotsPath, entry.name)) };
     }
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+}
+
+// FileHandle.write() may perform partial writes on some filesystems; loop until done.
+async function writeAll(fh: fs.FileHandle, buf: Buffer): Promise<void> {
+  let written = 0;
+  while (written < buf.length) {
+    const { bytesWritten } = await fh.write(buf, written, buf.length - written);
+    written += bytesWritten;
   }
 }
 
@@ -82,7 +92,7 @@ export async function writeBackupFile(
     backupSalt.copy(fileHeader, 8);
     baseIV.copy(fileHeader, 40);
     fileHeader.writeUInt32LE(CHUNK_SIZE, 48);
-    await fh.write(fileHeader);
+    await writeAll(fh, fileHeader);
 
     let accumBuf = Buffer.allocUnsafe(CHUNK_SIZE);
     let accumLen = 0;
@@ -97,8 +107,8 @@ export async function writeBackupFile(
       chunkHeader.writeUInt32LE(chunkIndex, 0);
       authTag.copy(chunkHeader, 4);
       chunkHeader.writeUInt32LE(ciphertext.length, 20);
-      await fh.write(chunkHeader);
-      await fh.write(ciphertext);
+      await writeAll(fh, chunkHeader);
+      await writeAll(fh, ciphertext);
       chunkIndex++;
     }
 
