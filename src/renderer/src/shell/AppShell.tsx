@@ -274,12 +274,7 @@ export default function AppShell() {
         )}
         {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} user={user} />}
         {nav.view === 'all-timeline' && (
-          <ProjectTimeline
-            onSelectContact={(id) => {
-              setNav({ view: 'all-contacts' });
-              setOpenContactId(id);
-            }}
-          />
+          <ProjectTimeline user={user} />
         )}
         {nav.view === 'project' && (
           <ProjectView
@@ -297,16 +292,10 @@ export default function AppShell() {
           <ProjectTimeline
             projectId={activeProject.id}
             projectName={activeProject.name}
-            onSelectContact={(id) => {
-              setNav({ view: 'project', projectId: activeProject.id });
-              setOpenContactId(id);
-            }}
+            user={user}
           />
         ) : (
-          // Project not yet loaded / no longer exists — fall back to global timeline
-          <ProjectTimeline
-            onSelectContact={(id) => setOpenContactId(id)}
-          />
+          <ProjectTimeline user={user} />
         ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
