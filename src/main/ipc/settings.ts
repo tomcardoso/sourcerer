@@ -177,12 +177,9 @@ export function registerSettingsHandlers(): void {
         await fs.writeFile(saltTmpPath, newSalt, { mode: 0o600 });
 
         // Rekey the active database connection in-place.
-        // PRAGMA rekey is not supported in WAL mode, so we checkpoint the WAL by
-        // switching to DELETE journal mode first, rekey, then restore WAL mode.
         const db = getDatabase();
-        db.pragma('journal_mode = DELETE');
         db.pragma(`rekey="x'${newKeyHex}'"`);
-        db.pragma('journal_mode = WAL');
+
 
         // Update the in-memory key and password so screenshot encryption and auto-backups keep working
         updateActiveKeyHex(newKeyHex);
@@ -237,15 +234,8 @@ export function registerSettingsHandlers(): void {
     const { dbPath, saltPath, screenshotsPath } = getPaths();
 
     try {
-      // Checkpoint WAL so db.sqlite is self-contained before copying
-      try { getDatabase().pragma('wal_checkpoint(FULL)'); } catch { /* non-fatal */ }
-
       await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
-
-      // Copy WAL/SHM if present (may not exist)
-      await fs.cp(dbPath + '-wal', path.join(newBundlePath, 'db.sqlite-wal'), { force: true }).catch(() => {});
-      await fs.cp(dbPath + '-shm', path.join(newBundlePath, 'db.sqlite-shm'), { force: true }).catch(() => {});
 
       // Copy screenshots directory if it exists
       const screenshotsDest = path.join(newBundlePath, 'screenshots');
@@ -283,8 +273,6 @@ export function registerSettingsHandlers(): void {
     }
 
     await secureDelete(dbPath);
-    await secureDelete(dbPath + '-wal');
-    await secureDelete(dbPath + '-shm');
     await secureDelete(saltPath);
 
     // Remove encrypted screenshots
