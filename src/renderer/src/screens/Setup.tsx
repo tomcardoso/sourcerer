@@ -123,22 +123,22 @@ export default function Setup({ onComplete }: Props) {
       <div className="setup-root">
         <div className="setup-card">
           <WordmarkLogo size={64} className="setup-wordmark" />
-          <p className="setup-subtitle">Choose where to store your vault.</p>
+          <p className="setup-subtitle">Where should Sourcerer store your vault?</p>
           <p className="setup-hint setup-vault-hint">
-            Your vault holds the encrypted database, salt file, and screenshots. You can store it
-            on an external drive or synced folder to take it between machines.
+            Your vault holds the encrypted database, salt file, and screenshots. Most users can
+            leave it in the default location. You can always move it later from Settings.
           </p>
           <div className="setup-vault-options">
             <div className="setup-vault-option">
-              <span className="setup-vault-option-label">New to Sourcerer?</span>
-              <Button variant="accent" full onClick={handlePickVaultLocation} disabled={vaultLoading}>
-                Choose a folder…
+              <Button variant="accent" full onClick={advanceToProfile} disabled={vaultLoading}>
+                Use default location
               </Button>
+              <span className="setup-hint">Stores your vault in the app data folder on this machine.</span>
             </div>
             <div className="setup-vault-option">
-              <span className="setup-vault-option-label">Moving from another machine?</span>
-              <Button variant="secondary" full onClick={handleOpenExistingVault} disabled={vaultLoading}>
-                Open existing vault…
+              <span className="setup-vault-option-label">Want to choose where?</span>
+              <Button variant="secondary" full onClick={handlePickVaultLocation} disabled={vaultLoading}>
+                Choose a folder…
               </Button>
             </div>
           </div>
@@ -146,10 +146,10 @@ export default function Setup({ onComplete }: Props) {
           <button
             type="button"
             className="setup-default-link"
-            onClick={advanceToProfile}
+            onClick={handleOpenExistingVault}
             disabled={vaultLoading}
           >
-            Use default location
+            Open existing vault…
           </button>
         </div>
       </div>
