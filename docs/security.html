@@ -97,7 +97,7 @@
             <p>The following are encrypted at rest:</p>
             <ul>
               <li>The SQLite database — all contacts, projects, interactions, reminders, alerts, and settings</li>
-              <li>Screenshots captured by the Chrome extension, stored encrypted alongside the database</li>
+              <li>Screenshots captured by the browser extension, stored encrypted alongside the database</li>
             </ul>
             <p>Encryption is full-database: SQLCipher encrypts every page of the SQLite file, including table structure, indexes, and all data.</p>
           </section>
@@ -141,13 +141,13 @@
             <h2>Local HTTP server</h2>
             <p>When Sourcerer is running and unlocked, it starts a small HTTP server bound to <code>127.0.0.1:27371</code>. This server powers two features:</p>
             <ul>
-              <li><strong>Chrome extension</strong> — the extension sends screenshots and reads contact data through this server</li>
+              <li><strong>Browser extension</strong> — the extension sends screenshots and reads contact data through this server</li>
               <li><strong>Calendar feed</strong> — reminders can be subscribed to by any local calendar app (Apple Calendar, Outlook, Thunderbird, and others) via a <code>webcal://localhost</code> URL, accessible only on this machine</li>
             </ul>
             <p>The server is bound exclusively to the loopback interface (<code>127.0.0.1</code>). It is not accessible from any other machine on the network, and cannot be reached from the internet.</p>
 
             <h3>Extension authentication</h3>
-            <p>Before the Chrome extension can connect, you must explicitly approve it in the app. Sourcerer then issues a session token to the extension. Every request the extension makes must include this token. The token is regenerated each time the extension reconnects.</p>
+            <p>Before the browser extension can connect, you must explicitly approve it in the app. Sourcerer then issues a session token to the extension. Every request the extension makes must include this token. The token is regenerated each time the extension reconnects.</p>
 
             <h3>Calendar token</h3>
             <p>The calendar feed URL includes a persistent token. Anyone with this URL can read your upcoming reminders (but not your contacts, notes, or any other data). If you believe the URL has been compromised, regenerate the token from Settings — the old URL will immediately stop working.</p>
@@ -162,7 +162,7 @@
             <ul>
               <li>The encrypted database file and its WAL and SHM journal files</li>
               <li>The salt file (<code>sourcerer.salt</code>)</li>
-              <li>All screenshots stored by the Chrome extension</li>
+              <li>All screenshots stored by the browser extension</li>
             </ul>
             <p>Files are overwritten before deletion where possible, making forensic recovery harder (though not impossible on SSDs, which manage writes at the firmware level).</p>
             <div class="warn">
