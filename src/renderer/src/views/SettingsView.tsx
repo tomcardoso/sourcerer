@@ -760,6 +760,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                   placeholder="Master password"
                   value={exportPassword}
                   onChange={(e) => { setExportPassword(e.target.value); setBackupError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && exportPassword && !backingUp) handleExportBackup(); }}
                   autoComplete="current-password"
                   disabled={backingUp}
                 />
