@@ -592,7 +592,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle(
     'interaction-log:add',
-    (_, { membershipId, body, createdAt }: { membershipId: string; body: string; createdAt?: number }): InteractionLogEntry => {
+    (_, { membershipId, body, createdAt, extraMembershipIds }: { membershipId: string; body: string; createdAt?: number; extraMembershipIds?: string[] }): InteractionLogEntry => {
       const db = getDatabase();
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const membership = db
@@ -603,13 +603,15 @@ export function registerContactHandlers(): void {
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
       if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
+      const insertProject = db.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)');
       db.transaction(() => {
         db.prepare(
           'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(id, membership.contact_id, user.email, reporterName, body.trim(), ts);
-        db.prepare(
-          'INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
-        ).run(id, membershipId);
+        insertProject.run(id, membershipId);
+        for (const mid of extraMembershipIds ?? []) {
+          if (mid !== membershipId) insertProject.run(id, mid);
+        }
       })();
       // Clear any auto-outreach calendar reminder — source is no longer overdue.
       db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1').run(membershipId);

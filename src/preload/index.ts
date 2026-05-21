@@ -140,8 +140,8 @@ const sourcererApi = {
   // Interaction log
   listInteractionLog: (membershipId: string): Promise<InteractionLogEntry[]> =>
     ipcRenderer.invoke('interaction-log:list', membershipId),
-  addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number): Promise<InteractionLogEntry> =>
-    ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt }),
+  addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number, extraMembershipIds?: string[]): Promise<InteractionLogEntry> =>
+    ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt, extraMembershipIds }),
   listContactLog: (contactId: string): Promise<ContactLogEntry[]> =>
     ipcRenderer.invoke('interaction-log:list-for-contact', contactId),
   addGlobalLogEntry: (contactId: string, body: string, createdAt?: number, membershipIds?: string[]): Promise<ContactLogEntry> =>

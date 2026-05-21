@@ -4,6 +4,7 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
 import { fmtLogDate, LogRow, LogAllModal } from './logShared';
+import LogProjectPicker from './LogProjectPicker';
 import './ContactDetail.css';
 import type {
   ContactDetail as ContactDetailType,
@@ -34,12 +35,14 @@ const TRIGGER_STATUSES = ['Not yet contacted', 'Contacted, no reply'];
 
 function LogSection({
   membership,
+  allProjects,
   membershipStatus,
   statusOptions,
   onStatusChange,
   onEntryAdded,
 }: {
   membership: ContactProject;
+  allProjects: ContactProject[];
   membershipStatus: string;
   statusOptions: StatusOption[];
   onStatusChange: (value: string) => Promise<void>;
@@ -50,6 +53,7 @@ function LogSection({
   const [logDate, setLogDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [selectedMembershipIds, setSelectedMembershipIds] = useState<string[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [showStatusPrompt, setShowStatusPrompt] = useState(false);
   const [promptStatus, setPromptStatus] = useState('');
@@ -61,6 +65,7 @@ function LogSection({
     setLogDate('');
     setAdding(false);
     setShowStatusPrompt(false);
+    setSelectedMembershipIds([membership.membership_id]);
     window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
 
@@ -71,10 +76,12 @@ function LogSection({
     try {
       const [y, m, d] = logDate.split('-').map(Number);
       const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
-      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body, createdAt);
+      const extras = selectedMembershipIds.filter((id) => id !== membership.membership_id);
+      const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body, createdAt, extras);
       setEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
       setText('');
       setLogDate('');
+      setSelectedMembershipIds([membership.membership_id]);
       setAdding(false);
       onEntryAdded?.();
       if (TRIGGER_STATUSES.includes(membershipStatus)) {
@@ -116,12 +123,11 @@ function LogSection({
               View all ({entries.length})
             </Button>
           )}
-          <Button variant="ghost" onClick={() => {
-            if (!adding) setLogDate(today);
-            setAdding((v) => !v);
-          }}>
-            {adding ? '× Cancel' : '+ Add'}
-          </Button>
+          {!adding && (
+            <Button variant="ghost" onClick={() => { setLogDate(today); setAdding(true); }}>
+              + Add
+            </Button>
+          )}
         </div>
       </div>
 
@@ -159,9 +165,8 @@ function LogSection({
       )}
 
       {adding && (
-        <div className="pt-log-compose">
+        <div className="pt-log-compose pt-log-compose--global">
           <div className="pt-log-date-row">
-            <label className="pt-log-date-label">Date</label>
             <CalendarPicker
               label="Select date"
               value={logDate}
@@ -181,11 +186,20 @@ function LogSection({
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
             }}
           />
+          {allProjects.length > 1 && (
+            <div className="pt-log-projects">
+              <LogProjectPicker
+                projects={allProjects}
+                selectedIds={selectedMembershipIds}
+                onChange={setSelectedMembershipIds}
+              />
+            </div>
+          )}
           <div className="pt-reminder-form-actions">
             <button className="pt-log-submit" onClick={handleSubmit} disabled={!text.trim() || !logDate || submitting}>
               {submitting ? 'Saving…' : 'Log'}
             </button>
-            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); setLogDate(''); }}>
+            <button className="pt-reminder-cancel" onClick={() => { setAdding(false); setText(''); setLogDate(''); setSelectedMembershipIds([membership.membership_id]); }}>
               Cancel
             </button>
           </div>
@@ -836,6 +850,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
       />
       <LogSection
         membership={membership}
+        allProjects={contact.projects}
         membershipStatus={localStatus}
         statusOptions={statusOptions}
         onStatusChange={handleStatusChange}

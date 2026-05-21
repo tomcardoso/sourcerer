@@ -890,7 +890,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         {logAdding && (
           <div className="pt-log-compose pt-log-compose--global">
             <div className="pt-log-date-row">
-              <label className="pt-log-date-label">Date</label>
               <CalendarPicker
                 label="Select date"
                 value={logDate}
