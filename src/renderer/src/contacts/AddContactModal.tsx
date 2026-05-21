@@ -50,6 +50,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   });
   const [handles, setHandles] = useState<Array<{ type: string; handle: string }>>([]);
   const [notes, setNotes] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
@@ -201,6 +202,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
         </div>
 
         <form ref={formRef} onSubmit={handleSubmit} className="ac-form">
+          <p className="ac-description">Only a name is required — everything else can be filled in later.</p>
+
           <div className="ac-field">
             <label htmlFor="ac-name" className="modal-label">
               Name <span className="modal-required">*</span>
@@ -230,6 +233,19 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
+          <button
+            type="button"
+            className="ac-expand-toggle"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            <span className="ac-expand-toggle-label">
+              {expanded ? 'Fewer details' : 'More details'}
+              <span className="ac-expand-toggle-icon">{expanded ? '▴' : '▾'}</span>
+            </span>
+          </button>
+
+          {expanded && <>
           <div className="ac-field">
             <label htmlFor="ac-title" className="modal-label">Title / Role</label>
             <input
@@ -538,6 +554,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               disabled={submitting}
             />
           </div>
+
+          </>}
 
           {submitError && <div className="ac-submit-error">{submitError}</div>}
 
