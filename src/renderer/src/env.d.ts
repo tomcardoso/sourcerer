@@ -203,7 +203,8 @@ declare global {
       getAutoBackupSettings: () => Promise<{ enabled: boolean; destPath: string | null; maxCount: number }>;
       setAutoBackupSettings: (data: { enabled?: boolean; destPath?: string | null; maxCount?: number }) => Promise<void>;
       chooseBackupFolder: () => Promise<string | null>;
-      getVaultPath: () => Promise<string | null>;
+      getVaultPath: () => Promise<string>;
+      revealVault: () => Promise<void>;
       moveVault: () => Promise<{ success: boolean; error?: string; newPath?: string }>;
 
       // Search

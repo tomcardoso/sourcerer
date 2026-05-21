@@ -228,8 +228,10 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-auto-backup', data),
   chooseBackupFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('settings:choose-backup-folder'),
-  getVaultPath: (): Promise<string | null> =>
+  getVaultPath: (): Promise<string> =>
     ipcRenderer.invoke('settings:get-vault-path'),
+  revealVault: (): Promise<void> =>
+    ipcRenderer.invoke('settings:reveal-vault'),
   moveVault: (): Promise<MoveVaultResult> =>
     ipcRenderer.invoke('settings:move-vault'),
   searchGlobal: (query: string): Promise<import('@shared/types').SearchResult[]> =>

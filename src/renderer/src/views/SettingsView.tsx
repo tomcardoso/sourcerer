@@ -94,7 +94,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [autoBackupRunning, setAutoBackupRunning] = useState(false);
   const [autoBackupResult, setAutoBackupResult] = useState<string | null>(null);
 
-  const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const [vaultPath, setVaultPath] = useState<string>('');
   const [movingVault, setMovingVault] = useState(false);
   const [moveVaultError, setMoveVaultError] = useState<string | null>(null);
   const [moveVaultSuccess, setMoveVaultSuccess] = useState(false);
@@ -323,7 +323,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     const result = await window.sourcerer.moveVault();
     setMovingVault(false);
     if (result.success) {
-      setVaultPath(result.newPath ?? null);
+      if (result.newPath) setVaultPath(result.newPath);
       setMoveVaultSuccess(true);
     } else if (result.error) {
       setMoveVaultError(result.error);
@@ -713,7 +713,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           <div className="sv-field">
             <label className="sv-label">Current location</label>
             <div className="sv-row">
-              <code className="sv-path-code">{vaultPath ?? 'Default location (app data folder)'}</code>
+              <code className="sv-path-code">{vaultPath}</code>
+              <Button variant="ghost" size="sm" onClick={() => window.sourcerer.revealVault()}>
+                Show in folder
+              </Button>
               <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
                 {movingVault ? 'Moving…' : 'Move vault…'}
               </Button>

@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog, BrowserWindow } from 'electron';
+import { ipcMain, app, dialog, BrowserWindow, shell } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -218,8 +218,17 @@ export function registerSettingsHandlers(): void {
       .get() as User;
   });
 
-  ipcMain.handle('settings:get-vault-path', (): string | null => {
-    return getVaultBundlePath();
+  ipcMain.handle('settings:get-vault-path', (): string => {
+    return getVaultBundlePath() ?? app.getPath('userData');
+  });
+
+  ipcMain.handle('settings:reveal-vault', (): void => {
+    const bundlePath = getVaultBundlePath();
+    if (bundlePath) {
+      shell.showItemInFolder(bundlePath);
+    } else {
+      shell.openPath(app.getPath('userData'));
+    }
   });
 
   ipcMain.handle('settings:move-vault', async (event): Promise<{ success: boolean; error?: string; newPath?: string }> => {
