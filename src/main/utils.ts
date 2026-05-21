@@ -56,10 +56,22 @@ export function detectSyncProvider(vaultPath: string): string | null {
   const p = vaultPath.replace(/\\/g, '/');
 
   if (p.includes('/Library/Mobile Documents/')) return 'iCloud Drive';
-  if (p.includes('/Library/CloudStorage/')) return 'iCloud Drive';
+
+  // On macOS Ventura+, all cloud providers mount under ~/Library/CloudStorage/.
+  // Parse the first path segment to identify the specific provider.
+  const cloudStorageMatch = p.match(/\/Library\/CloudStorage\/([^/]+)/);
+  if (cloudStorageMatch) {
+    const folder = cloudStorageMatch[1].toLowerCase();
+    if (folder.startsWith('onedrive')) return 'OneDrive';
+    if (folder.startsWith('googledrive')) return 'Google Drive';
+    if (folder.startsWith('dropbox')) return 'Dropbox';
+    if (folder.startsWith('box')) return 'Box';
+    return 'iCloud Drive';
+  }
+
   if (/[/\\]OneDrive([/\\ -]|$)/i.test(vaultPath)) return 'OneDrive';
   if (/[/\\]Google Drive[/\\]/i.test(vaultPath)) return 'Google Drive';
-  if (/[/\\]Box Sync[/\\]/i.test(vaultPath)) return 'Box';
+  if (/[/\\]Box Sync[/\\]/i.test(vaultPath) || /[/\\]Box Drive[/\\]/i.test(vaultPath)) return 'Box';
 
   // Dropbox: check info.json for custom install path, then common path
   try {

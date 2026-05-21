@@ -1,6 +1,14 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import { getPaths, deriveKey } from '../utils';
+import { unlockDatabase, maybeRunDevSeeds, setActivePassword } from '../database';
+import { autoLock } from '../auto-lock';
+import { startPoller } from '../sync/poller';
+import { startAutoBackupTimer } from '../index';
+import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
+import { checkReminders, clearReminderNotificationCache } from '../sync/reminder-checker';
+import { runDedupScan } from './contacts';
+import type { UnlockResult } from '@shared/types';
 
 async function checkVaultFiles(dbPath: string, saltPath: string): Promise<string | null> {
   const [dbStat, saltStat] = await Promise.all([
@@ -15,14 +23,6 @@ async function checkVaultFiles(dbPath: string, saltPath: string): Promise<string
   if (saltStat.size !== 32) return 'The vault key file appears to be a cloud sync placeholder. Make sure your sync client has finished downloading the vault before unlocking.';
   return null;
 }
-import { unlockDatabase, maybeRunDevSeeds, setActivePassword } from '../database';
-import { autoLock } from '../auto-lock';
-import { startPoller } from '../sync/poller';
-import { startAutoBackupTimer } from '../index';
-import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
-import { checkReminders, clearReminderNotificationCache } from '../sync/reminder-checker';
-import { runDedupScan } from './contacts';
-import type { UnlockResult } from '@shared/types';
 
 const APP_WIDTH = 1100;
 const APP_HEIGHT = 720;
