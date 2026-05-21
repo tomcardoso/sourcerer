@@ -184,6 +184,7 @@
 
 .detail-project-name {
   flex: 1;
+  align-self: center;
   font-size: 13px;
   color: var(--color-text);
   overflow: hidden;
@@ -201,6 +202,7 @@
   padding: 0 6px;
   white-space: nowrap;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .detail-project-remove {
