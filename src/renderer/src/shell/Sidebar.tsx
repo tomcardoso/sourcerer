@@ -27,6 +27,8 @@ interface Props {
   onProjectDeleted: (id: string) => void;
   onAddContact: () => void;
   onImportCsv: () => void;
+  onQuickLog: () => void;
+  onQuickReminder: () => void;
 }
 
 export default function Sidebar({
@@ -47,6 +49,8 @@ export default function Sidebar({
   onProjectDeleted,
   onAddContact,
   onImportCsv,
+  onQuickLog,
+  onQuickReminder,
 }: Props) {
   const [showNewProject, setShowNewProject] = useState(false);
   const [showJoinProject, setShowJoinProject] = useState(false);
@@ -122,6 +126,8 @@ export default function Sidebar({
           <div className="sidebar-action-btns">
             <Button variant="accent" size="sm" full onClick={onAddContact}>+ Add contact</Button>
             <Button variant="secondary" size="sm" full onClick={onImportCsv}>Import contacts</Button>
+            <Button variant="secondary" size="sm" full onClick={onQuickLog}>Log interaction</Button>
+            <Button variant="secondary" size="sm" full onClick={onQuickReminder}>Set reminder</Button>
           </div>
 
           <div className="sidebar-section-label">Workspace</div>
