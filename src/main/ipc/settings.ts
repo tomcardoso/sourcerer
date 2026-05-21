@@ -1,11 +1,11 @@
-import { ipcMain, app, dialog } from 'electron';
+import { ipcMain, app, dialog, BrowserWindow, shell } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } from '../database';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig, detectSyncProvider } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
 import { validateEmail } from '@shared/validation';
@@ -177,12 +177,9 @@ export function registerSettingsHandlers(): void {
         await fs.writeFile(saltTmpPath, newSalt, { mode: 0o600 });
 
         // Rekey the active database connection in-place.
-        // PRAGMA rekey is not supported in WAL mode, so we checkpoint the WAL by
-        // switching to DELETE journal mode first, rekey, then restore WAL mode.
         const db = getDatabase();
-        db.pragma('journal_mode = DELETE');
         db.pragma(`rekey="x'${newKeyHex}'"`);
-        db.pragma('journal_mode = WAL');
+
 
         // Update the in-memory key and password so screenshot encryption and auto-backups keep working
         updateActiveKeyHex(newKeyHex);
@@ -221,9 +218,105 @@ export function registerSettingsHandlers(): void {
       .get() as User;
   });
 
+  ipcMain.handle('settings:get-vault-path', (): string => {
+    return getVaultBundlePath() ?? app.getPath('userData');
+  });
+
+  ipcMain.handle('settings:reveal-vault', (): void => {
+    const bundlePath = getVaultBundlePath();
+    if (bundlePath) {
+      shell.showItemInFolder(bundlePath);
+    } else {
+      shell.openPath(app.getPath('userData'));
+    }
+  });
+
+  ipcMain.handle('settings:move-vault', async (event): Promise<{ success: boolean; error?: string; newPath?: string }> => {
+    const result = await dialog.showSaveDialog({
+      title: 'Move vault',
+      message: 'Choose where to move your Sourcerer vault',
+      defaultPath: path.join(app.getPath('documents'), 'Vault'),
+      buttonLabel: 'Move vault here',
+      filters: [{ name: 'Sourcerer Vault', extensions: ['sourcerer'] }],
+    });
+    if (result.canceled || !result.filePath) return { success: false };
+    const newBundlePath = result.filePath.toLowerCase().endsWith('.sourcerer')
+      ? result.filePath
+      : result.filePath + '.sourcerer';
+
+    const provider = detectSyncProvider(newBundlePath);
+    if (provider) {
+      const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'warning',
+        title: 'Cloud sync detected',
+        message: `This location is inside ${provider}.`,
+        detail: 'Sourcerer can store your vault here, but opening it on more than one device at the same time may corrupt your data.',
+        buttons: ['Continue', 'Choose different location'],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (response === 1) return { success: false };
+    }
+
+    const oldBundlePath = getVaultBundlePath();
+    const { dbPath, saltPath, screenshotsPath } = getPaths();
+
+    const newNorm = newBundlePath.replace(/\\/g, '/');
+    const oldNorm = (oldBundlePath ?? '').replace(/\\/g, '/');
+    if (oldNorm && newNorm === oldNorm) return { success: false, error: 'The vault is already at that location.' };
+
+    const destHasVault = await fs
+      .access(path.join(newBundlePath, 'db.sqlite'))
+      .then(() => true)
+      .catch(() => false);
+    if (destHasVault) {
+      return { success: false, error: 'That location already contains a vault.' };
+    }
+
+    try {
+      await fs.mkdir(newBundlePath, { recursive: true });
+
+      // Safe to copy while the DB is open: DELETE journal mode keeps the file
+      // in a consistent committed state at all times (no -wal/-shm sidecars).
+      await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
+      await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
+
+      // Copy screenshots directory if it exists
+      const screenshotsDest = path.join(newBundlePath, 'screenshots');
+      await fs.cp(screenshotsPath, screenshotsDest, { recursive: true, force: true }).catch(() => {});
+
+      writeVaultConfig(newBundlePath);
+
+      // Lock only after everything succeeded so the user isn't locked out on failure
+      autoLock.lock();
+      closeDatabase();
+
+      // Clean up old vault location — non-fatal if this fails
+      try {
+        if (oldBundlePath) {
+          if (!newNorm.startsWith(oldNorm + '/')) {
+            await fs.rm(oldBundlePath, { recursive: true, force: true });
+          }
+        } else {
+          await fs.unlink(dbPath).catch(() => {});
+          await fs.unlink(saltPath).catch(() => {});
+          await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
+        }
+      } catch { /* move succeeded; cleanup failure is non-fatal */ }
+
+      return { success: true, newPath: newBundlePath };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Move failed.';
+      const friendly = (err as NodeJS.ErrnoException).code === 'EACCES'
+        ? "Permission denied — you don't have write access to that location."
+        : msg;
+      return { success: false, error: friendly };
+    }
+  });
+
   ipcMain.handle('settings:panic-wipe', async (): Promise<void> => {
-    const { dbPath, saltPath } = getPaths();
-    const screenshotsPath = path.join(app.getPath('userData'), 'screenshots');
+    const { dbPath, saltPath, screenshotsPath } = getPaths();
 
     closeDatabase();
 
@@ -244,13 +337,16 @@ export function registerSettingsHandlers(): void {
     }
 
     await secureDelete(dbPath);
-    await secureDelete(dbPath + '-wal');
-    await secureDelete(dbPath + '-shm');
     await secureDelete(saltPath);
 
     // Remove encrypted screenshots
     await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
 
+    // Remove the vault bundle directory itself if one was configured
+    const bundlePath = getVaultBundlePath();
+    if (bundlePath) await fs.rm(bundlePath, { recursive: true, force: true }).catch(() => {});
+
+    clearVaultConfig();
     app.quit();
   });
 

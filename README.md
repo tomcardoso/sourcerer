@@ -60,10 +60,11 @@ A browser extension (Chrome and Firefox) captures full-page screenshots from any
 
 **Security**
 - AES-256 encryption via SQLCipher; master password derived with Argon2id
+- Portable vault: a self-contained `.sourcerer` bundle (database, key file, screenshots) that you can store anywhere — local drive, external drive, or cloud-synced folder
 - Auto-lock on idle (configurable timeout)
 - Redaction mode (Ctrl+Shift+R) blurs all contact details, names, and notes on screen
 - Panic wipe: destroys the database and key material immediately
-- Encrypted backup and restore
+- Encrypted backup and restore; configurable auto-backup
 
 **Import / Export**
 - CSV import with semicolon-separated multi-value fields (emails, phones, websites per cell)
@@ -81,6 +82,8 @@ A browser extension (Chrome and Firefox) captures full-page screenshots from any
 ## How it works
 
 Sourcerer is an Electron + React + TypeScript application built with [electron-vite](https://electron-vite.org). The database is SQLite encrypted with [better-sqlite3-multiple-ciphers](https://github.com/m4heshd/better-sqlite3-multiple-ciphers) (SQLCipher AES-256-CBC). All communication between the renderer and the main process goes through a typed preload bridge — `nodeIntegration` is off, the renderer sandbox is on. The master password is never stored; the key is derived fresh on each unlock with Argon2id.
+
+All data lives in a self-contained `.sourcerer` vault bundle — a directory containing the encrypted database, the Argon2 salt file, and any screenshots captured by the browser extension. The vault can be placed anywhere: a local folder, an external drive, or a cloud-synced folder. On macOS, Finder presents the bundle as a single opaque file.
 
 ---
 

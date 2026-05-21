@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { validateEmail } from '@shared/validation';
 import { WordmarkLogo } from '../components/WordmarkLogo';
 import Button from '../shell/Button';
 import './Setup.css';
@@ -29,7 +30,7 @@ function validate(form: FormState): string | null {
   if (!form.firstName.trim()) return 'First name is required.';
   if (!form.lastName.trim()) return 'Last name is required.';
   if (!form.email.trim()) return 'Email address is required.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid email address.';
+  if (!validateEmail(form.email)) return 'Enter a valid email address.';
   if (form.password.length < 12) return 'Password must be at least 12 characters.';
   if (form.password !== form.confirmPassword) return 'Passwords do not match.';
   if (!form.acknowledgedNoRecovery)
@@ -38,9 +39,61 @@ function validate(form: FormState): string | null {
 }
 
 export default function Setup({ onComplete }: Props) {
+  const [step, setStep] = useState<'vault' | 'profile'>('vault');
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [vaultError, setVaultError] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function advanceToProfile() {
+    await window.sourcerer.expandForSetup();
+    setStep('profile');
+  }
+
+  async function handleUseDefaultLocation() {
+    setVaultLoading(true);
+    setVaultError(null);
+    const result = await window.sourcerer.useDefaultVault();
+    if (result?.error) {
+      setVaultError(result.error);
+      setVaultLoading(false);
+      return;
+    }
+    await advanceToProfile();
+    setVaultLoading(false);
+  }
+
+  async function handlePickVaultLocation() {
+    setVaultLoading(true);
+    setVaultError(null);
+    const result = await window.sourcerer.pickVaultLocation();
+    if (!result) {
+      setVaultLoading(false);
+      return;
+    }
+    if (result.error) {
+      setVaultError(result.error);
+      setVaultLoading(false);
+      return;
+    }
+    await advanceToProfile();
+    setVaultLoading(false);
+  }
+
+  async function handleOpenExistingVault() {
+    setVaultLoading(true);
+    setVaultError(null);
+    const result = await window.sourcerer.openExistingVault();
+    setVaultLoading(false);
+    if (result === null) return;
+    if (result.success) {
+      onComplete();
+    } else {
+      setVaultError(result.error ?? 'Could not open vault.');
+    }
+  }
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
@@ -76,6 +129,45 @@ export default function Setup({ onComplete }: Props) {
       setError(result.error ?? 'Setup failed. Please try again.');
       setSubmitting(false);
     }
+  }
+
+  if (step === 'vault') {
+    return (
+      <div className="setup-root">
+        <div className="setup-card">
+          <WordmarkLogo size={64} className="setup-wordmark" />
+          <p className="setup-subtitle">Where should Sourcerer store your vault?</p>
+          <p className="setup-hint setup-vault-hint">
+            Your vault holds the encrypted database, salt file, and screenshots. Most users can
+            leave it in the default location. You can always move it later from Settings.
+          </p>
+          <div className="setup-vault-options">
+            <div className="setup-vault-option">
+              <Button variant="accent" full onClick={handleUseDefaultLocation} disabled={vaultLoading}>
+                Use default location
+              </Button>
+              <span className="setup-hint">Stores your vault in the app data folder on this machine.</span>
+            </div>
+            <div className="setup-vault-option">
+              <span className="setup-vault-option-label">Want to choose where?</span>
+              <Button variant="secondary" full onClick={handlePickVaultLocation} disabled={vaultLoading}>
+                Choose a folder…
+              </Button>
+              <span className="setup-hint">Useful if you want to store your vault on an external drive or in Dropbox, OneDrive, or a similar folder to access it from multiple machines.</span>
+            </div>
+          </div>
+          {vaultError && <div className="setup-error">{vaultError}</div>}
+          <button
+            type="button"
+            className="setup-default-link"
+            onClick={handleOpenExistingVault}
+            disabled={vaultLoading}
+          >
+            Open existing vault…
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

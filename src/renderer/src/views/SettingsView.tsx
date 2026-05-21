@@ -94,6 +94,11 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [autoBackupRunning, setAutoBackupRunning] = useState(false);
   const [autoBackupResult, setAutoBackupResult] = useState<string | null>(null);
 
+  const [vaultPath, setVaultPath] = useState<string>('');
+  const [movingVault, setMovingVault] = useState(false);
+  const [moveVaultError, setMoveVaultError] = useState<string | null>(null);
+  const [moveVaultSuccess, setMoveVaultSuccess] = useState(false);
+
   const countryOptions = useMemo(() => {
     const names = new Intl.DisplayNames([navigator.language], { type: 'region' });
     return getCountries()
@@ -126,6 +131,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
     window.sourcerer.getScreenshotFolderSize().then(setScreenshotFolderBytes);
+    window.sourcerer.getVaultPath().then(setVaultPath);
     window.sourcerer.getAutoBackupSettings().then(({ enabled, destPath, maxCount }) => {
       setAutoBackupEnabled(enabled);
       setAutoBackupDestPath(destPath);
@@ -307,6 +313,20 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       await window.sourcerer.setAutoBackupSettings({ maxCount: n });
     } else {
       setAutoBackupMaxCountInput(String(autoBackupMaxCount));
+    }
+  }
+
+  async function handleMoveVault() {
+    setMovingVault(true);
+    setMoveVaultError(null);
+    setMoveVaultSuccess(false);
+    const result = await window.sourcerer.moveVault();
+    setMovingVault(false);
+    if (result.success) {
+      if (result.newPath) setVaultPath(result.newPath);
+      setMoveVaultSuccess(true);
+    } else if (result.error) {
+      setMoveVaultError(result.error);
     }
   }
 
@@ -661,7 +681,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         <div className="sv-section">
           <div className="sv-section-title">Screenshot storage</div>
           <p className="sv-hint">
-            Encrypted screenshots are stored locally on this machine. The folder is separate from the database.
+            Encrypted screenshots are stored inside your vault bundle alongside the database.
           </p>
           <div className="sv-storage-row">
             <span className="sv-storage-size">
@@ -680,6 +700,32 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               ⚠ Screenshot folder exceeds 1 GB. Open the folder to review and delete files manually.
             </div>
           )}
+        </div>
+
+        {/* Vault location */}
+        <div className="sv-section">
+          <div className="sv-section-title">Vault location</div>
+          <p className="sv-hint">
+            Your vault contains the encrypted database, salt file, and screenshots. You can move it
+            to any folder — on an external drive or synced folder — to take it between machines.
+            The app will lock after moving so you can unlock against the new location.
+          </p>
+          <div className="sv-field">
+            <label className="sv-label">Current location</label>
+            <div className="sv-row">
+              <code className="sv-path-code">{vaultPath}</code>
+              <Button variant="ghost" size="sm" onClick={() => window.sourcerer.revealVault()}>
+                Show in folder
+              </Button>
+            </div>
+            <div className="sv-field-action">
+              <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
+                {movingVault ? 'Moving…' : 'Move vault'}
+              </Button>
+            </div>
+          </div>
+          {moveVaultError && <div className="sv-error-inline sv-move-vault-msg">{moveVaultError}</div>}
+          {moveVaultSuccess && <p className="sv-success sv-move-vault-msg">Vault moved. You&apos;ll be asked to unlock again.</p>}
         </div>
 
         {/* Backup */}

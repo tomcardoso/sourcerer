@@ -3,6 +3,9 @@ import type {
   SetupFormData,
   SetupResult,
   FirstLaunchResult,
+  PickVaultLocationResult,
+  OpenExistingVaultResult,
+  MoveVaultResult,
   UnlockResult,
   Project,
   User,
@@ -35,10 +38,18 @@ const sourcererApi = {
     ipcRenderer.invoke('setup:check-first-launch'),
   completeSetup: (data: SetupFormData): Promise<SetupResult> =>
     ipcRenderer.invoke('setup:complete', data),
+  useDefaultVault: (): Promise<{ error: string } | null> =>
+    ipcRenderer.invoke('setup:use-default-vault'),
+  pickVaultLocation: (): Promise<PickVaultLocationResult | null> =>
+    ipcRenderer.invoke('setup:pick-vault-location'),
+  openExistingVault: (): Promise<OpenExistingVaultResult | null> =>
+    ipcRenderer.invoke('setup:open-existing-vault'),
   unlock: (password: string): Promise<UnlockResult> =>
     ipcRenderer.invoke('unlock:attempt', password),
   lock: (): Promise<void> =>
     ipcRenderer.invoke('app:lock'),
+  expandForSetup: (): Promise<void> =>
+    ipcRenderer.invoke('app:expand-for-setup'),
   onLocked: (callback: () => void): (() => void) => {
     const handler = () => callback();
     ipcRenderer.on('app:locked', handler);
@@ -219,6 +230,12 @@ const sourcererApi = {
     ipcRenderer.invoke('settings:set-auto-backup', data),
   chooseBackupFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('settings:choose-backup-folder'),
+  getVaultPath: (): Promise<string> =>
+    ipcRenderer.invoke('settings:get-vault-path'),
+  revealVault: (): Promise<void> =>
+    ipcRenderer.invoke('settings:reveal-vault'),
+  moveVault: (): Promise<MoveVaultResult> =>
+    ipcRenderer.invoke('settings:move-vault'),
   searchGlobal: (query: string): Promise<import('@shared/types').SearchResult[]> =>
     ipcRenderer.invoke('search:global', query),
   assignScreenshot: (data: { tempId: string; contactId: string }): Promise<{ success: boolean; error?: string }> =>

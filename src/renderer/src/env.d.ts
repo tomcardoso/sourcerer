@@ -40,8 +40,12 @@ declare global {
         email: string;
         password: string;
       }) => Promise<{ success: boolean; error?: string }>;
+      useDefaultVault: () => Promise<{ error: string } | null>;
+      pickVaultLocation: () => Promise<{ path?: string; error?: string } | null>;
+      openExistingVault: () => Promise<{ success: boolean; error?: string } | null>;
       unlock: (password: string) => Promise<{ success: boolean; error?: string }>;
       lock: () => Promise<void>;
+      expandForSetup: () => Promise<void>;
       onLocked: (callback: () => void) => () => void;
       onExtensionAccessRequest: (callback: () => void) => () => void;
       approveExtension: () => Promise<void>;
@@ -200,6 +204,9 @@ declare global {
       getAutoBackupSettings: () => Promise<{ enabled: boolean; destPath: string | null; maxCount: number }>;
       setAutoBackupSettings: (data: { enabled?: boolean; destPath?: string | null; maxCount?: number }) => Promise<void>;
       chooseBackupFolder: () => Promise<string | null>;
+      getVaultPath: () => Promise<string>;
+      revealVault: () => Promise<void>;
+      moveVault: () => Promise<{ success: boolean; error?: string; newPath?: string }>;
 
       // Search
       searchGlobal: (query: string) => Promise<SearchResult[]>;

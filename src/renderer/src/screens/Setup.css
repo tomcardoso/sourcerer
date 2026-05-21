@@ -3,6 +3,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
+  padding-top: 28px;
   -webkit-app-region: drag;
 }
 
@@ -22,7 +23,7 @@
 .setup-subtitle {
   font-size: 14px;
   color: var(--color-text-muted);
-  margin-bottom: 24px;
+  margin-bottom: 10px;
 }
 
 .setup-warning {
@@ -123,4 +124,58 @@
 .setup-card .btn {
   height: 40px;
   justify-content: center;
+}
+
+.setup-vault-hint {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.setup-vault-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.setup-vault-option {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.setup-vault-option-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.setup-default-link {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.15s;
+}
+
+.setup-default-link:hover:not(:disabled) {
+  color: var(--color-text-muted);
+}
+
+.setup-default-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

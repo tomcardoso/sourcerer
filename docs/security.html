@@ -79,7 +79,7 @@
                 <tr><td>Salt length</td><td>32 bytes, randomly generated at setup</td></tr>
               </tbody>
             </table>
-            <p>The salt is stored in a separate file (<code>sourcerer.salt</code>) alongside the database. The salt is not secret — its purpose is to ensure that the same password cannot produce the same key on a different machine — but it must not be deleted. Without the salt, the database cannot be opened even with the correct password.</p>
+            <p>The salt is stored as a file named <code>salt</code> inside the <code>.sourcerer</code> vault bundle, alongside the database. The salt is not secret — its purpose is to ensure that the same password cannot produce the same key on a different machine — but it must not be deleted. Without the salt, the database cannot be opened even with the correct password.</p>
           </section>
 
           <section id="password">
@@ -111,7 +111,7 @@
             <p>Auto-lock reduces this window — set a short timeout if you work in shared spaces. The panic wipe is available for extreme situations.</p>
 
             <h3>The salt file</h3>
-            <p>The file <code>sourcerer.salt</code> is stored unencrypted alongside the database. It is not secret (the salt is not a key), but it must not be deleted. Consider backing it up with the same care as the database file.</p>
+            <p>The salt file is stored unencrypted inside the <code>.sourcerer</code> vault bundle alongside the database. It is not secret (the salt is not a key), but it must not be deleted or separated from the database. If you move your vault, move the entire bundle — not just the database file.</p>
 
             <h3>File metadata</h3>
             <p>The operating system can see that the database file exists, its size, and its modification timestamps — even though it cannot read the contents. If the existence of the file itself is sensitive, consider full-disk encryption at the OS level (FileVault on macOS, BitLocker on Windows).</p>
@@ -160,8 +160,8 @@
             <h2>Panic wipe</h2>
             <p>The panic wipe is a two-step, irreversible destruction of all Sourcerer data on the machine. Clicking the button reveals a confirmation step that requires you to type <strong>WIPE</strong> before anything is deleted. It then deletes:</p>
             <ul>
-              <li>The encrypted database file and its WAL and SHM journal files</li>
-              <li>The salt file (<code>sourcerer.salt</code>)</li>
+              <li>The encrypted database file</li>
+              <li>The salt file</li>
               <li>All screenshots stored by the browser extension</li>
             </ul>
             <p>Files are overwritten before deletion where possible, making forensic recovery harder (though not impossible on SSDs, which manage writes at the firmware level).</p>
