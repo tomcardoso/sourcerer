@@ -17,11 +17,22 @@ export function registerSetupHandlers(): void {
     return { isFirstLaunch: !exists };
   });
 
+  ipcMain.handle('setup:use-default-vault', async (): Promise<{ error: string } | null> => {
+    const bundlePath = path.join(app.getPath('userData'), 'Vault.sourcerer');
+    try {
+      await fs.mkdir(bundlePath, { recursive: true });
+      writeVaultConfig(bundlePath);
+      return null;
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Could not create default vault folder.' };
+    }
+  });
+
   ipcMain.handle('setup:pick-vault-location', async (event): Promise<{ path: string } | { error: string } | null> => {
     const result = await dialog.showSaveDialog({
       title: 'Create vault',
       message: 'Choose where to save your Sourcerer vault',
-      defaultPath: path.join(app.getPath('documents'), 'Sourcerer'),
+      defaultPath: path.join(app.getPath('documents'), 'Vault'),
       buttonLabel: 'Create vault',
       filters: [{ name: 'Sourcerer Vault', extensions: ['sourcerer'] }],
     });

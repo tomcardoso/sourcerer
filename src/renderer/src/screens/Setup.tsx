@@ -52,6 +52,19 @@ export default function Setup({ onComplete }: Props) {
     setStep('profile');
   }
 
+  async function handleUseDefaultLocation() {
+    setVaultLoading(true);
+    setVaultError(null);
+    const result = await window.sourcerer.useDefaultVault();
+    if (result?.error) {
+      setVaultError(result.error);
+      setVaultLoading(false);
+      return;
+    }
+    await advanceToProfile();
+    setVaultLoading(false);
+  }
+
   async function handlePickVaultLocation() {
     setVaultLoading(true);
     setVaultError(null);
@@ -130,7 +143,7 @@ export default function Setup({ onComplete }: Props) {
           </p>
           <div className="setup-vault-options">
             <div className="setup-vault-option">
-              <Button variant="accent" full onClick={advanceToProfile} disabled={vaultLoading}>
+              <Button variant="accent" full onClick={handleUseDefaultLocation} disabled={vaultLoading}>
                 Use default location
               </Button>
               <span className="setup-hint">Stores your vault in the app data folder on this machine.</span>

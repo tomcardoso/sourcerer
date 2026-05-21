@@ -38,6 +38,8 @@ const sourcererApi = {
     ipcRenderer.invoke('setup:check-first-launch'),
   completeSetup: (data: SetupFormData): Promise<SetupResult> =>
     ipcRenderer.invoke('setup:complete', data),
+  useDefaultVault: (): Promise<{ error: string } | null> =>
+    ipcRenderer.invoke('setup:use-default-vault'),
   pickVaultLocation: (): Promise<PickVaultLocationResult | null> =>
     ipcRenderer.invoke('setup:pick-vault-location'),
   openExistingVault: (): Promise<OpenExistingVaultResult | null> =>

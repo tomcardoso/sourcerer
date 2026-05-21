@@ -235,7 +235,7 @@ export function registerSettingsHandlers(): void {
     const result = await dialog.showSaveDialog({
       title: 'Move vault',
       message: 'Choose where to move your Sourcerer vault',
-      defaultPath: path.join(app.getPath('documents'), 'Sourcerer'),
+      defaultPath: path.join(app.getPath('documents'), 'Vault'),
       buttonLabel: 'Move vault here',
       filters: [{ name: 'Sourcerer Vault', extensions: ['sourcerer'] }],
     });
