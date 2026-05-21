@@ -83,6 +83,7 @@ export function registerBackupHandlers(): void {
         const authTag = cipher.getAuthTag();
 
         const bundle = JSON.stringify({
+          version: 1,
           backup_salt: backupSalt.toString('base64'),
           iv: iv.toString('base64'),
           auth_tag: authTag.toString('base64'),
@@ -122,6 +123,10 @@ export function registerBackupHandlers(): void {
 
         const raw = await fs.readFile(filePaths[0], 'utf-8');
         const bundle = JSON.parse(raw);
+
+        if (bundle.version !== 1) {
+          return { success: false, error: 'This backup format is not supported. Please create a new backup.' };
+        }
 
         if (!bundle.backup_salt || !bundle.iv || !bundle.auth_tag || !bundle.ciphertext) {
           return { success: false, error: 'Unrecognised backup format.' };

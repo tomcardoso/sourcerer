@@ -64,6 +64,7 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     const authTag = cipher.getAuthTag();
 
     const bundle = JSON.stringify({
+      version: 1,
       backup_salt: backupSalt.toString('base64'),
       iv: iv.toString('base64'),
       auth_tag: authTag.toString('base64'),
