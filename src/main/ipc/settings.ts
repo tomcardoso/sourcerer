@@ -305,7 +305,11 @@ export function registerSettingsHandlers(): void {
 
       return { success: true, newPath: newBundlePath };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Move failed.' };
+      const msg = err instanceof Error ? err.message : 'Move failed.';
+      const friendly = (err as NodeJS.ErrnoException).code === 'EACCES'
+        ? "Permission denied — you don't have write access to that location."
+        : msg;
+      return { success: false, error: friendly };
     }
   });
 
