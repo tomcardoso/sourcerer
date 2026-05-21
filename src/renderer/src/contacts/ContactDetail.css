@@ -650,13 +650,12 @@
 }
 
 .pt-log-row-project-badge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-family: var(--font-serif);
+  font-size: 11px;
   color: var(--color-text-muted);
   background: var(--color-border);
   border-radius: 3px;
-  padding: 0px 4px;
+  padding: 0px 5px;
 }
 
 /* ── Log modal ── */
