@@ -192,15 +192,13 @@ function LogSection({
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
             }}
           />
-          {allProjects.length > 1 && (
-            <div className="pt-log-projects">
-              <LogProjectPicker
-                projects={allProjects}
-                selectedIds={selectedMembershipIds}
-                onChange={setSelectedMembershipIds}
-              />
-            </div>
-          )}
+          <div className="pt-log-projects">
+            <LogProjectPicker
+              projects={allProjects}
+              selectedIds={selectedMembershipIds}
+              onChange={setSelectedMembershipIds}
+            />
+          </div>
           <div className="pt-reminder-form-actions">
             <button className="pt-log-submit" onClick={handleSubmit} disabled={!text.trim() || !logDate || submitting}>
               {submitting ? 'Saving…' : 'Log'}
