@@ -60,10 +60,10 @@ export function registerBackupHandlers(): void {
       if (canceled || filePaths.length === 0) return { success: false, canceled: true };
 
       try {
-        const MAX_BACKUP_BYTES = 2 * 1024 * 1024 * 1024;
+        const MAX_BACKUP_BYTES = 500 * 1024 * 1024;
         const stat = await fs.stat(filePaths[0]);
         if (stat.size > MAX_BACKUP_BYTES) {
-          return { success: false, error: 'Backup file is too large (max 2 GB).' };
+          return { success: false, error: 'Backup file is too large (max 500 MB).' };
         }
 
         const raw = await fs.readFile(filePaths[0], 'utf-8');
@@ -92,21 +92,19 @@ export function registerBackupHandlers(): void {
           return { success: false, error: 'Incorrect password or corrupted backup.' };
         }
 
-        const entries = unpackFiles(decrypted);
+        let entries: ReturnType<typeof unpackFiles>;
+        try {
+          entries = unpackFiles(decrypted);
+        } catch {
+          return { success: false, error: 'Corrupted backup file.' };
+        }
         const dbEntry = entries.find(e => e.name === 'db.sqlite');
         const saltEntry = entries.find(e => e.name === 'salt');
         if (!dbEntry || !saltEntry) return { success: false, error: 'Corrupted backup file.' };
         const dbBuf = dbEntry.data;
         const dbSalt = saltEntry.data;
 
-        await fs.mkdir(screenshotsPath, { recursive: true });
-        for (const { name, data } of entries) {
-          if (name.startsWith('screenshots/')) {
-            await fs.writeFile(path.join(screenshotsPath, path.basename(name)), data, { mode: 0o600 });
-          }
-        }
-
-        // Verify the DB can be opened with the key derived from the backup password + DB salt.
+        // Verify the DB before touching the live vault.
         const tmpPath = path.join(os.tmpdir(), `sourcerer-restore-${Date.now()}.db`);
         try {
           await fs.writeFile(tmpPath, dbBuf, { mode: 0o600 });
@@ -135,6 +133,14 @@ export function registerBackupHandlers(): void {
 
         await fs.writeFile(dbPath, dbBuf, { mode: 0o600 });
         await fs.writeFile(saltPath, dbSalt, { mode: 0o600 });
+
+        // Restore screenshots only after the DB is confirmed and written.
+        await fs.mkdir(screenshotsPath, { recursive: true });
+        for (const { name, data } of entries) {
+          if (name.startsWith('screenshots/')) {
+            await fs.writeFile(path.join(screenshotsPath, path.basename(name)), data, { mode: 0o600 });
+          }
+        }
 
         if (win) {
           win.setResizable(false);

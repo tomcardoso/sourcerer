@@ -36,3 +36,28 @@ describe('packFiles / unpackFiles round-trip', () => {
     expect(result.map(e => e.name)).toEqual(['first', 'second', 'third']);
   });
 });
+
+describe('unpackFiles — malformed input', () => {
+  it('throws on a truncated header (fewer than 8 bytes remain)', () => {
+    expect(() => unpackFiles(Buffer.from([0x01, 0x00, 0x00]))).toThrow('truncated entry header');
+  });
+
+  it('throws when declared name length exceeds buffer', () => {
+    const buf = Buffer.allocUnsafe(8);
+    buf.writeUInt32LE(100, 0); // name length: 100
+    buf.writeUInt32LE(0, 4);   // data length: 0
+    expect(() => unpackFiles(buf)).toThrow('entry length exceeds buffer');
+  });
+
+  it('throws when declared data length exceeds buffer', () => {
+    const nameBuf = Buffer.from('db.sqlite', 'utf8');
+    const header = Buffer.allocUnsafe(8);
+    header.writeUInt32LE(nameBuf.length, 0);
+    header.writeUInt32LE(9999, 4); // data length far beyond what's available
+    expect(() => unpackFiles(Buffer.concat([header, nameBuf]))).toThrow('entry length exceeds buffer');
+  });
+
+  it('throws on a completely empty-but-nonzero truncated buffer', () => {
+    expect(() => unpackFiles(Buffer.from([0x05]))).toThrow('truncated entry header');
+  });
+});

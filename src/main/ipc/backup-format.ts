@@ -22,8 +22,10 @@ export function unpackFiles(buf: Buffer): Array<{ name: string; data: Buffer }> 
   const entries: Array<{ name: string; data: Buffer }> = [];
   let offset = 0;
   while (offset < buf.length) {
+    if (offset + 8 > buf.length) throw new Error('Corrupted backup: truncated entry header.');
     const nameLen = buf.readUInt32LE(offset); offset += 4;
     const dataLen = buf.readUInt32LE(offset); offset += 4;
+    if (offset + nameLen + dataLen > buf.length) throw new Error('Corrupted backup: entry length exceeds buffer.');
     const name = buf.subarray(offset, offset + nameLen).toString('utf8'); offset += nameLen;
     const data = buf.subarray(offset, offset + dataLen); offset += dataLen;
     entries.push({ name, data });
@@ -45,7 +47,9 @@ export async function buildBackupBundle(
     for (const file of await fs.readdir(screenshotsPath)) {
       entries.push({ name: `screenshots/${file}`, data: await fs.readFile(path.join(screenshotsPath, file)) });
     }
-  } catch { /* screenshots dir may not exist */ }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
 
   const payload = packFiles(entries);
 
