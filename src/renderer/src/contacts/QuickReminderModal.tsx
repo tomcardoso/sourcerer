@@ -68,7 +68,7 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
   }
 
   async function handleSave() {
-    if (!selectedContactId || !selectedProjectId || !date) return;
+    if (!selectedContactId || !date) return;
     setSaving(true);
     try {
       const ts = Math.floor(new Date(`${date}T09:00:00`).getTime() / 1000);
