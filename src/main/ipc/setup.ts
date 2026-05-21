@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, app } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -18,23 +18,30 @@ export function registerSetupHandlers(): void {
   });
 
   ipcMain.handle('setup:pick-vault-location', async (): Promise<{ path: string } | null> => {
-    const result = await dialog.showOpenDialog({
-      title: 'Choose vault location',
-      message: 'Choose or create a folder where your Sourcerer vault will be stored',
-      properties: ['openDirectory', 'createDirectory'],
-      buttonLabel: 'Choose folder',
+    const result = await dialog.showSaveDialog({
+      title: 'Create vault',
+      message: 'Choose where to save your Sourcerer vault',
+      defaultPath: path.join(app.getPath('documents'), 'Sourcerer'),
+      buttonLabel: 'Create vault',
+      filters: [{ name: 'Sourcerer Vault', extensions: ['sourcerer'] }],
     });
-    if (result.canceled || !result.filePaths[0]) return null;
-    const bundlePath = result.filePaths[0];
+    if (result.canceled || !result.filePath) return null;
+    const bundlePath = result.filePath.toLowerCase().endsWith('.sourcerer')
+      ? result.filePath
+      : result.filePath + '.sourcerer';
+    await fs.mkdir(bundlePath, { recursive: true });
     writeVaultConfig(bundlePath);
     return { path: bundlePath };
   });
 
   ipcMain.handle('setup:open-existing-vault', async (): Promise<{ success: boolean; error?: string } | null> => {
+    // On macOS, .sourcerer bundles appear as files; on other platforms they're plain directories.
+    const isMac = process.platform === 'darwin';
     const result = await dialog.showOpenDialog({
       title: 'Open existing vault',
-      message: 'Choose your existing Sourcerer vault folder',
-      properties: ['openDirectory'],
+      ...(isMac ? { message: 'Choose your existing Sourcerer vault' } : {}),
+      properties: [isMac ? 'openFile' : 'openDirectory'],
+      ...(isMac ? { filters: [{ name: 'Sourcerer Vault', extensions: ['sourcerer'] }] } : {}),
       buttonLabel: 'Open vault',
     });
     if (result.canceled || !result.filePaths[0]) return null;

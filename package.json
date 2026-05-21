@@ -88,6 +88,14 @@
       "node_modules/better-sqlite3-multiple-ciphers/**/*",
       "node_modules/argon2/**/*"
     ],
+    "fileAssociations": [
+      {
+        "ext": "sourcerer",
+        "name": "Sourcerer Vault",
+        "role": "Editor",
+        "isPackage": true
+      }
+    ],
     "mac": {
       "icon": "build/icons/1024x1024.png",
       "target": [

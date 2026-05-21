@@ -223,17 +223,21 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('settings:move-vault', async (): Promise<{ success: boolean; error?: string; newPath?: string }> => {
-    const result = await dialog.showOpenDialog({
+    const result = await dialog.showSaveDialog({
       title: 'Move vault',
-      message: 'Choose a folder to move your Sourcerer vault to',
-      properties: ['openDirectory', 'createDirectory'],
-      buttonLabel: 'Move here',
+      message: 'Choose where to move your Sourcerer vault',
+      defaultPath: path.join(app.getPath('documents'), 'Sourcerer'),
+      buttonLabel: 'Move vault here',
+      filters: [{ name: 'Sourcerer Vault', extensions: ['sourcerer'] }],
     });
-    if (result.canceled || !result.filePaths[0]) return { success: false };
-    const newBundlePath = result.filePaths[0];
+    if (result.canceled || !result.filePath) return { success: false };
+    const newBundlePath = result.filePath.toLowerCase().endsWith('.sourcerer')
+      ? result.filePath
+      : result.filePath + '.sourcerer';
     const { dbPath, saltPath, screenshotsPath } = getPaths();
 
     try {
+      await fs.mkdir(newBundlePath, { recursive: true });
       await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
 
