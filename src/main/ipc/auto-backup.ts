@@ -1,9 +1,9 @@
 import { ipcMain } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
-import crypto from 'crypto';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths } from '../utils';
 import { getDatabase, isDatabaseOpen, getPassword } from '../database';
+import { buildBackupBundle } from './backup-format';
 
 const BACKUP_PREFIX = 'sourcerer-auto-backup-';
 const BACKUP_EXT = '.sourcerer-backup';
@@ -32,44 +32,7 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     await fs.mkdir(destPath, { recursive: true });
 
     const { dbPath, saltPath, screenshotsPath } = getPaths();
-    const password = getPassword();
-
-    const entries: Array<{ name: string; data: Buffer }> = [
-      { name: 'db.sqlite', data: await fs.readFile(dbPath) },
-      { name: 'salt', data: await fs.readFile(saltPath) },
-    ];
-    try {
-      for (const file of await fs.readdir(screenshotsPath)) {
-        entries.push({ name: `screenshots/${file}`, data: await fs.readFile(path.join(screenshotsPath, file)) });
-      }
-    } catch { /* screenshots dir may not exist */ }
-
-    const parts: Buffer[] = [];
-    for (const { name, data } of entries) {
-      const nameBuf = Buffer.from(name, 'utf8');
-      const header = Buffer.allocUnsafe(8);
-      header.writeUInt32LE(nameBuf.length, 0);
-      header.writeUInt32LE(data.length, 4);
-      parts.push(header, nameBuf, data);
-    }
-    const payload = Buffer.concat(parts);
-
-    const backupSalt = crypto.randomBytes(32);
-    const backupKeyHex = await deriveKey(password, backupSalt);
-    const backupKey = Buffer.from(backupKeyHex, 'hex');
-
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-    const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-
-    const bundle = JSON.stringify({
-      version: 1,
-      backup_salt: backupSalt.toString('base64'),
-      iv: iv.toString('base64'),
-      auth_tag: authTag.toString('base64'),
-      ciphertext: ciphertext.toString('base64'),
-    });
+    const bundle = await buildBackupBundle(dbPath, saltPath, screenshotsPath, getPassword());
 
     const outPath = path.join(destPath, timestampedName());
     await fs.writeFile(outPath, Buffer.from(bundle, 'utf-8'), { mode: 0o600 });

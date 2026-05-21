@@ -8,37 +8,10 @@ import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
+import { buildBackupBundle, unpackFiles } from './backup-format';
 
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
-
-// Inner payload: concatenated length-prefixed entries.
-// Each entry: [4-byte LE name length][name bytes][4-byte LE data length][data bytes]
-
-function packFiles(entries: Array<{ name: string; data: Buffer }>): Buffer {
-  const parts: Buffer[] = [];
-  for (const { name, data } of entries) {
-    const nameBuf = Buffer.from(name, 'utf8');
-    const header = Buffer.allocUnsafe(8);
-    header.writeUInt32LE(nameBuf.length, 0);
-    header.writeUInt32LE(data.length, 4);
-    parts.push(header, nameBuf, data);
-  }
-  return Buffer.concat(parts);
-}
-
-function unpackFiles(buf: Buffer): Array<{ name: string; data: Buffer }> {
-  const entries: Array<{ name: string; data: Buffer }> = [];
-  let offset = 0;
-  while (offset < buf.length) {
-    const nameLen = buf.readUInt32LE(offset); offset += 4;
-    const dataLen = buf.readUInt32LE(offset); offset += 4;
-    const name = buf.subarray(offset, offset + nameLen).toString('utf8'); offset += nameLen;
-    const data = buf.subarray(offset, offset + dataLen); offset += dataLen;
-    entries.push({ name, data });
-  }
-  return entries;
-}
 
 export function registerBackupHandlers(): void {
   ipcMain.handle(
@@ -61,35 +34,7 @@ export function registerBackupHandlers(): void {
       if (canceled || !filePath) return { success: false };
 
       try {
-        const entries: Array<{ name: string; data: Buffer }> = [
-          { name: 'db.sqlite', data: await fs.readFile(dbPath) },
-          { name: 'salt', data: dbSalt },
-        ];
-        try {
-          for (const file of await fs.readdir(screenshotsPath)) {
-            entries.push({ name: `screenshots/${file}`, data: await fs.readFile(path.join(screenshotsPath, file)) });
-          }
-        } catch { /* screenshots dir may not exist */ }
-
-        const payload = packFiles(entries);
-
-        const backupSalt = crypto.randomBytes(32);
-        const backupKeyHex = await deriveKey(password, backupSalt);
-        const backupKey = Buffer.from(backupKeyHex, 'hex');
-
-        const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-        const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
-        const authTag = cipher.getAuthTag();
-
-        const bundle = JSON.stringify({
-          version: 1,
-          backup_salt: backupSalt.toString('base64'),
-          iv: iv.toString('base64'),
-          auth_tag: authTag.toString('base64'),
-          ciphertext: ciphertext.toString('base64'),
-        });
-
+        const bundle = await buildBackupBundle(dbPath, saltPath, screenshotsPath, password);
         await fs.writeFile(filePath, Buffer.from(bundle, 'utf-8'));
         return { success: true };
       } catch (err) {
@@ -133,8 +78,7 @@ export function registerBackupHandlers(): void {
         }
 
         const backupSalt = Buffer.from(bundle.backup_salt, 'base64');
-        const backupKeyHex = await deriveKey(password, backupSalt);
-        const backupKey = Buffer.from(backupKeyHex, 'hex');
+        const backupKey = Buffer.from(await deriveKey(password, backupSalt), 'hex');
 
         let decrypted: Buffer;
         try {
