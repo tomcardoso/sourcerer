@@ -717,10 +717,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               <Button variant="ghost" size="sm" onClick={() => window.sourcerer.revealVault()}>
                 Show in folder
               </Button>
-              <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
-                {movingVault ? 'Moving…' : 'Move vault…'}
-              </Button>
             </div>
+            <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
+              {movingVault ? 'Moving…' : 'Move vault…'}
+            </Button>
           </div>
           {moveVaultError && <div className="sv-error-inline">{moveVaultError}</div>}
           {moveVaultSuccess && <p className="sv-success">Vault moved. You&apos;ll be asked to unlock again.</p>}
