@@ -641,6 +641,15 @@
   flex-wrap: wrap;
 }
 
+.pt-log-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
 .pt-log-row-delete {
   background: none;
   border: none;
@@ -651,7 +660,6 @@
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.1s;
-  margin-left: auto;
 }
 
 .pt-log-row:hover .pt-log-row-delete {
@@ -660,6 +668,40 @@
 
 .pt-log-row-delete:hover {
   color: var(--color-danger);
+}
+
+.pt-log-row-confirm-yes,
+.pt-log-row-confirm-no {
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: none;
+  white-space: nowrap;
+}
+
+.pt-log-row-confirm-yes {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.pt-log-row-confirm-yes:hover {
+  background: var(--color-danger);
+  color: var(--color-bg);
+}
+
+.pt-log-row-confirm-no {
+  color: var(--color-text-muted);
+}
+
+.pt-log-row-confirm-no:hover {
+  color: var(--color-text);
+  border-color: var(--color-text);
 }
 
 .pt-log-row-reporter {

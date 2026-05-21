@@ -18,6 +18,8 @@ export function fmtLogDate(ts: number): string {
 }
 
 export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEntry; subtitle?: string | null; onDelete?: (id: string) => void }) {
+  const [confirming, setConfirming] = useState(false);
+
   return (
     <div className="pt-log-row">
       <div className="pt-log-row-date">{fmtLogDate(entry.created_at)}</div>
@@ -26,11 +28,20 @@ export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEnt
         <div className="pt-log-row-footer">
           <span className="pt-log-row-reporter">{entry.reporter_name}</span>
           {subtitle && <span className="pt-log-row-project-badge">{subtitle}</span>}
-          {onDelete && (
-            <button className="pt-log-row-delete" onClick={() => onDelete(entry.id)} title="Delete entry">×</button>
-          )}
         </div>
       </div>
+      {onDelete && (
+        <div className="pt-log-row-actions">
+          {confirming ? (
+            <>
+              <button className="pt-log-row-confirm-yes" onClick={() => onDelete(entry.id)}>Delete</button>
+              <button className="pt-log-row-confirm-no" onClick={() => setConfirming(false)}>Cancel</button>
+            </>
+          ) : (
+            <button className="pt-log-row-delete" onClick={() => setConfirming(true)} title="Delete entry">×</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
