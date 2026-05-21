@@ -417,8 +417,16 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
-  background: var(--color-border);
   border-radius: 3px;
   padding: 1px 5px;
+}
+
+.ptl-project-badge {
+  color: var(--color-text-muted);
+  background: var(--color-border);
+}
+
+.ptl-priority-badge {
+  color: var(--color-primary);
+  background: rgba(200, 122, 26, 0.1);
 }
