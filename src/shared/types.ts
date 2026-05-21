@@ -131,6 +131,7 @@ export interface ContactDetail {
   title: string | null;
   dob: string | null;
   notes: string | null;
+  default_membership_id: string | null;
   created_at: number;
   updated_at: number;
   emails: ContactEmail[];
