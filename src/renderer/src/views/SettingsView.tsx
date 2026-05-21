@@ -720,7 +720,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             </div>
             <div className="sv-field-action">
               <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
-                {movingVault ? 'Moving…' : 'Move vault…'}
+                {movingVault ? 'Moving…' : 'Move vault'}
               </Button>
             </div>
           </div>

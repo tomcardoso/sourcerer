@@ -88,7 +88,7 @@ export function registerSetupHandlers(): void {
     const dbExists = await fs.access(path.join(bundlePath, 'db.sqlite')).then(() => true).catch(() => false);
     const saltExists = await fs.access(path.join(bundlePath, 'salt')).then(() => true).catch(() => false);
     if (!dbExists || !saltExists) {
-      return { success: false, error: 'The selected folder does not contain a valid Sourcerer vault (db.sqlite and salt are missing).' };
+      return { success: false, error: 'The selected folder does not contain a valid Sourcerer vault (db.sqlite and/or salt are missing).' };
     }
 
     const provider = detectSyncProvider(bundlePath);
