@@ -244,11 +244,11 @@
 .reminders-item-project {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
   border-radius: 3px;
-  padding: 1px 5px;
+  padding: 1px 4px;
   color: var(--color-text-muted);
   background: var(--color-border);
   align-self: flex-start;
