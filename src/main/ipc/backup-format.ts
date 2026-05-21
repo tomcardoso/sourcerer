@@ -12,7 +12,7 @@ const HEADER_SIZE = 52;
 const CHUNK_HDR_SIZE = 24;
 
 // Backup inner payload: concatenated length-prefixed entries.
-// Each entry: [4-byte LE name length][name bytes][4-byte LE data length][data bytes]
+// Each entry: [4-byte LE name length][4-byte LE data length][name bytes][data bytes]
 
 export function packFiles(entries: Array<{ name: string; data: Buffer }>): Buffer {
   const parts: Buffer[] = [];

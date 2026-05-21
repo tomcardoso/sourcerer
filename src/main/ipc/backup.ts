@@ -63,10 +63,11 @@ export function registerBackupHandlers(): void {
       let screensWritten = false;
 
       try {
-        const MAX_BACKUP_BYTES = 2 * 1024 * 1024 * 1024;
+        // db.sqlite is buffered in memory during restore, so keep this limit tight.
+        const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
         const stat = await fs.stat(filePaths[0]);
         if (stat.size > MAX_BACKUP_BYTES) {
-          return { success: false, error: 'Backup file is too large (max 2 GB).' };
+          return { success: false, error: 'Backup file is too large (max 512 MB).' };
         }
 
         let dbBuf: Buffer | null = null;
@@ -79,15 +80,16 @@ export function registerBackupHandlers(): void {
             } else if (entry.name === 'salt') {
               dbSalt = entry.data;
             } else if (entry.name.startsWith('screenshots/')) {
+              const basename = path.basename(entry.name);
+              const dst = path.resolve(tmpScreensDir, basename);
+              if (!dst.startsWith(path.resolve(tmpScreensDir) + path.sep)) {
+                throw new Error('Corrupted backup: invalid screenshot filename.');
+              }
               if (!screensWritten) {
                 await fs.mkdir(tmpScreensDir, { recursive: true });
                 screensWritten = true;
               }
-              await fs.writeFile(
-                path.join(tmpScreensDir, path.basename(entry.name)),
-                entry.data,
-                { mode: 0o600 },
-              );
+              await fs.writeFile(dst, entry.data, { mode: 0o600 });
             }
           }
         } catch (err) {
