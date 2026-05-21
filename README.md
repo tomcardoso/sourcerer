@@ -4,7 +4,7 @@ Source and contact management for journalists and researchers — local-first, e
 
 [![Latest release](https://img.shields.io/github/v/release/tomcardoso/sourcerer?label=version&color=4b5563)](https://github.com/tomcardoso/sourcerer/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/tomcardoso/sourcerer/ci.yml?label=build)](https://github.com/tomcardoso/sourcerer/actions/workflows/ci.yml)
-[![License: AGPL-3.0](https://img.shields.io/github/license/tomcardoso/sourcerer?color=4b5563)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-4b5563)](LICENSE)
 [![Sponsor](https://img.shields.io/github/sponsors/tomcardoso?label=sponsor&logo=github&color=ea4aaa)](https://github.com/sponsors/tomcardoso)
 
 ![screenshot](docs/img/contact-details-2.png)
