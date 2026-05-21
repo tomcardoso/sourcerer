@@ -40,7 +40,7 @@ declare global {
         email: string;
         password: string;
       }) => Promise<{ success: boolean; error?: string }>;
-      pickVaultLocation: () => Promise<{ path: string } | null>;
+      pickVaultLocation: () => Promise<{ path?: string; error?: string } | null>;
       openExistingVault: () => Promise<{ success: boolean; error?: string } | null>;
       unlock: (password: string) => Promise<{ success: boolean; error?: string }>;
       lock: () => Promise<void>;

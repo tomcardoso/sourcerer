@@ -17,7 +17,11 @@ function vaultConfigPath(): string {
 
 function readVaultConfig(): VaultConfig | null {
   try {
-    return JSON.parse(fs.readFileSync(vaultConfigPath(), 'utf8')) as VaultConfig;
+    const parsed = JSON.parse(fs.readFileSync(vaultConfigPath(), 'utf8'));
+    if (typeof parsed?.bundlePath === 'string' && parsed.bundlePath.length > 0) {
+      return { bundlePath: parsed.bundlePath };
+    }
+    return null;
   } catch {
     return null;
   }

@@ -257,14 +257,20 @@ export function registerSettingsHandlers(): void {
     const oldNorm = (oldBundlePath ?? '').replace(/\\/g, '/');
     if (oldNorm && newNorm === oldNorm) return { success: false };
 
+    const destHasVault = await fs
+      .access(path.join(newBundlePath, 'db.sqlite'))
+      .then(() => true)
+      .catch(() => false);
+    if (destHasVault) {
+      return { success: false, error: 'That location already contains a vault.' };
+    }
+
     try {
       await fs.mkdir(newBundlePath, { recursive: true });
 
-      // Close the DB before copying so the file is in a consistent state
-      autoLock.lock();
-      closeDatabase();
-
-      await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
+      // Use SQLite's online backup API to copy the live database consistently
+      // without closing the connection first.
+      await getDatabase().backup(path.join(newBundlePath, 'db.sqlite'));
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
 
       // Copy screenshots directory if it exists
@@ -273,15 +279,17 @@ export function registerSettingsHandlers(): void {
 
       writeVaultConfig(newBundlePath);
 
+      // Lock only after everything succeeded so the user isn't locked out on failure
+      autoLock.lock();
+      closeDatabase();
+
       // Clean up old vault location — non-fatal if this fails
       try {
         if (oldBundlePath) {
-          // Guard: don't delete old bundle if new path is inside it
           if (!newNorm.startsWith(oldNorm + '/')) {
             await fs.rm(oldBundlePath, { recursive: true, force: true });
           }
         } else {
-          // Legacy userData paths — delete individual files
           await fs.unlink(dbPath).catch(() => {});
           await fs.unlink(saltPath).catch(() => {});
           await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});

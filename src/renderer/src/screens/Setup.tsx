@@ -55,8 +55,17 @@ export default function Setup({ onComplete }: Props) {
     setVaultLoading(true);
     setVaultError(null);
     const result = await window.sourcerer.pickVaultLocation();
+    if (!result) {
+      setVaultLoading(false);
+      return;
+    }
+    if (result.error) {
+      setVaultError(result.error);
+      setVaultLoading(false);
+      return;
+    }
+    await advanceToProfile();
     setVaultLoading(false);
-    if (result) advanceToProfile();
   }
 
   async function handleOpenExistingVault() {

@@ -15,7 +15,8 @@ export interface FirstLaunchResult {
 }
 
 export interface PickVaultLocationResult {
-  path: string;
+  path?: string;
+  error?: string;
 }
 
 export interface OpenExistingVaultResult {

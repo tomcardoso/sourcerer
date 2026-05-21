@@ -681,7 +681,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
         <div className="sv-section">
           <div className="sv-section-title">Screenshot storage</div>
           <p className="sv-hint">
-            Encrypted screenshots are stored locally on this machine. The folder is separate from the database.
+            Encrypted screenshots are stored inside your vault bundle alongside the database.
           </p>
           <div className="sv-storage-row">
             <span className="sv-storage-size">

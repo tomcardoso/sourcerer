@@ -17,7 +17,7 @@ export function registerSetupHandlers(): void {
     return { isFirstLaunch: !exists };
   });
 
-  ipcMain.handle('setup:pick-vault-location', async (event): Promise<{ path: string } | null> => {
+  ipcMain.handle('setup:pick-vault-location', async (event): Promise<{ path: string } | { error: string } | null> => {
     const result = await dialog.showSaveDialog({
       title: 'Create vault',
       message: 'Choose where to save your Sourcerer vault',
@@ -29,6 +29,14 @@ export function registerSetupHandlers(): void {
     const bundlePath = result.filePath.toLowerCase().endsWith('.sourcerer')
       ? result.filePath
       : result.filePath + '.sourcerer';
+
+    const alreadyHasVault = await fs
+      .access(path.join(bundlePath, 'db.sqlite'))
+      .then(() => true)
+      .catch(() => false);
+    if (alreadyHasVault) {
+      return { error: 'That location already contains a vault. Use "Open existing vault…" to open it.' };
+    }
 
     const provider = detectSyncProvider(bundlePath);
     if (provider) {
@@ -45,9 +53,13 @@ export function registerSetupHandlers(): void {
       if (response === 1) return null;
     }
 
-    await fs.mkdir(bundlePath, { recursive: true });
-    writeVaultConfig(bundlePath);
-    return { path: bundlePath };
+    try {
+      await fs.mkdir(bundlePath, { recursive: true });
+      writeVaultConfig(bundlePath);
+      return { path: bundlePath };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Could not create vault folder.' };
+    }
   });
 
   ipcMain.handle('setup:open-existing-vault', async (event): Promise<{ success: boolean; error?: string } | null> => {
