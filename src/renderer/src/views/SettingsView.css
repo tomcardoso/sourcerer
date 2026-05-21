@@ -425,6 +425,10 @@
   font-size: 13px;
 }
 
+.sv-field-action {
+  align-self: flex-start;
+}
+
 .sv-field--inline-row {
   flex-direction: column;
 }

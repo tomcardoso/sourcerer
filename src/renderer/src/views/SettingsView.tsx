@@ -718,9 +718,11 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 Show in folder
               </Button>
             </div>
-            <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
-              {movingVault ? 'Moving…' : 'Move vault…'}
-            </Button>
+            <div className="sv-field-action">
+              <Button variant="accent" size="sm" onClick={handleMoveVault} disabled={movingVault}>
+                {movingVault ? 'Moving…' : 'Move vault…'}
+              </Button>
+            </div>
           </div>
           {moveVaultError && <div className="sv-error-inline">{moveVaultError}</div>}
           {moveVaultSuccess && <p className="sv-success">Vault moved. You&apos;ll be asked to unlock again.</p>}
