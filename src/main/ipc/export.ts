@@ -27,6 +27,56 @@ interface ExportRow {
   'Interaction log': string;
 }
 
+interface AllContactsRow {
+  Name: string;
+  Organization: string;
+  Title: string;
+  DOB: string;
+  Emails: string;
+  Phones: string;
+  Handles: string;
+  LinkedIn: string;
+  Facebook: string;
+  Instagram: string;
+  X: string;
+  Website: string;
+  'Other links': string;
+  Notes: string;
+  'Interaction log': string;
+}
+
+function fetchProjectsByInteraction(
+  db: import('better-sqlite3-multiple-ciphers').Database,
+  interactionIds: string[],
+): Map<string, string[]> {
+  if (!interactionIds.length) return new Map();
+  const ph = interactionIds.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT ip.interaction_id, p.name AS project_name
+     FROM interaction_projects ip
+     JOIN project_memberships pm ON pm.id = ip.membership_id
+     JOIN projects p ON p.id = pm.project_id
+     WHERE ip.interaction_id IN (${ph})
+     ORDER BY p.name ASC`,
+  ).all(...interactionIds) as { interaction_id: string; project_name: string }[];
+  const map = new Map<string, string[]>();
+  for (const r of rows) {
+    const a = map.get(r.interaction_id) ?? [];
+    a.push(r.project_name);
+    map.set(r.interaction_id, a);
+  }
+  return map;
+}
+
+function formatLogEntry(e: { id: string; created_at: number; reporter_name: string; body: string }, projectsByInteraction: Map<string, string[]>): string {
+  const date = new Date(e.created_at * 1000).toLocaleDateString();
+  const projects = projectsByInteraction.get(e.id) ?? [];
+  const header = projects.length
+    ? `${date} — ${e.reporter_name} — ${projects.join(', ')}`
+    : `${date} — ${e.reporter_name}`;
+  return `[${header}] ${e.body}`;
+}
+
 type ExportMode = 'full' | 'sanitized';
 
 
@@ -116,11 +166,12 @@ export function registerExportHandlers(): void {
       const handlesByContact = new Map<string, { type: string; handle: string }[]>();
       for (const r of bulkHandles) { const a = handlesByContact.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesByContact.set(r.contact_id, a); }
 
-      const bulkLogs: { membership_id: string; reporter_name: string; body: string; created_at: number }[] =
+      const bulkLogs: { id: string; membership_id: string; reporter_name: string; body: string; created_at: number }[] =
         mode === 'full' && membershipIds.length
-          ? (db.prepare(`SELECT ip.membership_id, ile.reporter_name, ile.body, ile.created_at FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id IN (${ph(membershipIds)}) ORDER BY ile.created_at ASC`).all(...membershipIds) as { membership_id: string; reporter_name: string; body: string; created_at: number }[])
+          ? (db.prepare(`SELECT ile.id, ip.membership_id, ile.reporter_name, ile.body, ile.created_at FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id IN (${ph(membershipIds)}) ORDER BY ile.created_at ASC`).all(...membershipIds) as { id: string; membership_id: string; reporter_name: string; body: string; created_at: number }[])
           : [];
-      const logsByMembership = new Map<string, { reporter_name: string; body: string; created_at: number }[]>();
+      const projectsByInteraction = fetchProjectsByInteraction(db, bulkLogs.map((e) => e.id));
+      const logsByMembership = new Map<string, { id: string; reporter_name: string; body: string; created_at: number }[]>();
       for (const r of bulkLogs) { const a = logsByMembership.get(r.membership_id) ?? []; a.push(r); logsByMembership.set(r.membership_id, a); }
 
       const rows: ExportRow[] = [];
@@ -133,7 +184,7 @@ export function registerExportHandlers(): void {
         const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
         const interactionLog = mode === 'full'
           ? (logsByMembership.get(m.membership_id) ?? [])
-              .map((e) => `[${new Date(e.created_at * 1000).toLocaleDateString()} — ${e.reporter_name}] ${e.body}`)
+              .map((e) => formatLogEntry(e, projectsByInteraction))
               .join('\n')
           : '';
 
@@ -235,7 +286,14 @@ export function registerExportHandlers(): void {
       const handlesById = new Map<string, { type: string; handle: string }[]>();
       for (const r of allHandles2) { const a = handlesById.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesById.set(r.contact_id, a); }
 
-      const rows: { Name: string; Organization: string; Title: string; DOB: string; Emails: string; Phones: string; Handles: string; LinkedIn: string; Facebook: string; Instagram: string; X: string; Website: string; 'Other links': string; Notes: string }[] = contacts.map((c) => {
+      const allLogs = allContactIds.length
+        ? (db.prepare(`SELECT id, contact_id, reporter_name, body, created_at FROM interaction_log_entries WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY created_at ASC`).all(...allContactIds) as { id: string; contact_id: string; reporter_name: string; body: string; created_at: number }[])
+        : [];
+      const logsByContactId = new Map<string, { id: string; reporter_name: string; body: string; created_at: number }[]>();
+      for (const r of allLogs) { const a = logsByContactId.get(r.contact_id) ?? []; a.push(r); logsByContactId.set(r.contact_id, a); }
+      const allLogProjects = fetchProjectsByInteraction(db, allLogs.map((e) => e.id));
+
+      const rows: AllContactsRow[] = contacts.map((c) => {
         const links = linksById.get(c.id) ?? [];
         const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
         return {
@@ -253,6 +311,9 @@ export function registerExportHandlers(): void {
           Website: byType2('website'),
           'Other links': byType2('other'),
           Notes: c.notes ?? '',
+          'Interaction log': (logsByContactId.get(c.id) ?? [])
+            .map((e) => formatLogEntry(e, allLogProjects))
+            .join('\n'),
         };
       });
 
@@ -260,7 +321,7 @@ export function registerExportHandlers(): void {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Contacts');
         if (rows.length > 0) {
-          ws.columns = Object.keys(rows[0]).map((k) => ({ header: k, key: k }));
+          ws.columns = (Object.keys(rows[0]) as (keyof AllContactsRow)[]).map((k) => ({ header: k, key: k }));
         }
         ws.addRows(rows);
         if (isXlsx) {

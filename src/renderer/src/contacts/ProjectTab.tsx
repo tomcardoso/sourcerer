@@ -3,7 +3,7 @@ import { fmtDateFull } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
-import { fmtLogDate, LogRow, LogAllModal } from './logShared';
+import { LogRow, LogAllModal } from './logShared';
 import LogProjectPicker from './LogProjectPicker';
 import './ContactDetail.css';
 import type {
