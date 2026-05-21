@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } from '../database';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
 import { validateEmail } from '@shared/validation';
@@ -221,9 +221,48 @@ export function registerSettingsHandlers(): void {
       .get() as User;
   });
 
+  ipcMain.handle('settings:get-vault-path', (): string | null => {
+    return getVaultBundlePath();
+  });
+
+  ipcMain.handle('settings:move-vault', async (): Promise<{ success: boolean; error?: string; newPath?: string }> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Move vault',
+      message: 'Choose a folder to move your Sourcerer vault to',
+      properties: ['openDirectory', 'createDirectory'],
+      buttonLabel: 'Move here',
+    });
+    if (result.canceled || !result.filePaths[0]) return { success: false };
+    const newBundlePath = result.filePaths[0];
+    const { dbPath, saltPath, screenshotsPath } = getPaths();
+
+    try {
+      // Checkpoint WAL so db.sqlite is self-contained before copying
+      try { getDatabase().pragma('wal_checkpoint(FULL)'); } catch { /* non-fatal */ }
+
+      await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
+      await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
+
+      // Copy WAL/SHM if present (may not exist)
+      await fs.cp(dbPath + '-wal', path.join(newBundlePath, 'db.sqlite-wal'), { force: true }).catch(() => {});
+      await fs.cp(dbPath + '-shm', path.join(newBundlePath, 'db.sqlite-shm'), { force: true }).catch(() => {});
+
+      // Copy screenshots directory if it exists
+      const screenshotsDest = path.join(newBundlePath, 'screenshots');
+      await fs.cp(screenshotsPath, screenshotsDest, { recursive: true, force: true }).catch(() => {});
+
+      writeVaultConfig(newBundlePath);
+
+      // Lock the app so the next unlock uses the new path
+      autoLock.lock();
+      return { success: true, newPath: newBundlePath };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Move failed.' };
+    }
+  });
+
   ipcMain.handle('settings:panic-wipe', async (): Promise<void> => {
-    const { dbPath, saltPath } = getPaths();
-    const screenshotsPath = path.join(app.getPath('userData'), 'screenshots');
+    const { dbPath, saltPath, screenshotsPath } = getPaths();
 
     closeDatabase();
 
@@ -251,6 +290,7 @@ export function registerSettingsHandlers(): void {
     // Remove encrypted screenshots
     await fs.rm(screenshotsPath, { recursive: true, force: true }).catch(() => {});
 
+    clearVaultConfig();
     app.quit();
   });
 

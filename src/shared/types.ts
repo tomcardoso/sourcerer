@@ -14,6 +14,21 @@ export interface FirstLaunchResult {
   isFirstLaunch: boolean;
 }
 
+export interface PickVaultLocationResult {
+  path: string;
+}
+
+export interface OpenExistingVaultResult {
+  success: boolean;
+  error?: string;
+}
+
+export interface MoveVaultResult {
+  success: boolean;
+  error?: string;
+  newPath?: string;
+}
+
 export interface UnlockResult {
   success: boolean;
   error?: string;

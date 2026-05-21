@@ -1,8 +1,9 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
 import { promises as fs } from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths, writeVaultConfig, deriveKey } from '../utils';
 import { initDatabase, closeDatabase } from '../database';
 import type { SetupFormData, SetupResult, FirstLaunchResult } from '@shared/types';
 
@@ -14,6 +15,37 @@ export function registerSetupHandlers(): void {
       .then(() => true)
       .catch(() => false);
     return { isFirstLaunch: !exists };
+  });
+
+  ipcMain.handle('setup:pick-vault-location', async (): Promise<{ path: string } | null> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Choose vault location',
+      message: 'Choose or create a folder where your Sourcerer vault will be stored',
+      properties: ['openDirectory', 'createDirectory'],
+      buttonLabel: 'Choose folder',
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const bundlePath = result.filePaths[0];
+    writeVaultConfig(bundlePath);
+    return { path: bundlePath };
+  });
+
+  ipcMain.handle('setup:open-existing-vault', async (): Promise<{ success: boolean; error?: string } | null> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Open existing vault',
+      message: 'Choose your existing Sourcerer vault folder',
+      properties: ['openDirectory'],
+      buttonLabel: 'Open vault',
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const bundlePath = result.filePaths[0];
+    const dbExists = await fs.access(path.join(bundlePath, 'db.sqlite')).then(() => true).catch(() => false);
+    const saltExists = await fs.access(path.join(bundlePath, 'salt')).then(() => true).catch(() => false);
+    if (!dbExists || !saltExists) {
+      return { success: false, error: 'The selected folder does not contain a valid Sourcerer vault (db.sqlite and salt are missing).' };
+    }
+    writeVaultConfig(bundlePath);
+    return { success: true };
   });
 
   ipcMain.handle('setup:complete', async (_, data: SetupFormData): Promise<SetupResult> => {

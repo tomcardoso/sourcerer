@@ -38,9 +38,34 @@ function validate(form: FormState): string | null {
 }
 
 export default function Setup({ onComplete }: Props) {
+  const [step, setStep] = useState<'vault' | 'profile'>('vault');
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [vaultError, setVaultError] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handlePickVaultLocation() {
+    setVaultLoading(true);
+    setVaultError(null);
+    const result = await window.sourcerer.pickVaultLocation();
+    setVaultLoading(false);
+    if (result) setStep('profile');
+  }
+
+  async function handleOpenExistingVault() {
+    setVaultLoading(true);
+    setVaultError(null);
+    const result = await window.sourcerer.openExistingVault();
+    setVaultLoading(false);
+    if (result === null) return;
+    if (result.success) {
+      onComplete();
+    } else {
+      setVaultError(result.error ?? 'Could not open vault.');
+    }
+  }
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
@@ -76,6 +101,44 @@ export default function Setup({ onComplete }: Props) {
       setError(result.error ?? 'Setup failed. Please try again.');
       setSubmitting(false);
     }
+  }
+
+  if (step === 'vault') {
+    return (
+      <div className="setup-root">
+        <div className="setup-card">
+          <WordmarkLogo size={64} className="setup-wordmark" />
+          <p className="setup-subtitle">Choose where to store your vault.</p>
+          <p className="setup-hint setup-vault-hint">
+            Your vault holds the encrypted database, salt file, and screenshots. You can store it
+            on an external drive or synced folder to take it between machines.
+          </p>
+          <div className="setup-vault-options">
+            <div className="setup-vault-option">
+              <span className="setup-vault-option-label">New to Sourcerer?</span>
+              <Button variant="accent" full onClick={handlePickVaultLocation} disabled={vaultLoading}>
+                Choose a folder…
+              </Button>
+            </div>
+            <div className="setup-vault-option">
+              <span className="setup-vault-option-label">Moving from another machine?</span>
+              <Button variant="secondary" full onClick={handleOpenExistingVault} disabled={vaultLoading}>
+                Open existing vault…
+              </Button>
+            </div>
+          </div>
+          {vaultError && <div className="setup-error">{vaultError}</div>}
+          <button
+            type="button"
+            className="setup-default-link"
+            onClick={() => setStep('profile')}
+            disabled={vaultLoading}
+          >
+            Use default location
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

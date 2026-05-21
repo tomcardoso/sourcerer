@@ -124,3 +124,56 @@
   height: 40px;
   justify-content: center;
 }
+
+.setup-vault-hint {
+  margin-bottom: 24px;
+}
+
+.setup-vault-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.setup-vault-option {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.setup-vault-option-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.setup-default-link {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.15s;
+}
+
+.setup-default-link:hover:not(:disabled) {
+  color: var(--color-text-muted);
+}
+
+.setup-default-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

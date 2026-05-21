@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import argon2 from 'argon2';
 
 export function filenameDateStamp(): string {
@@ -8,11 +9,46 @@ export function filenameDateStamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
-export function getPaths(): { dbPath: string; saltPath: string } {
+type VaultConfig = { bundlePath: string };
+
+function vaultConfigPath(): string {
+  return path.join(app.getPath('userData'), 'vault.json');
+}
+
+function readVaultConfig(): VaultConfig | null {
+  try {
+    return JSON.parse(fs.readFileSync(vaultConfigPath(), 'utf8')) as VaultConfig;
+  } catch {
+    return null;
+  }
+}
+
+export function writeVaultConfig(bundlePath: string): void {
+  fs.writeFileSync(vaultConfigPath(), JSON.stringify({ bundlePath }), { mode: 0o600 });
+}
+
+export function clearVaultConfig(): void {
+  try { fs.unlinkSync(vaultConfigPath()); } catch { /* no config to clear */ }
+}
+
+export function getVaultBundlePath(): string | null {
+  return readVaultConfig()?.bundlePath ?? null;
+}
+
+export function getPaths(): { dbPath: string; saltPath: string; screenshotsPath: string } {
+  const config = readVaultConfig();
+  if (config?.bundlePath) {
+    return {
+      dbPath: path.join(config.bundlePath, 'db.sqlite'),
+      saltPath: path.join(config.bundlePath, 'salt'),
+      screenshotsPath: path.join(config.bundlePath, 'screenshots'),
+    };
+  }
   const userData = app.getPath('userData');
   return {
     dbPath: path.join(userData, 'sourcerer.db'),
     saltPath: path.join(userData, 'sourcerer.salt'),
+    screenshotsPath: path.join(userData, 'screenshots'),
   };
 }
 

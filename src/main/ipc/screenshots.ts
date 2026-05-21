@@ -1,14 +1,15 @@
-import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron';
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron';
 import { randomUUID } from 'crypto';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import { getDatabase, getKeyHex } from '../database';
 import { consumePendingScreenshot } from '../http-server';
+import { getPaths } from '../utils';
 import type { ContactScreenshot } from '@shared/types';
 
 function screenshotsDir(): string {
-  return path.join(app.getPath('userData'), 'screenshots');
+  return getPaths().screenshotsPath;
 }
 
 function safeScreenshotPath(fileName: string): string {
