@@ -1,0 +1,88 @@
+.lpp-root {
+  position: relative;
+  flex: 1;
+}
+
+.lpp-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: text;
+}
+
+.lpp-field:focus-within {
+  border-color: var(--color-primary);
+}
+
+.lpp-tag {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  padding: 1px 4px 1px 6px;
+}
+
+.lpp-tag-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--color-text-dim);
+  cursor: pointer;
+}
+
+.lpp-tag-remove:hover {
+  color: var(--color-text);
+}
+
+.lpp-input {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--color-text);
+  padding: 0;
+}
+
+.lpp-input::placeholder {
+  color: var(--color-text-dim);
+}
+
+.lpp-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.lpp-option {
+  padding: 7px 10px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.lpp-option:hover {
+  background: var(--color-surface);
+}

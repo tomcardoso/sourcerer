@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactLogEntry, Project, User } from '@shared/types';
 import Button from '../shell/Button';
 import { LogRow, LogAllModal } from './logShared';
+import LogProjectPicker from './LogProjectPicker';
 import DynamicList, { useDragReorder } from './DynamicList';
 import {
   isValidEmail,
@@ -912,37 +913,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             {contact.projects.length > 0 && (
               <div className="pt-log-projects">
                 <label className="pt-log-date-label">Projects</label>
-                <div className="pt-log-project-tags">
-                  {logSelectedMembershipIds.map((mid) => {
-                    const proj = contact.projects.find((p) => p.membership_id === mid);
-                    return proj ? (
-                      <span key={mid} className="pt-log-project-tag">
-                        {proj.name}
-                        <button
-                          type="button"
-                          className="pt-log-project-tag-remove"
-                          onClick={() => setLogSelectedMembershipIds((prev) => prev.filter((id) => id !== mid))}
-                        >×</button>
-                      </span>
-                    ) : null;
-                  })}
-                  {contact.projects.filter((p) => !logSelectedMembershipIds.includes(p.membership_id)).length > 0 && (
-                    <select
-                      className="pt-log-project-select"
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) setLogSelectedMembershipIds((prev) => [...prev, e.target.value]);
-                      }}
-                    >
-                      <option value="">Add project…</option>
-                      {contact.projects
-                        .filter((p) => !logSelectedMembershipIds.includes(p.membership_id))
-                        .map((p) => (
-                          <option key={p.membership_id} value={p.membership_id}>{p.name}</option>
-                        ))}
-                    </select>
-                  )}
-                </div>
+                <LogProjectPicker
+                  projects={contact.projects}
+                  selectedIds={logSelectedMembershipIds}
+                  onChange={setLogSelectedMembershipIds}
+                />
               </div>
             )}
             <div className="pt-reminder-form-actions">
