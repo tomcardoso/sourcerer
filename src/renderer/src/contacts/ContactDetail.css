@@ -1130,6 +1130,17 @@
   color: var(--color-text);
 }
 
+.pt-reminder-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
 .pt-reminder-row-hint {
   color: var(--color-text-muted)
 }

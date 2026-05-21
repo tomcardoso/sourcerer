@@ -184,8 +184,8 @@ function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
             <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
               {fmtReminderDate(r.due_date, overdue)}
             </div>
-            <div className="pt-reminder-row-note">
-              {r.note || ''}
+            <div className="pt-reminder-row-body">
+              <span>{r.note || ''}</span>
               {r.project_name && <span className="pt-log-row-project-badge">{r.project_name}</span>}
             </div>
             {!done && (
