@@ -163,7 +163,7 @@ export default function RemindersView({ onCountChange, user }: Props) {
           </p>
         )}
         <h1 className="view-headline">Reminders</h1>
-        <p className="view-subtitle">Scheduled follow-ups and outreach nudges across all your projects.</p>
+        <p className="view-subtitle">Scheduled follow-ups and outreach nudges across all your contacts.</p>
         <div className="view-rule-thick" />
         <div className="view-rule-thin" />
         <div className="project-meta-bar">
@@ -302,18 +302,14 @@ function ReminderRow({
           {!isAuto && <span className="reminders-item-badge reminders-item-badge-manual">Reminder</span>}
         </div>
         <div className="reminders-item-meta">
-          <span className="reminders-item-project">{reminder.project_name}</span>
+          {reminder.project_name && (
+            <span className="reminders-item-project">{reminder.project_name}</span>
+          )}
           {!isAuto && reminder.note && (
-            <>
-              <span className="reminders-item-sep">·</span>
-              <span className="reminders-item-note">{reminder.note}</span>
-            </>
+            <span className="reminders-item-note">{reminder.note}</span>
           )}
           {isAuto && (
-            <>
-              <span className="reminders-item-sep">·</span>
-              <span className="reminders-item-auto-hint">Log an interaction to clear</span>
-            </>
+            <span className="reminders-item-auto-hint">Log an interaction to clear</span>
           )}
         </div>
       </div>

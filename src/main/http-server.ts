@@ -344,11 +344,11 @@ function generateIcal(db: ReturnType<typeof getDatabase>): string {
               c.name AS contact_name, p.name AS project_name
        FROM reminders r
        JOIN contacts c ON c.id = r.contact_id
-       JOIN projects p ON p.id = r.project_id
-       WHERE p.is_archived = 0
+       LEFT JOIN projects p ON p.id = r.project_id
+       WHERE (r.project_id IS NULL OR p.is_archived = 0)
        ORDER BY r.due_date ASC`,
     )
-    .all() as Array<{ id: string; due_date: number; note: string | null; is_auto_outreach: number; contact_name: string; project_name: string }>;
+    .all() as Array<{ id: string; due_date: number; note: string | null; is_auto_outreach: number; contact_name: string; project_name: string | null }>;
 
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -362,8 +362,8 @@ function generateIcal(db: ReturnType<typeof getDatabase>): string {
   for (const r of reminders) {
     const dateStr = toIcalDate(r.due_date);
     const summary = r.is_auto_outreach
-      ? `Outreach overdue: ${r.contact_name} — ${r.project_name}`
-      : `Follow up: ${r.contact_name} — ${r.project_name}`;
+      ? `Outreach overdue: ${r.contact_name}${r.project_name ? ` — ${r.project_name}` : ''}`
+      : `Follow up: ${r.contact_name}${r.project_name ? ` — ${r.project_name}` : ''}`;
     const event = [
       'BEGIN:VEVENT',
       `UID:${r.id}@sourcerer`,

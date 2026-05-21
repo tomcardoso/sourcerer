@@ -234,15 +234,11 @@
 
 .reminders-item-meta {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 2px;
   font-size: 11px;
   color: var(--color-text-muted);
   margin-top: 2px;
-}
-
-.reminders-item-sep {
-  opacity: 0.5;
 }
 
 .reminders-item-note {
