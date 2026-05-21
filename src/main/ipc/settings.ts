@@ -277,9 +277,7 @@ export function registerSettingsHandlers(): void {
     try {
       await fs.mkdir(newBundlePath, { recursive: true });
 
-      // Use SQLite's online backup API to copy the live database consistently
-      // without closing the connection first.
-      await getDatabase().backup(path.join(newBundlePath, 'db.sqlite'));
+      await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
 
       // Copy screenshots directory if it exists
