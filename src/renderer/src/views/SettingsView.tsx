@@ -744,6 +744,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
             </div>
           ) : (
             <div className="sv-wipe-confirm">
+              <p className="sv-wipe-warning">
+                Enter your master password to encrypt the backup file.
+              </p>
               <div className="sv-wipe-row">
                 <input
                   className="sv-input sv-backup-pw-input"
