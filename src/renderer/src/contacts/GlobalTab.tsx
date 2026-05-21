@@ -888,25 +888,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         </div>
 
-        {contact.projects.length > 0 && (
-          <div className="pt-log-default-project">
-            <span className="pt-log-default-label">Default project</span>
-            <select
-              className="pt-log-default-select"
-              value={contact.default_membership_id ?? ''}
-              onChange={async (e) => {
-                await window.sourcerer.setContactDefaultProject(contact.id, e.target.value || null);
-                onRefresh();
-              }}
-            >
-              <option value="">None</option>
-              {contact.projects.map((p) => (
-                <option key={p.membership_id} value={p.membership_id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {logEntries.length === 0 && !logAdding && (
           <p className="pt-reminders-empty">No entries yet.</p>
         )}
@@ -978,30 +959,43 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <p className="detail-empty-projects">Not added to any projects yet.</p>
         ) : (
           <ul className="detail-project-list">
-            {contact.projects.map((p) => (
-              <li key={p.id} className="detail-project-item">
-                <span className="detail-project-name">{p.name}</span>
-                {p.status && <span className="detail-project-status">{p.status}</span>}
-                {confirmRemoveProjectId === p.id ? (
-                  <span className="detail-project-remove-confirm">
-                    <button
-                      className="detail-project-remove-yes"
-                      onClick={() => handleRemoveFromProject(p.id)}
-                    >Remove</button>
-                    <button
-                      className="detail-project-remove-no"
-                      onClick={() => setConfirmRemoveProjectId(null)}
-                    >Cancel</button>
-                  </span>
-                ) : (
-                  <button
-                    className="detail-project-remove"
-                    title="Remove from project"
-                    onClick={() => setConfirmRemoveProjectId(p.id)}
-                  >×</button>
-                )}
-              </li>
-            ))}
+            {contact.projects.map((p) => {
+              const isDefault = contact.default_membership_id === p.membership_id;
+              return (
+                <li key={p.id} className="detail-project-item">
+                  <span className="detail-project-name">{p.name}</span>
+                  {p.status && <span className="detail-project-status">{p.status}</span>}
+                  {confirmRemoveProjectId === p.id ? (
+                    <span className="detail-project-remove-confirm">
+                      <button
+                        className="detail-project-remove-yes"
+                        onClick={() => handleRemoveFromProject(p.id)}
+                      >Remove</button>
+                      <button
+                        className="detail-project-remove-no"
+                        onClick={() => setConfirmRemoveProjectId(null)}
+                      >Cancel</button>
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        className={`detail-project-default${isDefault ? ' detail-project-default--active' : ''}`}
+                        title={isDefault ? 'Clear default project' : 'Set as default project'}
+                        onClick={async () => {
+                          await window.sourcerer.setContactDefaultProject(contact.id, isDefault ? null : p.membership_id);
+                          onRefresh();
+                        }}
+                      >{isDefault ? '★' : '☆'}</button>
+                      <button
+                        className="detail-project-remove"
+                        title="Remove from project"
+                        onClick={() => setConfirmRemoveProjectId(p.id)}
+                      >×</button>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
 
