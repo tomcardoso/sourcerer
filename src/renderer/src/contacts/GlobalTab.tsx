@@ -69,6 +69,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [logDate, setLogDate] = useState('');
   const [logSubmitting, setLogSubmitting] = useState(false);
   const [logShowAll, setLogShowAll] = useState(false);
+  const [logSelectedMembershipIds, setLogSelectedMembershipIds] = useState<string[]>([]);
   const LOG_PREVIEW = 3;
 
   useEffect(() => {
@@ -151,6 +152,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setLogAdding(false);
     setLogText('');
     setLogDate('');
+    setLogSelectedMembershipIds([]);
     window.sourcerer.listContactLog(contact.id).then(setLogEntries);
   }, [contact.id]);
 
@@ -298,6 +300,13 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setAlertRssList((prev) => prev.filter((f) => f.id !== id));
   }
 
+  function cancelLog() {
+    setLogAdding(false);
+    setLogText('');
+    setLogDate('');
+    setLogSelectedMembershipIds([]);
+  }
+
   async function handleLogSubmit() {
     const body = logText.trim();
     if (!body || !logDate) return;
@@ -305,10 +314,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     try {
       const [y, m, d] = logDate.split('-').map(Number);
       const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
-      const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt);
+      const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt, logSelectedMembershipIds);
       setLogEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
       setLogText('');
       setLogDate('');
+      setLogSelectedMembershipIds([]);
       setLogAdding(false);
     } finally {
       setLogSubmitting(false);
@@ -857,12 +867,14 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 View all ({logEntries.length})
               </Button>
             )}
-            <Button variant="ghost" onClick={() => {
-              if (!logAdding) setLogDate(new Date().toISOString().slice(0, 10));
-              setLogAdding((v) => !v);
-            }}>
-              {logAdding ? '× Cancel' : '+ Add'}
-            </Button>
+            {!logAdding && (
+              <Button variant="ghost" onClick={() => {
+                setLogDate(new Date().toISOString().slice(0, 10));
+                setLogAdding(true);
+              }}>
+                + Add
+              </Button>
+            )}
           </div>
         </div>
 
@@ -875,7 +887,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         ))}
 
         {logAdding && (
-          <div className="pt-log-compose">
+          <div className="pt-log-compose pt-log-compose--global">
             <div className="pt-log-date-row">
               <label className="pt-log-date-label">Date</label>
               <CalendarPicker
@@ -897,6 +909,42 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleLogSubmit();
               }}
             />
+            {contact.projects.length > 0 && (
+              <div className="pt-log-projects">
+                <label className="pt-log-date-label">Projects</label>
+                <div className="pt-log-project-tags">
+                  {logSelectedMembershipIds.map((mid) => {
+                    const proj = contact.projects.find((p) => p.membership_id === mid);
+                    return proj ? (
+                      <span key={mid} className="pt-log-project-tag">
+                        {proj.name}
+                        <button
+                          type="button"
+                          className="pt-log-project-tag-remove"
+                          onClick={() => setLogSelectedMembershipIds((prev) => prev.filter((id) => id !== mid))}
+                        >×</button>
+                      </span>
+                    ) : null;
+                  })}
+                  {contact.projects.filter((p) => !logSelectedMembershipIds.includes(p.membership_id)).length > 0 && (
+                    <select
+                      className="pt-log-project-select"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) setLogSelectedMembershipIds((prev) => [...prev, e.target.value]);
+                      }}
+                    >
+                      <option value="">Add project…</option>
+                      {contact.projects
+                        .filter((p) => !logSelectedMembershipIds.includes(p.membership_id))
+                        .map((p) => (
+                          <option key={p.membership_id} value={p.membership_id}>{p.name}</option>
+                        ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="pt-reminder-form-actions">
               <button
                 className="pt-log-submit"
@@ -904,6 +952,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 disabled={!logText.trim() || !logDate || logSubmitting}
               >
                 {logSubmitting ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className="pt-reminder-cancel" onClick={cancelLog}>
+                Cancel
               </button>
             </div>
           </div>

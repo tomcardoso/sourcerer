@@ -642,16 +642,28 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle(
     'interaction-log:add-global',
-    (_, { contactId, body, createdAt }: { contactId: string; body: string; createdAt?: number }): ContactLogEntry => {
+    (_, { contactId, body, createdAt, membershipIds }: { contactId: string; body: string; createdAt?: number; membershipIds?: string[] }): ContactLogEntry => {
       const db = getDatabase();
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const id = uuidv4();
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
       if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
-      db.prepare(
+      const insertEntry = db.prepare(
         'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ).run(id, contactId, user.email, reporterName, body.trim(), ts);
+      );
+      const insertProject = db.prepare(
+        'INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
+      );
+      db.transaction(() => {
+        insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts);
+        for (const mid of membershipIds ?? []) {
+          insertProject.run(id, mid);
+        }
+      })();
+      const firstProject = (membershipIds ?? []).length > 0
+        ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ?').get(membershipIds![0]) as { name: string } | undefined)?.name ?? null
+        : null;
       broadcastContactsChanged();
       return {
         id,
@@ -660,7 +672,7 @@ export function registerContactHandlers(): void {
         reporter_name: reporterName,
         body: body.trim(),
         created_at: ts,
-        project_name: null,
+        project_name: firstProject,
       };
     },
   );
