@@ -301,6 +301,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     setAlertRssList((prev) => prev.filter((f) => f.id !== id));
   }
 
+  async function handleLogDelete(id: string) {
+    await window.sourcerer.deleteInteractionLogEntry(id);
+    setLogEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
   function cancelLog() {
     setLogAdding(false);
     setLogText('');
@@ -884,7 +889,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         )}
 
         {[...logEntries].reverse().slice(0, LOG_PREVIEW).map((e) => (
-          <LogRow key={e.id} entry={e} subtitle={e.project_name} />
+          <LogRow key={e.id} entry={e} subtitle={e.project_name} onDelete={handleLogDelete} />
         ))}
 
         {logAdding && (
@@ -938,6 +943,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             title="Interaction Log"
             entries={logEntries}
             getSubtitle={(e) => (e as ContactLogEntry).project_name}
+            onDelete={handleLogDelete}
             onClose={() => setLogShowAll(false)}
           />
         )}

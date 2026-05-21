@@ -69,6 +69,12 @@ function LogSection({
     window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
   }, [membership.membership_id]);
 
+  async function handleDelete(id: string) {
+    await window.sourcerer.deleteInteractionLogEntry(id);
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    onEntryAdded?.();
+  }
+
   async function handleSubmit() {
     const body = text.trim();
     if (!body || !logDate) return;
@@ -135,7 +141,7 @@ function LogSection({
         <p className="pt-reminders-empty">No entries yet.</p>
       )}
 
-      {preview.map((e) => <LogRow key={e.id} entry={e} />)}
+      {preview.map((e) => <LogRow key={e.id} entry={e} onDelete={handleDelete} />)}
 
       {showStatusPrompt && (
         <div className="pt-status-prompt">
@@ -206,7 +212,7 @@ function LogSection({
         </div>
       )}
 
-      {showAll && <LogAllModal title="Interaction Log" entries={entries} onClose={() => setShowAll(false)} />}
+      {showAll && <LogAllModal title="Interaction Log" entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
     </div>
   );
 }

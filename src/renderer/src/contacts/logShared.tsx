@@ -17,7 +17,7 @@ export function fmtLogDate(ts: number): string {
   return `${mm}.${dd}`;
 }
 
-export function LogRow({ entry, subtitle }: { entry: InteractionLogEntry; subtitle?: string | null }) {
+export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEntry; subtitle?: string | null; onDelete?: (id: string) => void }) {
   return (
     <div className="pt-log-row">
       <div className="pt-log-row-date">{fmtLogDate(entry.created_at)}</div>
@@ -26,6 +26,9 @@ export function LogRow({ entry, subtitle }: { entry: InteractionLogEntry; subtit
         <div className="pt-log-row-footer">
           <span className="pt-log-row-reporter">{entry.reporter_name}</span>
           {subtitle && <span className="pt-log-row-project-badge">{subtitle}</span>}
+          {onDelete && (
+            <button className="pt-log-row-delete" onClick={() => onDelete(entry.id)} title="Delete entry">×</button>
+          )}
         </div>
       </div>
     </div>
@@ -36,11 +39,13 @@ export function LogAllModal({
   title,
   entries,
   getSubtitle,
+  onDelete,
   onClose,
 }: {
   title: string;
   entries: InteractionLogEntry[];
   getSubtitle?: (entry: InteractionLogEntry) => string | null | undefined;
+  onDelete?: (id: string) => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -87,7 +92,7 @@ export function LogAllModal({
         <div className="pt-log-modal-body">
           {visible.length === 0
             ? <p className="pt-reminders-empty">{query ? 'No entries match.' : 'No entries yet.'}</p>
-            : visible.map((e) => <LogRow key={e.id} entry={e} subtitle={getSubtitle?.(e)} />)
+            : visible.map((e) => <LogRow key={e.id} entry={e} subtitle={getSubtitle?.(e)} onDelete={onDelete} />)
           }
         </div>
         {query && entries.length > 0 && (

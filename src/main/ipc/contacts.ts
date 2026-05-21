@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
+import { checkOutreachReminders } from '../sync/outreach-checker';
 import type {
   ContactListItem,
   ContactDetail,
@@ -613,8 +614,10 @@ export function registerContactHandlers(): void {
           if (mid !== membershipId) insertProject.run(id, mid);
         }
       })();
-      // Clear any auto-outreach calendar reminder — source is no longer overdue.
-      db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1').run(membershipId);
+      // Clear auto-outreach reminders for all associated memberships.
+      const allMids = [membershipId, ...(extraMembershipIds ?? [])];
+      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
+      for (const mid of allMids) clearReminder.run(mid);
       broadcastContactsChanged();
       return {
         id,
@@ -666,6 +669,9 @@ export function registerContactHandlers(): void {
       const firstProject = (membershipIds ?? []).length > 0
         ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ?').get(membershipIds![0]) as { name: string } | undefined)?.name ?? null
         : null;
+      // Clear auto-outreach reminders for all associated memberships.
+      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
+      for (const mid of membershipIds ?? []) clearReminder.run(mid);
       broadcastContactsChanged();
       return {
         id,
@@ -678,6 +684,19 @@ export function registerContactHandlers(): void {
       };
     },
   );
+
+  ipcMain.handle('interaction-log:delete', (_, interactionId: string): void => {
+    const db = getDatabase();
+    // Collect affected memberships before deleting so we can re-evaluate reminders.
+    const membershipIds = (
+      db.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').all(interactionId) as Array<{ membership_id: string }>
+    ).map((r) => r.membership_id);
+    db.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(interactionId);
+    // Re-run outreach checker so reminders are recreated if this was the last log.
+    checkOutreachReminders();
+    broadcastContactsChanged();
+    if (membershipIds.length > 0) broadcastRemindersChanged();
+  });
 
   ipcMain.handle('contacts:count', (): number => {
     const row = getDatabase().prepare('SELECT COUNT(*) as n FROM contacts').get() as { n: number };
