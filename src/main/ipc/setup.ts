@@ -33,7 +33,7 @@ export function registerSetupHandlers(): void {
     const provider = detectSyncProvider(bundlePath);
     if (provider) {
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
-      const { response } = await dialog.showMessageBox(win!, {
+      const { response } = await dialog.showMessageBox(win, {
         type: 'warning',
         title: 'Cloud sync detected',
         message: `This location is inside ${provider}.`,
@@ -71,7 +71,7 @@ export function registerSetupHandlers(): void {
     const provider = detectSyncProvider(bundlePath);
     if (provider) {
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
-      const { response } = await dialog.showMessageBox(win!, {
+      const { response } = await dialog.showMessageBox(win, {
         type: 'warning',
         title: 'Cloud sync detected',
         message: `This vault is inside ${provider}.`,

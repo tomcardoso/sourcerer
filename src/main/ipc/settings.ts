@@ -238,7 +238,7 @@ export function registerSettingsHandlers(): void {
     const provider = detectSyncProvider(newBundlePath);
     if (provider) {
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
-      const { response } = await dialog.showMessageBox(win!, {
+      const { response } = await dialog.showMessageBox(win, {
         type: 'warning',
         title: 'Cloud sync detected',
         message: `This location is inside ${provider}.`,
@@ -253,8 +253,17 @@ export function registerSettingsHandlers(): void {
     const oldBundlePath = getVaultBundlePath();
     const { dbPath, saltPath, screenshotsPath } = getPaths();
 
+    const newNorm = newBundlePath.replace(/\\/g, '/');
+    const oldNorm = (oldBundlePath ?? '').replace(/\\/g, '/');
+    if (oldNorm && newNorm === oldNorm) return { success: false };
+
     try {
       await fs.mkdir(newBundlePath, { recursive: true });
+
+      // Close the DB before copying so the file is in a consistent state
+      autoLock.lock();
+      closeDatabase();
+
       await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
 
@@ -264,14 +273,9 @@ export function registerSettingsHandlers(): void {
 
       writeVaultConfig(newBundlePath);
 
-      // Lock the app so the next unlock uses the new path
-      autoLock.lock();
-
       // Clean up old vault location — non-fatal if this fails
       try {
-        const newNorm = newBundlePath.replace(/\\/g, '/');
         if (oldBundlePath) {
-          const oldNorm = oldBundlePath.replace(/\\/g, '/');
           // Guard: don't delete old bundle if new path is inside it
           if (!newNorm.startsWith(oldNorm + '/')) {
             await fs.rm(oldBundlePath, { recursive: true, force: true });
