@@ -166,9 +166,12 @@ body {
   background: transparent;
 }
 
-/* Redaction mode — Cmd/Ctrl+Shift+R toggles blur on sensitive content */
+/* Redaction mode — Ctrl+Shift+R toggles blur on sensitive content */
 body.redacted .detail-name,
 body.redacted .detail-org,
+body.redacted .detail-value,
+body.redacted .detail-link,
+body.redacted .detail-notes,
 body.redacted .contact-name-cell,
 body.redacted .contact-org-cell,
 body.redacted .pt-reporter,

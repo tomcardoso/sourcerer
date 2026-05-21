@@ -30,7 +30,7 @@ Sourcerer is built around the workflow of investigative reporting: you manage a 
 
 Deduplication surfaces likely-duplicate contacts via fuzzy name matching and exact email/phone signals, then presents them side-by-side so you can merge or dismiss each pair with one click.
 
-A Chrome extension captures full-page screenshots from any browser tab and links them to a contact record. Screenshots are encrypted on disk with the same key as the database. Export to CSV, Excel, or vCard; import from CSV or vCard (.vcf).
+A browser extension (Chrome and Firefox) captures full-page screenshots from any browser tab and links them to a contact record. Screenshots are encrypted on disk with the same key as the database. Export to CSV, Excel, or vCard; import from CSV or vCard (.vcf).
 
 ---
 
@@ -51,7 +51,7 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 - Priority levels: Critical, High, Medium, Low, Monitor-only — each with a fixed reminder interval
 - Status workflow: Not yet contacted → Contacted, no reply → In dialogue → Interview arranged → Interviewed (off/on-record) → Declined / Declined, door open / Referred to comms / Ghosted / Do not contact
 - Interaction log per source per project
-- Manual reminders with due dates and notes
+- Automatic reminder notifications per priority level; manual reminders with due dates and notes
 
 **Alerts**
 - RSS feed monitoring per contact; new mentions surfaced in a notification centre
@@ -60,6 +60,7 @@ A Chrome extension captures full-page screenshots from any browser tab and links
 **Security**
 - AES-256 encryption via SQLCipher; master password derived with Argon2id
 - Auto-lock on idle (configurable timeout)
+- Redaction mode (Ctrl+Shift+R) blurs all contact details, names, and notes on screen
 - Panic wipe: destroys the database and key material immediately
 - Encrypted backup and restore
 
@@ -144,9 +145,9 @@ The exported file is a standard unencrypted SQLite database. Delete it when you'
 
 ## Security notes
 
-- No network requests are made except: user-configured RSS feeds, optional Wayback Machine saves (requires Archive.org S3 API keys configured in Settings), and the local HTTP server that receives screenshots from the Chrome extension (localhost only, one-time token auth).
+- No network requests are made except: user-configured RSS feeds, optional Wayback Machine saves (requires Archive.org S3 API keys configured in Settings), and the local HTTP server that receives screenshots from the browser extension (localhost only, one-time token auth).
 - The master password cannot be recovered. Use a passphrase — four random words are easier to remember and just as strong as a complex string.
-- The Chrome extension communicates only with localhost and requires explicit one-time approval in the app.
+- The browser extension communicates only with localhost and requires explicit one-time approval in the app.
 
 ---
 
