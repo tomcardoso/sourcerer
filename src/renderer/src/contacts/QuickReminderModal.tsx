@@ -18,7 +18,11 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
   const [selectedContactName, setSelectedContactName] = useState('');
   const [detail, setDetail] = useState<ContactDetail | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +84,7 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
     }
   }
 
-  const canSave = !!selectedContactId && !!selectedProjectId && !!date && !saving;
+  const canSave = !!selectedContactId && !!selectedProjectId && !!date && note.trim().length > 0 && !saving;
 
   return (
     <Modal title="Set reminder" onDismiss={onClose} className="quick-reminder-modal">
@@ -121,24 +125,18 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
         )}
       </div>
 
-      {detail && (
+      {detail && detail.projects.length > 0 && (
         <div className="qlm-field">
           <label className="qlm-label">Project <span className="qlm-required">*</span></label>
-          {detail.projects.length === 0 ? (
-            <p className="qlm-no-projects">
-              This contact isn't in any projects. Add them to a project first.
-            </p>
-          ) : (
-            <select
-              className="qlm-select"
-              value={selectedProjectId ?? ''}
-              onChange={(e) => setSelectedProjectId(e.target.value || null)}
-            >
-              {detail.projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
+          <select
+            className="qlm-select"
+            value={selectedProjectId ?? ''}
+            onChange={(e) => setSelectedProjectId(e.target.value || null)}
+          >
+            {detail.projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -155,10 +153,10 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
       </div>
 
       <div className="qlm-field">
-        <label className="qlm-label">Note</label>
+        <label className="qlm-label">Note <span className="qlm-required">*</span></label>
         <textarea
           className="qlm-textarea"
-          placeholder="Optional note…"
+          placeholder="What do you want to be reminded about?"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
@@ -170,7 +168,7 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
         <Button
           variant="primary"
           onClick={handleSave}
-          disabled={!canSave || (!!detail && detail.projects.length === 0)}
+          disabled={!canSave}
         >
           {saving ? 'Saving…' : 'Save'}
         </Button>
