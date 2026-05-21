@@ -333,10 +333,16 @@
 
 .ptl-entry-meta {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 6px;
   flex-wrap: wrap;
+}
+
+.ptl-contact-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .ptl-contact-name {

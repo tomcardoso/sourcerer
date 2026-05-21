@@ -495,15 +495,17 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                 {group.entries.map((entry) => (
                   <div key={entry.id} className="ptl-entry">
                     <div className="ptl-entry-meta">
-                      <button
-                        className="ptl-contact-name"
-                        onClick={() => onSelectContact(entry.contact_id)}
-                      >
-                        {entry.contact_name}
-                      </button>
-                      {entry.contact_organization && (
-                        <span className="ptl-contact-org">{entry.contact_organization}</span>
-                      )}
+                      <div className="ptl-contact-header">
+                        <button
+                          className="ptl-contact-name"
+                          onClick={() => onSelectContact(entry.contact_id)}
+                        >
+                          {entry.contact_name}
+                        </button>
+                        {entry.contact_organization && (
+                          <span className="ptl-contact-org">{entry.contact_organization}</span>
+                        )}
+                      </div>
                       {isGlobal && entry.projects.map((p) => (
                         <span key={p.project_id} className="ptl-project-badge">{p.project_name}</span>
                       ))}
