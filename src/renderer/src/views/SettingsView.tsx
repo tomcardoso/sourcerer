@@ -339,7 +339,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     const result = await window.sourcerer.runAutoBackup();
     setAutoBackupRunning(false);
     setAutoBackupResult(result.success ? 'Backup saved.' : (result.error ?? 'Backup failed.'));
-    setTimeout(() => setAutoBackupResult(null), 4000);
+    setTimeout(() => setAutoBackupResult(null), 3000);
   }
 
   const profileDirty =
@@ -892,7 +892,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 {autoBackupRunning ? 'Backing up…' : 'Back up now'}
               </Button>
               {autoBackupResult && (
-                <span className="sv-hint sv-hint--inline">{autoBackupResult}</span>
+                <span className={autoBackupResult === 'Backup saved.' ? 'sv-backup-saved' : 'sv-error-inline'}>{autoBackupResult}</span>
               )}
             </div>
           </div>
