@@ -197,6 +197,7 @@ function LogSection({
               projects={allProjects}
               selectedIds={selectedMembershipIds}
               onChange={setSelectedMembershipIds}
+              lockedIds={[membership.membership_id]}
             />
           </div>
           <div className="pt-reminder-form-actions">

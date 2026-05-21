@@ -38,7 +38,7 @@ export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEnt
               <button className="pt-log-row-confirm-no" onClick={() => setConfirming(false)}>Cancel</button>
             </>
           ) : (
-            <button className="pt-log-row-delete" onClick={() => setConfirming(true)} title="Delete entry">×</button>
+            <button className="pt-log-row-delete" onClick={() => setConfirming(true)} title="Delete entry" aria-label="Delete entry">×</button>
           )}
         </div>
       )}

@@ -439,7 +439,8 @@ function attachProjects(
      FROM interaction_projects ip
      JOIN project_memberships pm ON pm.id = ip.membership_id
      JOIN projects p ON p.id = pm.project_id
-     WHERE ip.interaction_id IN (${ph})`,
+     WHERE ip.interaction_id IN (${ph})
+     ORDER BY p.name ASC`,
   ).all(...ids) as Array<{ interaction_id: string } & TimelineEntryProject>;
 
   const projMap = new Map<string, TimelineEntryProject[]>();

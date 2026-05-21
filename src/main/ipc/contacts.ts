@@ -604,6 +604,7 @@ export function registerContactHandlers(): void {
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
       if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
+      const validMid = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
       const insertProject = db.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)');
       db.transaction(() => {
         db.prepare(
@@ -611,13 +612,14 @@ export function registerContactHandlers(): void {
         ).run(id, membership.contact_id, user.email, reporterName, body.trim(), ts);
         insertProject.run(id, membershipId);
         for (const mid of extraMembershipIds ?? []) {
-          if (mid !== membershipId) insertProject.run(id, mid);
+          if (mid !== membershipId && validMid.get(mid, membership.contact_id)) insertProject.run(id, mid);
         }
       })();
       // Clear auto-outreach reminders for all associated memberships.
       const allMids = [membershipId, ...(extraMembershipIds ?? [])];
       const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
       for (const mid of allMids) clearReminder.run(mid);
+      broadcastRemindersChanged();
       broadcastContactsChanged();
       return {
         id,
@@ -637,7 +639,7 @@ export function registerContactHandlers(): void {
                 (SELECT p.name FROM interaction_projects ip
                  JOIN project_memberships pm ON pm.id = ip.membership_id
                  JOIN projects p ON p.id = pm.project_id
-                 WHERE ip.interaction_id = ile.id LIMIT 1) AS project_name
+                 WHERE ip.interaction_id = ile.id ORDER BY p.name LIMIT 1) AS project_name
          FROM interaction_log_entries ile
          WHERE ile.contact_id = ?
          ORDER BY ile.created_at ASC`,
@@ -660,18 +662,20 @@ export function registerContactHandlers(): void {
       const insertProject = db.prepare(
         'INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
       );
+      const validMidGlobal = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
       db.transaction(() => {
         insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts);
         for (const mid of membershipIds ?? []) {
-          insertProject.run(id, mid);
+          if (validMidGlobal.get(mid, contactId)) insertProject.run(id, mid);
         }
       })();
       const firstProject = (membershipIds ?? []).length > 0
-        ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ?').get(membershipIds![0]) as { name: string } | undefined)?.name ?? null
+        ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ? AND pm.contact_id = ?').get(membershipIds![0], contactId) as { name: string } | undefined)?.name ?? null
         : null;
       // Clear auto-outreach reminders for all associated memberships.
       const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
       for (const mid of membershipIds ?? []) clearReminder.run(mid);
+      broadcastRemindersChanged();
       broadcastContactsChanged();
       return {
         id,

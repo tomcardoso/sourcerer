@@ -867,7 +867,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       <div className="pt-section">
         <div className="pt-reminders-header">
           <span className="pt-reminders-label">Interaction Log</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <div className="pt-log-header-actions">
             {logEntries.length > 0 && (
               <Button variant="ghost" onClick={() => setLogShowAll(true)}>
                 View all ({logEntries.length})

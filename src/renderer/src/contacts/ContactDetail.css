@@ -1027,6 +1027,12 @@
   margin-bottom: 0;
 }
 
+.pt-log-header-actions {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
 .pt-reminders-label {
   font-family: var(--font-mono);
   font-size: 11px;

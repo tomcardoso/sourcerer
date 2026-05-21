@@ -7,9 +7,10 @@ interface Props {
   projects: ContactProject[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  lockedIds?: string[];
 }
 
-export default function LogProjectPicker({ projects, selectedIds, onChange }: Props) {
+export default function LogProjectPicker({ projects, selectedIds, onChange, lockedIds = [] }: Props) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,11 +38,13 @@ export default function LogProjectPicker({ projects, selectedIds, onChange }: Pr
         {selected.map((p) => (
           <span key={p.membership_id} className="lpp-tag">
             {p.name}
-            <button
-              type="button"
-              className="lpp-tag-remove"
-              onMouseDown={(e) => { e.stopPropagation(); remove(p.membership_id); }}
-            >×</button>
+            {!lockedIds.includes(p.membership_id) && (
+              <button
+                type="button"
+                className="lpp-tag-remove"
+                onMouseDown={(e) => { e.stopPropagation(); remove(p.membership_id); }}
+              >×</button>
+            )}
           </span>
         ))}
         <input
