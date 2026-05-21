@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { TimelineEntry } from '@shared/types';
+import type { TimelineEntry, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from './CalendarPicker';
 import Button from '../shell/Button';
+import ContactDetail from '../contacts/ContactDetail';
 import './View.css';
 import './ColumnHeader.css';
 import './ProjectTimeline.css';
@@ -11,7 +12,7 @@ import './ProjectTimeline.css';
 interface Props {
   projectId?: string;
   projectName?: string;
-  onSelectContact: (id: string) => void;
+  user?: User | null;
 }
 
 function dayKey(ts: number): string {
@@ -175,7 +176,7 @@ function MultiSelect({
   );
 }
 
-export default function ProjectTimeline({ projectId, projectName, onSelectContact }: Props) {
+export default function ProjectTimeline({ projectId, projectName, user }: Props) {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -193,6 +194,18 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
   const [notesFilter, setNotesFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [drawerClosing, setDrawerClosing] = useState(false);
+
+  function openContact(id: string) {
+    if (selectedContactId === id) { closeContact(); return; }
+    setSelectedContactId(id);
+  }
+
+  function closeContact() {
+    setDrawerClosing(true);
+    setTimeout(() => { setSelectedContactId(null); setDrawerClosing(false); }, 160);
+  }
 
   useEffect(() => {
     setEntries([]);
@@ -499,7 +512,7 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                         <div className="ptl-contact-name-row">
                           <button
                             className="ptl-contact-name"
-                            onClick={() => onSelectContact(entry.contact_id)}
+                            onClick={() => openContact(entry.contact_id)}
                           >
                             {entry.contact_name}
                           </button>
@@ -528,6 +541,16 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
         </div>
       )}
       </div>
+      {selectedContactId && (
+        <ContactDetail
+          contactId={selectedContactId}
+          onClose={closeContact}
+          onDeleted={closeContact}
+          onUpdated={() => {}}
+          user={user ?? null}
+          closing={drawerClosing}
+        />
+      )}
     </>
   );
 }

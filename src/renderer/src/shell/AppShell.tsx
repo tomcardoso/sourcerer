@@ -8,6 +8,7 @@ import ProjectView from '../views/ProjectView';
 import ImportCsvModal from '../views/ImportCsvModal';
 import ImportResultModal from '../views/ImportResultModal';
 import AddContactModal from '../contacts/AddContactModal';
+import ContactDetail from '../contacts/ContactDetail';
 import QuickLogModal from '../contacts/QuickLogModal';
 import QuickReminderModal from '../contacts/QuickReminderModal';
 import AlertMentions from '../views/AlertMentions';
@@ -38,6 +39,8 @@ export default function AppShell() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [openContactId, setOpenContactId] = useState<string | null>(null);
+  const [globalContactId, setGlobalContactId] = useState<string | null>(null);
+  const [globalDrawerClosing, setGlobalDrawerClosing] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showImportCsv, setShowImportCsv] = useState(false);
   const [showQuickLog, setShowQuickLog] = useState(false);
@@ -149,6 +152,16 @@ export default function AppShell() {
       offError();
     };
   }, []);
+
+  function openGlobalContact(id: string) {
+    if (globalContactId === id) { closeGlobalContact(); return; }
+    setGlobalContactId(id);
+  }
+
+  function closeGlobalContact() {
+    setGlobalDrawerClosing(true);
+    setTimeout(() => { setGlobalContactId(null); setGlobalDrawerClosing(false); }, 160);
+  }
 
   function handleProjectCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
@@ -274,12 +287,7 @@ export default function AppShell() {
         )}
         {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} user={user} />}
         {nav.view === 'all-timeline' && (
-          <ProjectTimeline
-            onSelectContact={(id) => {
-              setNav({ view: 'all-contacts' });
-              setOpenContactId(id);
-            }}
-          />
+          <ProjectTimeline user={user} />
         )}
         {nav.view === 'project' && (
           <ProjectView
@@ -297,16 +305,10 @@ export default function AppShell() {
           <ProjectTimeline
             projectId={activeProject.id}
             projectName={activeProject.name}
-            onSelectContact={(id) => {
-              setNav({ view: 'project', projectId: activeProject.id });
-              setOpenContactId(id);
-            }}
+            user={user}
           />
         ) : (
-          // Project not yet loaded / no longer exists — fall back to global timeline
-          <ProjectTimeline
-            onSelectContact={(id) => setOpenContactId(id)}
-          />
+          <ProjectTimeline user={user} />
         ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
@@ -315,7 +317,7 @@ export default function AppShell() {
         <SearchModal
           onClose={() => setSearchOpen(false)}
           onNav={setNav}
-          onOpenContact={(id) => setOpenContactId(id)}
+          onOpenContact={openGlobalContact}
         />
       )}
 
@@ -375,6 +377,16 @@ export default function AppShell() {
             setShowQuickReminder(false);
             refreshOverdue();
           }}
+        />
+      )}
+      {globalContactId && (
+        <ContactDetail
+          contactId={globalContactId}
+          onClose={closeGlobalContact}
+          onDeleted={closeGlobalContact}
+          onUpdated={() => {}}
+          user={user}
+          closing={globalDrawerClosing}
         />
       )}
       </div>
