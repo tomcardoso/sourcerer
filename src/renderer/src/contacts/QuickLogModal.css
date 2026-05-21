@@ -99,9 +99,9 @@
 
 .qlm-dropdown-option {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 8px 10px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
   font-family: var(--font-serif);
   font-size: 13px;
   color: var(--color-text);
