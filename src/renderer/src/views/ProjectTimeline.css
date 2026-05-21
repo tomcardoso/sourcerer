@@ -332,17 +332,20 @@
 }
 
 .ptl-entry-meta {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
   margin-bottom: 6px;
-  flex-wrap: wrap;
 }
 
 .ptl-contact-header {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.ptl-contact-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .ptl-contact-name {

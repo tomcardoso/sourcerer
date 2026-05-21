@@ -496,22 +496,24 @@ export default function ProjectTimeline({ projectId, projectName, onSelectContac
                   <div key={entry.id} className="ptl-entry">
                     <div className="ptl-entry-meta">
                       <div className="ptl-contact-header">
-                        <button
-                          className="ptl-contact-name"
-                          onClick={() => onSelectContact(entry.contact_id)}
-                        >
-                          {entry.contact_name}
-                        </button>
+                        <div className="ptl-contact-name-row">
+                          <button
+                            className="ptl-contact-name"
+                            onClick={() => onSelectContact(entry.contact_id)}
+                          >
+                            {entry.contact_name}
+                          </button>
+                          {isGlobal && entry.projects.map((p) => (
+                            <span key={p.project_id} className="ptl-project-badge">{p.project_name}</span>
+                          ))}
+                          {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
+                            <span key={priority} className="ptl-priority-badge">{priority}</span>
+                          ))}
+                        </div>
                         {entry.contact_organization && (
                           <span className="ptl-contact-org">{entry.contact_organization}</span>
                         )}
                       </div>
-                      {isGlobal && entry.projects.map((p) => (
-                        <span key={p.project_id} className="ptl-project-badge">{p.project_name}</span>
-                      ))}
-                      {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
-                        <span key={priority} className="ptl-priority-badge">{priority}</span>
-                      ))}
                     </div>
                     <p className="ptl-entry-body">{entry.body}</p>
                     <div className="ptl-entry-footer">
