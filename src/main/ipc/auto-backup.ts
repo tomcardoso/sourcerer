@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { getPaths } from '../utils';
 import { getDatabase, isDatabaseOpen, getPassword } from '../database';
-import { buildBackupBundle } from './backup-format';
+import { writeBackupFile, createBackupEntries } from './backup-format';
 
 const BACKUP_PREFIX = 'sourcerer-auto-backup-';
 const BACKUP_EXT = '.sourcerer-backup';
@@ -32,10 +32,8 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     await fs.mkdir(destPath, { recursive: true });
 
     const { dbPath, saltPath, screenshotsPath } = getPaths();
-    const bundle = await buildBackupBundle(dbPath, saltPath, screenshotsPath, getPassword());
-
     const outPath = path.join(destPath, timestampedName());
-    await fs.writeFile(outPath, Buffer.from(bundle, 'utf-8'), { mode: 0o600 });
+    await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), outPath, getPassword());
 
     // Prune old backups beyond maxCount
     const allFiles = await fs.readdir(destPath);

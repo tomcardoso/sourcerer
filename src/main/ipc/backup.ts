@@ -8,7 +8,7 @@ import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
-import { buildBackupBundle, unpackFiles } from './backup-format';
+import { writeBackupFile, readBackupFile, createBackupEntries } from './backup-format';
 
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
@@ -34,10 +34,10 @@ export function registerBackupHandlers(): void {
       if (canceled || !filePath) return { success: false };
 
       try {
-        const bundle = await buildBackupBundle(dbPath, saltPath, screenshotsPath, password);
-        await fs.writeFile(filePath, Buffer.from(bundle, 'utf-8'));
+        await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), filePath, password);
         return { success: true };
       } catch (err) {
+        await fs.unlink(filePath).catch(() => {});
         return { success: false, error: String(err) };
       }
     },
@@ -59,56 +59,52 @@ export function registerBackupHandlers(): void {
       });
       if (canceled || filePaths.length === 0) return { success: false, canceled: true };
 
+      const tmpScreensDir = path.join(os.tmpdir(), `sourcerer-restore-screens-${Date.now()}`);
+      let screensWritten = false;
+
       try {
-        const MAX_BACKUP_BYTES = 500 * 1024 * 1024;
+        const MAX_BACKUP_BYTES = 2 * 1024 * 1024 * 1024;
         const stat = await fs.stat(filePaths[0]);
         if (stat.size > MAX_BACKUP_BYTES) {
-          return { success: false, error: 'Backup file is too large (max 500 MB).' };
+          return { success: false, error: 'Backup file is too large (max 2 GB).' };
         }
 
-        const raw = await fs.readFile(filePaths[0], 'utf-8');
-        const bundle = JSON.parse(raw);
+        let dbBuf: Buffer | null = null;
+        let dbSalt: Buffer | null = null;
 
-        if (bundle.version !== 1) {
-          return { success: false, error: 'This backup format is not supported. Please create a new backup.' };
-        }
-
-        if (!bundle.backup_salt || !bundle.iv || !bundle.auth_tag || !bundle.ciphertext) {
-          return { success: false, error: 'Unrecognised backup format.' };
-        }
-
-        const backupSalt = Buffer.from(bundle.backup_salt, 'base64');
-        const backupKey = Buffer.from(await deriveKey(password, backupSalt), 'hex');
-
-        let decrypted: Buffer;
         try {
-          const iv = Buffer.from(bundle.iv, 'base64');
-          const authTag = Buffer.from(bundle.auth_tag, 'base64');
-          const ciphertext = Buffer.from(bundle.ciphertext, 'base64');
-          const decipher = crypto.createDecipheriv('aes-256-gcm', backupKey, iv);
-          decipher.setAuthTag(authTag);
-          decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-        } catch {
-          return { success: false, error: 'Incorrect password or corrupted backup.' };
-        }
-
-        let entries: ReturnType<typeof unpackFiles>;
-        try {
-          entries = unpackFiles(decrypted);
-        } catch {
+          for await (const entry of readBackupFile(filePaths[0], password)) {
+            if (entry.name === 'db.sqlite') {
+              dbBuf = entry.data;
+            } else if (entry.name === 'salt') {
+              dbSalt = entry.data;
+            } else if (entry.name.startsWith('screenshots/')) {
+              if (!screensWritten) {
+                await fs.mkdir(tmpScreensDir, { recursive: true });
+                screensWritten = true;
+              }
+              await fs.writeFile(
+                path.join(tmpScreensDir, path.basename(entry.name)),
+                entry.data,
+                { mode: 0o600 },
+              );
+            }
+          }
+        } catch (err) {
+          const msg = String(err);
+          if (msg.includes('Incorrect password')) return { success: false, error: 'Incorrect password or corrupted backup.' };
+          if (msg.includes('Unrecognised')) return { success: false, error: 'Unrecognised backup file format.' };
+          if (msg.includes('not supported')) return { success: false, error: 'This backup format is not supported. Please create a new backup.' };
           return { success: false, error: 'Corrupted backup file.' };
         }
-        const dbEntry = entries.find(e => e.name === 'db.sqlite');
-        const saltEntry = entries.find(e => e.name === 'salt');
-        if (!dbEntry || !saltEntry) return { success: false, error: 'Corrupted backup file.' };
-        const dbBuf = dbEntry.data;
-        const dbSalt = saltEntry.data;
+
+        if (!dbBuf || !dbSalt) return { success: false, error: 'Corrupted backup file.' };
 
         // Verify the DB before touching the live vault.
-        const tmpPath = path.join(os.tmpdir(), `sourcerer-restore-${Date.now()}.db`);
+        const tmpDbPath = path.join(os.tmpdir(), `sourcerer-restore-${Date.now()}.db`);
         try {
-          await fs.writeFile(tmpPath, dbBuf, { mode: 0o600 });
-          const testDb = new Database(tmpPath);
+          await fs.writeFile(tmpDbPath, dbBuf, { mode: 0o600 });
+          const testDb = new Database(tmpDbPath);
           testDb.pragma(`cipher='sqlcipher'`);
           testDb.pragma('cipher_page_size=4096');
           testDb.pragma('kdf_iter=256000');
@@ -124,7 +120,7 @@ export function registerBackupHandlers(): void {
           }
           testDb.close();
         } finally {
-          await fs.unlink(tmpPath).catch(() => {});
+          await fs.unlink(tmpDbPath).catch(() => {});
         }
 
         stopPoller();
@@ -136,9 +132,13 @@ export function registerBackupHandlers(): void {
 
         // Restore screenshots only after the DB is confirmed and written.
         await fs.mkdir(screenshotsPath, { recursive: true });
-        for (const { name, data } of entries) {
-          if (name.startsWith('screenshots/')) {
-            await fs.writeFile(path.join(screenshotsPath, path.basename(name)), data, { mode: 0o600 });
+        if (screensWritten) {
+          for (const file of await fs.readdir(tmpScreensDir)) {
+            await fs.writeFile(
+              path.join(screenshotsPath, file),
+              await fs.readFile(path.join(tmpScreensDir, file)),
+              { mode: 0o600 },
+            );
           }
         }
 
@@ -153,6 +153,8 @@ export function registerBackupHandlers(): void {
         return { success: true };
       } catch (err) {
         return { success: false, error: String(err) };
+      } finally {
+        if (screensWritten) await fs.rm(tmpScreensDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   );
