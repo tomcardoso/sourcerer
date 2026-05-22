@@ -64,16 +64,7 @@ export default function App() {
 
   if (screen === 'loading') {
     return (
-      <div
-        style={{
-          height: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--color-text-muted)',
-          fontSize: 14,
-        }}
-      >
+      <div className="app-loading">
         Loading…
       </div>
     );

@@ -210,6 +210,10 @@
   gap: 4px;
 }
 
+.bulk-bar-element--right {
+  margin-left: auto;
+}
+
 .bulk-bar-count {
   font-family: var(--font-mono);
   font-size: 10px;

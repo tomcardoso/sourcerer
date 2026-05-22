@@ -123,7 +123,7 @@ function LogSection({
     <div className="pt-section">
       <div className="pt-reminders-header">
         <span className="pt-reminders-label">Interaction Log</span>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <div className="pt-log-header-actions">
           {entries.length > 0 && (
             <Button variant="ghost" onClick={() => setShowAll(true)}>
               View all ({entries.length})

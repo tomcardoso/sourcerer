@@ -1,3 +1,12 @@
+.app-loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
 .ext-approval-overlay {
   position: fixed;
   inset: 0;
