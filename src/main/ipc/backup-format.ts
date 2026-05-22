@@ -66,13 +66,23 @@ export async function* createBackupEntries(
   }
 }
 
-// FileHandle.write() may perform partial writes on some filesystems; loop until done.
+// FileHandle.write/read may perform partial writes/reads on some filesystems; loop until done.
 async function writeAll(fh: fs.FileHandle, buf: Buffer): Promise<void> {
   let written = 0;
   while (written < buf.length) {
     const { bytesWritten } = await fh.write(buf, written, buf.length - written);
     written += bytesWritten;
   }
+}
+
+async function readExact(fh: fs.FileHandle, buf: Buffer, length: number, position: number): Promise<number> {
+  let totalRead = 0;
+  while (totalRead < length) {
+    const { bytesRead } = await fh.read(buf, totalRead, length - totalRead, position + totalRead);
+    if (bytesRead === 0) break; // EOF
+    totalRead += bytesRead;
+  }
+  return totalRead;
 }
 
 export async function writeBackupFile(
@@ -150,7 +160,7 @@ export async function* readBackupFile(
   const fh = await fs.open(inputPath, 'r');
   try {
     const fileHeaderBuf = Buffer.allocUnsafe(HEADER_SIZE);
-    const { bytesRead: hRead } = await fh.read(fileHeaderBuf, 0, HEADER_SIZE, 0);
+    const hRead = await readExact(fh, fileHeaderBuf, HEADER_SIZE, 0);
     if (hRead < HEADER_SIZE) throw new Error('Corrupted backup: truncated file header.');
 
     if (!fileHeaderBuf.subarray(0, 4).equals(MAGIC)) throw new Error('Unrecognised backup file format.');
@@ -201,7 +211,7 @@ export async function* readBackupFile(
     let expectedIndex = 0;
 
     while (true) {
-      const { bytesRead: chRead } = await fh.read(chunkHeaderBuf, 0, CHUNK_HDR_SIZE, filePos);
+      const chRead = await readExact(fh, chunkHeaderBuf, CHUNK_HDR_SIZE, filePos);
       if (chRead === 0) break;
       if (chRead < CHUNK_HDR_SIZE) throw new Error('Corrupted backup: truncated chunk header.');
       filePos += CHUNK_HDR_SIZE;
@@ -213,7 +223,7 @@ export async function* readBackupFile(
       const ciphertextLength = chunkHeaderBuf.readUInt32LE(20);
       if (ciphertextLength > ciphertextBuf.length) throw new Error('Corrupted backup: chunk exceeds declared chunk size.');
 
-      const { bytesRead: cRead } = await fh.read(ciphertextBuf, 0, ciphertextLength, filePos);
+      const cRead = await readExact(fh, ciphertextBuf, ciphertextLength, filePos);
       if (cRead < ciphertextLength) throw new Error('Corrupted backup: truncated chunk ciphertext.');
       filePos += ciphertextLength;
 
