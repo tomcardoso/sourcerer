@@ -56,16 +56,18 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   }, [contactId]);
 
   useEffect(() => {
+    let cancelled = false;
     setContact(null);
     setActiveTab('global');
     setInteractionCount(null);
     setPrintLogs([]);
-    reload();
-    window.sourcerer.listProjects().then(setAllProjects);
-    window.sourcerer.listStatusOptions().then(setStatusOptions);
-    window.sourcerer.listPriorityOptions().then(setPriorityOptions);
-    window.sourcerer.getContactInteractionCount(contactId).then(setInteractionCount);
-  }, [contactId, reload]);
+    window.sourcerer.getContact(contactId).then((c) => { if (!cancelled) setContact(c); });
+    window.sourcerer.listProjects().then((p) => { if (!cancelled) setAllProjects(p); });
+    window.sourcerer.listStatusOptions().then((s) => { if (!cancelled) setStatusOptions(s); });
+    window.sourcerer.listPriorityOptions().then((p) => { if (!cancelled) setPriorityOptions(p); });
+    window.sourcerer.getContactInteractionCount(contactId).then((c) => { if (!cancelled) setInteractionCount(c); });
+    return () => { cancelled = true; };
+  }, [contactId]);
 
   const hasProjects = (contact?.projects.length ?? 0) > 0;
 
