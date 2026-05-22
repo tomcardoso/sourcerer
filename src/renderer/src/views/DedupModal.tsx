@@ -83,7 +83,7 @@ function ContactCard({ contact, other }: { contact: DedupContact; other: DedupCo
       <div className="dedup-field dedup-field--projects">
         <span className="dedup-field-label">Projects</span>
         {(contact.projects ?? []).length === 0 ? (
-          <span className="dedup-field-value" style={{ color: 'var(--color-text-dim)' }}>none</span>
+          <span className="dedup-field-value dedup-field-value--empty">none</span>
         ) : (
           <div>
             {(contact.projects ?? []).map((p) => (

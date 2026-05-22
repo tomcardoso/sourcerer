@@ -126,6 +126,10 @@
   word-break: break-word;
 }
 
+.dedup-field-value--empty {
+  color: var(--color-text-dim);
+}
+
 .dedup-field-value--unique {
   border-left: 2px solid var(--color-warning-border);
   padding-left: 6px;

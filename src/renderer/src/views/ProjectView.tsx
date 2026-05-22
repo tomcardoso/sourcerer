@@ -772,7 +772,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                   </select>
                 </div>
               )}
-              <div className="bulk-bar-element bulk-actions-wrap" ref={bulkActionsRef} style={{ marginLeft: 'auto' }}>
+              <div className="bulk-bar-element bulk-bar-element--right bulk-actions-wrap" ref={bulkActionsRef}>
                 <button
                   className="bulk-actions-trigger"
                   onClick={() => setShowBulkActions((v) => !v)}
