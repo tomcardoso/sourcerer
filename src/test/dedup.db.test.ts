@@ -142,6 +142,24 @@ describe('mergeContacts — keep strategy', () => {
     expect(projectIds).toContain(p2);
   });
 
+  it('advances updated_at on the reassigned loser membership', () => {
+    const p1 = insertProject(db, 'Project A');
+    const p2 = insertProject(db, 'Project B');
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    insertMembership(winner, p1);
+    const loserMembId = insertMembership(loser, p2);
+    const staleTs = Math.floor(Date.now() / 1000) - 100;
+    db.prepare('UPDATE project_memberships SET updated_at = ? WHERE id = ?').run(staleTs, loserMembId);
+
+    mergeContacts(db, winner, loser, 'keep');
+
+    const row = db
+      .prepare('SELECT updated_at FROM project_memberships WHERE contact_id = ? AND project_id = ?')
+      .get(winner, p2) as { updated_at: number };
+    expect(row.updated_at).toBeGreaterThan(staleTs);
+  });
+
   it('does not duplicate membership when winner already belongs to same project', () => {
     const proj = insertProject(db, 'Shared Project');
     const winner = insertContact(db, 'Alice Smith');
@@ -238,5 +256,17 @@ describe('mergeContacts — merge strategy', () => {
     expect(handles).toHaveLength(2);
     expect(handles.some((h) => h.type === 'signal' && h.handle === '+1 202 111 0001')).toBe(true);
     expect(handles.some((h) => h.type === 'whatsapp' && h.handle === '+1 202 111 0002')).toBe(true);
+  });
+
+  it('advances contacts.updated_at when overwriting winner fields', () => {
+    const staleTs = Math.floor(Date.now() / 1000) - 100;
+    const winner = insertContact(db, 'Alice S');
+    const loser = insertContact(db, 'Alice Smith');
+    db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(staleTs, winner);
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const row = db.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(winner) as { updated_at: number };
+    expect(row.updated_at).toBeGreaterThan(staleTs);
   });
 });
