@@ -159,6 +159,15 @@
   white-space: pre-wrap;
 }
 
+.notes-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.notes-link:hover {
+  text-decoration: underline;
+}
+
 /* Projects */
 .detail-empty-projects {
   font-size: 13px;

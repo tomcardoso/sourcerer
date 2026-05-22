@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { InteractionLogEntry } from '@shared/types';
+import { linkifyText } from '../utils/linkify';
 import './ContactDetail.css';
 
 export function fmtLogDate(ts: number): string {
@@ -24,7 +25,7 @@ export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEnt
     <div className="pt-log-row">
       <div className="pt-log-row-date">{fmtLogDate(entry.created_at)}</div>
       <div className="pt-log-row-content">
-        <p className="pt-log-row-body">{entry.body}</p>
+        <p className="pt-log-row-body">{linkifyText(entry.body)}</p>
         <div className="pt-log-row-footer">
           <span className="pt-log-row-reporter">{entry.reporter_name}</span>
           {subtitle && <span className="pt-log-row-project-badge">{subtitle}</span>}
