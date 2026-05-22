@@ -69,10 +69,25 @@ function validateOutputPath(p) {
   return p;
 }
 
-async function main() {
+function getVaultPaths() {
   const userData = getUserDataPath();
-  const dbPath = path.join(userData, 'sourcerer.db');
-  const saltPath = path.join(userData, 'sourcerer.salt');
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(userData, 'vault.json'), 'utf8'));
+    if (typeof config?.bundlePath === 'string' && config.bundlePath.length > 0) {
+      return {
+        dbPath: path.join(config.bundlePath, 'db.sqlite'),
+        saltPath: path.join(config.bundlePath, 'salt'),
+      };
+    }
+  } catch { /* no vault.json — fall through to legacy paths */ }
+  return {
+    dbPath: path.join(userData, 'sourcerer.db'),
+    saltPath: path.join(userData, 'sourcerer.salt'),
+  };
+}
+
+async function main() {
+  const { dbPath, saltPath } = getVaultPaths();
   const outPath = validateOutputPath(path.resolve(process.argv[2] || 'sourcerer-plain.db'));
 
   if (!fs.existsSync(dbPath)) {
