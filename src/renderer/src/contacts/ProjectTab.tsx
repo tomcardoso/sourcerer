@@ -338,6 +338,7 @@ function RemindersSection({
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
+  const [addingSaving, setAddingSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDueDate, setEditDueDate] = useState('');
   const [editNote, setEditNote] = useState('');
@@ -357,18 +358,23 @@ function RemindersSection({
   }
 
   async function handleAdd() {
-    if (!dueDate || !note.trim()) return;
-    const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
-    const r = await window.sourcerer.createReminder({
-      contactId,
-      projectId,
-      dueDate: ts,
-      note: note.trim(),
-    });
-    setReminders((prev) => [...prev, r].sort(sortReminders));
-    setDueDate('');
-    setNote('');
-    setAdding(false);
+    if (!dueDate || !note.trim() || addingSaving) return;
+    setAddingSaving(true);
+    try {
+      const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
+      const r = await window.sourcerer.createReminder({
+        contactId,
+        projectId,
+        dueDate: ts,
+        note: note.trim(),
+      });
+      setReminders((prev) => [...prev, r].sort(sortReminders));
+      setDueDate('');
+      setNote('');
+      setAdding(false);
+    } finally {
+      setAddingSaving(false);
+    }
   }
 
   function handleStartEdit(r: Reminder) {
@@ -530,7 +536,7 @@ function RemindersSection({
             placeholder="Note"
           />
           <div className="pt-reminder-form-actions">
-            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate || !note.trim()}>
+            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate || !note.trim() || addingSaving}>
               Add
             </button>
             <button className="pt-reminder-cancel" onClick={() => setAdding(false)}>

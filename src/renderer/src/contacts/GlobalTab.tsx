@@ -53,6 +53,7 @@ function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [completing, setCompleting] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+  const [addingSaving, setAddingSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
@@ -86,16 +87,21 @@ function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
   }
 
   async function handleAdd() {
-    if (!dueDate || !note.trim()) return;
-    const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
-    const r = await window.sourcerer.createReminder({
-      contactId: contact.id,
-      projectId: selectedProjectId ?? undefined,
-      dueDate: ts,
-      note: note.trim(),
-    });
-    setReminders((prev) => [...prev, r].sort(sortReminders));
-    setAdding(false);
+    if (!dueDate || !note.trim() || addingSaving) return;
+    setAddingSaving(true);
+    try {
+      const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
+      const r = await window.sourcerer.createReminder({
+        contactId: contact.id,
+        projectId: selectedProjectId ?? undefined,
+        dueDate: ts,
+        note: note.trim(),
+      });
+      setReminders((prev) => [...prev, r].sort(sortReminders));
+      setAdding(false);
+    } finally {
+      setAddingSaving(false);
+    }
   }
 
   function handleStartEdit(r: Reminder) {
@@ -218,7 +224,7 @@ function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
             </select>
           )}
           <div className="pt-reminder-form-actions">
-            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate || !note.trim()}>Add</button>
+            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate || !note.trim() || addingSaving}>Add</button>
             <button className="pt-reminder-cancel" onClick={() => setAdding(false)}>Cancel</button>
           </div>
         </div>
