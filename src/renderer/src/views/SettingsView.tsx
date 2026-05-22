@@ -199,16 +199,21 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     if (!exportPassword) return;
     setBackingUp(true);
     setBackupError(null);
-    const result = await window.sourcerer.exportBackup(exportPassword);
-    setBackingUp(false);
-    if (result.success) {
-      setExportConfirm(false);
-      setExportPassword('');
-      setBackupSaved(true);
-      if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
-      backupSavedTimerRef.current = setTimeout(() => setBackupSaved(false), 3000);
-    } else if (result.error) {
-      setBackupError(result.error);
+    try {
+      const result = await window.sourcerer.exportBackup(exportPassword);
+      if (result.success) {
+        setExportConfirm(false);
+        setExportPassword('');
+        setBackupSaved(true);
+        if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
+        backupSavedTimerRef.current = setTimeout(() => setBackupSaved(false), 3000);
+      } else if (result.error) {
+        setBackupError(result.error);
+      }
+    } catch {
+      setBackupError('Export failed. Please try again.');
+    } finally {
+      setBackingUp(false);
     }
   }
 
@@ -216,22 +221,31 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     if (!restorePassword) return;
     setRestoringBackup(true);
     setRestoreError(null);
-    const result = await window.sourcerer.restoreBackup(restorePassword);
-    setRestoringBackup(false);
-    if (result.canceled) {
-      setRestoreConfirm(false);
-      setRestorePassword('');
-      return;
-    }
-    if (!result.success) {
-      setRestoreError(result.error ?? 'Restore failed.');
+    try {
+      const result = await window.sourcerer.restoreBackup(restorePassword);
+      if (result.canceled) {
+        setRestoreConfirm(false);
+        setRestorePassword('');
+        return;
+      }
+      if (!result.success) {
+        setRestoreError(result.error ?? 'Restore failed.');
+      }
+    } catch {
+      setRestoreError('Restore failed. Please try again.');
+    } finally {
+      setRestoringBackup(false);
     }
   }
 
   async function handlePanicWipe() {
     if (panicWipeInput !== 'WIPE') return;
     setPanicWiping(true);
-    await window.sourcerer.panicWipe();
+    try {
+      await window.sourcerer.panicWipe();
+    } finally {
+      setPanicWiping(false);
+    }
   }
 
   async function handleRegenerateToken() {
