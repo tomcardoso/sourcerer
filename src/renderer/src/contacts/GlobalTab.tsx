@@ -17,6 +17,7 @@ import {
 import { CalendarPicker } from '../views/CalendarPicker';
 import RssAlertPanel from './RssAlertPanel';
 import ScreenshotPanel from './ScreenshotPanel';
+import { linkifyText } from '../utils/linkify';
 import './AddContactModal.css';
 import './ContactDetail.css';
 
@@ -1029,7 +1030,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       {contact.notes && (
         <div className="detail-section">
           <div className="detail-section-label">Notes</div>
-          <p className="detail-notes">{contact.notes}</p>
+          <p className="detail-notes">{linkifyText(contact.notes ?? '')}</p>
         </div>
       )}
 
