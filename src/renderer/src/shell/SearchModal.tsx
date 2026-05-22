@@ -21,12 +21,14 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setSelectedIndex(0);
-    if (!query.trim()) { setResults([]); return; }
     latestQueryRef.current = query;
+    if (!query.trim()) { setResults([]); return () => { cancelled = true; }; }
     window.sourcerer.searchGlobal(query).then((r) => {
-      if (latestQueryRef.current === query) setResults(r);
+      if (!cancelled && latestQueryRef.current === query) setResults(r);
     });
+    return () => { cancelled = true; };
   }, [query]);
 
   function pick(result: SearchResult) {
