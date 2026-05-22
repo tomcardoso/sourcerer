@@ -242,11 +242,12 @@ export function mergeContacts(
             ? loser.notes
             : winner.notes;
 
-      db.prepare('UPDATE contacts SET name = ?, organization = ?, title = ?, notes = ? WHERE id = ?').run(
+      db.prepare('UPDATE contacts SET name = ?, organization = ?, title = ?, notes = ?, updated_at = ? WHERE id = ?').run(
         name,
         organization,
         title,
         notes,
+        now,
         winnerId,
       );
 
@@ -362,8 +363,9 @@ export function mergeContacts(
         ).run(winnerMembership.id, membership.id);
         db.prepare('DELETE FROM project_memberships WHERE id = ?').run(membership.id);
       } else {
-        db.prepare('UPDATE project_memberships SET contact_id = ? WHERE id = ?').run(
+        db.prepare('UPDATE project_memberships SET contact_id = ?, updated_at = ? WHERE id = ?').run(
           winnerId,
+          now,
           membership.id,
         );
       }
