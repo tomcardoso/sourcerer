@@ -32,8 +32,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   // Keep stable refs so the event listener never needs to re-register
   const onCloseRef = useRef(onClose);
   const isEditingRef = useRef(isEditing);
+  const contactIdRef = useRef(contactId);
   onCloseRef.current = onClose;
   isEditingRef.current = isEditing;
+  contactIdRef.current = contactId;
 
   useEffect(() => {
     panelRef.current?.focus({ preventScroll: true });
@@ -52,20 +54,25 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   }, []); // stable — only registers once per mount
 
   const reload = useCallback(() => {
-    window.sourcerer.getContact(contactId).then(setContact);
-  }, [contactId]);
+    const id = contactIdRef.current;
+    window.sourcerer.getContact(id).then((c) => {
+      if (contactIdRef.current === id) setContact(c);
+    });
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
     setContact(null);
     setActiveTab('global');
     setInteractionCount(null);
     setPrintLogs([]);
-    reload();
-    window.sourcerer.listProjects().then(setAllProjects);
-    window.sourcerer.listStatusOptions().then(setStatusOptions);
-    window.sourcerer.listPriorityOptions().then(setPriorityOptions);
-    window.sourcerer.getContactInteractionCount(contactId).then(setInteractionCount);
-  }, [contactId, reload]);
+    window.sourcerer.getContact(contactId).then((c) => { if (!cancelled) setContact(c); });
+    window.sourcerer.listProjects().then((p) => { if (!cancelled) setAllProjects(p); });
+    window.sourcerer.listStatusOptions().then((s) => { if (!cancelled) setStatusOptions(s); });
+    window.sourcerer.listPriorityOptions().then((p) => { if (!cancelled) setPriorityOptions(p); });
+    window.sourcerer.getContactInteractionCount(contactId).then((c) => { if (!cancelled) setInteractionCount(c); });
+    return () => { cancelled = true; };
+  }, [contactId]);
 
   const hasProjects = (contact?.projects.length ?? 0) > 0;
 
@@ -75,12 +82,13 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
 
   useEffect(() => {
     return window.sourcerer.onWaybackUpdated((updatedId) => {
-      if (updatedId === contactId) reload();
+      if (updatedId === contactIdRef.current) reload();
     });
-  }, [contactId, reload]);
+  }, [reload]);
 
   useEffect(() => {
     if (!contact) return;
+    let cancelled = false;
     Promise.all(
       contact.projects.map((p) =>
         window.sourcerer.listInteractionLog(p.membership_id).then((entries) => ({
@@ -88,7 +96,8 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
           entries,
         }))
       )
-    ).then(setPrintLogs);
+    ).then((logs) => { if (!cancelled) setPrintLogs(logs); });
+    return () => { cancelled = true; };
   }, [contact]);
 
   function handleMembershipChanged() {
