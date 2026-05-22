@@ -210,6 +210,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       } else if (result.error) {
         setBackupError(result.error);
       }
+    } catch {
+      setBackupError('Export failed. Please try again.');
     } finally {
       setBackingUp(false);
     }
@@ -229,6 +231,8 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       if (!result.success) {
         setRestoreError(result.error ?? 'Restore failed.');
       }
+    } catch {
+      setRestoreError('Restore failed. Please try again.');
     } finally {
       setRestoringBackup(false);
     }
@@ -239,7 +243,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     setPanicWiping(true);
     try {
       await window.sourcerer.panicWipe();
-    } catch {
+    } finally {
       setPanicWiping(false);
     }
   }
