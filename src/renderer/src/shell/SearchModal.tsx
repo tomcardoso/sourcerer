@@ -14,15 +14,24 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const latestQueryRef = useRef('');
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const cleanup = () => { cancelled = true; };
     setSelectedIndex(0);
-    if (!query.trim()) { setResults([]); return; }
-    window.sourcerer.searchGlobal(query).then(setResults);
+    latestQueryRef.current = query;
+    if (!query.trim()) { setResults([]); return cleanup; }
+    window.sourcerer.searchGlobal(query).then((r) => {
+      if (!cancelled && latestQueryRef.current === query) setResults(r);
+    }).catch(() => {
+      if (!cancelled && latestQueryRef.current === query) setResults([]);
+    });
+    return cleanup;
   }, [query]);
 
   function pick(result: SearchResult) {
