@@ -195,6 +195,9 @@ export function loadDismissedPairs(db: Database.Database): Set<string> {
 
 export function dismissPair(db: Database.Database, aId: string, bId: string): void {
   const [a, b] = aId < bId ? [aId, bId] : [bId, aId];
+  // Skip if either contact was deleted since the pair was cached.
+  if (!db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(a)) return;
+  if (!db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(b)) return;
   db.prepare(
     'INSERT OR IGNORE INTO dedup_dismissed_pairs (contact_a_id, contact_b_id, dismissed_at) VALUES (?, ?, ?)',
   ).run(a, b, Math.floor(Date.now() / 1000));

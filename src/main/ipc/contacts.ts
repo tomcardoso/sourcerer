@@ -344,6 +344,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
     getDatabase().prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    runDedupScan();
     broadcastContactsChanged();
   });
 
