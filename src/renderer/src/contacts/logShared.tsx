@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import type { InteractionLogEntry } from '@shared/types';
 import { linkifyText } from '../utils/linkify';
+import Modal from '../shell/Modal';
 import './ContactDetail.css';
 
 export function fmtLogDate(ts: number): string {
@@ -62,58 +62,40 @@ export function LogAllModal({
 }) {
   const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   const reversed = [...entries].reverse();
   const visible = query
     ? reversed.filter((e) => e.body.toLowerCase().includes(query.toLowerCase()))
     : reversed;
 
-  return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="pt-log-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="pt-log-modal-header">
-          <span className="pt-reminders-label">{title}</span>
-          <button className="detail-close" onClick={onClose}>×</button>
+  return (
+    <Modal title={title} onDismiss={onClose} className="pt-log-modal">
+      {entries.length > 0 && (
+        <div className="pt-log-modal-search">
+          <input
+            className="pt-log-search-input"
+            type="text"
+            placeholder="Search entries…"
+            aria-label="Search log entries"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+          />
+          {query && (
+            <button className="pt-log-search-clear" aria-label="Clear search" onClick={() => setQuery('')}>×</button>
+          )}
         </div>
-        {entries.length > 0 && (
-          <div className="pt-log-modal-search">
-            <input
-              className="pt-log-search-input"
-              type="text"
-              placeholder="Search entries…"
-              aria-label="Search log entries"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-            {query && (
-              <button className="pt-log-search-clear" aria-label="Clear search" onClick={() => setQuery('')}>×</button>
-            )}
-          </div>
-        )}
-        <div className="pt-log-modal-body">
-          {visible.length === 0
-            ? <p className="pt-reminders-empty">{query ? 'No entries match.' : 'No entries yet.'}</p>
-            : visible.map((e) => <LogRow key={e.id} entry={e} subtitle={getSubtitle?.(e)} onDelete={onDelete} />)
-          }
-        </div>
-        {query && entries.length > 0 && (
-          <div className="pt-log-modal-footer">
-            {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-          </div>
-        )}
+      )}
+      <div className="pt-log-modal-body">
+        {visible.length === 0
+          ? <p className="pt-reminders-empty">{query ? 'No entries match.' : 'No entries yet.'}</p>
+          : visible.map((e) => <LogRow key={e.id} entry={e} subtitle={getSubtitle?.(e)} onDelete={onDelete} />)
+        }
       </div>
-    </div>,
-    document.body,
+      {query && entries.length > 0 && (
+        <div className="pt-log-modal-footer">
+          {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+        </div>
+      )}
+    </Modal>
   );
 }
