@@ -2,17 +2,13 @@ import { ipcMain, dialog, BrowserWindow } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import zlib from 'zlib';
 import crypto from 'crypto';
-import { promisify } from 'util';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getKeyHex } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
-
-const gzip = promisify(zlib.gzip);
-const gunzip = promisify(zlib.gunzip);
+import { writeBackupFile, readBackupFile, createBackupEntries } from './backup-format';
 
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
@@ -21,12 +17,10 @@ export function registerBackupHandlers(): void {
   ipcMain.handle(
     'backup:export',
     async (_, { password }: { password: string }): Promise<{ success: boolean; error?: string }> => {
-      const { dbPath, saltPath } = getPaths();
+      const { dbPath, saltPath, screenshotsPath } = getPaths();
 
-      // Verify the supplied password matches the active key before we encrypt the backup.
       const dbSalt = await fs.readFile(saltPath);
       const verifyKeyHex = await deriveKey(password, dbSalt);
-      // Use timingSafeEqual to avoid leaking key material via comparison timing.
       if (!crypto.timingSafeEqual(Buffer.from(verifyKeyHex, 'hex'), Buffer.from(getKeyHex(), 'hex'))) {
         return { success: false, error: 'Incorrect password.' };
       }
@@ -40,37 +34,10 @@ export function registerBackupHandlers(): void {
       if (canceled || !filePath) return { success: false };
 
       try {
-        const db = await fs.readFile(dbPath);
-
-        // Inner bundle: DB + DB salt (needed to re-derive the DB key on restore)
-        const innerJson = JSON.stringify({
-          db: db.toString('base64'),
-          salt: dbSalt.toString('base64'),
-        });
-        const compressed = await gzip(Buffer.from(innerJson, 'utf-8'));
-
-        // Derive a separate backup key using a fresh random salt so the backup
-        // can be decrypted on any machine using only the user's password.
-        const backupSalt = crypto.randomBytes(32);
-        const backupKeyHex = await deriveKey(password, backupSalt);
-        const backupKey = Buffer.from(backupKeyHex, 'hex');
-
-        const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-        const ciphertext = Buffer.concat([cipher.update(compressed), cipher.final()]);
-        const authTag = cipher.getAuthTag();
-
-        const bundle = JSON.stringify({
-          version: 2,
-          backup_salt: backupSalt.toString('base64'),
-          iv: iv.toString('base64'),
-          auth_tag: authTag.toString('base64'),
-          ciphertext: ciphertext.toString('base64'),
-        });
-
-        await fs.writeFile(filePath, Buffer.from(bundle, 'utf-8'));
+        await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), filePath, password);
         return { success: true };
       } catch (err) {
+        await fs.unlink(filePath).catch(() => {});
         return { success: false, error: String(err) };
       }
     },
@@ -82,7 +49,7 @@ export function registerBackupHandlers(): void {
       _,
       { password }: { password: string },
     ): Promise<{ success: boolean; canceled?: boolean; error?: string }> => {
-      const { dbPath, saltPath } = getPaths();
+      const { dbPath, saltPath, screenshotsPath } = getPaths();
       const win = BrowserWindow.getFocusedWindow();
 
       const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
@@ -92,60 +59,54 @@ export function registerBackupHandlers(): void {
       });
       if (canceled || filePaths.length === 0) return { success: false, canceled: true };
 
+      const tmpScreensDir = path.join(os.tmpdir(), `sourcerer-restore-screens-${Date.now()}`);
+      let screensWritten = false;
+
       try {
-        const MAX_BACKUP_BYTES = 250 * 1024 * 1024;
+        // db.sqlite is buffered in memory during restore, so keep this limit tight.
+        const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
         const stat = await fs.stat(filePaths[0]);
         if (stat.size > MAX_BACKUP_BYTES) {
-          return { success: false, error: 'Backup file is too large (max 250 MB).' };
+          return { success: false, error: 'Backup file is too large (max 512 MB).' };
         }
 
-        const raw = await fs.readFile(filePaths[0], 'utf-8');
-        const bundle = JSON.parse(raw);
+        let dbBuf: Buffer | null = null;
+        let dbSalt: Buffer | null = null;
 
-        if (bundle.version !== 2) {
-          return {
-            success: false,
-            error: 'This backup format is not supported. Please create a new backup.',
-          };
-        }
-
-        if (!bundle.backup_salt || !bundle.iv || !bundle.auth_tag || !bundle.ciphertext) {
-          return { success: false, error: 'Unrecognised backup format.' };
-        }
-
-        // Derive the backup key and decrypt
-        const backupSalt = Buffer.from(bundle.backup_salt, 'base64');
-        const backupKeyHex = await deriveKey(password, backupSalt);
-        const backupKey = Buffer.from(backupKeyHex, 'hex');
-
-        let compressed: Buffer;
         try {
-          const iv = Buffer.from(bundle.iv, 'base64');
-          const authTag = Buffer.from(bundle.auth_tag, 'base64');
-          const ciphertext = Buffer.from(bundle.ciphertext, 'base64');
-          const decipher = crypto.createDecipheriv('aes-256-gcm', backupKey, iv);
-          decipher.setAuthTag(authTag);
-          compressed = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-        } catch {
-          return { success: false, error: 'Incorrect password or corrupted backup.' };
-        }
-
-        const innerRaw = await gunzip(compressed);
-        const inner = JSON.parse(innerRaw.toString('utf-8'));
-
-        if (!inner.db || !inner.salt) {
+          for await (const entry of readBackupFile(filePaths[0], password)) {
+            if (entry.name === 'db.sqlite') {
+              dbBuf = entry.data;
+            } else if (entry.name === 'salt') {
+              dbSalt = entry.data;
+            } else if (entry.name.startsWith('screenshots/')) {
+              const basename = path.basename(entry.name);
+              const dst = path.resolve(tmpScreensDir, basename);
+              if (!dst.startsWith(path.resolve(tmpScreensDir) + path.sep)) {
+                throw new Error('Corrupted backup: invalid screenshot filename.');
+              }
+              if (!screensWritten) {
+                await fs.mkdir(tmpScreensDir, { recursive: true });
+                screensWritten = true;
+              }
+              await fs.writeFile(dst, entry.data, { mode: 0o600 });
+            }
+          }
+        } catch (err) {
+          const msg = String(err);
+          if (msg.includes('Incorrect password')) return { success: false, error: 'Incorrect password or corrupted backup.' };
+          if (msg.includes('Unrecognised')) return { success: false, error: 'Unrecognised backup file format.' };
+          if (msg.includes('not supported')) return { success: false, error: 'This backup format is not supported. Please create a new backup.' };
           return { success: false, error: 'Corrupted backup file.' };
         }
 
-        const dbBuf = Buffer.from(inner.db, 'base64');
-        const dbSalt = Buffer.from(inner.salt, 'base64');
+        if (!dbBuf || !dbSalt) return { success: false, error: 'Corrupted backup file.' };
 
-        // Verify the DB can be opened with the key derived from the backup password + DB salt.
-        // These must match because we verified the password against the active key at export time.
-        const tmpPath = path.join(os.tmpdir(), `sourcerer-restore-${Date.now()}.db`);
+        // Verify the DB before touching the live vault.
+        const tmpDbPath = path.join(os.tmpdir(), `sourcerer-restore-${Date.now()}.db`);
         try {
-          await fs.writeFile(tmpPath, dbBuf, { mode: 0o600 });
-          const testDb = new Database(tmpPath);
+          await fs.writeFile(tmpDbPath, dbBuf, { mode: 0o600 });
+          const testDb = new Database(tmpDbPath);
           testDb.pragma(`cipher='sqlcipher'`);
           testDb.pragma('cipher_page_size=4096');
           testDb.pragma('kdf_iter=256000');
@@ -161,7 +122,7 @@ export function registerBackupHandlers(): void {
           }
           testDb.close();
         } finally {
-          await fs.unlink(tmpPath).catch(() => {});
+          await fs.unlink(tmpDbPath).catch(() => {});
         }
 
         stopPoller();
@@ -170,6 +131,25 @@ export function registerBackupHandlers(): void {
 
         await fs.writeFile(dbPath, dbBuf, { mode: 0o600 });
         await fs.writeFile(saltPath, dbSalt, { mode: 0o600 });
+
+        // Restore screenshots only after the DB is confirmed and written.
+        // Clear the existing folder first so stale screenshots from the previous
+        // vault don't linger alongside the restored ones.
+        await fs.rm(screenshotsPath, { recursive: true, force: true });
+        await fs.mkdir(screenshotsPath, { recursive: true });
+        if (screensWritten) {
+          for (const file of await fs.readdir(tmpScreensDir)) {
+            const src = path.join(tmpScreensDir, file);
+            const dst = path.join(screenshotsPath, file);
+            try {
+              await fs.rename(src, dst);
+            } catch (err) {
+              if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+              await fs.copyFile(src, dst);
+              await fs.chmod(dst, 0o600);
+            }
+          }
+        }
 
         if (win) {
           win.setResizable(false);
@@ -182,6 +162,8 @@ export function registerBackupHandlers(): void {
         return { success: true };
       } catch (err) {
         return { success: false, error: String(err) };
+      } finally {
+        if (screensWritten) await fs.rm(tmpScreensDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   );

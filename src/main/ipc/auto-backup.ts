@@ -1,13 +1,9 @@
 import { ipcMain } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
-import zlib from 'zlib';
-import crypto from 'crypto';
-import { promisify } from 'util';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths } from '../utils';
 import { getDatabase, isDatabaseOpen, getPassword } from '../database';
-
-const gzip = promisify(zlib.gzip);
+import { writeBackupFile, createBackupEntries } from './backup-format';
 
 const BACKUP_PREFIX = 'sourcerer-auto-backup-';
 const BACKUP_EXT = '.sourcerer-backup';
@@ -35,36 +31,9 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     // Ensure the destination folder exists (user may have moved it)
     await fs.mkdir(destPath, { recursive: true });
 
-    const { dbPath, saltPath } = getPaths();
-    const password = getPassword();
-    const dbSalt = await fs.readFile(saltPath);
-    const dbBuf = await fs.readFile(dbPath);
-
-    const innerJson = JSON.stringify({
-      db: dbBuf.toString('base64'),
-      salt: dbSalt.toString('base64'),
-    });
-    const compressed = await gzip(Buffer.from(innerJson, 'utf-8'));
-
-    const backupSalt = crypto.randomBytes(32);
-    const backupKeyHex = await deriveKey(password, backupSalt);
-    const backupKey = Buffer.from(backupKeyHex, 'hex');
-
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', backupKey, iv);
-    const ciphertext = Buffer.concat([cipher.update(compressed), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-
-    const bundle = JSON.stringify({
-      version: 2,
-      backup_salt: backupSalt.toString('base64'),
-      iv: iv.toString('base64'),
-      auth_tag: authTag.toString('base64'),
-      ciphertext: ciphertext.toString('base64'),
-    });
-
+    const { dbPath, saltPath, screenshotsPath } = getPaths();
     const outPath = path.join(destPath, timestampedName());
-    await fs.writeFile(outPath, Buffer.from(bundle, 'utf-8'), { mode: 0o600 });
+    await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), outPath, getPassword());
 
     // Prune old backups beyond maxCount
     const allFiles = await fs.readdir(destPath);

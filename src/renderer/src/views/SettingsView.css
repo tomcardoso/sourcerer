@@ -375,11 +375,11 @@
 }
 
 .sv-wipe-confirm {
-  margin-top: 10px;
+  margin-bottom: 16px;
 }
 
 .sv-wipe-warning {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--color-text);
   margin: 0 0 10px;
   line-height: 1.5;
@@ -394,6 +394,29 @@
 
 .sv-wipe-input {
   width: 130px;
+}
+
+.sv-backup-pw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+@keyframes sv-fade-out {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.sv-backup-saved {
+  font-size: 12px;
+  color: #16a34a;
+  animation: sv-fade-out 3s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-backup-saved {
+    animation: none;
+  }
 }
 
 
