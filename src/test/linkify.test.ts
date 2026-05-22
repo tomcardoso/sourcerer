@@ -45,12 +45,22 @@ describe('linkifyText', () => {
     expect(result[3]).toBe(' Next.');
   });
 
-  it('preserves trailing comma after a URL', () => {
+  it('preserves comma after a URL as part of trailing text', () => {
+    // Comma stops the match; it lands in the trailing text node, not a suffix node
     const result = linkifyText('visit https://example.com, or call');
-    const link = result.find(isLink)!;
-    const comma = result[result.indexOf(link) + 1];
-    expect(linkHref(link)).toBe('https://example.com');
-    expect(comma).toBe(',');
+    expect(result).toHaveLength(3);
+    expect(isLink(result[1])).toBe(true);
+    expect(linkHref(result[1])).toBe('https://example.com');
+    expect(result[2]).toBe(', or call');
+  });
+
+  it('treats adjacent comma-separated URLs as two separate links', () => {
+    const result = linkifyText('https://a.com,https://b.com');
+    const links = result.filter(isLink);
+    expect(links).toHaveLength(2);
+    expect(linkHref(links[0])).toBe('https://a.com');
+    expect(result[1]).toBe(',');
+    expect(linkHref(links[1])).toBe('https://b.com');
   });
 
   it('handles multiple URLs', () => {

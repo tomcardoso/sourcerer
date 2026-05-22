@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-const URL_PATTERN = /https?:\/\/[^\s<>"']+/g;
+const URL_PATTERN = /https?:\/\/[^\s<>"',;]+/g;
 
 function trimTrailing(url: string): string {
   return url.replace(/[.,;:!?)\]]+$/, '');
