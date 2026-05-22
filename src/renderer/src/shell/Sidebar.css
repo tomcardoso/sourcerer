@@ -276,7 +276,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #34d399;
+  background: var(--color-success);
   flex-shrink: 0;
   opacity: 0.85;
 }
@@ -370,8 +370,8 @@
 /* Delete confirmation */
 .sidebar-delete-confirm {
   padding: 6px 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
   margin-bottom: 5px;
 }
 
@@ -409,7 +409,7 @@
 }
 
 .sidebar-delete-yes:hover {
-  background: #991b1b;
+  opacity: 0.85;
 }
 
 .sidebar-delete-no {
