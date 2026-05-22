@@ -7,7 +7,7 @@ import Button from '../shell/Button';
 import ContactDetail from '../contacts/ContactDetail';
 import './View.css';
 import './ColumnHeader.css';
-import './ProjectTimeline.css';
+import './Timeline.css';
 
 interface Props {
   projectId?: string;
@@ -176,7 +176,7 @@ function MultiSelect({
   );
 }
 
-export default function ProjectTimeline({ projectId, projectName, user }: Props) {
+export default function Timeline({ projectId, projectName, user }: Props) {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -329,228 +329,228 @@ export default function ProjectTimeline({ projectId, projectName, user }: Props)
     <>
       {printSheet}
       <div className="view">
-      <div className="view-header">
-        <p className="view-kicker">
-          {isFiltered
-            ? `${filtered.length} of ${entries.length} interaction${entries.length !== 1 ? 's' : ''}`
-            : `${entries.length} interaction${entries.length !== 1 ? 's' : ''}`}
-        </p>
-        <div className="view-header-row">
-          <h1 className="view-headline">{headingTitle}</h1>
-          <Button variant="secondary" size="sm" onClick={() => window.print()} title="Print timeline">
-            Print
-          </Button>
-        </div>
-        <p className="view-subtitle">Timeline</p>
-        <div className="view-rule-thick" />
-        <div className="view-rule-thin" />
+        <div className="view-header">
+          <p className="view-kicker">
+            {isFiltered
+              ? `${filtered.length} of ${entries.length} interaction${entries.length !== 1 ? 's' : ''}`
+              : `${entries.length} interaction${entries.length !== 1 ? 's' : ''}`}
+          </p>
+          <div className="view-header-row">
+            <h1 className="view-headline">{headingTitle}</h1>
+            <Button variant="secondary" size="sm" onClick={() => window.print()} title="Print timeline">
+              Print
+            </Button>
+          </div>
+          <p className="view-subtitle">Timeline</p>
+          <div className="view-rule-thick" />
+          <div className="view-rule-thin" />
 
-        {entries.length > 0 && (
-          <div className="project-meta-bar ptl-meta-bar">
-            <div className="project-meta-left">
-              {/* Priority dropdown */}
-              {priorityOptions.length > 0 && (
-                <div ref={priorityRef} className="project-meta-item ptl-priority-wrap">
+          {entries.length > 0 && (
+            <div className="project-meta-bar ptl-meta-bar">
+              <div className="project-meta-left">
+                {/* Priority dropdown */}
+                {priorityOptions.length > 0 && (
+                  <div ref={priorityRef} className="project-meta-item ptl-priority-wrap">
+                    <button
+                      className={`project-meta-action-btn${selectedPriorities.length > 0 ? ' project-meta-action-btn--active' : ''}`}
+                      onClick={() => setPriorityDropdownOpen((v) => !v)}
+                    >
+                      Priority{selectedPriorities.length > 0 && <span className="project-meta-filter-count">{selectedPriorities.length}</span>}
+                    </button>
+                    {priorityDropdownOpen && (
+                      <div className="ptl-priority-dropdown col-filter-dropdown">
+                        <div className="col-filter-multiselect">
+                          {selectedPriorities.length > 0 && (
+                            <button className="col-filter-clear-all" onClick={() => setSelectedPriorities([])}>
+                              Clear all
+                            </button>
+                          )}
+                          {priorityOptions.map((p) => (
+                            <label key={p} className="col-filter-option">
+                              <input
+                                type="checkbox"
+                                checked={selectedPriorities.includes(p)}
+                                onChange={() => setSelectedPriorities((prev) => toggle(prev, p))}
+                              />
+                              {p}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Theme dropdown */}
+                <div ref={themeRef} className="project-meta-item ptl-priority-wrap">
                   <button
-                    className={`project-meta-action-btn${selectedPriorities.length > 0 ? ' project-meta-action-btn--active' : ''}`}
-                    onClick={() => setPriorityDropdownOpen((v) => !v)}
+                    className={`project-meta-action-btn${themeFilter ? ' project-meta-action-btn--active' : ''}`}
+                    onClick={() => setOpenTextFilter(openTextFilter === 'theme' ? null : 'theme')}
                   >
-                    Priority{selectedPriorities.length > 0 && <span className="project-meta-filter-count">{selectedPriorities.length}</span>}
+                    Theme
                   </button>
-                  {priorityDropdownOpen && (
+                  {openTextFilter === 'theme' && (
                     <div className="ptl-priority-dropdown col-filter-dropdown">
-                      <div className="col-filter-multiselect">
-                        {selectedPriorities.length > 0 && (
-                          <button className="col-filter-clear-all" onClick={() => setSelectedPriorities([])}>
-                            Clear all
-                          </button>
+                      <div className="col-filter-text">
+                        <input
+                          autoFocus
+                          className="col-filter-input"
+                          type="text"
+                          value={themeFilter}
+                          onChange={(e) => setThemeFilter(e.target.value)}
+                          placeholder="Contains…"
+                        />
+                        {themeFilter && (
+                          <button className="col-filter-clear" onClick={() => setThemeFilter('')}>×</button>
                         )}
-                        {priorityOptions.map((p) => (
-                          <label key={p} className="col-filter-option">
-                            <input
-                              type="checkbox"
-                              checked={selectedPriorities.includes(p)}
-                              onChange={() => setSelectedPriorities((prev) => toggle(prev, p))}
-                            />
-                            {p}
-                          </label>
-                        ))}
                       </div>
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Theme dropdown */}
-              <div ref={themeRef} className="project-meta-item ptl-priority-wrap">
-                <button
-                  className={`project-meta-action-btn${themeFilter ? ' project-meta-action-btn--active' : ''}`}
-                  onClick={() => setOpenTextFilter(openTextFilter === 'theme' ? null : 'theme')}
-                >
-                  Theme
-                </button>
-                {openTextFilter === 'theme' && (
-                  <div className="ptl-priority-dropdown col-filter-dropdown">
-                    <div className="col-filter-text">
-                      <input
-                        autoFocus
-                        className="col-filter-input"
-                        type="text"
-                        value={themeFilter}
-                        onChange={(e) => setThemeFilter(e.target.value)}
-                        placeholder="Contains…"
-                      />
-                      {themeFilter && (
-                        <button className="col-filter-clear" onClick={() => setThemeFilter('')}>×</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Org dropdown */}
-              <div ref={orgRef} className="project-meta-item ptl-priority-wrap">
-                <button
-                  className={`project-meta-action-btn${orgFilter ? ' project-meta-action-btn--active' : ''}`}
-                  onClick={() => setOpenTextFilter(openTextFilter === 'org' ? null : 'org')}
-                >
-                  Org
-                </button>
-                {openTextFilter === 'org' && (
-                  <div className="ptl-priority-dropdown col-filter-dropdown">
-                    <div className="col-filter-text">
-                      <input
-                        autoFocus
-                        className="col-filter-input"
-                        type="text"
-                        value={orgFilter}
-                        onChange={(e) => setOrgFilter(e.target.value)}
-                        placeholder="Contains…"
-                      />
-                      {orgFilter && (
-                        <button className="col-filter-clear" onClick={() => setOrgFilter('')}>×</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Notes text filter */}
-              <div ref={notesRef} className="project-meta-item ptl-priority-wrap">
-                <button
-                  className={`project-meta-action-btn${notesFilter ? ' project-meta-action-btn--active' : ''}`}
-                  onClick={() => setOpenTextFilter(openTextFilter === 'notes' ? null : 'notes')}
-                >
-                  Notes
-                </button>
-                {openTextFilter === 'notes' && (
-                  <div className="ptl-priority-dropdown col-filter-dropdown">
-                    <div className="col-filter-text">
-                      <input
-                        autoFocus
-                        className="col-filter-input"
-                        type="text"
-                        value={notesFilter}
-                        onChange={(e) => setNotesFilter(e.target.value)}
-                        placeholder="Contains…"
-                      />
-                      {notesFilter && (
-                        <button className="col-filter-clear" onClick={() => setNotesFilter('')}>×</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Multi-select: Projects (global) or Reporters (project) */}
-              <div className="project-meta-item">
-                {isGlobal ? (
-                  <MultiSelect
-                    options={projectOptions}
-                    selected={selectedProjects}
-                    onChange={setSelectedProjects}
-                    placeholder="Projects…"
-                  />
-                ) : (
-                  <MultiSelect
-                    options={reporterOptions}
-                    selected={selectedReporters}
-                    onChange={setSelectedReporters}
-                    placeholder="Reporters…"
-                  />
-                )}
-              </div>
-
-              {/* Date range */}
-              <span className="ptl-filter-sep" />
-              <div className="ptl-date-pair">
-                <CalendarPicker label="From" value={dateFrom} onChange={setDateFrom} showYear={showFromYear} maxDate={new Date().toISOString().slice(0, 10)} />
-                <CalendarPicker label="To" value={dateTo} onChange={setDateTo} showYear={showToYear} maxDate={new Date().toISOString().slice(0, 10)} />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {entries.length === 0 ? (
-        <div className="view-empty">
-          <div className="view-empty-label">No interactions logged yet</div>
-          <div className="view-empty-hint">Log interactions from each contact's Project tab.</div>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="ptl-empty">No entries match your filters.</div>
-      ) : (
-        <div className="ptl-root">
-          {groups.map((group) => (
-            <div key={group.key} className="ptl-group">
-              <div className="ptl-day-label">{fmtDayLabel(group.key)}</div>
-              <div className="ptl-day-entries">
-                {group.entries.map((entry) => (
-                  <div key={entry.id} className="ptl-entry">
-                    <div className="ptl-entry-meta">
-                      <div className="ptl-contact-header">
-                        <div className="ptl-contact-name-row">
-                          <button
-                            className="ptl-contact-name"
-                            onClick={() => openContact(entry.contact_id)}
-                          >
-                            {entry.contact_name}
-                          </button>
-                          {isGlobal && entry.projects.map((p) => (
-                            <span key={p.project_id} className="ptl-project-badge">{p.project_name}</span>
-                          ))}
-                          {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
-                            <span key={priority} className="ptl-priority-badge">{priority}</span>
-                          ))}
-                        </div>
-                        {entry.contact_organization && (
-                          <span className="ptl-contact-org">{entry.contact_organization}</span>
+                {/* Org dropdown */}
+                <div ref={orgRef} className="project-meta-item ptl-priority-wrap">
+                  <button
+                    className={`project-meta-action-btn${orgFilter ? ' project-meta-action-btn--active' : ''}`}
+                    onClick={() => setOpenTextFilter(openTextFilter === 'org' ? null : 'org')}
+                  >
+                    Org
+                  </button>
+                  {openTextFilter === 'org' && (
+                    <div className="ptl-priority-dropdown col-filter-dropdown">
+                      <div className="col-filter-text">
+                        <input
+                          autoFocus
+                          className="col-filter-input"
+                          type="text"
+                          value={orgFilter}
+                          onChange={(e) => setOrgFilter(e.target.value)}
+                          placeholder="Contains…"
+                        />
+                        {orgFilter && (
+                          <button className="col-filter-clear" onClick={() => setOrgFilter('')}>×</button>
                         )}
                       </div>
                     </div>
-                    <p className="ptl-entry-body">{entry.body}</p>
-                    <div className="ptl-entry-footer">
-                      <span className="ptl-reporter">{entry.reporter_name}</span>
-                      <span className="ptl-time">{fmtTime(entry.created_at)}</span>
+                  )}
+                </div>
+
+                {/* Notes text filter */}
+                <div ref={notesRef} className="project-meta-item ptl-priority-wrap">
+                  <button
+                    className={`project-meta-action-btn${notesFilter ? ' project-meta-action-btn--active' : ''}`}
+                    onClick={() => setOpenTextFilter(openTextFilter === 'notes' ? null : 'notes')}
+                  >
+                    Notes
+                  </button>
+                  {openTextFilter === 'notes' && (
+                    <div className="ptl-priority-dropdown col-filter-dropdown">
+                      <div className="col-filter-text">
+                        <input
+                          autoFocus
+                          className="col-filter-input"
+                          type="text"
+                          value={notesFilter}
+                          onChange={(e) => setNotesFilter(e.target.value)}
+                          placeholder="Contains…"
+                        />
+                        {notesFilter && (
+                          <button className="col-filter-clear" onClick={() => setNotesFilter('')}>×</button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
+
+                {/* Multi-select: Projects (global) or Reporters (project) */}
+                <div className="project-meta-item">
+                  {isGlobal ? (
+                    <MultiSelect
+                      options={projectOptions}
+                      selected={selectedProjects}
+                      onChange={setSelectedProjects}
+                      placeholder="Projects…"
+                    />
+                  ) : (
+                    <MultiSelect
+                      options={reporterOptions}
+                      selected={selectedReporters}
+                      onChange={setSelectedReporters}
+                      placeholder="Reporters…"
+                    />
+                  )}
+                </div>
+
+                {/* Date range */}
+                <span className="ptl-filter-sep" />
+                <div className="ptl-date-pair">
+                  <CalendarPicker label="From" value={dateFrom} onChange={setDateFrom} showYear={showFromYear} maxDate={new Date().toISOString().slice(0, 10)} />
+                  <CalendarPicker label="To" value={dateTo} onChange={setDateTo} showYear={showToYear} maxDate={new Date().toISOString().slice(0, 10)} />
+                </div>
               </div>
             </div>
-          ))}
+          )}
         </div>
-      )}
+
+        {entries.length === 0 ? (
+          <div className="view-empty">
+            <div className="view-empty-label">No interactions logged yet</div>
+            <div className="view-empty-hint">Log interactions from each contact's Project tab.</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="ptl-empty">No entries match your filters.</div>
+        ) : (
+          <div className="ptl-root">
+            {groups.map((group) => (
+              <div key={group.key} className="ptl-group">
+                <div className="ptl-day-label">{fmtDayLabel(group.key)}</div>
+                <div className="ptl-day-entries">
+                  {group.entries.map((entry) => (
+                    <div key={entry.id} className="ptl-entry">
+                      <div className="ptl-entry-meta">
+                        <div className="ptl-contact-header">
+                          <div className="ptl-contact-name-row">
+                            <button
+                              className="ptl-contact-name"
+                              onClick={() => openContact(entry.contact_id)}
+                            >
+                              {entry.contact_name}
+                            </button>
+                            {isGlobal && entry.projects.map((p) => (
+                              <span key={p.project_id} className="ptl-project-badge">{p.project_name}</span>
+                            ))}
+                            {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
+                              <span key={priority} className="ptl-priority-badge">{priority}</span>
+                            ))}
+                          </div>
+                          {entry.contact_organization && (
+                            <span className="ptl-contact-org">{entry.contact_organization}</span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="ptl-entry-body">{entry.body}</p>
+                      <div className="ptl-entry-footer">
+                        <span className="ptl-reporter">{entry.reporter_name}</span>
+                        <span className="ptl-time">{fmtTime(entry.created_at)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {selectedContactId && (
+          <ContactDetail
+            contactId={selectedContactId}
+            onClose={closeContact}
+            onDeleted={closeContact}
+            onUpdated={() => {}}
+            user={user ?? null}
+            closing={drawerClosing}
+          />
+        )}
       </div>
-      {selectedContactId && (
-        <ContactDetail
-          contactId={selectedContactId}
-          onClose={closeContact}
-          onDeleted={closeContact}
-          onUpdated={() => {}}
-          user={user ?? null}
-          closing={drawerClosing}
-        />
-      )}
     </>
   );
 }

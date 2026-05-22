@@ -14,7 +14,7 @@ import QuickReminderModal from '../contacts/QuickReminderModal';
 import AlertMentions from '../views/AlertMentions';
 import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
-import ProjectTimeline from '../views/ProjectTimeline';
+import Timeline from '../views/Timeline';
 import './AppShell.css';
 
 export type NavTarget =
@@ -287,7 +287,7 @@ export default function AppShell() {
         )}
         {nav.view === 'reminders' && <RemindersView onCountChange={setOverdueReminders} user={user} />}
         {nav.view === 'all-timeline' && (
-          <ProjectTimeline user={user} />
+          <Timeline user={user} />
         )}
         {nav.view === 'project' && (
           <ProjectView
@@ -302,13 +302,13 @@ export default function AppShell() {
           />
         )}
         {nav.view === 'timeline' && (activeProject ? (
-          <ProjectTimeline
+          <Timeline
             projectId={activeProject.id}
             projectName={activeProject.name}
             user={user}
           />
         ) : (
-          <ProjectTimeline user={user} />
+          <Timeline user={user} />
         ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
       </main>
