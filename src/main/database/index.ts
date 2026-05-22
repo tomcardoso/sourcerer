@@ -49,10 +49,10 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
 /** Called once per unlock after the user row is guaranteed to exist. */
 export function maybeRunDevSeeds(db: Database.Database): void {
   if (!is.dev) return;
-  const u = db.prepare('SELECT first_name, last_name, email FROM users WHERE id = 1').get() as
-    | { first_name: string; last_name: string; email: string }
+  const u = db.prepare('SELECT first_name, last_name, email, dev_seeded FROM users WHERE id = 1').get() as
+    | { first_name: string; last_name: string; email: string; dev_seeded: number }
     | undefined;
-  if (!u) return;
+  if (!u || u.dev_seeded) return;
   seedDevData(db, u.email, `${u.first_name} ${u.last_name}`.trim());
 }
 

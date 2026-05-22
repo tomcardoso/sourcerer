@@ -30,9 +30,6 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86400;
 
 export function seedDevData(db: Database.Database, email: string, name: string): void {
-  const existing = (db.prepare('SELECT COUNT(*) AS n FROM contacts').get() as { n: number }).n;
-  if (existing > 0) return;
-
   const doSeed = db.transaction(() => {
     const stmts = {
       insertContact: db.prepare(
@@ -513,6 +510,8 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     for (const [contactName, membershipId] of firstMembByContact) {
       updateDefault.run(membershipId, cid(contactName));
     }
+
+    db.prepare('UPDATE users SET dev_seeded = 1 WHERE id = 1').run();
   });
 
   doSeed();
