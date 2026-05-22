@@ -94,6 +94,16 @@ describe('dismissPair', () => {
     const dismissed = loadDismissedPairs(db);
     expect(findDuplicatePairs(contacts, dismissed)).toHaveLength(0);
   });
+
+  it('silently no-ops when either contact has been deleted (no FK error)', () => {
+    const a = insertContact(db, 'Alice');
+    const b = insertContact(db, 'Bob');
+    db.prepare('DELETE FROM contacts WHERE id = ?').run(b);
+    expect(() => dismissPair(db, a, b)).not.toThrow();
+    expect(
+      (db.prepare('SELECT COUNT(*) AS n FROM dedup_dismissed_pairs').get() as { n: number }).n,
+    ).toBe(0);
+  });
 });
 
 describe('mergeContacts — keep strategy', () => {
