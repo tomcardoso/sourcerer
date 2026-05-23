@@ -34,6 +34,7 @@ const LOG_PREVIEW = 3;
 const TRIGGER_STATUSES = ['Not yet contacted', 'Contacted, no reply'];
 
 function LogSection({
+  contactName,
   membership,
   allProjects,
   membershipStatus,
@@ -41,6 +42,7 @@ function LogSection({
   onStatusChange,
   onEntryAdded,
 }: {
+  contactName: string;
   membership: ContactProject;
   allProjects: ContactProject[];
   membershipStatus: string;
@@ -211,7 +213,7 @@ function LogSection({
         </div>
       )}
 
-      {showAll && <LogAllModal title="Interaction Log" entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
+      {showAll && <LogAllModal title={`Interaction Log — ${contactName}`} entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
     </div>
   );
 }
@@ -860,6 +862,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
         contactOutreachEnabled={localOutreachEnabled}
       />
       <LogSection
+        contactName={contact.name}
         membership={membership}
         allProjects={contact.projects}
         membershipStatus={localStatus}
