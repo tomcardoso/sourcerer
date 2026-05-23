@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContactListItem, DuplicatePair, Project, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useSortFilter } from '../hooks/useSortFilter';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
 import Button from '../shell/Button';
@@ -8,7 +9,6 @@ import ContactsTable, {
   type AllContactsFilters as Filters,
   DEFAULT_ALL_CONTACTS_FILTERS as DEFAULT_FILTERS,
   isAllContactsFilterActive as isFilterActive,
-  type SortDir,
 } from './ContactsTable';
 import './View.css';
 import './AllContacts.css';
@@ -32,8 +32,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [dupCount, setDupCount] = useState(0);
   const [showDedup, setShowDedup] = useState(false);
@@ -94,22 +93,8 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     setExporting(false);
   }
 
-  function setFilter(key: string, value: unknown) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }
-
   function toggleFilter(col: string) {
     setOpenFilter((prev) => (prev === col ? null : col));
-  }
-
-  function handleSort(key: string) {
-    setSort((prev) => {
-      if (prev.key === key) {
-        if (prev.dir === 'asc') return { key: key as SortKey, dir: 'desc' };
-        return { key: null, dir: 'asc' };
-      }
-      return { key: key as SortKey, dir: 'asc' };
-    });
   }
 
   const displayed = useMemo(() => {
@@ -321,7 +306,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
               <div className="project-meta-item">
                 <button
                   className="project-meta-action-btn"
-                  onClick={() => { setFilters(DEFAULT_FILTERS); setOpenFilter(null); }}
+                  onClick={() => { resetSortFilter(); setOpenFilter(null); }}
                 >
                   Clear filters
                 </button>
