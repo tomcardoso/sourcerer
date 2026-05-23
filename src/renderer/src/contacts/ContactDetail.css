@@ -809,6 +809,13 @@
   flex-shrink: 0;
 }
 
+.pt-log-modal .modal-actions {
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 /* ── Compose form ── */
 .pt-log-compose {
   display: flex;

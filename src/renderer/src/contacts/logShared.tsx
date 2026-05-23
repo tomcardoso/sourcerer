@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { InteractionLogEntry } from '@shared/types';
 import { linkifyText } from '../utils/linkify';
 import Modal from '../shell/Modal';
+import Button from '../shell/Button';
 import './ContactDetail.css';
 
 export function fmtLogDate(ts: number): string {
@@ -96,6 +97,9 @@ export function LogAllModal({
           {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
         </div>
       )}
+      <div className="modal-actions">
+        <Button onClick={onClose}>Close</Button>
+      </div>
     </Modal>
   );
 }
