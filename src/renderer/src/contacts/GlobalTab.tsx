@@ -484,8 +484,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     if (alertRssList.some((f) => f.rss_url === url)) return;
     try {
       await window.sourcerer.addAlertRss(contact.id, url);
-      setNewRssUrl('');
       const updated = await window.sourcerer.listAlertRss(contact.id);
+      setNewRssUrl('');
       setAlertRssList(updated);
     } catch { /* leave URL for retry */ }
   }
