@@ -1,53 +1,22 @@
-.ac-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0;
+.ac-add-contact {
   width: 480px;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  padding: 0;
 }
 
-.ac-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.ac-add-contact .modal-title {
   padding: 18px 20px 14px;
+  margin-bottom: 0;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.ac-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.ac-close {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
-}
-
-.ac-close:hover {
-  color: var(--color-text);
-}
-
 .ac-form {
   overflow-y: auto;
+  flex: 1;
   padding: 16px 20px 20px;
-}
-
-.ac-description {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  margin-bottom: 16px;
-  line-height: 1.5;
 }
 
 .ac-expand-toggle {
