@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import './Modal.css';
 
 const CLOSE_MS = 120;
@@ -60,7 +61,7 @@ export default function Modal({ title, onDismiss, className, children }: Props) 
     }
   }
 
-  return (
+  return createPortal(
     <div
       className={`modal-overlay${closing ? ' modal-overlay--closing' : ''}`}
       onClick={dismiss}
@@ -77,6 +78,7 @@ export default function Modal({ title, onDismiss, className, children }: Props) 
         <h2 id={titleId} className="modal-title">{title}</h2>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
