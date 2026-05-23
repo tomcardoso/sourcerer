@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ContactDetail as ContactDetailType, ContactAlertRss, ContactLogEntry, Project, Reminder, User } from '@shared/types';
+import type { ContactDetail as ContactDetailType, ContactAlertRss, Project, User } from '@shared/types';
 import Button from '../shell/Button';
-import { LogRow, LogAllModal } from './logShared';
-import LogProjectPicker from './LogProjectPicker';
+import GlobalLogSection from './GlobalLogSection';
+import GlobalRemindersSection from './GlobalRemindersSection';
 import DynamicList, { useDragReorder } from './DynamicList';
 import {
   isValidEmail,
@@ -50,189 +50,6 @@ const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = 
 
 const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
 
-function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [completing, setCompleting] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
-  const [addingSaving, setAddingSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [dueDate, setDueDate] = useState('');
-  const [note, setNote] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editNote, setEditNote] = useState('');
-
-  useEffect(() => {
-    setReminders([]);
-    setCompleting(new Set());
-    setEditingId(null);
-    window.sourcerer.listRemindersForContact(contact.id).then((loaded) => {
-      setReminders(loaded);
-      setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
-    });
-  }, [contact.id]);
-
-  function sortReminders(a: Reminder, b: Reminder) {
-    return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
-  }
-
-  function handleStartAdd() {
-    const defaultProject = contact.default_membership_id
-      ? contact.projects.find((p) => p.membership_id === contact.default_membership_id)
-      : null;
-    setSelectedProjectId(defaultProject?.id ?? null);
-    setDueDate('');
-    setNote('');
-    setAdding(true);
-    setEditingId(null);
-  }
-
-  async function handleAdd() {
-    if (!dueDate || !note.trim() || addingSaving) return;
-    setAddingSaving(true);
-    try {
-      const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
-      const r = await window.sourcerer.createReminder({
-        contactId: contact.id,
-        projectId: selectedProjectId ?? undefined,
-        dueDate: ts,
-        note: note.trim(),
-      });
-      setReminders((prev) => [...prev, r].sort(sortReminders));
-      setAdding(false);
-    } finally {
-      setAddingSaving(false);
-    }
-  }
-
-  function handleStartEdit(r: Reminder) {
-    const d = new Date(r.due_date * 1000);
-    setEditDueDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
-    setEditNote(r.note ?? '');
-    setEditingId(r.id);
-    setAdding(false);
-  }
-
-  async function handleSaveEdit(id: string) {
-    if (!editDueDate || !editNote.trim()) return;
-    const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
-    try {
-      const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
-      setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
-      setEditingId(null);
-    } catch { /* leave edit form open */ }
-  }
-
-  async function handleComplete(id: string) {
-    setCompleting((prev) => new Set(prev).add(id));
-    try { await window.sourcerer.completeReminder(id); }
-    catch { setCompleting((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
-  }
-
-  async function handleUncomplete(id: string) {
-    setCompleting((prev) => { const n = new Set(prev); n.delete(id); return n; });
-    try { await window.sourcerer.uncompleteReminder(id); }
-    catch { setCompleting((prev) => new Set(prev).add(id)); }
-  }
-
-  async function handleDelete(id: string) {
-    try { await window.sourcerer.deleteReminder(id); }
-    catch { return; }
-    setReminders((prev) => prev.filter((r) => r.id !== id));
-    setEditingId(null);
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-
-  function fmtReminderDate(ts: number, overdue: boolean): string {
-    const d = new Date(ts * 1000);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const dateStr = `${mm}.${dd}`;
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const dayName = days[d.getDay()];
-    const diffDays = Math.ceil((ts - now) / 86400);
-    if (overdue) return `WAS ${dayName} · ${dateStr}`;
-    if (diffDays <= 7) return `${dayName} · ${dateStr}`;
-    return dateStr;
-  }
-
-  const manualReminders = reminders.filter((r) => r.is_auto_outreach === 0);
-
-  return (
-    <div className="pt-section">
-      <div className="pt-reminders-header">
-        <span className="pt-reminders-label">Reminders</span>
-        <Button variant="ghost" onClick={() => { if (adding) { setAdding(false); } else { handleStartAdd(); } setEditingId(null); }}>
-          {adding ? '× CANCEL' : '+ ADD'}
-        </Button>
-      </div>
-      {manualReminders.length === 0 && !adding && (
-        <p className="pt-reminders-empty">No reminders set.</p>
-      )}
-      {manualReminders.map((r) => {
-        const overdue = r.completed_at === null && r.due_date < now;
-        const done = completing.has(r.id);
-        if (editingId === r.id) {
-          return (
-            <div key={r.id} className="pt-reminder-form">
-              <CalendarPicker label="Due date" value={editDueDate} onChange={setEditDueDate} showYear />
-              <input className="pt-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Note" />
-              <div className="pt-reminder-form-actions">
-                <button className="pt-log-submit" onClick={() => handleSaveEdit(r.id)} disabled={!editDueDate || !editNote.trim()}>Save</button>
-                <button className="pt-reminder-cancel" onClick={() => setEditingId(null)}>Cancel</button>
-                <button className="pt-reminder-delete-btn" onClick={() => handleDelete(r.id)}>Delete</button>
-              </div>
-            </div>
-          );
-        }
-        return (
-          <div key={r.id} className={`pt-reminder-row${overdue ? ' pt-reminder-row--overdue' : ''}${done ? ' pt-reminder-row--completing' : ''}`}>
-            <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
-              {fmtReminderDate(r.due_date, overdue)}
-            </div>
-            <div className="pt-reminder-row-body">
-              <span>{r.note || ''}</span>
-              {r.project_name && <span className="pt-log-row-project-badge">{r.project_name}</span>}
-            </div>
-            {!done && (
-              <button className="pt-reminder-edit-btn" onClick={() => handleStartEdit(r)} title="Edit">Edit</button>
-            )}
-            <input
-              type="checkbox"
-              className="pt-reminder-check"
-              checked={done}
-              onChange={() => { if (done) handleUncomplete(r.id); else handleComplete(r.id); }}
-              title={done ? 'Mark incomplete' : 'Mark complete'}
-            />
-          </div>
-        );
-      })}
-      {adding && (
-        <div className="pt-reminder-form">
-          <CalendarPicker label="Due date" value={dueDate} onChange={setDueDate} showYear />
-          <input className="pt-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note" />
-          {contact.projects.length > 0 && (
-            <select
-              className="pt-select"
-              value={selectedProjectId ?? ''}
-              onChange={(e) => setSelectedProjectId(e.target.value || null)}
-            >
-              <option value="">No project</option>
-              {contact.projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
-          <div className="pt-reminder-form-actions">
-            <button className="pt-log-submit" onClick={handleAdd} disabled={!dueDate || !note.trim() || addingSaving}>Add</button>
-            <button className="pt-reminder-cancel" onClick={() => setAdding(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function GlobalTab({ contact, allProjects, onRefresh, onMembershipChanged, onDeleted, onEditingChange, user }: Props) {
   const [editing, setEditing] = useState(false);
@@ -249,14 +66,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [waybackStatus, setWaybackStatus] = useState<Map<string, 'pending' | 'failed'>>(new Map());
   const formRef = useRef<HTMLDivElement>(null);
 
-  const [logEntries, setLogEntries] = useState<ContactLogEntry[]>([]);
-  const [logAdding, setLogAdding] = useState(false);
-  const [logText, setLogText] = useState('');
-  const [logDate, setLogDate] = useState('');
-  const [logSubmitting, setLogSubmitting] = useState(false);
-  const [logShowAll, setLogShowAll] = useState(false);
-  const [logSelectedMembershipIds, setLogSelectedMembershipIds] = useState<string[]>([]);
-  const LOG_PREVIEW = 3;
 
   useEffect(() => {
     return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
@@ -333,14 +142,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     window.sourcerer.listAlertRss(contact.id).then(setAlertRssList);
   }, [contact.id]);
 
-  useEffect(() => {
-    setLogEntries([]);
-    setLogAdding(false);
-    setLogText('');
-    setLogDate('');
-    setLogSelectedMembershipIds([]);
-    window.sourcerer.listContactLog(contact.id).then(setLogEntries);
-  }, [contact.id]);
 
   async function checkEmailBlur(value: string) {
     if (!value) return;
@@ -497,37 +298,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     } catch { /* item stays in list */ }
   }
 
-  async function handleLogDelete(id: string) {
-    try {
-      await window.sourcerer.deleteInteractionLogEntry(id);
-      setLogEntries((prev) => prev.filter((e) => e.id !== id));
-    } catch { /* entry stays in list */ }
-  }
-
-  function cancelLog() {
-    setLogAdding(false);
-    setLogText('');
-    setLogDate('');
-    setLogSelectedMembershipIds([]);
-  }
-
-  async function handleLogSubmit() {
-    const body = logText.trim();
-    if (!body || !logDate) return;
-    setLogSubmitting(true);
-    try {
-      const [y, m, d] = logDate.split('-').map(Number);
-      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
-      const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt, logSelectedMembershipIds);
-      setLogEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
-      setLogText('');
-      setLogDate('');
-      setLogSelectedMembershipIds([]);
-      setLogAdding(false);
-    } finally {
-      setLogSubmitting(false);
-    }
-  }
 
   // View mode: group links by type
   const socialLinks = Object.fromEntries(
@@ -1062,94 +832,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         onRemoveRss={handleRemoveRss}
       />
 
-      <div className="pt-section">
-        <div className="pt-reminders-header">
-          <span className="pt-reminders-label">Interaction Log</span>
-          <div className="pt-log-header-actions">
-            {logEntries.length > 0 && (
-              <Button variant="ghost" onClick={() => setLogShowAll(true)}>
-                View all ({logEntries.length})
-              </Button>
-            )}
-            {!logAdding && (
-              <Button variant="ghost" onClick={() => {
-                setLogDate(new Date().toISOString().slice(0, 10));
-                const effectiveDefault = contact.projects.find(
-                  (p) => p.membership_id === contact.default_membership_id,
-                );
-                setLogSelectedMembershipIds(effectiveDefault ? [effectiveDefault.membership_id] : []);
-                setLogAdding(true);
-              }}>
-                + Add
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {logEntries.length === 0 && !logAdding && (
-          <p className="pt-reminders-empty">No entries yet.</p>
-        )}
-
-        {[...logEntries].reverse().slice(0, LOG_PREVIEW).map((e) => (
-          <LogRow key={e.id} entry={e} subtitle={e.project_name} onDelete={handleLogDelete} />
-        ))}
-
-        {logAdding && (
-          <div className="pt-log-compose pt-log-compose--global">
-            <div className="pt-log-date-row">
-              <CalendarPicker
-                label="Select date"
-                value={logDate}
-                onChange={setLogDate}
-                showYear
-                maxDate={new Date().toISOString().slice(0, 10)}
-              />
-            </div>
-            <textarea
-              className="pt-log-input"
-              placeholder="Log an interaction…"
-              value={logText}
-              onChange={(e) => setLogText(e.target.value)}
-              rows={3}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleLogSubmit();
-              }}
-            />
-            {contact.projects.length > 0 && (
-              <div className="pt-log-projects">
-                <LogProjectPicker
-                  projects={contact.projects}
-                  selectedIds={logSelectedMembershipIds}
-                  onChange={setLogSelectedMembershipIds}
-                />
-              </div>
-            )}
-            <div className="pt-reminder-form-actions">
-              <button
-                className="pt-log-submit"
-                onClick={handleLogSubmit}
-                disabled={!logText.trim() || !logDate || logSubmitting}
-              >
-                {logSubmitting ? 'Saving…' : 'Save'}
-              </button>
-              <button type="button" className="pt-reminder-cancel" onClick={cancelLog}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {logShowAll && (
-          <LogAllModal
-            title={`Interaction Log — ${contact.name}`}
-            entries={logEntries}
-            getSubtitle={(e) => (e as ContactLogEntry).project_name}
-            onDelete={handleLogDelete}
-            onClose={() => setLogShowAll(false)}
-          />
-        )}
-      </div>
+      <GlobalLogSection contact={contact} />
 
       <GlobalRemindersSection contact={contact} />
 
