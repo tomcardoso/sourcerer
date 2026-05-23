@@ -1129,7 +1129,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
         {logShowAll && (
           <LogAllModal
-            title="Interaction Log"
+            title={`Interaction Log — ${contact.name}`}
             entries={logEntries}
             getSubtitle={(e) => (e as ContactLogEntry).project_name}
             onDelete={handleLogDelete}

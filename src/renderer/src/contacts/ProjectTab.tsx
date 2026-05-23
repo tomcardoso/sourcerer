@@ -211,7 +211,7 @@ function LogSection({
         </div>
       )}
 
-      {showAll && <LogAllModal title="Interaction Log" entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
+      {showAll && <LogAllModal title={`Interaction Log — ${contact.name}`} entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
     </div>
   );
 }
