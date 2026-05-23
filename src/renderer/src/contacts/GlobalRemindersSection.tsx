@@ -17,13 +17,17 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
   const [editNote, setEditNote] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     setReminders([]);
     setCompleting(new Set());
     setEditingId(null);
     window.sourcerer.listRemindersForContact(contact.id).then((loaded) => {
-      setReminders(loaded);
-      setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
+      if (!cancelled) {
+        setReminders(loaded);
+        setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
+      }
     });
+    return () => { cancelled = true; };
   }, [contact.id]);
 
   function sortReminders(a: Reminder, b: Reminder) {

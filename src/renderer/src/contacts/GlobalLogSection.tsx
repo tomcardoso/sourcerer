@@ -18,12 +18,16 @@ export default function GlobalLogSection({ contact }: { contact: ContactDetailTy
   const [logSelectedMembershipIds, setLogSelectedMembershipIds] = useState<string[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     setLogEntries([]);
     setLogAdding(false);
     setLogText('');
     setLogDate('');
     setLogSelectedMembershipIds([]);
-    window.sourcerer.listContactLog(contact.id).then(setLogEntries);
+    window.sourcerer.listContactLog(contact.id).then((entries) => {
+      if (!cancelled) setLogEntries(entries);
+    });
+    return () => { cancelled = true; };
   }, [contact.id]);
 
   async function handleLogDelete(id: string) {
