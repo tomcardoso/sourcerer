@@ -11,7 +11,7 @@ import {
   normalizePhoneForComparison,
   findDuplicates,
 } from './contactValidation';
-import '../shell/Modal.css';
+import Modal from '../shell/Modal';
 import './AddContactModal.css';
 
 interface Props {
@@ -82,12 +82,6 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const projectWrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel]);
 
   useEffect(() => {
     window.sourcerer.listProjects().then(setProjects);
@@ -191,18 +185,9 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   }
 
   return (
-    <div
-      className="modal-overlay"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
-    >
-      <div className="ac-card">
-        <div className="ac-header">
-          <h2 className="ac-title">Add Contact</h2>
-          <button className="ac-close" onClick={onCancel}>×</button>
-        </div>
-
-        <form ref={formRef} onSubmit={handleSubmit} className="ac-form">
-          <p className="ac-description">Only a name is required — everything else can be filled in later.</p>
+    <Modal title="Add contact" onDismiss={onCancel} className="ac-add-contact">
+      <form ref={formRef} onSubmit={handleSubmit} className="ac-form">
+        <p className="modal-description">Only a name is required — everything else can be filled in later.</p>
 
           <div className="ac-field">
             <label htmlFor="ac-name" className="modal-label">
@@ -572,8 +557,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               {submitting ? 'Saving…' : 'Add contact'}
             </Button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }
