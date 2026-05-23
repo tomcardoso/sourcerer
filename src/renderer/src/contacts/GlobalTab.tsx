@@ -455,40 +455,53 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
   async function handleAddToProject() {
     if (!addingToProject) return;
-    await window.sourcerer.addToProject(contact.id, addingToProject);
-    setAddingToProject('');
-    onMembershipChanged();
+    try {
+      await window.sourcerer.addToProject(contact.id, addingToProject);
+      setAddingToProject('');
+      onMembershipChanged();
+    } catch { /* leave form open for retry */ }
   }
 
   async function handleRemoveFromProject(projectId: string) {
-    await window.sourcerer.removeFromProject(contact.id, projectId);
-    setConfirmRemoveProjectId(null);
-    onMembershipChanged();
+    try {
+      await window.sourcerer.removeFromProject(contact.id, projectId);
+      onMembershipChanged();
+    } finally {
+      setConfirmRemoveProjectId(null);
+    }
   }
 
   async function handleDelete() {
-    await window.sourcerer.deleteContact(contact.id);
-    onDeleted(contact.id);
+    try {
+      await window.sourcerer.deleteContact(contact.id);
+      onDeleted(contact.id);
+    } catch { /* stay open */ }
   }
 
   async function handleAddRss() {
     const url = newRssUrl.trim();
     if (!url || !isGoogleAlertUrl(url)) return;
     if (alertRssList.some((f) => f.rss_url === url)) return;
-    await window.sourcerer.addAlertRss(contact.id, url);
-    setNewRssUrl('');
-    const updated = await window.sourcerer.listAlertRss(contact.id);
-    setAlertRssList(updated);
+    try {
+      await window.sourcerer.addAlertRss(contact.id, url);
+      setNewRssUrl('');
+      const updated = await window.sourcerer.listAlertRss(contact.id);
+      setAlertRssList(updated);
+    } catch { /* leave URL for retry */ }
   }
 
   async function handleRemoveRss(id: string) {
-    await window.sourcerer.removeAlertRss(id);
-    setAlertRssList((prev) => prev.filter((f) => f.id !== id));
+    try {
+      await window.sourcerer.removeAlertRss(id);
+      setAlertRssList((prev) => prev.filter((f) => f.id !== id));
+    } catch { /* item stays in list */ }
   }
 
   async function handleLogDelete(id: string) {
-    await window.sourcerer.deleteInteractionLogEntry(id);
-    setLogEntries((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await window.sourcerer.deleteInteractionLogEntry(id);
+      setLogEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch { /* entry stays in list */ }
   }
 
   function cancelLog() {
