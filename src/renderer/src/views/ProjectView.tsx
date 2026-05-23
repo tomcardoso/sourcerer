@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useSortFilter } from '../hooks/useSortFilter';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
@@ -10,7 +11,6 @@ import ContactsTable, {
   type ProjectFilters as Filters,
   DEFAULT_PROJECT_FILTERS as DEFAULT_FILTERS,
   isProjectFilterActive as isFilterActive,
-  type SortDir,
   buildOrderMap,
 } from './ContactsTable';
 import './View.css';
@@ -73,8 +73,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey | null; dir: SortDir }>({ key: null, dir: 'asc' });
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -105,8 +104,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     setConfirmDelete(false);
     setConfirmRemove(false);
     setRows([]);
-    setSort({ key: null, dir: 'asc' });
-    setFilters(DEFAULT_FILTERS);
+    resetSortFilter();
     setOpenFilter(null);
     setSyncError(null);
     setFileUnreachable(false);
@@ -363,22 +361,8 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     }
   }
 
-  function setFilter(key: string, value: unknown) {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }
-
   function toggleFilter(col: string) {
     setOpenFilter((prev) => (prev === col ? null : col));
-  }
-
-  function handleSort(key: string) {
-    setSort((prev) => {
-      if (prev.key === key) {
-        if (prev.dir === 'asc') return { key: key as SortKey, dir: 'desc' };
-        return { key: null, dir: 'asc' };
-      }
-      return { key: key as SortKey, dir: 'asc' };
-    });
   }
 
   // Build sort-order lookup maps for status/priority (used in sort logic below)
@@ -581,7 +565,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             <div className="project-meta-item">
               <button
                 className="project-meta-action-btn project-meta-action-btn--active"
-                onClick={() => { setFilters(DEFAULT_FILTERS); setOpenFilter(null); }}
+                onClick={() => { resetSortFilter(); setOpenFilter(null); }}
               >
                 Clear filters
               </button>
