@@ -82,6 +82,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const projectWrapRef = useRef<HTMLDivElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     window.sourcerer.listProjects().then(setProjects);
@@ -114,6 +116,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     });
     if (!valid) return;
     const result = await window.sourcerer.checkCollision({ emails: [value], phones: [] });
+    if (!mounted.current) return;
     setEmailCollisions((prev) => {
       const next = { ...prev };
       if (result.email[value]) next[value] = result.email[value];
@@ -128,6 +131,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
       window.sourcerer.validatePhone(value),
       window.sourcerer.checkCollision({ emails: [], phones: [value] }),
     ]);
+    if (!mounted.current) return;
     setPhoneFormatWarnings((prev) => {
       const next = { ...prev };
       if (!isValid) next[value] = true; else delete next[value];

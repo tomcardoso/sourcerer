@@ -33,11 +33,29 @@ export default function ScreenshotPanel({ contactId }: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    for (const s of screenshots) {
-      loadScreenshotImage(s.id);
+    let cancelled = false;
+
+    async function loadAll() {
+      for (const s of screenshots) {
+        if (cancelled) return;
+        if (screenshotImages[s.id]) continue;
+        const result = await window.sourcerer.loadScreenshot(s.id);
+        if (cancelled) return;
+        if ('data' in result) {
+          setScreenshotImages((prev) => ({ ...prev, [s.id]: result.data }));
+        } else {
+          console.error('[screenshot] load failed for', s.id, '—', result.error);
+          setScreenshotImages((prev) => ({ ...prev, [s.id]: `error:${result.error}` }));
+        }
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenshots]);
+
+    loadAll().catch(console.error);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [screenshots]); // screenshotImages intentionally omitted: we only need the snapshot at effect-run time to skip already-loaded images
 
   useEffect(() => {
     if (viewingScreenshot) {
