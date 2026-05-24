@@ -5,6 +5,25 @@ import { isDatabaseOpen, getDatabase } from './database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType } from './sanitize';
 import { triggerWaybackSave } from './ipc/contacts';
 
+// Hostname patterns blocked to prevent SSRF when validating user-supplied URLs.
+// Covers loopback, private RFC-1918, link-local, CGNAT, and IPv6 equivalents.
+const BLOCKED_PATTERNS = [
+  /^localhost$/i,
+  /^127\.\d+\.\d+\.\d+$/,
+  /^10\.\d+\.\d+\.\d+$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+  /^192\.168\.\d+\.\d+$/,
+  /^169\.254\.\d+\.\d+$/,           // IPv4 link-local
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+$/, // CGNAT (RFC 6598)
+  /^::1$/,                           // IPv6 loopback
+  /^fe80:/i,                         // IPv6 link-local
+  /^::ffff:/i,                       // IPv4-mapped IPv6
+];
+
+export function isBlockedHost(hostname: string): boolean {
+  return BLOCKED_PATTERNS.some((re) => re.test(hostname));
+}
+
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
 const MAX_PENDING_SCREENSHOTS = 20;
 const pendingScreenshots = new Map<string, { buf: Buffer; tabUrl: string | null }>();

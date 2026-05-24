@@ -3,7 +3,22 @@ import { BrowserWindow, Notification } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
 
-const parser = new Parser({ timeout: 10000 });
+const parser = new Parser();
+
+// Hostname patterns that are blocked to prevent SSRF.  Covers loopback,
+// private RFC-1918, link-local, CGNAT, and IPv6 equivalents.
+const BLOCKED_HOST_PATTERNS: RegExp[] = [
+  /^localhost$/i,
+  /^127\.\d+\.\d+\.\d+$/,
+  /^10\.\d+\.\d+\.\d+$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+  /^192\.168\.\d+\.\d+$/,
+  /^169\.254\.\d+\.\d+$/,           // IPv4 link-local
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+$/, // CGNAT (RFC 6598)
+  /^::1$/,                           // IPv6 loopback
+  /^fe80:/i,                         // IPv6 link-local
+  /^::ffff:/i,                       // IPv4-mapped IPv6
+];
 
 function cleanHeadline(raw: string): string {
   return raw
@@ -97,7 +112,7 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
     const parsed = new URL(rssUrl);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return 0;
     const host = parsed.hostname;
-    if (/^(localhost$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|\[::1\])/.test(host)) return 0;
+    if (BLOCKED_HOST_PATTERNS.some((re) => re.test(host))) return 0;
   } catch {
     return 0;
   }
@@ -106,7 +121,21 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
   const now = Math.floor(Date.now() / 1000);
 
   try {
-    const feed = await parser.parseURL(rssUrl);
+    // Fetch the feed URL manually first so we can inspect the HTTP status code
+    // before handing it off to the parser.
+    const response = await fetch(rssUrl);
+    if (response.status >= 400 && response.status < 500) {
+      // Permanent client error — the URL is genuinely broken; mark invalid.
+      db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
+      return 0;
+    } else if (!response.ok) {
+      // Transient server-side or network error — skip this poll, do not mark invalid.
+      console.warn(`[rss] Transient HTTP ${response.status} for feed ${feedId}, will retry`);
+      return 0;
+    }
+
+    const text = await response.text();
+    const feed = await parser.parseString(text);
     let newCount = 0;
 
     for (const item of feed.items ?? []) {
@@ -137,8 +166,10 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
     ).run(now, feedId);
 
     return newCount;
-  } catch {
-    db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
+  } catch (err) {
+    // Network-level exception (DNS failure, timeout, connection refused, etc.) — transient;
+    // log a warning but do NOT mark the feed invalid so it will be retried next poll.
+    console.warn(`[rss] Network error polling feed ${feedId}:`, err);
     return 0;
   }
 }

@@ -67,8 +67,13 @@ export function performSearch(query: string, db: Database.Database): SearchResul
       )
       .all(ftsQuery) as typeof logResults;
   } catch (e) {
-    // Only swallow FTS query syntax errors; rethrow anything else.
-    if (!(e instanceof Error) || !e.message.includes('fts5:')) throw e;
+    // Only swallow FTS query syntax errors; rethrow anything else
+    // (e.g. table corruption whose message might also contain "fts5:").
+    if (e instanceof Error && /fts5: syntax error/i.test(e.message)) {
+      // fall back to the LIKE results already computed above
+    } else {
+      throw e;
+    }
   }
 
   return [
