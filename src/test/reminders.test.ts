@@ -128,12 +128,15 @@ describe('reminders:complete', () => {
     const contactId = insertContact(testDb, 'Bob Jones');
     const dueDate = Math.floor(Date.now() / 1000) + 86400;
     const created = await handlers.get('reminders:create')!({}, { contactId, dueDate }) as Reminder;
-    const beforeComplete = Math.floor(Date.now() / 1000) - 1;
+
+    // Backdate to a known stale value so we can verify the handler writes a newer one.
+    const stale = Math.floor(Date.now() / 1000) - 3600;
+    testDb.prepare('UPDATE reminders SET completed_at = ? WHERE id = ?').run(stale, created.id);
 
     await handlers.get('reminders:complete')!({}, created.id);
 
     const row = testDb.prepare('SELECT completed_at FROM reminders WHERE id = ?').get(created.id) as { completed_at: number };
-    expect(row.completed_at).toBeGreaterThan(beforeComplete);
+    expect(row.completed_at).toBeGreaterThan(stale);
   });
 });
 

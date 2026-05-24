@@ -2,6 +2,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { v4 as uuidv4 } from 'uuid';
 import { LOCAL_SCHEMA_SQL } from '../main/database/schema';
 import { seedDefaults } from '../main/database/seeds';
+import { DB_VERSION } from '../main/database';
 
 export const TEST_REPORTER = { email: 'r@r.com', name: 'Reporter' };
 
@@ -12,8 +13,7 @@ export function createTestDb(): Database.Database {
   seedDefaults(db);
 
   // Stamp user_version so runMigrations() recognises the DB as already current (#228).
-  // Must match DB_VERSION in src/main/database/index.ts (currently 1).
-  db.pragma('user_version = 1');
+  db.pragma(`user_version = ${DB_VERSION}`);
 
   // Insert the required users row (id=1) that many IPC handlers query (#309).
   // seedDefaults() only inserts status/priority options, not the user row.
