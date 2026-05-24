@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SortDir } from '../views/ContactsTable';
 
 export function useSortFilter<K extends string, F>(defaultFilters: F) {
@@ -21,10 +21,10 @@ export function useSortFilter<K extends string, F>(defaultFilters: F) {
     });
   }
 
-  function resetAll() {
+  const resetAll = useCallback(() => {
     setSort({ key: null, dir: 'asc' });
     setFilters(defaultFiltersRef.current);
-  }
+  }, []);
 
   return { sort, filters, setFilter, handleSort, resetAll };
 }

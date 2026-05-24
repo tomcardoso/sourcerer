@@ -30,8 +30,8 @@ export function fmtDateRelative(ts: number | null, fetched: number): string {
   const todayStart = startOfDay(new Date());
   const yesterdayStart = todayStart - 86400000;
   const ms = d.getTime();
-  if (ms >= todayStart) return 'Today';
-  if (ms >= yesterdayStart) return 'Yesterday';
+  if (ms >= todayStart && ms < todayStart + 86400000) return 'Today';
+  if (ms >= yesterdayStart && ms < todayStart) return 'Yesterday';
   const diffDays = Math.floor((todayStart - startOfDay(d)) / 86400000);
   if (diffDays < 7) return `${diffDays}d ago`;
   if (d.getFullYear() === new Date().getFullYear()) {

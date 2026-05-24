@@ -13,8 +13,8 @@ export function fmtLogDate(ts: number): string {
   const ms = ts * 1000;
   const todayStart = startOfDay(new Date());
   const yesterdayStart = todayStart - 86400000;
-  if (ms >= todayStart) return 'today';
-  if (ms >= yesterdayStart) return 'yesterday';
+  if (ms >= todayStart && ms < todayStart + 86400000) return 'today';
+  if (ms >= yesterdayStart && ms < todayStart) return 'yesterday';
   const d = new Date(ms);
   const diffDays = Math.floor((todayStart - startOfDay(d)) / 86400000);
   if (diffDays < 7) return `${diffDays} days ago`;

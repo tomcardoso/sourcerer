@@ -81,19 +81,15 @@ export default function AlertMentions({ onUnseenCountChange }: Props) {
 
   function handleMarkOneSeen(id: string) {
     window.sourcerer.markMentionSeen(id);
-    setMentions((prev) => {
-      const updated = prev.map((m) => (m.id === id ? { ...m, seen: 1 as const } : m));
-      onUnseenCountChange(updated.filter((m) => m.seen === 0).length);
-      return updated;
-    });
+    const updated = mentions.map((m) => (m.id === id ? { ...m, seen: 1 as const } : m));
+    setMentions(updated);
+    onUnseenCountChange(updated.filter((m) => m.seen === 0).length);
   }
 
   function handleDismiss(id: string) {
-    setMentions((prev) => {
-      const updated = prev.filter((m) => m.id !== id);
-      onUnseenCountChange(updated.filter((m) => m.seen === 0).length);
-      return updated;
-    });
+    const updated = mentions.filter((m) => m.id !== id);
+    setMentions(updated);
+    onUnseenCountChange(updated.filter((m) => m.seen === 0).length);
     window.sourcerer.dismissMention(id).catch(() => {});
   }
 

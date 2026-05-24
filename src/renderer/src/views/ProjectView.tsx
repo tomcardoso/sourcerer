@@ -110,8 +110,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     setFileUnreachable(false);
     setLastSyncedAt(project?.last_synced_at ? project.last_synced_at * 1000 : null);
     refresh();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project?.id]);
+  }, [project?.id, resetSortFilter, refresh]);
 
   useEffect(() => {
     window.sourcerer.listStatusOptions().then(setStatusOptions);
