@@ -678,7 +678,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 })
             )}
           />
-          {user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && (
+          {user?.wayback_enabled !== 0 && user?.wayback_keys_configured !== 0 && (
             <p className="ac-field-hint">Wayback Machine archiving is enabled.</p>
           )}
         </div>
@@ -795,10 +795,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   archived ↗
                 </a>
               )}
-              {!l.wayback_url && user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && waybackStatus.get(l.url) === 'pending' && (
+              {!l.wayback_url && user?.wayback_enabled !== 0 && user?.wayback_keys_configured !== 0 && waybackStatus.get(l.url) === 'pending' && (
                 <span className="detail-wayback-pending">archiving…</span>
               )}
-              {!l.wayback_url && user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && waybackStatus.get(l.url) === 'failed' && (
+              {!l.wayback_url && user?.wayback_enabled !== 0 && user?.wayback_keys_configured !== 0 && waybackStatus.get(l.url) === 'failed' && (
                 <span className="detail-wayback-failed" title="Wayback Machine could not archive this URL">archive failed</span>
               )}
             </div>
