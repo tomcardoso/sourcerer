@@ -22,7 +22,7 @@ export function registerAppHandlers(): void {
                 phone_country, outreach_reminders_enabled, outreach_require_interaction,
                 staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
                 reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
-                archive_access_key, archive_secret_key
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured
          FROM users WHERE id = 1`,
       )
       .get() as User;

@@ -47,7 +47,13 @@ export function registerSettingsHandlers(): void {
         }
       })();
 
-      return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+      return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
     },
   );
 
@@ -69,25 +75,49 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:set-staleness-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET staleness_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-staleness-threshold', (_, days: number): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET staleness_threshold_days = ? WHERE id = 1').run(Math.max(1, days));
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-outreach-reminders-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET outreach_reminders_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-outreach-require-interaction', (_, required: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET outreach_require_interaction = ? WHERE id = 1').run(required ? 1 : 0);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-rss-poll-interval', (_, hours: number): User => {
@@ -95,7 +125,13 @@ export function registerSettingsHandlers(): void {
     const clamped = Math.max(1, Math.floor(hours));
     db.prepare('UPDATE users SET rss_poll_interval_hours = ? WHERE id = 1').run(clamped);
     setRssPollIntervalHours(clamped);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle(
@@ -110,25 +146,49 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:set-alert-notifications-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET alert_notifications_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-reminder-notifications-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET reminder_notifications_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-phone-country', (_, country: string): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET phone_country = ? WHERE id = 1').run(country);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-wayback-enabled', (_, enabled: boolean): User => {
     const db = getDatabase();
     db.prepare('UPDATE users SET wayback_enabled = ? WHERE id = 1').run(enabled ? 1 : 0);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle('settings:set-archive-keys', (_, { accessKey, secretKey }: { accessKey: string; secretKey: string }): User => {
@@ -138,7 +198,13 @@ export function registerSettingsHandlers(): void {
     const db = getDatabase();
     db.prepare('UPDATE users SET archive_access_key = ?, archive_secret_key = ? WHERE id = 1')
       .run(accessKey.trim() || null, secretKey.trim() || null);
-    return db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
+    return db.prepare(`SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
+                phone_country, outreach_reminders_enabled, outreach_require_interaction,
+                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
+                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         FROM users WHERE id = 1`).get() as User;
   });
 
   ipcMain.handle(
@@ -212,7 +278,8 @@ export function registerSettingsHandlers(): void {
                 phone_country, outreach_reminders_enabled, outreach_require_interaction,
                 staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
                 reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
-                archive_access_key, archive_secret_key
+                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
+                auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
          FROM users WHERE id = 1`,
       )
       .get() as User;
