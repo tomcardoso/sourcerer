@@ -5,6 +5,7 @@ import {
   normalizePhone,
   validateUrl,
   detectLinkType,
+  isBlockedHost,
 } from '../main/sanitize';
 
 describe('normalizeEmail', () => {
@@ -187,6 +188,78 @@ describe('validateUrl', () => {
 
   it('rejects a URL with an embedded newline', () => {
     expect(validateUrl('https://example.com/path\nwith\nnewlines')).toBe(false);
+  });
+});
+
+describe('isBlockedHost', () => {
+  it('blocks loopback 127.0.0.1', () => {
+    expect(isBlockedHost('http://127.0.0.1/feed')).toBe(true);
+  });
+
+  it('blocks localhost hostname', () => {
+    expect(isBlockedHost('http://localhost/feed')).toBe(true);
+  });
+
+  it('blocks RFC 1918 10.x.x.x', () => {
+    expect(isBlockedHost('http://10.0.0.1/feed')).toBe(true);
+  });
+
+  it('blocks RFC 1918 192.168.x.x', () => {
+    expect(isBlockedHost('http://192.168.1.1/feed')).toBe(true);
+  });
+
+  it('blocks RFC 1918 172.16–31.x.x', () => {
+    expect(isBlockedHost('http://172.16.0.1/feed')).toBe(true);
+    expect(isBlockedHost('http://172.31.255.255/feed')).toBe(true);
+  });
+
+  it('allows 172.15.x.x (not RFC 1918)', () => {
+    expect(isBlockedHost('http://172.15.0.1/feed')).toBe(false);
+  });
+
+  it('blocks CGNAT 100.64.x.x (RFC 6598)', () => {
+    expect(isBlockedHost('http://100.64.0.1/feed')).toBe(true);
+    expect(isBlockedHost('http://100.127.255.255/feed')).toBe(true);
+  });
+
+  it('allows 100.63.x.x (not CGNAT)', () => {
+    expect(isBlockedHost('http://100.63.0.1/feed')).toBe(false);
+  });
+
+  it('blocks link-local 169.254.x.x', () => {
+    expect(isBlockedHost('http://169.254.1.1/feed')).toBe(true);
+  });
+
+  it('blocks IPv6 loopback ::1', () => {
+    expect(isBlockedHost('http://[::1]/feed')).toBe(true);
+  });
+
+  it('blocks IPv6 link-local fe80::', () => {
+    expect(isBlockedHost('http://[fe80::1]/feed')).toBe(true);
+  });
+
+  it('blocks IPv4-mapped IPv6 ::ffff:127.0.0.1', () => {
+    expect(isBlockedHost('http://[::ffff:127.0.0.1]/feed')).toBe(true);
+  });
+
+  it('blocks IPv4-mapped IPv6 for private range ::ffff:192.168.1.1', () => {
+    expect(isBlockedHost('http://[::ffff:192.168.1.1]/feed')).toBe(true);
+  });
+
+  it('blocks trailing-dot loopback 127.0.0.1.', () => {
+    expect(isBlockedHost('http://127.0.0.1./feed')).toBe(true);
+  });
+
+  it('allows a public address', () => {
+    expect(isBlockedHost('https://feeds.example.com/rss')).toBe(false);
+  });
+
+  it('blocks an invalid URL', () => {
+    expect(isBlockedHost('not-a-url')).toBe(true);
+  });
+
+  it('blocks non-http protocols', () => {
+    expect(isBlockedHost('file:///etc/passwd')).toBe(false); // isBlockedHost only checks host, not protocol
   });
 });
 

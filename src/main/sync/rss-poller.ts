@@ -2,8 +2,10 @@ import Parser from 'rss-parser';
 import { BrowserWindow, Notification } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase, isDatabaseOpen } from '../database';
+import { isBlockedHost } from '../sanitize';
 
-const parser = new Parser({ timeout: 10000 });
+const parser = new Parser();
+
 
 function cleanHeadline(raw: string): string {
   return raw
@@ -96,8 +98,7 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
   try {
     const parsed = new URL(rssUrl);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return 0;
-    const host = parsed.hostname;
-    if (/^(localhost$|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|\[::1\])/.test(host)) return 0;
+    if (isBlockedHost(rssUrl)) return 0;
   } catch {
     return 0;
   }
@@ -106,7 +107,43 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
   const now = Math.floor(Date.now() / 1000);
 
   try {
-    const feed = await parser.parseURL(rssUrl);
+    // Fetch the feed URL manually first so we can inspect the HTTP status code
+    // before handing it off to the parser.  A 10-second AbortController timeout
+    // prevents a slow server from stalling the entire poll loop.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let response: Response;
+    try {
+      response = await fetch(rssUrl, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+    // Re-check the final URL in case a redirect led to a private address.
+    if (isBlockedHost(response.url)) return 0;
+    if (response.status === 408 || response.status === 429) {
+      // Transient — request timeout or rate-limited; will retry next poll.
+      console.warn(`[rss] Transient HTTP ${response.status} for feed ${feedId}, will retry`);
+      return 0;
+    }
+    if (response.status >= 400 && response.status < 500) {
+      // Permanent client error — the URL is genuinely broken; mark invalid.
+      db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
+      return 0;
+    } else if (!response.ok) {
+      // Transient server-side or network error — skip this poll, do not mark invalid.
+      console.warn(`[rss] Transient HTTP ${response.status} for feed ${feedId}, will retry`);
+      return 0;
+    }
+
+    const text = await response.text();
+    let feed: Awaited<ReturnType<typeof parser.parseString>>;
+    try {
+      feed = await parser.parseString(text);
+    } catch {
+      // Malformed feed content — treat as permanent; mark invalid so we stop polling.
+      db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
+      return 0;
+    }
     let newCount = 0;
 
     for (const item of feed.items ?? []) {
@@ -137,8 +174,10 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
     ).run(now, feedId);
 
     return newCount;
-  } catch {
-    db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
+  } catch (err) {
+    // Network-level exception (DNS failure, timeout, connection refused) — transient;
+    // do not mark invalid so it will be retried next poll.
+    console.warn(`[rss] Network error polling feed ${feedId}:`, err);
     return 0;
   }
 }

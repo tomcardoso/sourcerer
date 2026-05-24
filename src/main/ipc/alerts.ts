@@ -23,7 +23,7 @@ export function registerAlertHandlers(): void {
       db.prepare(
         `INSERT INTO contact_alert_rss (id, contact_id, rss_url) VALUES (?, ?, ?)`,
       ).run(id, contactId, rssUrl);
-      pollContactRss(contactId).catch(() => {});
+      pollContactRss(contactId).catch((err) => console.error('[rss] initial poll failed:', err));
     },
   );
 

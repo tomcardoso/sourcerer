@@ -2,7 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
-import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType } from './sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType, isBlockedHost } from './sanitize';
 import { triggerWaybackSave } from './ipc/contacts';
 
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
@@ -254,6 +254,9 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
         }
         const rawUrl = typeof url === 'string' ? url.trim() || null : null;
         if (rawUrl && !validateUrl(rawUrl)) {
+          json(res, 400, { error: 'URL is invalid.' }); return;
+        }
+        if (rawUrl && isBlockedHost(rawUrl)) {
           json(res, 400, { error: 'URL is invalid.' }); return;
         }
         const rawOrg = typeof organization === 'string' ? organization.trim() || null : null;
