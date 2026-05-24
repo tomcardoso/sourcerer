@@ -50,6 +50,8 @@ export function registerScreenshotHandlers(): void {
       const entry = consumePendingScreenshot(tempId);
       if (!entry) return { success: false, error: 'Screenshot expired or not found.' };
 
+      let insertedId: string | null = null;
+      let fileAttemptedPath: string | null = null;
       try {
         const dir = screenshotsDir();
         await fs.mkdir(dir, { recursive: true });
@@ -60,17 +62,28 @@ export function registerScreenshotHandlers(): void {
         const id = randomUUID();
         const fileName = `${id}.enc`;
         const filePath = path.join(dir, fileName);
-        await fs.writeFile(filePath, encrypted);
 
         const db = getDatabase();
-        db.prepare(
-          `INSERT INTO contact_screenshots (id, contact_id, tab_url, file_path, iv, captured_at)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-        ).run(id, contactId, entry.tabUrl, fileName, iv, Math.floor(Date.now() / 1000));
+        db.transaction(() => {
+          db.prepare(
+            `INSERT INTO contact_screenshots (id, contact_id, tab_url, file_path, iv, captured_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          ).run(id, contactId, entry.tabUrl, fileName, iv, Math.floor(Date.now() / 1000));
+        })();
+        insertedId = id;
+
+        fileAttemptedPath = filePath;
+        await fs.writeFile(filePath, encrypted);
 
         BrowserWindow.getAllWindows()[0]?.webContents.send('screenshots:assigned', contactId);
         return { success: true };
       } catch (err) {
+        try {
+          if (insertedId) getDatabase().prepare('DELETE FROM contact_screenshots WHERE id = ?').run(insertedId);
+        } catch { /* ignore cleanup errors */ }
+        try {
+          if (fileAttemptedPath) await fs.unlink(fileAttemptedPath);
+        } catch { /* ignore cleanup errors */ }
         return { success: false, error: String(err) };
       }
     },
@@ -155,10 +168,12 @@ export function registerScreenshotHandlers(): void {
       const row = db
         .prepare('SELECT file_path FROM contact_screenshots WHERE id = ?')
         .get(screenshotId) as { file_path: string } | undefined;
-      db.prepare('DELETE FROM contact_screenshots WHERE id = ?').run(screenshotId);
       if (row) {
-        await fs.unlink(safeScreenshotPath(row.file_path)).catch(() => {});
+        await fs.unlink(safeScreenshotPath(row.file_path)).catch((err) => {
+          if (err.code !== 'ENOENT') throw err;
+        });
       }
+      db.prepare('DELETE FROM contact_screenshots WHERE id = ?').run(screenshotId);
     },
   );
 

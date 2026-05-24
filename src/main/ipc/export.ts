@@ -1,8 +1,26 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
+import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
+import { rename, unlink } from 'fs/promises';
 import ExcelJS from 'exceljs';
+import path from 'path';
 import { getDatabase } from '../database';
 import { filenameDateStamp } from '../utils';
+
+// rename() on Windows throws EEXIST when the destination already exists.
+// This helper handles that by unlinking the destination and retrying once.
+async function atomicRename(tmpPath: string, destPath: string): Promise<void> {
+  try {
+    await rename(tmpPath, destPath);
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+      await unlink(destPath);
+      await rename(tmpPath, destPath);
+    } else {
+      throw err;
+    }
+  }
+}
 
 interface ExportRow {
   Name: string;
@@ -214,6 +232,7 @@ export function registerExportHandlers(): void {
         });
       }
 
+      const tmpPath = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
       try {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Contacts');
@@ -222,12 +241,14 @@ export function registerExportHandlers(): void {
         }
         ws.addRows(rows);
         if (isXlsx) {
-          await wb.xlsx.writeFile(filePath);
+          await wb.xlsx.writeFile(tmpPath);
         } else {
-          await wb.csv.writeFile(filePath);
+          await wb.csv.writeFile(tmpPath);
         }
+        await atomicRename(tmpPath, filePath);
         return { success: true };
       } catch (err) {
+        await unlink(tmpPath).catch(() => {});
         return { success: false, error: String(err) };
       }
     },
@@ -317,6 +338,7 @@ export function registerExportHandlers(): void {
         };
       });
 
+      const tmpPath2 = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
       try {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Contacts');
@@ -325,12 +347,14 @@ export function registerExportHandlers(): void {
         }
         ws.addRows(rows);
         if (isXlsx) {
-          await wb.xlsx.writeFile(filePath);
+          await wb.xlsx.writeFile(tmpPath2);
         } else {
-          await wb.csv.writeFile(filePath);
+          await wb.csv.writeFile(tmpPath2);
         }
+        await atomicRename(tmpPath2, filePath);
         return { success: true };
       } catch (err) {
+        await unlink(tmpPath2).catch(() => {});
         return { success: false, error: String(err) };
       }
     },
