@@ -11,12 +11,14 @@ function startOfDay(d: Date): number {
 
 export function fmtLogDate(ts: number): string {
   const ms = ts * 1000;
-  const todayStart = startOfDay(new Date());
-  const yesterdayStart = todayStart - 86400000;
-  if (ms >= todayStart && ms < todayStart + 86400000) return 'today';
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const yesterdayStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const tomorrowStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  if (ms >= todayStart && ms < tomorrowStart) return 'today';
   if (ms >= yesterdayStart && ms < todayStart) return 'yesterday';
   const d = new Date(ms);
-  const diffDays = Math.floor((todayStart - startOfDay(d)) / 86400000);
+  const diffDays = Math.round((todayStart - startOfDay(d)) / 86400000);
   if (diffDays < 7) return `${diffDays} days ago`;
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');

@@ -27,12 +27,14 @@ function startOfDay(d: Date): number {
  */
 export function fmtDateRelative(ts: number | null, fetched: number): string {
   const d = new Date((ts ?? fetched) * 1000);
-  const todayStart = startOfDay(new Date());
-  const yesterdayStart = todayStart - 86400000;
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const yesterdayStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const tomorrowStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
   const ms = d.getTime();
-  if (ms >= todayStart && ms < todayStart + 86400000) return 'Today';
+  if (ms >= todayStart && ms < tomorrowStart) return 'Today';
   if (ms >= yesterdayStart && ms < todayStart) return 'Yesterday';
-  const diffDays = Math.floor((todayStart - startOfDay(d)) / 86400000);
+  const diffDays = Math.round((todayStart - startOfDay(d)) / 86400000);
   if (diffDays < 7) return `${diffDays}d ago`;
   if (d.getFullYear() === new Date().getFullYear()) {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
