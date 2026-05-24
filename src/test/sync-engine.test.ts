@@ -254,3 +254,110 @@ describe('syncProject — membership conflict guard', () => {
     expect(ip?.membership_id).toBe(sharedMembershipId);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Push path: local-only contact appears in shared DB after sync (#263)
+// ---------------------------------------------------------------------------
+
+describe('syncProject — push path', () => {
+  it('pushes a local contact to the shared DB when it has never been synced', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Push Test Project');
+
+    const localContactId = insertContact(localDb, 'Push Alice', { emails: ['push-alice@example.com'] });
+    localInsertMembership(localDb, localContactId, projectId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    // Contact should now exist in the shared DB
+    const sharedContact = sharedDb.prepare('SELECT id, name FROM contacts WHERE id = ?').get(localContactId) as { id: string; name: string } | undefined;
+    expect(sharedContact).toBeDefined();
+    expect(sharedContact!.name).toBe('Push Alice');
+
+    // Email should also be in the shared DB
+    const sharedEmail = sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').get(localContactId) as { email: string } | undefined;
+    expect(sharedEmail?.email).toBe('push-alice@example.com');
+  });
+
+  it('does not re-push an already-synced contact when it has not changed', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Push Test Project 2');
+
+    const localContactId = insertContact(localDb, 'Stable Contact', { emails: ['stable@example.com'] });
+    localInsertMembership(localDb, localContactId, projectId);
+
+    // First sync: pushes the contact
+    syncProject(localDb, sharedDb, projectId);
+
+    // Overwrite the shared contact name directly to detect if a second push happens
+    sharedDb.prepare('UPDATE contacts SET name = ? WHERE id = ?').run('Modified By Other', localContactId);
+
+    // Second sync: the contact's synced_at >= updated_at so it should NOT be pushed again
+    syncProject(localDb, sharedDb, projectId);
+
+    const sharedContact = sharedDb.prepare('SELECT name FROM contacts WHERE id = ?').get(localContactId) as { name: string };
+    // The shared name was changed externally and the local contact has not been updated,
+    // so the push should not have overwritten the shared DB name.
+    expect(sharedContact.name).toBe('Modified By Other');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// LWW (last-write-wins): newer version should win (#268)
+// ---------------------------------------------------------------------------
+
+describe('syncProject — last-write-wins (LWW)', () => {
+  it('shared version wins when it has a newer updated_at', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'LWW Project');
+
+    const contactId = uuidv4();
+    const localTs = NOW - 200;
+    const sharedTs = NOW - 10; // shared is newer
+
+    // Insert contact in both DBs with the same ID but different names and timestamps
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Local Name', localTs, localTs);
+    localDb.prepare('UPDATE contacts SET synced_at = ? WHERE id = ?').run(localTs, contactId);
+    sharedInsertContact(sharedDb, contactId, 'Shared Name', { updatedAt: sharedTs });
+    localInsertMembership(localDb, contactId, projectId);
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    // The shared (newer) version should overwrite the local name
+    const row = localDb.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string };
+    expect(row.name).toBe('Shared Name');
+  });
+
+  it('local version wins when it has a newer updated_at', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'LWW Project 2');
+
+    const contactId = uuidv4();
+    const localTs = NOW - 10;  // local is newer
+    const sharedTs = NOW - 200;
+
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Local Name', localTs, localTs);
+    // synced_at is NULL so push will fire
+    sharedInsertContact(sharedDb, contactId, 'Shared Name', { updatedAt: sharedTs });
+    localInsertMembership(localDb, contactId, projectId);
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    // Local is newer, so shared DB should now have the local name
+    const sharedRow = sharedDb.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string };
+    expect(sharedRow.name).toBe('Local Name');
+
+    // Local DB should still have local name (shared was not newer so no overwrite)
+    const localRow = localDb.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string };
+    expect(localRow.name).toBe('Local Name');
+  });
+});
