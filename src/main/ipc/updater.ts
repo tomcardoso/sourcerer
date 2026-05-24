@@ -201,12 +201,11 @@ export function registerUpdaterHandlers(): void {
     }
   });
   ipcMain.handle('update:get-state', () => cachedUpdateInfo);
-  ipcMain.handle('update:show-error', (_event, message: string) => {
+  ipcMain.handle('update:show-error', () => {
     return dialog.showMessageBox({
       type: 'error',
       title: 'Update failed',
       message: 'The update could not be downloaded. Please try again.',
-      detail: message,
     });
   });
 

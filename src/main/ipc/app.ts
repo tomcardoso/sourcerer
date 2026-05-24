@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { getDatabase } from '../database';
 import { autoLock } from '../auto-lock';
-import type { User } from '@shared/types';
+import { getSafeUser } from './settings';
 
 export function registerAppHandlers(): void {
   ipcMain.handle('app:expand-for-setup', (event): void => {
@@ -13,18 +13,9 @@ export function registerAppHandlers(): void {
     autoLock.lock();
   });
 
-  ipcMain.handle('app:get-user', (): User => {
+  ipcMain.handle('app:get-user', (): ReturnType<typeof getSafeUser> => {
     // calendar_token is a sensitive secret; it is exposed only via the dedicated
     // settings:get-calendar-url handler which constructs the full URL server-side.
-    return getDatabase()
-      .prepare(
-        `SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
-                phone_country, outreach_reminders_enabled, outreach_require_interaction,
-                staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
-                reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
-                CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured
-         FROM users WHERE id = 1`,
-      )
-      .get() as User;
+    return getSafeUser(getDatabase());
   });
 }

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 const URL_PATTERN = /https?:\/\/[^\s<>"',;]+/g;
 
-function safeOpen(url: string): void {
+export function safeOpen(url: string): void {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return;
