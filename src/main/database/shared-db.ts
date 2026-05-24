@@ -103,17 +103,22 @@ export function createSharedDb(
   // random key will never match whatever encryption an existing file has.)
   try { fs.unlinkSync(filePath); } catch { /* file doesn't exist — fine */ }
   const db = new Database(filePath);
-  db.pragma(`cipher='sqlcipher'`);
-  db.pragma(`key="x'${keyHex}'"`);
-  db.pragma('foreign_keys = ON');
-  db.pragma('busy_timeout = 5000');
-  db.exec(SHARED_SCHEMA_SQL);
-  db.pragma(`user_version = ${SHARED_DB_VERSION}`);
-  // Record the creating client's version so older clients get a clear error
-  // if a future migration ever requires a minimum app version.
-  db.prepare(
-    `INSERT OR REPLACE INTO shared_meta (key, value) VALUES ('created_by_version', ?)`
-  ).run(app.getVersion());
+  try {
+    db.pragma(`cipher='sqlcipher'`);
+    db.pragma(`key="x'${keyHex}'"`);
+    db.pragma('foreign_keys = ON');
+    db.pragma('busy_timeout = 5000');
+    db.exec(SHARED_SCHEMA_SQL); // db.exec is better-sqlite3, not child_process
+    db.pragma(`user_version = ${SHARED_DB_VERSION}`);
+    // Record the creating client's version so older clients get a clear error
+    // if a future migration ever requires a minimum app version.
+    db.prepare(
+      `INSERT OR REPLACE INTO shared_meta (key, value) VALUES ('created_by_version', ?)`
+    ).run(app.getVersion());
+  } catch (err) {
+    try { db.close(); } catch { /* ignore */ }
+    throw err;
+  }
   connections.set(projectId, db);
   return db;
 }

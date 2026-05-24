@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { randomBytes } from 'crypto';
+import { unlinkSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import { createSharedDb, openSharedDb, closeSharedDb, rekeySharedDb } from '../database/shared-db';
@@ -55,28 +56,53 @@ export function registerProjectHandlers(): void {
       const trimmedName = name.trim();
       const trimmedDesc = description?.trim() || null;
 
-      // 2. Create the shared DB file and write project metadata
-      const sharedDb = createSharedDb(filePath, keyHex, id);
-      sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-        trimmedName,
-        trimmedDesc,
-      );
+      // True cross-DB atomicity is not possible with two separate SQLite files.
+      // To minimise inconsistency we write to the shared DB first (harder to undo)
+      // and to the local DB second.  If the local write fails we attempt a
+      // compensating delete on the shared DB and re-throw (fixes #176).
 
-      // 3. Create the local project record
-      db.prepare(
-        `INSERT INTO projects (id, name, description, is_shared, shared_db_path, shared_db_key, created_at)
-         VALUES (?, ?, ?, 1, ?, ?, ?)`,
-      ).run(id, trimmedName, trimmedDesc, filePath, keyBytes, now);
+      // 2. Create the shared DB file and write project metadata.
+      // Guard shared-DB creation separately so a failure here also cleans up.
+      let sharedDb: ReturnType<typeof createSharedDb>;
+      try {
+        sharedDb = createSharedDb(filePath, keyHex, id);
+        sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
+          trimmedName,
+          trimmedDesc,
+        );
+      } catch (sharedErr) {
+        try { closeSharedDb(id); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
+        throw sharedErr;
+      }
 
-      // 4. Add self to project_reporters
-      db.prepare(
-        'INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
-      ).run(
-        uuidv4(),
-        id,
-        `${user.first_name} ${user.last_name}`.trim(),
-        user.email,
-      );
+      // 3. Create the local project record + reporter row in a single transaction.
+      try {
+        db.transaction(() => {
+          db.prepare(
+            `INSERT INTO projects (id, name, description, is_shared, shared_db_path, shared_db_key, created_at)
+             VALUES (?, ?, ?, 1, ?, ?, ?)`,
+          ).run(id, trimmedName, trimmedDesc, filePath, keyBytes, now);
+
+          // 4. Add self to project_reporters
+          db.prepare(
+            'INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
+          ).run(
+            uuidv4(),
+            id,
+            `${user.first_name} ${user.last_name}`.trim(),
+            user.email,
+          );
+        })();
+      } catch (localErr) {
+        // Best-effort compensating action: evict the shared DB connection and
+        // remove both the in-file record and the on-disk file so no handle or
+        // orphaned file is left behind.
+        try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
+        try { closeSharedDb(id); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
+        throw localErr;
+      }
 
       const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
       const payload = encodePayload(trimmedName, trimmedDesc, filePath, keyBytes);
@@ -210,39 +236,64 @@ export function registerProjectHandlers(): void {
       const keyHex = keyBytes.toString('hex');
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
 
-      // Create shared DB and write project metadata
-      const sharedDb = createSharedDb(filePath, keyHex, projectId);
-      sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-        project.name,
-        project.description,
-      );
+      // True cross-DB atomicity is not possible with two separate SQLite files.
+      // Write to the shared DB first (harder to undo), then update the local DB.
+      // If the local write fails, attempt a compensating delete on the shared DB
+      // and re-throw (fixes #176).
 
-      // Add self as a reporter (local projects don't have this row yet)
-      db.prepare(
-        'INSERT OR IGNORE INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
-      ).run(
-        uuidv4(),
-        projectId,
-        `${user.first_name} ${user.last_name}`.trim(),
-        user.email,
-      );
-
-      // Upgrade local project record to shared
-      db.prepare(
-        'UPDATE projects SET is_shared = 1, shared_db_path = ?, shared_db_key = ? WHERE id = ?',
-      ).run(filePath, keyBytes, projectId);
-
-      // Reset synced_at so all existing contacts/memberships are treated as
-      // unsynced and get pushed to the new shared file on the first sync.
-      const memberContactIds = (db
-        .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
-        .all(projectId) as { contact_id: string }[])
-        .map((r) => r.contact_id);
-      if (memberContactIds.length > 0) {
-        const ph = memberContactIds.map(() => '?').join(',');
-        db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
+      // Create shared DB and write project metadata.
+      // Guard shared-DB creation separately so a failure here also cleans up.
+      let sharedDb: ReturnType<typeof createSharedDb>;
+      try {
+        sharedDb = createSharedDb(filePath, keyHex, projectId);
+        sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
+          project.name,
+          project.description,
+        );
+      } catch (sharedErr) {
+        try { closeSharedDb(projectId); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
+        throw sharedErr;
       }
-      db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+
+      try {
+        db.transaction(() => {
+          // Add self as a reporter (local projects don't have this row yet)
+          db.prepare(
+            'INSERT OR IGNORE INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
+          ).run(
+            uuidv4(),
+            projectId,
+            `${user.first_name} ${user.last_name}`.trim(),
+            user.email,
+          );
+
+          // Upgrade local project record to shared
+          db.prepare(
+            'UPDATE projects SET is_shared = 1, shared_db_path = ?, shared_db_key = ? WHERE id = ?',
+          ).run(filePath, keyBytes, projectId);
+
+          // Reset synced_at so all existing contacts/memberships are treated as
+          // unsynced and get pushed to the new shared file on the first sync.
+          const memberContactIds = (db
+            .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
+            .all(projectId) as { contact_id: string }[])
+            .map((r) => r.contact_id);
+          if (memberContactIds.length > 0) {
+            const ph = memberContactIds.map(() => '?').join(',');
+            db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
+          }
+          db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+        })();
+      } catch (localErr) {
+        // Best-effort compensating action: evict the shared DB connection and
+        // remove both the in-file record and the on-disk file so no handle or
+        // orphaned file is left behind.
+        try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
+        try { closeSharedDb(projectId); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
+        throw localErr;
+      }
 
       // Push all existing local data to the shared file
       try {
@@ -333,8 +384,10 @@ export function registerProjectHandlers(): void {
       const newKeyBytes = randomBytes(32);
       const newKeyHex = newKeyBytes.toString('hex');
 
+      // Rekey the shared file first; only update the local record after success.
+      // This way a crash during rekey leaves local pointing at the still-valid
+      // old key rather than a new key that doesn't match the file (fixes #178).
       rekeySharedDb(projectId, project.shared_db_path, oldKeyHex, newKeyHex);
-
       db.prepare('UPDATE projects SET shared_db_key = ? WHERE id = ?').run(newKeyBytes, projectId);
 
       const payload = encodePayload(

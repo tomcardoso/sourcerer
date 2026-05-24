@@ -26,28 +26,42 @@ export function syncProject(
   sharedDb: Database.Database,
   projectId: string,
 ): SyncResult {
+  // better-sqlite3 does not allow nesting transactions from two different
+  // database connections — attempting to do so throws "cannot start a transaction
+  // within a transaction".  Structure the sync as four sequential phases instead:
+  //   1. Read everything needed from both DBs (outside any transaction).
+  //   2. Write pull results to localDb in one transaction.
+  //   3. Write push results to sharedDb in one transaction.
+  //   4. Stamp localDb metadata (last_synced_at) in a final local transaction.
+  // (fixes #224)
   try {
     const now = Math.floor(Date.now() / 1000);
 
+    // Phase 1: reads happen inside the pull/push helpers themselves; no outer
+    // transaction is needed for reads.
+
+    // Phase 2: pull from shared → local
     localDb.transaction(() => {
-      sharedDb.transaction(() => {
-        pullContacts(localDb, sharedDb);
-        pullMemberships(localDb, sharedDb, projectId, now);
-        pullAppendOnly(localDb, sharedDb);
-      })();
+      pullContacts(localDb, sharedDb);
+      pullMemberships(localDb, sharedDb, projectId, now);
+      pullAppendOnly(localDb, sharedDb);
+    })();
 
-      const memberRows = localDb
-        .prepare('SELECT id, contact_id FROM project_memberships WHERE project_id = ?')
-        .all(projectId) as { id: string; contact_id: string }[];
-      const contactIds = memberRows.map((r) => r.contact_id);
-      const membershipIds = memberRows.map((r) => r.id);
+    // Phase 3: push from local → shared
+    const memberRows = localDb
+      .prepare('SELECT id, contact_id FROM project_memberships WHERE project_id = ?')
+      .all(projectId) as { id: string; contact_id: string }[];
+    const contactIds = memberRows.map((r) => r.contact_id);
+    const membershipIds = memberRows.map((r) => r.id);
 
-      sharedDb.transaction(() => {
-        pushContacts(localDb, sharedDb, contactIds, now);
-        pushMemberships(localDb, sharedDb, projectId, now);
-        pushAppendOnly(localDb, sharedDb, contactIds, membershipIds, now);
-      })();
+    sharedDb.transaction(() => {
+      pushContacts(localDb, sharedDb, contactIds, now);
+      pushMemberships(localDb, sharedDb, projectId, now);
+      pushAppendOnly(localDb, sharedDb, contactIds, membershipIds, now);
+    })();
 
+    // Phase 4: stamp sync metadata on the local project record
+    localDb.transaction(() => {
       localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
     })();
 
