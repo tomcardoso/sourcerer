@@ -51,6 +51,7 @@ export function registerScreenshotHandlers(): void {
       if (!entry) return { success: false, error: 'Screenshot expired or not found.' };
 
       let insertedId: string | null = null;
+      let fileAttemptedPath: string | null = null;
       try {
         const dir = screenshotsDir();
         await fs.mkdir(dir, { recursive: true });
@@ -71,15 +72,18 @@ export function registerScreenshotHandlers(): void {
         })();
         insertedId = id;
 
+        fileAttemptedPath = filePath;
         await fs.writeFile(filePath, encrypted);
 
         BrowserWindow.getAllWindows()[0]?.webContents.send('screenshots:assigned', contactId);
         return { success: true };
       } catch (err) {
-        if (insertedId) {
-          const db = getDatabase();
-          db.prepare('DELETE FROM contact_screenshots WHERE id = ?').run(insertedId);
-        }
+        try {
+          if (insertedId) getDatabase().prepare('DELETE FROM contact_screenshots WHERE id = ?').run(insertedId);
+        } catch { /* ignore cleanup errors */ }
+        try {
+          if (fileAttemptedPath) await fs.unlink(fileAttemptedPath);
+        } catch { /* ignore cleanup errors */ }
         return { success: false, error: String(err) };
       }
     },
