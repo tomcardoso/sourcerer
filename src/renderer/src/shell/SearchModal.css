@@ -1,35 +1,21 @@
-@keyframes search-overlay-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes search-card-in {
-  from { opacity: 0; transform: translateY(-10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.search-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
+/* Override overlay alignment for the search modal — it sits near the top */
+.modal-overlay:has(.search-modal) {
   align-items: flex-start;
-  justify-content: center;
   padding-top: 18vh;
-  z-index: 9999;
-  animation: search-overlay-in 150ms ease both;
 }
 
-.search-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0;
+.search-modal {
   width: 480px;
   max-height: 440px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
   overflow: hidden;
-  animation: search-card-in 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  padding: 0;
+}
+
+/* Hide the Modal title — search has no visible heading */
+.search-modal .modal-title {
+  display: none;
 }
 
 .search-input-row {
