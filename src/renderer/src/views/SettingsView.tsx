@@ -646,6 +646,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 type="password"
                 value={archiveAccessKey}
                 onChange={(e) => setArchiveAccessKey(e.target.value)}
+                placeholder={user?.wayback_keys_configured !== 0 ? 'saved — enter to replace' : ''}
                 autoComplete="new-password"
                 disabled={!waybackEnabled}
               />
@@ -657,6 +658,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 type="password"
                 value={archiveSecretKey}
                 onChange={(e) => setArchiveSecretKey(e.target.value)}
+                placeholder={user?.wayback_keys_configured !== 0 ? 'saved — enter to replace' : ''}
                 autoComplete="new-password"
                 disabled={!waybackEnabled}
               />
@@ -667,6 +669,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           </div>
           {archiveKeysSaved && (
             <p className="sv-success">Keys saved.</p>
+          )}
+          {!archiveKeysSaved && waybackEnabled && user?.wayback_keys_configured === 0 && (
+            <p className="sv-error">No keys saved — archiving won&apos;t work until you add and save your keys.</p>
           )}
           <p className="sv-hint sv-hint--top">
             Required for Wayback Machine submissions. Get your keys at{' '}
