@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import type { Project } from '@shared/types';
 import Modal from './Modal';
 import Button from './Button';
@@ -17,20 +17,28 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handlePayloadChange(value: string) {
-    setPayload(value);
+  useEffect(() => {
     setPreview(null);
     setPreviewError(null);
     setSelectedPath(null);
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    const result = await window.sourcerer.decodePayload(trimmed);
-    if (result.success && result.name) {
-      setPreview({ name: result.name, originalFilename: result.originalFilename ?? '' });
-    } else if (!result.success) {
-      setPreviewError(result.error ?? 'Invalid setup link.');
-    }
-  }
+    if (!payload.trim()) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const result = await window.sourcerer.decodePayload(payload.trim());
+        if (!cancelled) {
+          if (result.success && result.name) {
+            setPreview({ name: result.name, originalFilename: result.originalFilename ?? '' });
+          } else if (!result.success) {
+            setPreviewError(result.error ?? 'Invalid setup link.');
+          }
+        }
+      } catch {
+        if (!cancelled) setPreviewError('Invalid or unrecognised setup link.');
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [payload]);
 
   async function handleLocate() {
     const path = await window.sourcerer.openFileDialog();
@@ -74,7 +82,7 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
               className="join-payload-input"
               placeholder="Paste the setup link from your colleague…"
               value={payload}
-              onChange={(e) => handlePayloadChange(e.target.value)}
+              onChange={(e) => setPayload(e.target.value)}
               disabled={submitting}
               autoFocus
             />

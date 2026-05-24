@@ -19,6 +19,11 @@ export default function ScreenshotPanel({ contactId }: Props) {
   const imageAreaRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const inFlightRef = useRef<Set<string>>(new Set());
+  // Ref always holds the latest screenshotImages so async callbacks and the
+  // loadAll effect can check current state without a stale closure.
+  const screenshotImagesRef = useRef<Record<string, string>>({});
+  screenshotImagesRef.current = screenshotImages;
 
   useEffect(() => {
     window.sourcerer.listScreenshots(contactId).then(setScreenshots);
@@ -33,10 +38,28 @@ export default function ScreenshotPanel({ contactId }: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    for (const s of screenshots) {
-      loadScreenshotImage(s.id);
+    let cancelled = false;
+
+    async function loadAll() {
+      for (const s of screenshots) {
+        if (cancelled) return;
+        if (screenshotImagesRef.current[s.id]) continue;
+        const result = await window.sourcerer.loadScreenshot(s.id);
+        if (cancelled) return;
+        if ('data' in result) {
+          setScreenshotImages((prev) => ({ ...prev, [s.id]: result.data }));
+        } else {
+          console.error('[screenshot] load failed for', s.id, '—', result.error);
+          setScreenshotImages((prev) => ({ ...prev, [s.id]: `error:${result.error}` }));
+        }
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    loadAll().catch(console.error);
+
+    return () => {
+      cancelled = true;
+    };
   }, [screenshots]);
 
   useEffect(() => {
@@ -47,13 +70,18 @@ export default function ScreenshotPanel({ contactId }: Props) {
   }, [viewingScreenshot]);
 
   async function loadScreenshotImage(id: string) {
-    if (screenshotImages[id]) return;
-    const result = await window.sourcerer.loadScreenshot(id);
-    if ('data' in result) {
-      setScreenshotImages((prev) => ({ ...prev, [id]: result.data }));
-    } else {
-      console.error('[screenshot] load failed for', id, '—', result.error);
-      setScreenshotImages((prev) => ({ ...prev, [id]: `error:${result.error}` }));
+    if (screenshotImagesRef.current[id] || inFlightRef.current.has(id)) return;
+    inFlightRef.current.add(id);
+    try {
+      const result = await window.sourcerer.loadScreenshot(id);
+      if ('data' in result) {
+        setScreenshotImages((prev) => ({ ...prev, [id]: result.data }));
+      } else {
+        console.error('[screenshot] load failed for', id, '—', result.error);
+        setScreenshotImages((prev) => ({ ...prev, [id]: `error:${result.error}` }));
+      }
+    } finally {
+      inFlightRef.current.delete(id);
     }
   }
 
