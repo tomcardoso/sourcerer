@@ -21,17 +21,23 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
     setPreview(null);
     setPreviewError(null);
     setSelectedPath(null);
-    const trimmed = payload.trim();
-    if (!trimmed) return;
-    const timer = setTimeout(async () => {
-      const result = await window.sourcerer.decodePayload(trimmed);
-      if (result.success && result.name) {
-        setPreview({ name: result.name, originalFilename: result.originalFilename ?? '' });
-      } else if (!result.success) {
-        setPreviewError(result.error ?? 'Invalid setup link.');
+    if (!payload.trim()) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const result = await window.sourcerer.decodePayload(payload.trim());
+        if (!cancelled) {
+          if (result.success && result.name) {
+            setPreview({ name: result.name, originalFilename: result.originalFilename ?? '' });
+          } else if (!result.success) {
+            setPreviewError(result.error ?? 'Invalid setup link.');
+          }
+        }
+      } catch {
+        if (!cancelled) setPreviewError('Invalid or unrecognised setup link.');
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [payload]);
 
   async function handleLocate() {

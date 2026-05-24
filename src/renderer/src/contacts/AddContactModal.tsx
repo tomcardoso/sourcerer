@@ -86,7 +86,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
-    window.sourcerer.listProjects().then(setProjects);
+    window.sourcerer.listProjects().then((p) => { if (mounted.current) setProjects(p); });
   }, []);
 
   const handleCloseProjectDropdown = useCallback(() => setProjectDropdownOpen(false), []);
