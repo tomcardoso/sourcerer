@@ -113,7 +113,8 @@ export function isDatabaseOpen(): boolean {
 }
 
 // Increment when adding a new migration block below.
-const DB_VERSION = 1;
+// Exported for test instrumentation only.
+export const DB_VERSION = 1;
 
 /**
  * Runs schema migrations against an existing database using user_version as

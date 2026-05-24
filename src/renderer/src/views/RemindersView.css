@@ -247,7 +247,7 @@
   font-size: 10px;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  border-radius: 3px;
+  border-radius: 0;
   padding: 1px 4px;
   color: var(--color-text-muted);
   background: var(--color-surface-2);
