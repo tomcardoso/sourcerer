@@ -58,7 +58,7 @@ function insertUser(
 ): void {
   const now = Math.floor(Date.now() / 1000);
   testDb.prepare(
-    `INSERT INTO users
+    `INSERT OR REPLACE INTO users
        (id, first_name, last_name, email, created_at, calendar_token,
         outreach_reminders_enabled, outreach_require_interaction)
      VALUES (1, 'Test', 'User', ?, ?, 'tok', ?, ?)`,

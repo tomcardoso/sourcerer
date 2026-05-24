@@ -121,13 +121,13 @@ export default function AppShell() {
       setUpdateVersion(version);
       setUpdateState('ready');
     });
-    const offError = window.sourcerer.onUpdateError(({ message }) => {
+    const offError = window.sourcerer.onUpdateError(() => {
       // update:error is only sent for download-phase failures (check errors are handled
       // by the main process directly). Revert to 'available' if we were downloading or
       // ready (a post-download verification error), then show a main-process dialog.
       if (updateStateRef.current === 'downloading' || updateStateRef.current === 'ready') {
         setUpdateState('available');
-        window.sourcerer.showUpdateError(message);
+        window.sourcerer.showUpdateError();
       }
     });
     // Replay any update event that fired before AppShell mounted (e.g. the
@@ -156,6 +156,8 @@ export default function AppShell() {
   function openGlobalContact(id: string) {
     if (globalContactId === id) { closeGlobalContact(); return; }
     setGlobalContactId(id);
+    // Signal any open sub-modals (e.g. LogAllModal in another ContactDetail) to close.
+    window.dispatchEvent(new Event('sourcerer:global-nav'));
   }
 
   function closeGlobalContact() {
@@ -223,8 +225,7 @@ export default function AppShell() {
                 } catch (err) {
                   setUpdatePercent(null);
                   setUpdateState('available');
-                  const message = err instanceof Error ? err.message : String(err);
-                  window.sourcerer.showUpdateError(message);
+                  window.sourcerer.showUpdateError();
                 }
               }}
             >
@@ -311,6 +312,16 @@ export default function AppShell() {
           <Timeline user={user} />
         ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
+        {globalContactId && (
+          <ContactDetail
+            contactId={globalContactId}
+            onClose={closeGlobalContact}
+            onDeleted={closeGlobalContact}
+            onUpdated={() => {}}
+            user={user}
+            closing={globalDrawerClosing}
+          />
+        )}
       </main>
 
       {searchOpen && (
@@ -377,16 +388,6 @@ export default function AppShell() {
             setShowQuickReminder(false);
             refreshOverdue();
           }}
-        />
-      )}
-      {globalContactId && (
-        <ContactDetail
-          contactId={globalContactId}
-          onClose={closeGlobalContact}
-          onDeleted={closeGlobalContact}
-          onUpdated={() => {}}
-          user={user}
-          closing={globalDrawerClosing}
         />
       )}
       </div>

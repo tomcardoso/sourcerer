@@ -246,9 +246,9 @@ declare global {
       onUpdateError: (callback: (info: { message: string }) => void) => () => void;
       downloadUpdate: () => Promise<void>;
       quitAndInstall: () => Promise<void>;
-      simulateUpdate: () => Promise<void>;
+      simulateUpdate?: () => Promise<void>;
       getUpdateState: () => Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null>;
-      showUpdateError: (message: string) => Promise<void>;
+      showUpdateError: () => Promise<void>;
     };
   }
 }

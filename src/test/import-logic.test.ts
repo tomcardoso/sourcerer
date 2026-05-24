@@ -257,3 +257,41 @@ describe('processImportRows — project membership', () => {
     expect(membership.priority).toBeNull();
   });
 });
+
+describe('processImportRows — timestamp assertions (#316)', () => {
+  it('inserted contacts have non-zero created_at and updated_at', () => {
+    processImportRows(
+      [['Name', 'Email'], ['Alice Smith', 'alice@example.com']],
+      db,
+      BASE_OPTS,
+    );
+    const row = db.prepare('SELECT created_at, updated_at FROM contacts WHERE name = ?').get('Alice Smith') as { created_at: number; updated_at: number } | undefined;
+    expect(row).toBeDefined();
+    expect(row!.created_at).toBeGreaterThan(0);
+    expect(row!.updated_at).toBeGreaterThan(0);
+  });
+
+  it('inserted contact_emails have non-zero created_at', () => {
+    processImportRows(
+      [['Name', 'Email'], ['Bob Jones', 'bob@example.com']],
+      db,
+      BASE_OPTS,
+    );
+    const contact = db.prepare('SELECT id FROM contacts WHERE name = ?').get('Bob Jones') as { id: string };
+    const emailRow = db.prepare('SELECT created_at FROM contact_emails WHERE contact_id = ?').get(contact.id) as { created_at: number } | undefined;
+    expect(emailRow).toBeDefined();
+    expect(emailRow!.created_at).toBeGreaterThan(0);
+  });
+
+  it('inserted contact_phones have non-zero created_at', () => {
+    processImportRows(
+      [['Name', 'Phone'], ['Carol Davis', '+12024561111']],
+      db,
+      BASE_OPTS,
+    );
+    const contact = db.prepare('SELECT id FROM contacts WHERE name = ?').get('Carol Davis') as { id: string };
+    const phoneRow = db.prepare('SELECT created_at FROM contact_phones WHERE contact_id = ?').get(contact.id) as { created_at: number } | undefined;
+    expect(phoneRow).toBeDefined();
+    expect(phoneRow!.created_at).toBeGreaterThan(0);
+  });
+});

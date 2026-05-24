@@ -1,52 +1,15 @@
-.dedup-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0;
+.dedup-modal {
   width: 720px;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-.dedup-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.dedup-header-right {
+.dedup-meta-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
-}
-
-.dedup-header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-}
-
-.dedup-header-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dedup-reason-desc {
-  font-size: 14px;
-  color: var(--color-text);
-}
-
-.dedup-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text);
+  margin-bottom: 6px;
 }
 
 .dedup-reason {

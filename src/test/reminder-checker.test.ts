@@ -22,7 +22,7 @@ const MockNotification = vi.mocked(Notification as unknown as new (...args: unkn
 function insertUser(overrides: { reminder_notifications_enabled?: number } = {}): void {
   const now = Math.floor(Date.now() / 1000);
   testDb.prepare(
-    `INSERT INTO users
+    `INSERT OR REPLACE INTO users
        (id, first_name, last_name, email, created_at, calendar_token,
         outreach_reminders_enabled, outreach_require_interaction,
         reminder_notifications_enabled)

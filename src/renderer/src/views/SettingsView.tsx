@@ -131,8 +131,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
       setRssPollIntervalHours(user.rss_poll_interval_hours ?? 6);
       setWaybackEnabled(user.wayback_enabled !== 0);
-      setArchiveAccessKey(user.archive_access_key ?? '');
-      setArchiveSecretKey(user.archive_secret_key ?? '');
     }
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
@@ -648,6 +646,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 type="password"
                 value={archiveAccessKey}
                 onChange={(e) => setArchiveAccessKey(e.target.value)}
+                placeholder={user?.wayback_keys_configured !== 0 ? 'saved — enter to replace' : ''}
                 autoComplete="new-password"
                 disabled={!waybackEnabled}
               />
@@ -659,16 +658,20 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 type="password"
                 value={archiveSecretKey}
                 onChange={(e) => setArchiveSecretKey(e.target.value)}
+                placeholder={user?.wayback_keys_configured !== 0 ? 'saved — enter to replace' : ''}
                 autoComplete="new-password"
                 disabled={!waybackEnabled}
               />
             </div>
-            <Button variant="accent" size="sm" onClick={handleArchiveKeysSave} disabled={!waybackEnabled}>
+            <Button variant="accent" size="sm" onClick={handleArchiveKeysSave} disabled={!waybackEnabled || !archiveAccessKey.trim() || !archiveSecretKey.trim()}>
               Save keys
             </Button>
           </div>
           {archiveKeysSaved && (
             <p className="sv-success">Keys saved.</p>
+          )}
+          {!archiveKeysSaved && waybackEnabled && user?.wayback_keys_configured === 0 && (
+            <p className="sv-error">No keys saved — archiving won&apos;t work until you add and save your keys.</p>
           )}
           <p className="sv-hint sv-hint--top">
             Required for Wayback Machine submissions. Get your keys at{' '}

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { isValidElement, type ReactElement } from 'react';
-import { linkifyText } from '../renderer/src/utils/linkify';
+import { linkifyText, safeOpen } from '../renderer/src/utils/linkify';
 
 function isLink(node: unknown): node is ReactElement {
   return isValidElement(node) && (node as ReactElement).type === 'a';
@@ -81,5 +81,39 @@ describe('linkifyText', () => {
   it('uses the URL as anchor text', () => {
     const result = linkifyText('https://example.com/path');
     expect((result[0] as ReactElement<{ children: string }>).props.children).toBe('https://example.com/path');
+  });
+});
+
+describe('safeOpen', () => {
+  let openMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    openMock = vi.fn();
+    vi.stubGlobal('window', { open: openMock });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('opens http URLs with _blank and noopener,noreferrer', () => {
+    safeOpen('http://example.com');
+    expect(openMock).toHaveBeenCalledWith('http://example.com', '_blank', 'noopener,noreferrer');
+  });
+
+  it('opens https URLs with _blank and noopener,noreferrer', () => {
+    safeOpen('https://example.com/path?q=1');
+    expect(openMock).toHaveBeenCalledWith('https://example.com/path?q=1', '_blank', 'noopener,noreferrer');
+  });
+
+  it('does not open non-http(s) URLs', () => {
+    safeOpen('javascript:alert(1)');
+    safeOpen('ftp://files.example.com');
+    expect(openMock).not.toHaveBeenCalled();
+  });
+
+  it('does not open malformed URLs', () => {
+    safeOpen('not a url at all');
+    expect(openMock).not.toHaveBeenCalled();
   });
 });

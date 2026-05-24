@@ -1,5 +1,7 @@
 import { ipcMain } from 'electron';
 import fs from 'fs/promises';
+import { rename, unlink } from 'fs/promises';
+import { randomBytes } from 'crypto';
 import path from 'path';
 import { getPaths } from '../utils';
 import { getDatabase, isDatabaseOpen, getPassword } from '../database';
@@ -33,7 +35,14 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
 
     const { dbPath, saltPath, screenshotsPath } = getPaths();
     const outPath = path.join(destPath, timestampedName());
-    await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), outPath, getPassword());
+    const tmpPath = path.join(destPath, `.tmp-${randomBytes(8).toString('hex')}`);
+    try {
+      await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), tmpPath, getPassword());
+      await rename(tmpPath, outPath);
+    } catch (err) {
+      await unlink(tmpPath).catch(() => {});
+      throw err;
+    }
 
     // Prune old backups beyond maxCount
     const allFiles = await fs.readdir(destPath);

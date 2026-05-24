@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { DedupContact, DuplicatePair } from '@shared/types';
 import Button from '../shell/Button';
+import Modal from '../shell/Modal';
 import '../shell/Modal.css';
 import './DedupModal.css';
-import '../contacts/AddContactModal.css';
 
 interface Props {
   pairs: DuplicatePair[];
@@ -101,12 +101,6 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
   const [index, setIndex] = useState(0);
   const [working, setWorking] = useState(false);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   function advance() {
     const newPairs = pairs.filter((_, i) => i !== index);
     setPairs(newPairs);
@@ -139,89 +133,70 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
 
   if (pairs.length === 0) {
     return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="dedup-card" onClick={(e) => e.stopPropagation()}>
-          <div className="dedup-header">
-            <span className="dedup-title">All done</span>
-          </div>
-          <p className="dedup-empty">No duplicate pairs to review.</p>
-          <div className="dedup-actions">
-            <Button variant="accent" onClick={onClose}>
-              Close
-            </Button>
-          </div>
+      <Modal title="All done" onDismiss={onClose} className="dedup-modal">
+        <p className="dedup-empty">No duplicate pairs to review.</p>
+        <div className="modal-actions">
+          <Button variant="accent" onClick={onClose}>
+            Close
+          </Button>
         </div>
-      </div>
+      </Modal>
     );
   }
 
   const { a, b, reason } = pairs[index];
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="dedup-card" onClick={(e) => e.stopPropagation()}>
-        <div className="dedup-header">
-          <div className="dedup-header-left">
-            <div className="dedup-header-title-row">
-              <span className="dedup-title">Possible duplicate</span>
-              <span className="dedup-reason">{reasonLabel(reason)}</span>
-            </div>
-            <span className="dedup-reason-desc">{reasonDescription(reason)}</span>
-          </div>
-          <div className="dedup-header-right">
-            <span className="dedup-progress">
-              {index + 1} of {pairs.length}
-            </span>
-            <button className="ac-close" onClick={onClose}>
-              ×
-            </button>
-          </div>
-        </div>
+    <Modal title="Possible duplicate" onDismiss={onClose} className="dedup-modal">
+      <div className="dedup-meta-row">
+        <span className="dedup-reason">{reasonLabel(reason)}</span>
+        <span className="dedup-progress">{index + 1} of {pairs.length}</span>
+      </div>
+      <p className="modal-description dedup-reason-desc">{reasonDescription(reason)}</p>
 
-        <div className="dedup-body">
-          <div className="dedup-columns">
-            <div>
-              <div className="dedup-col-header">Contact A</div>
-              <ContactCard contact={a} other={b} />
-            </div>
-            <div>
-              <div className="dedup-col-header">Contact B</div>
-              <ContactCard contact={b} other={a} />
-            </div>
+      <div className="dedup-body">
+        <div className="dedup-columns">
+          <div>
+            <div className="dedup-col-header">Contact A</div>
+            <ContactCard contact={a} other={b} />
           </div>
-        </div>
-
-        <div className="dedup-actions">
-          <Button
-            variant="secondary"
-            onClick={() => handleAction(null, null, 'skip')}
-            disabled={working}
-          >
-            Skip
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handleAction(a.id, b.id, 'keep')}
-            disabled={working}
-          >
-            Keep left
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handleAction(b.id, a.id, 'keep')}
-            disabled={working}
-          >
-            Keep right
-          </Button>
-          <Button
-            variant="accent"
-            onClick={() => handleAction(a.id, b.id, 'merge')}
-            disabled={working}
-          >
-            Merge both
-          </Button>
+          <div>
+            <div className="dedup-col-header">Contact B</div>
+            <ContactCard contact={b} other={a} />
+          </div>
         </div>
       </div>
-    </div>
+
+      <div className="dedup-actions">
+        <Button
+          variant="secondary"
+          onClick={() => handleAction(null, null, 'skip')}
+          disabled={working}
+        >
+          Skip
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => handleAction(a.id, b.id, 'keep')}
+          disabled={working}
+        >
+          Keep left
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => handleAction(b.id, a.id, 'keep')}
+          disabled={working}
+        >
+          Keep right
+        </Button>
+        <Button
+          variant="accent"
+          onClick={() => handleAction(a.id, b.id, 'merge')}
+          disabled={working}
+        >
+          Merge both
+        </Button>
+      </div>
+    </Modal>
   );
 }
