@@ -37,14 +37,21 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
 /** First-launch only: open + run schema + seed defaults + set active connection. */
 export function initDatabase(dbPath: string, keyHex: string): Database.Database {
   const db = openRaw(dbPath, keyHex);
-  // Wrap schema creation, seeding, and version stamp in a single transaction so
-  // that a seed failure rolls back the entire schema, leaving a clean slate for
-  // the next unlock attempt (fixes #201).
-  db.transaction(() => {
-    db.exec(LOCAL_SCHEMA_SQL);
-    seedDefaults(db);
-    db.pragma(`user_version = ${DB_VERSION}`);
-  })();
+  // LOCAL_SCHEMA_SQL begins with PRAGMA statements that SQLite forbids inside a
+  // transaction, so exec it first (each DDL statement auto-commits individually).
+  // Seed + version stamp are wrapped in a transaction so a seed failure rolls back
+  // cleanly.  On any error we close the handle before re-throwing so the caller
+  // can delete the file and retry (fixes #201).
+  db.exec(LOCAL_SCHEMA_SQL);
+  try {
+    db.transaction(() => {
+      seedDefaults(db);
+      db.pragma(`user_version = ${DB_VERSION}`);
+    })();
+  } catch (err) {
+    try { db.close(); } catch { /* ignore */ }
+    throw err;
+  }
   activeDb = db;
   activeKeyHex = keyHex;
   return db;

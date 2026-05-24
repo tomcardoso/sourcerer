@@ -1,5 +1,6 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { randomBytes } from 'crypto';
+import { unlinkSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../database';
 import { createSharedDb, openSharedDb, closeSharedDb, rekeySharedDb } from '../database/shared-db';
@@ -86,10 +87,12 @@ export function registerProjectHandlers(): void {
           );
         })();
       } catch (localErr) {
-        // Best-effort compensating action: remove the shared DB record so state
-        // stays consistent.  If this also fails the shared file can be cleaned up
-        // manually; it carries no user data at this point.
+        // Best-effort compensating action: evict the shared DB connection and
+        // remove both the in-file record and the on-disk file so no handle or
+        // orphaned file is left behind.
         try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
+        try { closeSharedDb(id); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
         throw localErr;
       }
 
@@ -267,10 +270,12 @@ export function registerProjectHandlers(): void {
           db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
         })();
       } catch (localErr) {
-        // Best-effort compensating action: remove the shared DB record so state
-        // stays consistent.  If this also fails the shared file can be cleaned up
-        // manually; it carries no user data at this point.
+        // Best-effort compensating action: evict the shared DB connection and
+        // remove both the in-file record and the on-disk file so no handle or
+        // orphaned file is left behind.
         try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
+        try { closeSharedDb(projectId); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
         throw localErr;
       }
 
@@ -363,13 +368,18 @@ export function registerProjectHandlers(): void {
       const newKeyBytes = randomBytes(32);
       const newKeyHex = newKeyBytes.toString('hex');
 
-      // Rekey the shared file FIRST so that a failure here leaves the local DB
-      // still pointing at the old (still-valid) key — safe to retry.  If the
-      // local update below fails after a successful rekey the new key is not yet
-      // recorded; the window is small and the rekey can be retried (fixes #178).
-      rekeySharedDb(projectId, project.shared_db_path, oldKeyHex, newKeyHex);
-
+      // Update the local record first so the new key is persisted before we
+      // touch the shared file.  If the rekey then fails, revert the local row
+      // so the app retains access via the still-valid old key (fixes #178).
       db.prepare('UPDATE projects SET shared_db_key = ? WHERE id = ?').run(newKeyBytes, projectId);
+      try {
+        rekeySharedDb(projectId, project.shared_db_path, oldKeyHex, newKeyHex);
+      } catch (rekeyErr) {
+        try {
+          db.prepare('UPDATE projects SET shared_db_key = ? WHERE id = ?').run(project.shared_db_key, projectId);
+        } catch { /* ignore revert failure */ }
+        throw rekeyErr;
+      }
 
       const payload = encodePayload(
         project.name,

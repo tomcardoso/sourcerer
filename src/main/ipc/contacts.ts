@@ -694,18 +694,19 @@ export function registerContactHandlers(): void {
         'INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
       );
       const validMidGlobal = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
+      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
       db.transaction(() => {
         insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts);
         for (const mid of membershipIds ?? []) {
           if (validMidGlobal.get(mid, contactId)) insertProject.run(id, mid);
         }
+        // Clear auto-outreach reminders inside the transaction so a crash between
+        // log insert and reminder clear can't leave stale reminders (mirrors add handler).
+        for (const mid of membershipIds ?? []) clearReminder.run(mid);
       })();
       const firstProject = (membershipIds ?? []).length > 0
         ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ? AND pm.contact_id = ?').get(membershipIds![0], contactId) as { name: string } | undefined)?.name ?? null
         : null;
-      // Clear auto-outreach reminders for all associated memberships.
-      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
-      for (const mid of membershipIds ?? []) clearReminder.run(mid);
       broadcastRemindersChanged();
       broadcastContactsChanged();
       return {
