@@ -144,3 +144,49 @@ describe('performSearch — FTS input escaping', () => {
     expect(() => performSearch('()', testDb)).not.toThrow();
   });
 });
+
+describe('performSearch — FTS5 error classification', () => {
+  it('swallows an fts5 syntax error and returns partial results (contacts/projects via LIKE)', () => {
+    // Insert a contact that will be found by the LIKE fallback
+    insertContact(testDb, 'Alice Syntax');
+
+    // Monkey-patch prepare so that MATCH queries throw a syntax error
+    const originalPrepare = testDb.prepare.bind(testDb);
+    const spy = vi.spyOn(testDb, 'prepare').mockImplementation((sql: string) => {
+      if (sql.includes('MATCH')) {
+        return {
+          all: () => { throw new Error('fts5: syntax error at position 1'); },
+        } as ReturnType<typeof testDb.prepare>;
+      }
+      return originalPrepare(sql);
+    });
+
+    let results: ReturnType<typeof performSearch>;
+    expect(() => {
+      results = performSearch('Alice', testDb);
+    }).not.toThrow();
+
+    // Contacts are still returned via LIKE
+    expect(results!.filter((r) => r.type === 'contact')).toHaveLength(1);
+    // No log results because FTS threw
+    expect(results!.filter((r) => r.type === 'log')).toHaveLength(0);
+
+    spy.mockRestore();
+  });
+
+  it('rethrows a non-syntax fts5 error (e.g. database corruption)', () => {
+    const originalPrepare = testDb.prepare.bind(testDb);
+    const spy = vi.spyOn(testDb, 'prepare').mockImplementation((sql: string) => {
+      if (sql.includes('MATCH')) {
+        return {
+          all: () => { throw new Error('fts5: database disk image is malformed'); },
+        } as ReturnType<typeof testDb.prepare>;
+      }
+      return originalPrepare(sql);
+    });
+
+    expect(() => performSearch('anything', testDb)).toThrow('fts5: database disk image is malformed');
+
+    spy.mockRestore();
+  });
+});

@@ -70,7 +70,8 @@ export function performSearch(query: string, db: Database.Database): SearchResul
     // Only swallow FTS query syntax errors; rethrow anything else
     // (e.g. table corruption whose message might also contain "fts5:").
     if (e instanceof Error && /fts5: syntax error/i.test(e.message)) {
-      // fall back to the LIKE results already computed above
+      // FTS log results are simply omitted — contacts and projects still return
+      // their LIKE results computed above.
     } else {
       throw e;
     }
