@@ -313,6 +313,16 @@ export default function AppShell() {
           <Timeline user={user} />
         ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
+        {globalContactId && (
+          <ContactDetail
+            contactId={globalContactId}
+            onClose={closeGlobalContact}
+            onDeleted={closeGlobalContact}
+            onUpdated={() => {}}
+            user={user}
+            closing={globalDrawerClosing}
+          />
+        )}
       </main>
 
       {searchOpen && (
@@ -379,16 +389,6 @@ export default function AppShell() {
             setShowQuickReminder(false);
             refreshOverdue();
           }}
-        />
-      )}
-      {globalContactId && (
-        <ContactDetail
-          contactId={globalContactId}
-          onClose={closeGlobalContact}
-          onDeleted={closeGlobalContact}
-          onUpdated={() => {}}
-          user={user}
-          closing={globalDrawerClosing}
         />
       )}
       </div>
