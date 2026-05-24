@@ -58,6 +58,9 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
     window.sourcerer.getContact(id).then((c) => {
       if (contactIdRef.current === id) setContact(c);
     });
+    window.sourcerer.getContactInteractionCount(id).then((n) => {
+      if (contactIdRef.current === id) setInteractionCount(n);
+    });
   }, []);
 
   useEffect(() => {
@@ -84,6 +87,10 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
     return window.sourcerer.onWaybackUpdated((updatedId) => {
       if (updatedId === contactIdRef.current) reload();
     });
+  }, [reload]);
+
+  useEffect(() => {
+    return window.sourcerer.onContactsChanged(reload);
   }, [reload]);
 
   useEffect(() => {
