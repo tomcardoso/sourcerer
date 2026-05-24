@@ -374,15 +374,20 @@ export function registerContactHandlers(): void {
     'memberships:remove',
     (_, { contactId, projectId }: { contactId: string; projectId: string }): void => {
       const db = getDatabase();
-      const membership = db
-        .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ?')
-        .get(contactId, projectId) as { id: string } | undefined;
-      db.prepare('DELETE FROM project_memberships WHERE contact_id = ? AND project_id = ?').run(contactId, projectId);
-      if (membership) {
-        db.prepare(
-          'UPDATE contacts SET default_membership_id = NULL WHERE id = ? AND default_membership_id = ?',
-        ).run(contactId, membership.id);
-      }
+      // Read + conditional clear + delete are in a single transaction to close
+      // the TOCTOU window where another write could change default_membership_id
+      // between the read and the conditional update (fixes #189).
+      db.transaction(() => {
+        const membership = db
+          .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ?')
+          .get(contactId, projectId) as { id: string } | undefined;
+        db.prepare('DELETE FROM project_memberships WHERE contact_id = ? AND project_id = ?').run(contactId, projectId);
+        if (membership) {
+          db.prepare(
+            'UPDATE contacts SET default_membership_id = NULL WHERE id = ? AND default_membership_id = ?',
+          ).run(contactId, membership.id);
+        }
+      })();
       broadcastContactsChanged();
     },
   );
@@ -428,27 +433,31 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     const { phone_country, wayback_enabled } = db.prepare('SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
-    // Preserve existing website Wayback URLs before re-insert
-    const existingWebsites = db
-      .prepare("SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
-      .all(data.id) as { url: string; wayback_url: string | null }[];
-    const existingWaybacks = new Map(existingWebsites.map((r) => [r.url, r.wayback_url]));
-
-    // Snapshot created_at values keyed by normalised value so they survive the re-insert.
-    const existingEmailCreatedAt = new Map(
-      (db.prepare('SELECT email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { email: string; created_at: number }[])
-        .map((r) => [r.email, r.created_at])
-    );
-    const existingPhoneCreatedAt = new Map(
-      (db.prepare('SELECT phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { phone: string; created_at: number }[])
-        .map((r) => [r.phone, r.created_at])
-    );
-    const existingLinkCreatedAt = new Map(
-      (db.prepare('SELECT url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { url: string; created_at: number }[])
-        .map((r) => [r.url.trim(), r.created_at])
-    );
-
+    // All pre-read snapshots (created_at timestamps, wayback URLs) and writes are
+    // inside a single transaction to eliminate the TOCTOU window between the reads
+    // and the subsequent DELETE + re-INSERT (fixes #218).
+    let existingWaybacks = new Map<string, string | null>();
     const run = db.transaction(() => {
+      // Preserve existing website Wayback URLs before re-insert
+      const existingWebsites = db
+        .prepare("SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
+        .all(data.id) as { url: string; wayback_url: string | null }[];
+      existingWaybacks = new Map(existingWebsites.map((r) => [r.url, r.wayback_url]));
+
+      // Snapshot created_at values keyed by normalised value so they survive the re-insert.
+      const existingEmailCreatedAt = new Map(
+        (db.prepare('SELECT email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { email: string; created_at: number }[])
+          .map((r) => [r.email, r.created_at])
+      );
+      const existingPhoneCreatedAt = new Map(
+        (db.prepare('SELECT phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { phone: string; created_at: number }[])
+          .map((r) => [r.phone, r.created_at])
+      );
+      const existingLinkCreatedAt = new Map(
+        (db.prepare('SELECT url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { url: string; created_at: number }[])
+          .map((r) => [r.url.trim(), r.created_at])
+      );
+
       db.prepare(
         'UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ? WHERE id = ?',
       ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, data.id);
@@ -625,6 +634,11 @@ export function registerContactHandlers(): void {
       const reporterName = `${user.first_name} ${user.last_name}`;
       const validMid = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
       const insertProject = db.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)');
+      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
+      const allMids = [membershipId, ...(extraMembershipIds ?? [])];
+      // Log insert and reminder clear are in a single transaction so a crash
+      // between the two steps cannot leave an orphaned log entry with stale
+      // reminders still in place (fixes #186).
       db.transaction(() => {
         db.prepare(
           'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -633,11 +647,9 @@ export function registerContactHandlers(): void {
         for (const mid of extraMembershipIds ?? []) {
           if (mid !== membershipId && validMid.get(mid, membership.contact_id)) insertProject.run(id, mid);
         }
+        // Clear auto-outreach reminders for all associated memberships.
+        for (const mid of allMids) clearReminder.run(mid);
       })();
-      // Clear auto-outreach reminders for all associated memberships.
-      const allMids = [membershipId, ...(extraMembershipIds ?? [])];
-      const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
-      for (const mid of allMids) clearReminder.run(mid);
       broadcastRemindersChanged();
       broadcastContactsChanged();
       return {

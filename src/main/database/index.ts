@@ -37,10 +37,14 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
 /** First-launch only: open + run schema + seed defaults + set active connection. */
 export function initDatabase(dbPath: string, keyHex: string): Database.Database {
   const db = openRaw(dbPath, keyHex);
-  db.exec(LOCAL_SCHEMA_SQL);
-  seedDefaults(db);
-  // Stamp version so migrations are skipped on subsequent unlocks.
-  db.pragma(`user_version = ${DB_VERSION}`);
+  // Wrap schema creation, seeding, and version stamp in a single transaction so
+  // that a seed failure rolls back the entire schema, leaving a clean slate for
+  // the next unlock attempt (fixes #201).
+  db.transaction(() => {
+    db.exec(LOCAL_SCHEMA_SQL);
+    seedDefaults(db);
+    db.pragma(`user_version = ${DB_VERSION}`);
+  })();
   activeDb = db;
   activeKeyHex = keyHex;
   return db;
@@ -122,6 +126,11 @@ export function runMigrations(db: Database.Database): void {
 
   // No migration blocks yet — all schema changes so far are baked into the
   // initial schema SQL, so existing pre-production databases can be recreated.
-  db.pragma(`user_version = ${DB_VERSION}`);
+  // Wrap in a transaction to establish the correct pattern: when real migration
+  // DDL blocks are added, each block must stamp user_version atomically with its
+  // DDL so a mid-migration crash cannot leave the DB partially migrated (fixes #207).
+  db.transaction(() => {
+    db.pragma(`user_version = ${DB_VERSION}`);
+  })();
 }
 
