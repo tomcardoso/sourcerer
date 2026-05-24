@@ -1,6 +1,8 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
+import { rename, unlink } from 'fs/promises';
 import ExcelJS from 'exceljs';
+import path from 'path';
 import { getDatabase } from '../database';
 import { filenameDateStamp } from '../utils';
 
@@ -214,6 +216,7 @@ export function registerExportHandlers(): void {
         });
       }
 
+      const tmpPath = path.join(path.dirname(filePath), '.tmp-export-' + Date.now());
       try {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Contacts');
@@ -222,12 +225,14 @@ export function registerExportHandlers(): void {
         }
         ws.addRows(rows);
         if (isXlsx) {
-          await wb.xlsx.writeFile(filePath);
+          await wb.xlsx.writeFile(tmpPath);
         } else {
-          await wb.csv.writeFile(filePath);
+          await wb.csv.writeFile(tmpPath);
         }
+        await rename(tmpPath, filePath);
         return { success: true };
       } catch (err) {
+        await unlink(tmpPath).catch(() => {});
         return { success: false, error: String(err) };
       }
     },
@@ -317,6 +322,7 @@ export function registerExportHandlers(): void {
         };
       });
 
+      const tmpPath2 = path.join(path.dirname(filePath), '.tmp-export-' + Date.now());
       try {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Contacts');
@@ -325,12 +331,14 @@ export function registerExportHandlers(): void {
         }
         ws.addRows(rows);
         if (isXlsx) {
-          await wb.xlsx.writeFile(filePath);
+          await wb.xlsx.writeFile(tmpPath2);
         } else {
-          await wb.csv.writeFile(filePath);
+          await wb.csv.writeFile(tmpPath2);
         }
+        await rename(tmpPath2, filePath);
         return { success: true };
       } catch (err) {
+        await unlink(tmpPath2).catch(() => {});
         return { success: false, error: String(err) };
       }
     },
