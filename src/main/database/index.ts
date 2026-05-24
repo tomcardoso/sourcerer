@@ -43,8 +43,8 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
   // Seed + version stamp are wrapped in a transaction so a seed failure rolls back
   // cleanly.  On any error we close the handle before re-throwing so the caller
   // can delete the file and retry (fixes #201).
-  db.exec(LOCAL_SCHEMA_SQL);
   try {
+    db.exec(LOCAL_SCHEMA_SQL);
     db.transaction(() => {
       seedDefaults(db);
       db.pragma(`user_version = ${DB_VERSION}`);

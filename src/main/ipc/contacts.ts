@@ -635,7 +635,7 @@ export function registerContactHandlers(): void {
       const validMid = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
       const insertProject = db.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)');
       const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
-      const allMids = [membershipId, ...(extraMembershipIds ?? [])];
+      const allMids = [membershipId];
       // Log insert and reminder clear are in a single transaction so a crash
       // between the two steps cannot leave an orphaned log entry with stale
       // reminders still in place (fixes #186).
@@ -645,9 +645,13 @@ export function registerContactHandlers(): void {
         ).run(id, membership.contact_id, user.email, reporterName, body.trim(), ts);
         insertProject.run(id, membershipId);
         for (const mid of extraMembershipIds ?? []) {
-          if (mid !== membershipId && validMid.get(mid, membership.contact_id)) insertProject.run(id, mid);
+          if (mid !== membershipId && validMid.get(mid, membership.contact_id)) {
+            insertProject.run(id, mid);
+            allMids.push(mid);
+          }
         }
-        // Clear auto-outreach reminders for all associated memberships.
+        // Clear reminders only for validated memberships to avoid clearing
+        // reminders on unrelated memberships passed via IPC input.
         for (const mid of allMids) clearReminder.run(mid);
       })();
       broadcastRemindersChanged();
@@ -697,12 +701,16 @@ export function registerContactHandlers(): void {
       const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
       db.transaction(() => {
         insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts);
+        const validatedMids: string[] = [];
         for (const mid of membershipIds ?? []) {
-          if (validMidGlobal.get(mid, contactId)) insertProject.run(id, mid);
+          if (validMidGlobal.get(mid, contactId)) {
+            insertProject.run(id, mid);
+            validatedMids.push(mid);
+          }
         }
-        // Clear auto-outreach reminders inside the transaction so a crash between
-        // log insert and reminder clear can't leave stale reminders (mirrors add handler).
-        for (const mid of membershipIds ?? []) clearReminder.run(mid);
+        // Clear reminders only for validated memberships to avoid clearing
+        // reminders on unrelated memberships passed via IPC input.
+        for (const mid of validatedMids) clearReminder.run(mid);
       })();
       const firstProject = (membershipIds ?? []).length > 0
         ? (db.prepare('SELECT p.name FROM project_memberships pm JOIN projects p ON p.id = pm.project_id WHERE pm.id = ? AND pm.contact_id = ?').get(membershipIds![0], contactId) as { name: string } | undefined)?.name ?? null
