@@ -118,6 +118,13 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
     } finally {
       clearTimeout(timeout);
     }
+    // Re-check the final URL in case a redirect led to a private address.
+    if (isBlockedHost(response.url)) return 0;
+    if (response.status === 408 || response.status === 429) {
+      // Transient — request timeout or rate-limited; will retry next poll.
+      console.warn(`[rss] Transient HTTP ${response.status} for feed ${feedId}, will retry`);
+      return 0;
+    }
     if (response.status >= 400 && response.status < 500) {
       // Permanent client error — the URL is genuinely broken; mark invalid.
       db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
@@ -129,7 +136,14 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
     }
 
     const text = await response.text();
-    const feed = await parser.parseString(text);
+    let feed: Awaited<ReturnType<typeof parser.parseString>>;
+    try {
+      feed = await parser.parseString(text);
+    } catch {
+      // Malformed feed content — treat as permanent; mark invalid so we stop polling.
+      db.prepare(`UPDATE contact_alert_rss SET is_invalid = 1 WHERE id = ?`).run(feedId);
+      return 0;
+    }
     let newCount = 0;
 
     for (const item of feed.items ?? []) {
@@ -161,8 +175,8 @@ async function pollOneFeed(feedId: string, contactId: string, rssUrl: string): P
 
     return newCount;
   } catch (err) {
-    // Network-level exception (DNS failure, timeout, connection refused, etc.) — transient;
-    // log a warning but do NOT mark the feed invalid so it will be retried next poll.
+    // Network-level exception (DNS failure, timeout, connection refused) — transient;
+    // do not mark invalid so it will be retried next poll.
     console.warn(`[rss] Network error polling feed ${feedId}:`, err);
     return 0;
   }
