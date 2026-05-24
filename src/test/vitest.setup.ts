@@ -2,6 +2,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { v4 as uuidv4 } from 'uuid';
 import { LOCAL_SCHEMA_SQL } from '../main/database/schema';
 import { seedDefaults } from '../main/database/seeds';
+import { DB_VERSION } from '../main/database';
 
 export const TEST_REPORTER = { email: 'r@r.com', name: 'Reporter' };
 
@@ -10,6 +11,19 @@ export function createTestDb(): Database.Database {
   db.pragma('foreign_keys = ON');
   db.exec(LOCAL_SCHEMA_SQL);
   seedDefaults(db);
+
+  // Stamp user_version so runMigrations() recognises the DB as already current (#228).
+  db.pragma(`user_version = ${DB_VERSION}`);
+
+  // Insert the required users row (id=1) that many IPC handlers query (#309).
+  // seedDefaults() only inserts status/priority options, not the user row.
+  const now = Math.floor(Date.now() / 1000);
+  db.prepare(
+    `INSERT OR IGNORE INTO users
+       (id, first_name, last_name, email, created_at, calendar_token, phone_country)
+     VALUES (1, 'Test', 'Reporter', 'r@r.com', ?, 'test-token', 'US')`,
+  ).run(now);
+
   return db;
 }
 
@@ -24,13 +38,13 @@ export function insertProject(db: Database.Database, name: string): string {
 export function insertContact(
   db: Database.Database,
   name: string,
-  opts: { emails?: string[]; phones?: string[]; org?: string; notes?: string; title?: string; handles?: { type: string; handle: string }[] } = {},
+  opts: { emails?: string[]; phones?: string[]; org?: string; notes?: string; title?: string; dob?: string; handles?: { type: string; handle: string }[] } = {},
 ): string {
   const id = uuidv4();
   const now = Math.floor(Date.now() / 1000);
   db.prepare(
-    'INSERT INTO contacts (id, name, organization, title, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, name, opts.org ?? null, opts.title ?? null, opts.notes ?? null, now, now);
+    'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, name, opts.org ?? null, opts.title ?? null, opts.dob ?? null, opts.notes ?? null, now, now);
   (opts.emails ?? []).forEach((email, i) =>
     db
       .prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)')

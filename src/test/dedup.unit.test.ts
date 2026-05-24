@@ -184,3 +184,27 @@ describe('findDuplicatePairs — empty and single-contact inputs', () => {
     expect(findDuplicatePairs([makeContact('a', 'Alice Smith')])).toEqual([]);
   });
 });
+
+describe('findDuplicatePairs — empty-digit phone string (#291 / dedup edge case)', () => {
+  it('does not crash when a phone contains only non-digit characters', () => {
+    const contacts = [
+      makeContact('a', 'Alice Smith', { phones: ['000'] }),
+      makeContact('b', 'Bob Jones',   { phones: ['000'] }),
+    ];
+    // digitsOnly('000') === '000' which is truthy — the contacts should pair by phone
+    // but the key point is that it must NOT throw
+    expect(() => findDuplicatePairs(contacts)).not.toThrow();
+  });
+
+  it('does not crash when phone normalises to an empty digit string', () => {
+    // A phone of all punctuation e.g. "---" has no digits.
+    // digitsOnly('---') === '' which is falsy — the guard `if (!key) continue` fires.
+    const contacts = [
+      makeContact('a', 'Alice Smith', { phones: ['---'] }),
+      makeContact('b', 'Bob Jones',   { phones: ['---'] }),
+    ];
+    expect(() => findDuplicatePairs(contacts)).not.toThrow();
+    // Empty-digit phones should not produce a pairing
+    expect(findDuplicatePairs(contacts)).toHaveLength(0);
+  });
+});

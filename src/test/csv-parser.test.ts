@@ -64,4 +64,21 @@ describe('parseCsv', () => {
     const rows = parseCsv(input);
     expect(rows[1][1]).toBe('line one\nline two');
   });
+
+  it('parses a row with a trailing empty field without crashing (#291)', () => {
+    // e.g. "name,email," — the trailing comma produces an empty final field
+    const input = 'Name,Email,Extra\nAlice,alice@example.com,\n';
+    const rows = parseCsv(input);
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toEqual(['Alice', 'alice@example.com', '']);
+  });
+
+  it('parses a header row with a trailing empty field without crashing (#291)', () => {
+    const input = 'Name,Email,\nAlice,alice@example.com,\n';
+    const rows = parseCsv(input);
+    expect(rows).toHaveLength(2);
+    // trailing empty fields are preserved
+    expect(rows[0][2]).toBe('');
+    expect(rows[1][2]).toBe('');
+  });
 });
