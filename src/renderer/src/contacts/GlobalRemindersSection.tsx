@@ -21,6 +21,11 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
     setReminders([]);
     setCompleting(new Set());
     setEditingId(null);
+    setAdding(false);
+    setAddingSaving(false);
+    setDueDate('');
+    setNote('');
+    setSelectedProjectId(null);
     window.sourcerer.listRemindersForContact(contact.id).then((loaded) => {
       if (!cancelled) {
         setReminders(loaded);
@@ -58,6 +63,9 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
       });
       setReminders((prev) => [...prev, r].sort(sortReminders));
       setAdding(false);
+      setDueDate('');
+      setNote('');
+      setSelectedProjectId(null);
     } finally {
       setAddingSaving(false);
     }

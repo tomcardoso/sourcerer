@@ -156,6 +156,8 @@ export default function AppShell() {
   function openGlobalContact(id: string) {
     if (globalContactId === id) { closeGlobalContact(); return; }
     setGlobalContactId(id);
+    // Signal any open sub-modals (e.g. LogAllModal in another ContactDetail) to close.
+    window.dispatchEvent(new Event('sourcerer:global-nav'));
   }
 
   function closeGlobalContact() {
@@ -311,6 +313,16 @@ export default function AppShell() {
           <Timeline user={user} />
         ))}
         {nav.view === 'settings' && <SettingsView user={user} onUserUpdated={setUser} />}
+        {globalContactId && (
+          <ContactDetail
+            contactId={globalContactId}
+            onClose={closeGlobalContact}
+            onDeleted={closeGlobalContact}
+            onUpdated={() => {}}
+            user={user}
+            closing={globalDrawerClosing}
+          />
+        )}
       </main>
 
       {searchOpen && (
@@ -377,16 +389,6 @@ export default function AppShell() {
             setShowQuickReminder(false);
             refreshOverdue();
           }}
-        />
-      )}
-      {globalContactId && (
-        <ContactDetail
-          contactId={globalContactId}
-          onClose={closeGlobalContact}
-          onDeleted={closeGlobalContact}
-          onUpdated={() => {}}
-          user={user}
-          closing={globalDrawerClosing}
         />
       )}
       </div>

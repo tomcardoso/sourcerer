@@ -267,9 +267,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     try {
       await window.sourcerer.removeFromProject(contact.id, projectId);
       onMembershipChanged();
-    } finally {
       setConfirmRemoveProjectId(null);
-    }
+    } catch { /* leave confirmation open so user can retry */ }
   }
 
   async function handleDelete() {
@@ -832,7 +831,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         onRemoveRss={handleRemoveRss}
       />
 
-      <GlobalLogSection contact={contact} />
+      <GlobalLogSection contact={contact} onUpdated={onRefresh} />
 
       <GlobalRemindersSection contact={contact} />
 
