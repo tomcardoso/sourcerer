@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ContactListItem } from '@shared/types';
 import Button from '../shell/Button';
+import Modal from '../shell/Modal';
 import './ScreenshotPickerModal.css';
 
 interface Props {
@@ -13,11 +14,9 @@ export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     window.sourcerer.listContacts().then(setContacts);
-    setTimeout(() => inputRef.current?.focus(), 50);
   }, []);
 
   const filtered = query.trim()
@@ -40,46 +39,43 @@ export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
   }
 
   return (
-    <div className="spm-overlay">
-      <div className="spm-card">
-        <h3 className="spm-title">Assign screenshot</h3>
-        <p className="spm-subtitle">
-          Choose a contact to attach this screenshot to.
-        </p>
-        <input
-          ref={inputRef}
-          className="spm-search"
-          placeholder="Search contacts…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          disabled={saving}
-        />
-        {error && <p className="spm-error">{error}</p>}
-        <div className="spm-list">
-          {filtered.length === 0 ? (
-            <p className="spm-empty">No contacts found.</p>
-          ) : (
-            filtered.slice(0, 50).map((c) => (
-              <button
-                key={c.id}
-                className="spm-contact-btn"
-                onClick={() => handlePick(c.id)}
-                disabled={saving}
-              >
-                <span className="spm-contact-name">{c.name}</span>
-                {c.organization && (
-                  <span className="spm-contact-org">{c.organization}</span>
-                )}
-              </button>
-            ))
-          )}
-        </div>
-        <div className="spm-footer">
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-        </div>
+    <Modal title="Assign screenshot" onDismiss={onClose} className="spm-modal">
+      <p className="modal-description">
+        Choose a contact to attach this screenshot to.
+      </p>
+      <input
+        autoFocus
+        className="spm-search"
+        placeholder="Search contacts…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        disabled={saving}
+      />
+      {error && <p className="spm-error">{error}</p>}
+      <div className="spm-list">
+        {filtered.length === 0 ? (
+          <p className="spm-empty">No contacts found.</p>
+        ) : (
+          filtered.slice(0, 50).map((c) => (
+            <button
+              key={c.id}
+              className="spm-contact-btn"
+              onClick={() => handlePick(c.id)}
+              disabled={saving}
+            >
+              <span className="spm-contact-name">{c.name}</span>
+              {c.organization && (
+                <span className="spm-contact-org">{c.organization}</span>
+              )}
+            </button>
+          ))
+        )}
       </div>
-    </div>
+      <div className="modal-actions">
+        <Button variant="secondary" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
+      </div>
+    </Modal>
   );
 }
