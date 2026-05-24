@@ -2,11 +2,8 @@ import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
-import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType } from './sanitize';
+import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType, isBlockedHost } from './sanitize';
 import { triggerWaybackSave } from './ipc/contacts';
-import { isBlockedHost } from './sync/rss-poller';
-
-export { isBlockedHost };
 
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
 const MAX_PENDING_SCREENSHOTS = 20;
