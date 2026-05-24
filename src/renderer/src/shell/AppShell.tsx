@@ -156,6 +156,8 @@ export default function AppShell() {
   function openGlobalContact(id: string) {
     if (globalContactId === id) { closeGlobalContact(); return; }
     setGlobalContactId(id);
+    // Signal any open sub-modals (e.g. LogAllModal in another ContactDetail) to close.
+    window.dispatchEvent(new Event('sourcerer:global-nav'));
   }
 
   function closeGlobalContact() {

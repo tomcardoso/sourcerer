@@ -23,6 +23,15 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
   const [logSelectedMembershipIds, setLogSelectedMembershipIds] = useState<string[]>([]);
   const currentContactId = useRef(contact.id);
 
+  // Close the modal when the user opens a contact in the global drawer while this
+  // ContactDetail remains mounted in the background (the contact.id change effect
+  // never fires in that scenario because this component's contact prop doesn't update).
+  useEffect(() => {
+    const close = () => setLogShowAll(false);
+    window.addEventListener('sourcerer:global-nav', close);
+    return () => window.removeEventListener('sourcerer:global-nav', close);
+  }, []);
+
   useEffect(() => {
     currentContactId.current = contact.id;
     let cancelled = false;
