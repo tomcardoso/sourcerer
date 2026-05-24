@@ -121,13 +121,13 @@ export default function AppShell() {
       setUpdateVersion(version);
       setUpdateState('ready');
     });
-    const offError = window.sourcerer.onUpdateError(({ message }) => {
+    const offError = window.sourcerer.onUpdateError(() => {
       // update:error is only sent for download-phase failures (check errors are handled
       // by the main process directly). Revert to 'available' if we were downloading or
       // ready (a post-download verification error), then show a main-process dialog.
       if (updateStateRef.current === 'downloading' || updateStateRef.current === 'ready') {
         setUpdateState('available');
-        window.sourcerer.showUpdateError(message);
+        window.sourcerer.showUpdateError();
       }
     });
     // Replay any update event that fired before AppShell mounted (e.g. the
@@ -220,11 +220,10 @@ export default function AppShell() {
                 setUpdateState('downloading');
                 try {
                   await window.sourcerer.downloadUpdate();
-                } catch (err) {
+                } catch {
                   setUpdatePercent(null);
                   setUpdateState('available');
-                  const message = err instanceof Error ? err.message : String(err);
-                  window.sourcerer.showUpdateError(message);
+                  window.sourcerer.showUpdateError();
                 }
               }}
             >
@@ -384,7 +383,9 @@ export default function AppShell() {
           contactId={globalContactId}
           onClose={closeGlobalContact}
           onDeleted={closeGlobalContact}
-          onUpdated={() => {}}
+          onUpdated={() => {
+            window.sourcerer.getContactCount().then(setTotalContacts);
+          }}
           user={user}
           closing={globalDrawerClosing}
         />

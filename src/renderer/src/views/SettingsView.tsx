@@ -131,8 +131,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       setStalenessThresholdInput(String(user.staleness_threshold_days ?? 90));
       setRssPollIntervalHours(user.rss_poll_interval_hours ?? 6);
       setWaybackEnabled(user.wayback_enabled !== 0);
-      setArchiveAccessKey(user.archive_access_key ?? '');
-      setArchiveSecretKey(user.archive_secret_key ?? '');
     }
     window.sourcerer.getIdleTimeout().then(setIdleTimeout);
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
@@ -587,9 +585,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           />
         </div>
 
-        {/* Security */}
+        {/* Auto-lock */}
         <div className="sv-section">
-          <div className="sv-section-title">Security</div>
+          <div className="sv-section-title">Auto-lock</div>
           <p className="sv-hint">Sourcerer will lock itself and require your password after a period of inactivity.</p>
           <div className="sv-field">
             <label className="sv-label">Auto-lock after</label>

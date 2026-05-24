@@ -62,13 +62,17 @@ function LogSection({
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setEntries([]);
     setText('');
     setLogDate('');
     setAdding(false);
     setShowStatusPrompt(false);
     setSelectedMembershipIds([membership.membership_id]);
-    window.sourcerer.listInteractionLog(membership.membership_id).then(setEntries);
+    window.sourcerer.listInteractionLog(membership.membership_id).then((entries) => {
+      if (!cancelled) setEntries(entries);
+    });
+    return () => { cancelled = true; };
   }, [membership.membership_id]);
 
   async function handleDelete(id: string) {
@@ -229,9 +233,13 @@ function ScratchpadSection({
   const [draftEdits, setDraftEdits] = useState<Record<string, { label: string; body: string }>>({});
 
   useEffect(() => {
+    let cancelled = false;
     setDrafts([]);
     setDraftEdits({});
-    window.sourcerer.listScratchpad(contactId, membership.id).then(setDrafts);
+    window.sourcerer.listScratchpad(contactId, membership.id).then((drafts) => {
+      if (!cancelled) setDrafts(drafts);
+    });
+    return () => { cancelled = true; };
   }, [membership.id, contactId]);
 
   function getEdit(draft: ScratchpadDraft) {
@@ -346,13 +354,17 @@ function RemindersSection({
   const [editNote, setEditNote] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     setReminders([]);
     setCompleting(new Set());
     setEditingId(null);
     window.sourcerer.listRemindersForContactProject(contactId, projectId).then((loaded) => {
-      setReminders(loaded);
-      setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
+      if (!cancelled) {
+        setReminders(loaded);
+        setCompleting(new Set(loaded.filter((r) => r.completed_at !== null).map((r) => r.id)));
+      }
     });
+    return () => { cancelled = true; };
   }, [contactId, projectId, refreshToken]);
 
   function sortReminders(a: Reminder, b: Reminder) {
@@ -555,6 +567,10 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   const [selectedId, setSelectedId] = useState<string>(() => contact.projects[0]?.id ?? '');
   const [reminderRefresh, setReminderRefresh] = useState(0);
 
+  useEffect(() => {
+    setSelectedId(contact.projects[0]?.id ?? '');
+  }, [contact.id]);
+
   const membership = contact.projects.find((p) => p.id === selectedId) ?? contact.projects[0];
 
   // Per-membership local overrides (optimistic updates for dropdowns)
@@ -585,13 +601,16 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   useEffect(() => {
     if (!membership) return;
+    let cancelled = false;
     window.sourcerer.listProjectReporters(membership.id).then((list) => {
+      if (cancelled) return;
       if (list.length === 0 && currentUser) {
         setProjectReporters([{ email: currentUser.email, name: `${currentUser.firstName} ${currentUser.lastName}`.trim() }]);
       } else {
         setProjectReporters(list);
       }
-    });
+    }).catch(console.error);
+    return () => { cancelled = true; };
   }, [membership?.id, currentUser]);
 
   const handleCloseReporterDropdown = useCallback(() => {

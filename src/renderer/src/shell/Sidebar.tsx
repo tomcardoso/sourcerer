@@ -1,4 +1,10 @@
 import { useState, useRef, type KeyboardEvent } from 'react';
+
+function hashColour(id: string, colours: string[]): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return colours[h % colours.length];
+}
 import type { Project, User } from '@shared/types';
 import type { NavTarget } from './AppShell';
 import NewProjectModal from './NewProjectModal';
@@ -59,6 +65,7 @@ export default function Sidebar({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameCancelledRef = useRef(false);
 
   function startRename(project: Project) {
     setRenamingId(project.id);
@@ -67,6 +74,10 @@ export default function Sidebar({
   }
 
   async function commitRename(id: string) {
+    if (renameCancelledRef.current) {
+      renameCancelledRef.current = false;
+      return;
+    }
     const name = renameValue.trim();
     if (name && name !== projects.find((p) => p.id === id)?.name) {
       await window.sourcerer.renameProject(id, name);
@@ -77,7 +88,11 @@ export default function Sidebar({
 
   function handleRenameKey(e: KeyboardEvent<HTMLInputElement>, id: string) {
     if (e.key === 'Enter') commitRename(id);
-    if (e.key === 'Escape') setRenamingId(null);
+    if (e.key === 'Escape') {
+      renameCancelledRef.current = true;
+      setRenamingId(null);
+      renameInputRef.current?.blur();
+    }
   }
 
   async function handleArchive(id: string) {
@@ -183,7 +198,7 @@ export default function Sidebar({
             <span className="sidebar-nav-indicator" />
             Search
             <span className="sidebar-search-hint">
-              {navigator.platform.startsWith('Mac') ? <><span>⌘</span>K</> : 'Ctrl+K'}
+              {navigator.userAgent.includes('Mac') ? <><span>⌘</span>K</> : 'Ctrl+K'}
             </span>
           </button>
 
@@ -203,7 +218,7 @@ export default function Sidebar({
           <ul className="sidebar-project-list">
             {projects
               .filter((p) => showArchived || p.is_archived === 0)
-              .map((project, idx) => (
+              .map((project) => (
               <li key={project.id} className={`sidebar-project-item${project.is_archived === 1 ? ' sidebar-project-item--archived' : ''}`}>
                 {renamingId === project.id ? (
                   <input
@@ -234,7 +249,7 @@ export default function Sidebar({
                     >
                       <span
                         className="sidebar-project-dot"
-                        style={{ background: DOT_COLORS[idx % DOT_COLORS.length] }}
+                        style={{ background: hashColour(project.id, DOT_COLORS) }}
                         aria-hidden="true"
                       />
                       <span className="sidebar-project-name">{project.name}</span>

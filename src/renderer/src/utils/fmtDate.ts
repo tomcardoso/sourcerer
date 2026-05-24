@@ -15,6 +15,10 @@ export function fmtDate(ts: number | null): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
 /**
  * Format a Unix timestamp (seconds) with relative labels for very recent dates.
  * Falls back to `fetched` when `ts` is null.
@@ -23,12 +27,14 @@ export function fmtDate(ts: number | null): string {
  */
 export function fmtDateRelative(ts: number | null, fetched: number): string {
   const d = new Date((ts ?? fetched) * 1000);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
+  const todayStart = startOfDay(new Date());
+  const yesterdayStart = todayStart - 86400000;
+  const ms = d.getTime();
+  if (ms >= todayStart) return 'Today';
+  if (ms >= yesterdayStart) return 'Yesterday';
+  const diffDays = Math.floor((todayStart - startOfDay(d)) / 86400000);
   if (diffDays < 7) return `${diffDays}d ago`;
-  if (d.getFullYear() === now.getFullYear()) {
+  if (d.getFullYear() === new Date().getFullYear()) {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });

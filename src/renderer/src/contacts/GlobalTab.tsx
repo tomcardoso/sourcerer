@@ -65,7 +65,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [alertRssList, setAlertRssList] = useState<ContactAlertRss[]>([]);
   const [waybackStatus, setWaybackStatus] = useState<Map<string, 'pending' | 'failed'>>(new Map());
   const formRef = useRef<HTMLDivElement>(null);
-
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     return window.sourcerer.onWaybackStatus(({ contactId, url, status }) => {
@@ -139,7 +140,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   );
 
   useEffect(() => {
-    window.sourcerer.listAlertRss(contact.id).then(setAlertRssList);
+    let cancelled = false;
+    window.sourcerer.listAlertRss(contact.id).then((list) => {
+      if (!cancelled) setAlertRssList(list);
+    });
+    return () => { cancelled = true; };
   }, [contact.id]);
 
 
@@ -153,6 +158,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     });
     if (!valid) return;
     const result = await window.sourcerer.checkCollision({ emails: [value], phones: [], excludeId: contact.id });
+    if (!mounted.current) return;
     setEmailCollisions((prev) => {
       const next = { ...prev };
       if (result.email[value]) next[value] = result.email[value]; else delete next[value];
@@ -166,6 +172,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
       window.sourcerer.validatePhone(value),
       window.sourcerer.checkCollision({ emails: [], phones: [value], excludeId: contact.id }),
     ]);
+    if (!mounted.current) return;
     setPhoneFormatWarnings((prev) => {
       const next = { ...prev };
       if (!isValid) next[value] = true; else delete next[value];
@@ -239,7 +246,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         dob: editDob || undefined,
         notes: editNotes,
         emails: editEmails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
-        phones: editPhones.map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
+        phones: editPhones.filter((p) => p.phone?.trim()).map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
         links,
         handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
       });
@@ -679,7 +686,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 })
             )}
           />
-          {user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && (
+          {user?.wayback_enabled !== 0 && !!user?.wayback_keys_configured && (
             <p className="ac-field-hint">Wayback Machine archiving is enabled.</p>
           )}
         </div>
@@ -796,10 +803,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   archived ↗
                 </a>
               )}
-              {!l.wayback_url && user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && waybackStatus.get(l.url) === 'pending' && (
+              {!l.wayback_url && user?.wayback_enabled !== 0 && !!user?.wayback_keys_configured && waybackStatus.get(l.url) === 'pending' && (
                 <span className="detail-wayback-pending">archiving…</span>
               )}
-              {!l.wayback_url && user?.wayback_enabled !== 0 && user?.archive_access_key && user?.archive_secret_key && waybackStatus.get(l.url) === 'failed' && (
+              {!l.wayback_url && user?.wayback_enabled !== 0 && !!user?.wayback_keys_configured && waybackStatus.get(l.url) === 'failed' && (
                 <span className="detail-wayback-failed" title="Wayback Machine could not archive this URL">archive failed</span>
               )}
             </div>
@@ -811,7 +818,9 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         <div className="detail-section">
           <div className="detail-section-label">Links</div>
           {otherLinks.map((l) => (
-            <a key={l.id} href={l.url} className="detail-link">{l.label || l.url}</a>
+            (l.url.startsWith('http://') || l.url.startsWith('https://'))
+              ? <a key={l.id} href={l.url} className="detail-link" onClick={(e) => { e.preventDefault(); window.open(l.url, '_blank', 'noopener,noreferrer'); }}>{l.label || l.url}</a>
+              : <span key={l.id} className="detail-value">{l.label || l.url}</span>
           ))}
         </div>
       )}

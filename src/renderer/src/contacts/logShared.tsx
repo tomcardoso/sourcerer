@@ -5,13 +5,19 @@ import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import './ContactDetail.css';
 
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
 export function fmtLogDate(ts: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - ts;
-  if (diff < 86400) return 'today';
-  if (diff < 2 * 86400) return 'yesterday';
-  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)} days ago`;
-  const d = new Date(ts * 1000);
+  const ms = ts * 1000;
+  const todayStart = startOfDay(new Date());
+  const yesterdayStart = todayStart - 86400000;
+  if (ms >= todayStart) return 'today';
+  if (ms >= yesterdayStart) return 'yesterday';
+  const d = new Date(ms);
+  const diffDays = Math.floor((todayStart - startOfDay(d)) / 86400000);
+  if (diffDays < 7) return `${diffDays} days ago`;
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   const thisYear = new Date().getFullYear();
