@@ -20,6 +20,10 @@ export default function ScreenshotPanel({ contactId }: Props) {
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const inFlightRef = useRef<Set<string>>(new Set());
+  // Ref always holds the latest screenshotImages so async callbacks and the
+  // loadAll effect can check current state without a stale closure.
+  const screenshotImagesRef = useRef<Record<string, string>>({});
+  screenshotImagesRef.current = screenshotImages;
 
   useEffect(() => {
     window.sourcerer.listScreenshots(contactId).then(setScreenshots);
@@ -39,7 +43,7 @@ export default function ScreenshotPanel({ contactId }: Props) {
     async function loadAll() {
       for (const s of screenshots) {
         if (cancelled) return;
-        if (screenshotImages[s.id]) continue;
+        if (screenshotImagesRef.current[s.id]) continue;
         const result = await window.sourcerer.loadScreenshot(s.id);
         if (cancelled) return;
         if ('data' in result) {
@@ -56,7 +60,7 @@ export default function ScreenshotPanel({ contactId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [screenshots]); // screenshotImages intentionally omitted: we only need the snapshot at effect-run time to skip already-loaded images
+  }, [screenshots]);
 
   useEffect(() => {
     if (viewingScreenshot) {
@@ -66,7 +70,7 @@ export default function ScreenshotPanel({ contactId }: Props) {
   }, [viewingScreenshot]);
 
   async function loadScreenshotImage(id: string) {
-    if (screenshotImages[id] || inFlightRef.current.has(id)) return;
+    if (screenshotImagesRef.current[id] || inFlightRef.current.has(id)) return;
     inFlightRef.current.add(id);
     try {
       const result = await window.sourcerer.loadScreenshot(id);
