@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ContactDetail as ContactDetailType, ContactLogEntry } from '@shared/types';
 import Button from '../shell/Button';
 import { LogRow, LogAllModal } from './logShared';
@@ -8,7 +8,12 @@ import './ContactDetail.css';
 
 const LOG_PREVIEW = 3;
 
-export default function GlobalLogSection({ contact }: { contact: ContactDetailType }) {
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export default function GlobalLogSection({ contact, onUpdated }: { contact: ContactDetailType; onUpdated?: () => void }) {
   const [logEntries, setLogEntries] = useState<ContactLogEntry[]>([]);
   const [logAdding, setLogAdding] = useState(false);
   const [logText, setLogText] = useState('');
@@ -16,13 +21,16 @@ export default function GlobalLogSection({ contact }: { contact: ContactDetailTy
   const [logSubmitting, setLogSubmitting] = useState(false);
   const [logShowAll, setLogShowAll] = useState(false);
   const [logSelectedMembershipIds, setLogSelectedMembershipIds] = useState<string[]>([]);
+  const currentContactId = useRef(contact.id);
 
   useEffect(() => {
+    currentContactId.current = contact.id;
     let cancelled = false;
     setLogEntries([]);
     setLogAdding(false);
     setLogText('');
     setLogDate('');
+    setLogShowAll(false);
     setLogSelectedMembershipIds([]);
     window.sourcerer.listContactLog(contact.id).then((entries) => {
       if (!cancelled) setLogEntries(entries);
@@ -47,16 +55,19 @@ export default function GlobalLogSection({ contact }: { contact: ContactDetailTy
   async function handleLogSubmit() {
     const body = logText.trim();
     if (!body || !logDate) return;
+    const submittingContactId = contact.id;
     setLogSubmitting(true);
     try {
       const [y, m, d] = logDate.split('-').map(Number);
       const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
       const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt, logSelectedMembershipIds);
+      if (currentContactId.current !== submittingContactId) return;
       setLogEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
       setLogText('');
       setLogDate('');
       setLogSelectedMembershipIds([]);
       setLogAdding(false);
+      onUpdated?.();
     } finally {
       setLogSubmitting(false);
     }
@@ -74,7 +85,7 @@ export default function GlobalLogSection({ contact }: { contact: ContactDetailTy
           )}
           {!logAdding && (
             <Button variant="ghost" onClick={() => {
-              setLogDate(new Date().toISOString().slice(0, 10));
+              setLogDate(localToday());
               const effectiveDefault = contact.projects.find(
                 (p) => p.membership_id === contact.default_membership_id,
               );
@@ -103,7 +114,7 @@ export default function GlobalLogSection({ contact }: { contact: ContactDetailTy
               value={logDate}
               onChange={setLogDate}
               showYear
-              maxDate={new Date().toISOString().slice(0, 10)}
+              maxDate={localToday()}
             />
           </div>
           <textarea
