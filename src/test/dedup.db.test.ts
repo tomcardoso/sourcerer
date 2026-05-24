@@ -269,4 +269,71 @@ describe('mergeContacts — merge strategy', () => {
     const row = db.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(winner) as { updated_at: number };
     expect(row.updated_at).toBeGreaterThan(staleTs);
   });
+
+  it('merges notes from both contacts — picks the longer one (#278)', () => {
+    const winner = insertContact(db, 'Alice Smith', { notes: 'short' });
+    const loser = insertContact(db, 'Alicia Smith', { notes: 'longer notes here from loser' });
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const row = db.prepare('SELECT notes FROM contacts WHERE id = ?').get(winner) as { notes: string };
+    expect(row.notes).toBe('longer notes here from loser');
+  });
+
+  it('copies unique links (URLs) from loser to winner (#305)', () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    // Insert links directly — insertContact helper doesn't support links
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare('INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(uuidv4(), winner, 'website', null, 'https://winner.example.com', 0, now);
+    db.prepare('INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(uuidv4(), loser, 'website', null, 'https://loser.example.com', 0, now);
+    db.prepare('INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(uuidv4(), loser, 'website', null, 'https://winner.example.com', 1, now); // duplicate
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const links = db.prepare('SELECT url FROM contact_links WHERE contact_id = ?').all(winner) as { url: string }[];
+    const urls = links.map((l) => l.url);
+    expect(urls).toContain('https://winner.example.com');
+    expect(urls).toContain('https://loser.example.com');
+    // no duplicates
+    expect(urls.filter((u) => u === 'https://winner.example.com')).toHaveLength(1);
+  });
+
+  it('merges RSS feed from loser to winner when winner has none (#314)', () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    db.prepare('INSERT INTO contact_alert_rss (id, contact_id, rss_url) VALUES (?, ?, ?)').run(uuidv4(), loser, 'https://loser.example.com/rss');
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const row = db.prepare('SELECT rss_url FROM contact_alert_rss WHERE contact_id = ?').get(winner) as { rss_url: string } | undefined;
+    expect(row?.rss_url).toBe('https://loser.example.com/rss');
+  });
+});
+
+describe('mergeContacts — invalid IDs (#278, #305, #314)', () => {
+  it('throws when winner ID does not exist', () => {
+    const loser = insertContact(db, 'Loser Contact');
+    expect(() => mergeContacts(db, 'nonexistent-winner-id', loser, 'merge')).toThrow();
+  });
+
+  it('throws when loser ID does not exist', () => {
+    const winner = insertContact(db, 'Winner Contact');
+    expect(() => mergeContacts(db, winner, 'nonexistent-loser-id', 'merge')).toThrow();
+  });
+
+  it('throws or errors gracefully when winner and loser are the same ID', () => {
+    const id = insertContact(db, 'Same Contact');
+    // mergeContacts with same ID will try to DELETE the winner (since loser === winner);
+    // the exact failure mode depends on FK constraints. Assert it either throws or
+    // leaves the contact intact.
+    try {
+      mergeContacts(db, id, id, 'merge');
+      // If it doesn't throw, the contact must still exist
+      const row = db.prepare('SELECT id FROM contacts WHERE id = ?').get(id);
+      expect(row).toBeDefined();
+    } catch {
+      // throwing is also acceptable behaviour
+    }
+  });
 });

@@ -2,6 +2,16 @@ import type { ReactNode } from 'react';
 
 const URL_PATTERN = /https?:\/\/[^\s<>"',;]+/g;
 
+export function safeOpen(url: string): void {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch {
+    // invalid URL — do nothing
+  }
+}
+
 function trimTrailing(url: string): string {
   return url.replace(/[.,;:!?)\]]+$/, '');
 }
@@ -19,7 +29,7 @@ export function linkifyText(text: string): ReactNode[] {
         key={match.index}
         href={url}
         className="notes-link"
-        onClick={(e) => { e.preventDefault(); window.open(url); }}
+        onClick={(e) => { e.preventDefault(); safeOpen(url); }}
       >
         {url}
       </a>

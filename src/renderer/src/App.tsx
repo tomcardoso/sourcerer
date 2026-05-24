@@ -5,6 +5,7 @@ import Unlock from './screens/Unlock';
 import AppShell from './shell/AppShell';
 import ScreenshotPickerModal from './contacts/ScreenshotPickerModal';
 import Button from './shell/Button';
+import Modal from './shell/Modal';
 
 type AppScreen = 'loading' | 'setup' | 'locked' | 'unlocked';
 
@@ -43,23 +44,20 @@ export default function App() {
   }
 
   const extensionModal = showExtensionApproval ? (
-    <div className="ext-approval-overlay">
-      <div className="ext-approval-card">
-        <h3>Browser extension requesting access</h3>
-        <p>
-          The Sourcerer browser extension wants to connect to this app. Approve only if you
-          just triggered this from the extension.
-        </p>
-        <div className="ext-approval-actions">
-          <Button variant="secondary" onClick={handleDeny}>
-            Deny
-          </Button>
-          <Button variant="primary" onClick={handleApprove}>
-            Approve
-          </Button>
-        </div>
+    <Modal title="Browser extension requesting access" onDismiss={handleDeny}>
+      <p className="modal-description">
+        The Sourcerer browser extension wants to connect to this app. Approve only if you
+        just triggered this from the extension.
+      </p>
+      <div className="modal-actions">
+        <Button variant="secondary" onClick={handleDeny}>
+          Deny
+        </Button>
+        <Button variant="primary" onClick={handleApprove}>
+          Approve
+        </Button>
       </div>
-    </div>
+    </Modal>
   ) : null;
 
   if (screen === 'loading') {

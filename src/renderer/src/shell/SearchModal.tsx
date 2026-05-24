@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SearchResult } from '@shared/types';
 import type { NavTarget } from './AppShell';
+import Modal from './Modal';
 import './SearchModal.css';
 
 interface Props {
@@ -15,10 +16,6 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const latestQueryRef = useRef('');
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +43,6 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') { onClose(); return; }
     if (results.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -65,91 +61,90 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   const logs = results.filter((r) => r.type === 'log');
 
   return (
-    <div className="search-overlay" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Search" className="search-card" onClick={(e) => e.stopPropagation()}>
-        <div className="search-input-row">
-          <input
-            ref={inputRef}
-            className="search-input"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search contacts and projects…"
-            aria-label="Search contacts and projects"
-          />
-        </div>
-
-        {results.length > 0 && (
-          <div className="search-results">
-            {contacts.length > 0 && (
-              <>
-                <div className="search-section-label">Contacts</div>
-                {contacts.map((r) => {
-                  const idx = results.indexOf(r);
-                  return (
-                    <ResultRow
-                      key={r.id}
-                      result={r}
-                      selected={idx === selectedIndex}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      onClick={() => pick(r)}
-                    />
-                  );
-                })}
-              </>
-            )}
-            {projects.length > 0 && (
-              <>
-                <div className="search-section-label">Projects</div>
-                {projects.map((r) => {
-                  const idx = results.indexOf(r);
-                  return (
-                    <ResultRow
-                      key={r.id}
-                      result={r}
-                      selected={idx === selectedIndex}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      onClick={() => pick(r)}
-                    />
-                  );
-                })}
-              </>
-            )}
-            {logs.length > 0 && (
-              <>
-                <div className="search-section-label">Log entries</div>
-                {logs.map((r) => {
-                  const idx = results.indexOf(r);
-                  return (
-                    <ResultRow
-                      key={r.id}
-                      result={r}
-                      selected={idx === selectedIndex}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      onClick={() => pick(r)}
-                    />
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
-
-        {query.trim() !== '' && results.length === 0 && (
-          <div className="search-empty">No results for "{query}"</div>
-        )}
-
-        {query.trim() === '' && (
-          <div className="search-empty">Type to search contacts, projects and log entries</div>
-        )}
-
-        <div className="search-footer">
-          <span className="search-hint">↑↓ navigate</span>
-          <span className="search-hint">↵ open</span>
-          <span className="search-hint">Esc close</span>
-        </div>
+    <Modal title="Search" onDismiss={onClose} className="search-modal">
+      <div className="search-input-row">
+        <input
+          ref={inputRef}
+          autoFocus
+          className="search-input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search contacts and projects…"
+          aria-label="Search contacts and projects"
+        />
       </div>
-    </div>
+
+      {results.length > 0 && (
+        <div className="search-results">
+          {contacts.length > 0 && (
+            <>
+              <div className="search-section-label">Contacts</div>
+              {contacts.map((r) => {
+                const idx = results.indexOf(r);
+                return (
+                  <ResultRow
+                    key={r.id}
+                    result={r}
+                    selected={idx === selectedIndex}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    onClick={() => pick(r)}
+                  />
+                );
+              })}
+            </>
+          )}
+          {projects.length > 0 && (
+            <>
+              <div className="search-section-label">Projects</div>
+              {projects.map((r) => {
+                const idx = results.indexOf(r);
+                return (
+                  <ResultRow
+                    key={r.id}
+                    result={r}
+                    selected={idx === selectedIndex}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    onClick={() => pick(r)}
+                  />
+                );
+              })}
+            </>
+          )}
+          {logs.length > 0 && (
+            <>
+              <div className="search-section-label">Log entries</div>
+              {logs.map((r) => {
+                const idx = results.indexOf(r);
+                return (
+                  <ResultRow
+                    key={r.id}
+                    result={r}
+                    selected={idx === selectedIndex}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    onClick={() => pick(r)}
+                  />
+                );
+              })}
+            </>
+          )}
+        </div>
+      )}
+
+      {query.trim() !== '' && results.length === 0 && (
+        <div className="search-empty">No results for "{query}"</div>
+      )}
+
+      {query.trim() === '' && (
+        <div className="search-empty">Type to search contacts, projects and log entries</div>
+      )}
+
+      <div className="search-footer">
+        <span className="search-hint">↑↓ navigate</span>
+        <span className="search-hint">↵ open</span>
+        <span className="search-hint">Esc close</span>
+      </div>
+    </Modal>
   );
 }
 

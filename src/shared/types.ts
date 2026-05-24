@@ -66,8 +66,7 @@ export interface User {
   reminder_notifications_enabled: 0 | 1;
   rss_poll_interval_hours: number;
   wayback_enabled: 0 | 1;
-  archive_access_key: string | null;
-  archive_secret_key: string | null;
+  wayback_keys_configured: 0 | 1;
   auto_backup_enabled: 0 | 1;
   auto_backup_dest_path: string | null;
   auto_backup_max_count: number;

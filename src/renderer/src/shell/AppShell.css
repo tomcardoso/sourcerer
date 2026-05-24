@@ -100,6 +100,7 @@
 }
 
 .app-content {
+  position: relative;
   flex: 1;
   overflow: auto;
   background: var(--color-bg);

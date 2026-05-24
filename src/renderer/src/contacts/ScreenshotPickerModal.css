@@ -1,36 +1,8 @@
-.spm-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.spm-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0;
-  padding: 24px 20px 16px;
+.spm-modal {
   width: 360px;
   max-height: 480px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.spm-title {
-  margin: 0 0 4px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.spm-subtitle {
-  margin: 0 0 14px;
-  font-size: 14px;
-  color: var(--color-text);
-  line-height: 1.5;
 }
 
 .spm-error {
@@ -82,11 +54,6 @@
   letter-spacing: 0.14em;
 }
 
-.spm-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
 
 .spm-search {
   flex: none;
