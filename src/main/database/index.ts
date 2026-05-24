@@ -1,7 +1,7 @@
 import { unlinkSync } from 'fs';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { is } from '@electron-toolkit/utils';
-import { LOCAL_SCHEMA_SQL } from './schema';
+import { LOCAL_SCHEMA_PRAGMAS_SQL, LOCAL_SCHEMA_DDL_SQL } from './schema';
 import { seedDefaults } from './seeds';
 import { seedDevData } from './dev-seeds';
 
@@ -38,14 +38,13 @@ function openRaw(dbPath: string, keyHex: string): Database.Database {
 /** First-launch only: open + run schema + seed defaults + set active connection. */
 export function initDatabase(dbPath: string, keyHex: string): Database.Database {
   const db = openRaw(dbPath, keyHex);
-  // LOCAL_SCHEMA_SQL begins with PRAGMA statements that SQLite forbids inside a
-  // transaction, so exec it first (each DDL statement auto-commits individually).
-  // Seed + version stamp are wrapped in a transaction so a seed failure rolls back
-  // cleanly.  On any error we close the handle before re-throwing so the caller
-  // can delete the file and retry (fixes #201).
+  // PRAGMAs (foreign_keys, journal_mode) cannot run inside a transaction;
+  // run them first, then wrap DDL + seed + version stamp atomically so a
+  // first-launch failure always leaves the file closed and deleted (fixes #201).
   try {
-    db.exec(LOCAL_SCHEMA_SQL);
+    db.exec(LOCAL_SCHEMA_PRAGMAS_SQL);
     db.transaction(() => {
+      db.exec(LOCAL_SCHEMA_DDL_SQL);
       seedDefaults(db);
       db.pragma(`user_version = ${DB_VERSION}`);
     })();

@@ -1,7 +1,9 @@
-export const LOCAL_SCHEMA_SQL = `
+export const LOCAL_SCHEMA_PRAGMAS_SQL = `
   PRAGMA foreign_keys = ON;
   PRAGMA journal_mode = DELETE;
+`;
 
+export const LOCAL_SCHEMA_DDL_SQL = `
   CREATE TABLE IF NOT EXISTS users (
     id                         INTEGER PRIMARY KEY,
     first_name                 TEXT    NOT NULL,
@@ -268,3 +270,5 @@ export const LOCAL_SCHEMA_SQL = `
       INSERT INTO interaction_log_fts(rowid, body) VALUES (new.rowid, new.body);
     END;
 `;
+
+export const LOCAL_SCHEMA_SQL = LOCAL_SCHEMA_PRAGMAS_SQL + LOCAL_SCHEMA_DDL_SQL;

@@ -384,18 +384,11 @@ export function registerProjectHandlers(): void {
       const newKeyBytes = randomBytes(32);
       const newKeyHex = newKeyBytes.toString('hex');
 
-      // Update the local record first so the new key is persisted before we
-      // touch the shared file.  If the rekey then fails, revert the local row
-      // so the app retains access via the still-valid old key (fixes #178).
+      // Rekey the shared file first; only update the local record after success.
+      // This way a crash during rekey leaves local pointing at the still-valid
+      // old key rather than a new key that doesn't match the file (fixes #178).
+      rekeySharedDb(projectId, project.shared_db_path, oldKeyHex, newKeyHex);
       db.prepare('UPDATE projects SET shared_db_key = ? WHERE id = ?').run(newKeyBytes, projectId);
-      try {
-        rekeySharedDb(projectId, project.shared_db_path, oldKeyHex, newKeyHex);
-      } catch (rekeyErr) {
-        try {
-          db.prepare('UPDATE projects SET shared_db_key = ? WHERE id = ?').run(project.shared_db_key, projectId);
-        } catch { /* ignore revert failure */ }
-        throw rekeyErr;
-      }
 
       const payload = encodePayload(
         project.name,
