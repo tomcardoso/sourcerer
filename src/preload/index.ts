@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { is } from '@electron-toolkit/utils';
 import type {
   SetupFormData,
   SetupResult,
@@ -395,10 +396,10 @@ const sourcererApi = {
   },
   downloadUpdate: (): Promise<void> => ipcRenderer.invoke('update:download'),
   quitAndInstall: (): Promise<void> => ipcRenderer.invoke('update:quit-and-install'),
-  simulateUpdate: (): Promise<void> => ipcRenderer.invoke('update:dev-simulate'),
+  ...(is.dev ? { simulateUpdate: (): Promise<void> => ipcRenderer.invoke('update:dev-simulate') } : {}),
   getUpdateState: (): Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null> =>
     ipcRenderer.invoke('update:get-state'),
-  showUpdateError: (message: string): Promise<void> => ipcRenderer.invoke('update:show-error', message),
+  showUpdateError: (): Promise<void> => ipcRenderer.invoke('update:show-error'),
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

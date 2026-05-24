@@ -83,12 +83,11 @@ export function registerUpdaterHandlers(): void {
       cachedUpdateInfo = { event: 'available', version: '99.0.0' };
       sendToWindow('update:available', { version: '99.0.0' });
     });
-    ipcMain.handle('update:show-error', (_event, message: string) => {
+    ipcMain.handle('update:show-error', () => {
       return dialog.showMessageBox({
         type: 'error',
         title: 'Update failed',
-        message: 'The update could not be downloaded. Please try again.',
-        detail: message,
+        message: 'An update error occurred. Please restart the app and try again.',
       });
     });
     return;
