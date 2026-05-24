@@ -663,7 +663,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
                 disabled={!waybackEnabled}
               />
             </div>
-            <Button variant="accent" size="sm" onClick={handleArchiveKeysSave} disabled={!waybackEnabled}>
+            <Button variant="accent" size="sm" onClick={handleArchiveKeysSave} disabled={!waybackEnabled || !archiveAccessKey.trim() || !archiveSecretKey.trim()}>
               Save keys
             </Button>
           </div>
