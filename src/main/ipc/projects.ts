@@ -61,12 +61,20 @@ export function registerProjectHandlers(): void {
       // and to the local DB second.  If the local write fails we attempt a
       // compensating delete on the shared DB and re-throw (fixes #176).
 
-      // 2. Create the shared DB file and write project metadata
-      const sharedDb = createSharedDb(filePath, keyHex, id);
-      sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-        trimmedName,
-        trimmedDesc,
-      );
+      // 2. Create the shared DB file and write project metadata.
+      // Guard shared-DB creation separately so a failure here also cleans up.
+      let sharedDb: ReturnType<typeof createSharedDb>;
+      try {
+        sharedDb = createSharedDb(filePath, keyHex, id);
+        sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
+          trimmedName,
+          trimmedDesc,
+        );
+      } catch (sharedErr) {
+        try { closeSharedDb(id); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
+        throw sharedErr;
+      }
 
       // 3. Create the local project record + reporter row in a single transaction.
       try {
@@ -233,12 +241,20 @@ export function registerProjectHandlers(): void {
       // If the local write fails, attempt a compensating delete on the shared DB
       // and re-throw (fixes #176).
 
-      // Create shared DB and write project metadata
-      const sharedDb = createSharedDb(filePath, keyHex, projectId);
-      sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-        project.name,
-        project.description,
-      );
+      // Create shared DB and write project metadata.
+      // Guard shared-DB creation separately so a failure here also cleans up.
+      let sharedDb: ReturnType<typeof createSharedDb>;
+      try {
+        sharedDb = createSharedDb(filePath, keyHex, projectId);
+        sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
+          project.name,
+          project.description,
+        );
+      } catch (sharedErr) {
+        try { closeSharedDb(projectId); } catch { /* ignore */ }
+        try { unlinkSync(filePath); } catch { /* ignore */ }
+        throw sharedErr;
+      }
 
       try {
         db.transaction(() => {

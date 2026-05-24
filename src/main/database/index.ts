@@ -1,3 +1,4 @@
+import { unlinkSync } from 'fs';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { is } from '@electron-toolkit/utils';
 import { LOCAL_SCHEMA_SQL } from './schema';
@@ -50,6 +51,7 @@ export function initDatabase(dbPath: string, keyHex: string): Database.Database 
     })();
   } catch (err) {
     try { db.close(); } catch { /* ignore */ }
+    try { unlinkSync(dbPath); } catch { /* ignore */ }
     throw err;
   }
   activeDb = db;

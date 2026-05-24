@@ -61,7 +61,9 @@ export function syncProject(
     })();
 
     // Phase 4: stamp sync metadata on the local project record
-    localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
+    localDb.transaction(() => {
+      localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
+    })();
 
     return { success: true };
   } catch (err) {
