@@ -301,7 +301,7 @@ async function captureAndSend(token) {
   const headers = { 'Content-Type': 'image/jpeg', 'X-Sourcerer-Token': token };
   if (tabUrl) headers['X-Tab-Url'] = tabUrl;
 
-  const r = await fetch(`${BASE}/screenshot`, { method: 'POST', headers, body: blob });
+  const r = await fetch(`${BASE}/screenshot`, { method: 'POST', headers, body: blob, signal: AbortSignal.timeout(30000) });
   if (!r.ok) throw new Error(`Server responded ${r.status}`);
   return r.json();
 }
@@ -475,8 +475,13 @@ async function wireConnected(token) {
       const st = document.getElementById('field-status');
       st.textContent = 'Loading contacts…'; st.className = 'screen-status';
       showScreen('screen-field');
-      try { allContacts = await fetchContacts(token); } catch {}
-      st.textContent = '';
+      try {
+        allContacts = await fetchContacts(token);
+        st.textContent = '';
+      } catch {
+        st.textContent = 'Could not connect to Sourcerer — is the app running?';
+        st.className = 'screen-status err';
+      }
       renderFieldListCtx('');
       document.getElementById('field-search').oninput = (e) => renderFieldListCtx(e.target.value);
       setTimeout(() => document.getElementById('field-search').focus(), 50);
@@ -550,8 +555,13 @@ async function wireConnected(token) {
       document.getElementById('field-search').value = '';
       if (!allContacts.length) {
         st.textContent = 'Loading contacts…';
-        try { allContacts = await fetchContacts(token); } catch {}
-        st.textContent = '';
+        try {
+          allContacts = await fetchContacts(token);
+          st.textContent = '';
+        } catch {
+          st.textContent = 'Could not connect to Sourcerer — is the app running?';
+          st.className = 'screen-status err';
+        }
       }
       renderFieldList('');
       document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value);
