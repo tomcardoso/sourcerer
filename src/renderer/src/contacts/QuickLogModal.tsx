@@ -163,7 +163,7 @@ export default function QuickLogModal({ onClose, onSaved }: Props) {
         />
       </div>
 
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
         <Button variant="primary" onClick={handleSave} disabled={!canSave}>
           {saving ? 'Saving…' : 'Save'}

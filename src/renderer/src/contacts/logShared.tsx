@@ -105,7 +105,7 @@ export function LogAllModal({
           {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
         </div>
       )}
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button onClick={onClose}>Close</Button>
       </div>
     </Modal>

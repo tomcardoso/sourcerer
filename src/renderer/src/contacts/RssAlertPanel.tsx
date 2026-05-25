@@ -23,17 +23,17 @@ export default function RssAlertPanel({
 }: Props) {
   if (editing) {
     return (
-      <div className="ac-field">
-        <label className="ac-label">Alert RSS Feeds</label>
+      <div className="form-field">
+        <label className="form-label">Alert RSS Feeds</label>
         {alertRssList.map((feed) => (
           <div key={feed.id} className="ac-dynamic-row">
-            <input className="ac-input" value={feed.rss_url} readOnly title={feed.rss_url} />
+            <input className="form-input" value={feed.rss_url} readOnly title={feed.rss_url} />
             <button className="ac-remove" type="button" onClick={() => onRemoveRss(feed.id)}></button>
           </div>
         ))}
         <div>
           <input
-            className="ac-input"
+            className="form-input"
             value={newRssUrl}
             onChange={(e) => onNewRssUrlChange(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAddRss(); } }}
@@ -54,7 +54,7 @@ export default function RssAlertPanel({
         >
           + Add
         </Button>
-        <p className="ac-field-hint">
+        <p className="form-field-hint">
           Paste a Google Alerts RSS URL to automatically track mentions.
           To get one: go to <strong>google.com/alerts</strong>, create an alert, click <strong>Show options</strong>, set Deliver to <strong>RSS feed</strong>, then create the alert and copy the feed URL.
         </p>

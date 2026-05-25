@@ -40,7 +40,7 @@ export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
 
   return (
     <Modal title="Assign screenshot" onDismiss={onClose} className="spm-modal">
-      <p className="modal-description">
+      <p className="form-description">
         Choose a contact to attach this screenshot to.
       </p>
       <input
@@ -71,7 +71,7 @@ export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
           ))
         )}
       </div>
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="secondary" onClick={onClose} disabled={saving}>
           Cancel
         </Button>

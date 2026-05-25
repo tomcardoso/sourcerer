@@ -43,13 +43,13 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
   return (
     <Modal title="New Project" onDismiss={onCancel}>
       <form onSubmit={handleSubmit}>
-          <div className="modal-field">
-            <label htmlFor="proj-name" className="modal-label">
-              Project name <span className="modal-required">*</span>
+          <div className="form-field">
+            <label htmlFor="proj-name" className="form-label">
+              Project name <span className="form-required">*</span>
             </label>
             <input
               id="proj-name"
-              className="modal-input"
+              className="form-input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -59,13 +59,13 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
             />
           </div>
 
-          <div className="modal-field">
-            <label htmlFor="proj-desc" className="modal-label">
-              Description <span className="modal-optional">(optional)</span>
+          <div className="form-field">
+            <label htmlFor="proj-desc" className="form-label">
+              Description <span className="form-optional">(optional)</span>
             </label>
             <input
               id="proj-desc"
-              className="modal-input"
+              className="form-input"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -74,8 +74,8 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
             />
           </div>
 
-          <div className="modal-field modal-field-toggle">
-            <label className="modal-toggle-label">
+          <div className="form-field form-field-toggle">
+            <label className="form-toggle-label">
               <input
                 type="checkbox"
                 checked={isShared}
@@ -85,14 +85,14 @@ export default function NewProjectModal({ onCreated, onCreatedShared, onCancel }
               <span>Shared project</span>
             </label>
             {isShared && (
-              <p className="modal-toggle-hint">
+              <p className="form-toggle-hint">
                 You'll choose where to save the shared file. A setup link will be generated for
                 collaborators.
               </p>
             )}
           </div>
 
-          <div className="modal-actions">
+          <div className="form-actions">
             <Button
               type="button"
               variant="secondary"

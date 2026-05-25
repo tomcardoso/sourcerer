@@ -18,7 +18,7 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
 
   return (
     <Modal title="Add to calendar" onDismiss={onClose} className="reminders-cal-modal">
-      <p className="modal-description">
+      <p className="form-description">
           Subscribe to this URL in your calendar app to see your Sourcerer reminders. This link will only work on devices where you are logged in to Sourcerer and have the app running.
         </p>
 
@@ -48,7 +48,7 @@ function CalendarSetupModal({ url, onClose }: { url: string; onClose: () => void
           The feed is only available while Sourcerer is running. Existing calendar events are unaffected when the app is closed.
         </p>
 
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="primary" onClick={onClose}>Done</Button>
       </div>
     </Modal>

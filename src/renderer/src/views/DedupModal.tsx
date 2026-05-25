@@ -135,7 +135,7 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
     return (
       <Modal title="All done" onDismiss={onClose} className="dedup-modal">
         <p className="dedup-empty">No duplicate pairs to review.</p>
-        <div className="modal-actions">
+        <div className="form-actions">
           <Button variant="accent" onClick={onClose}>
             Close
           </Button>
@@ -152,7 +152,7 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
         <span className="dedup-reason">{reasonLabel(reason)}</span>
         <span className="dedup-progress">{index + 1} of {pairs.length}</span>
       </div>
-      <p className="modal-description dedup-reason-desc">{reasonDescription(reason)}</p>
+      <p className="form-description dedup-reason-desc">{reasonDescription(reason)}</p>
 
       <div className="dedup-body">
         <div className="dedup-columns">

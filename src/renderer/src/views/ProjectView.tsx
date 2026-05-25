@@ -857,10 +857,10 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     {showEditProject && (
       <Modal title="Edit project" onDismiss={() => setShowEditProject(false)}>
         <form onSubmit={handleEditProjectSubmit}>
-          <div className="modal-field">
-            <label className="modal-label">Project name <span className="modal-required">*</span></label>
+          <div className="form-field">
+            <label className="form-label">Project name <span className="form-required">*</span></label>
             <input
-              className="modal-input"
+              className="form-input"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               autoFocus
@@ -868,17 +868,17 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
               disabled={editSubmitting}
             />
           </div>
-          <div className="modal-field">
-            <label className="modal-label">Description <span className="modal-optional">(optional)</span></label>
+          <div className="form-field">
+            <label className="form-label">Description <span className="form-optional">(optional)</span></label>
             <input
-              className="modal-input"
+              className="form-input"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               placeholder="Short slug line"
               disabled={editSubmitting}
             />
           </div>
-          <div className="modal-actions">
+          <div className="form-actions">
             <Button type="button" variant="secondary" onClick={() => setShowEditProject(false)} disabled={editSubmitting}>
               Cancel
             </Button>
@@ -924,12 +924,12 @@ function UnshareProjectModal({
 
   return (
     <Modal title="Unshare project" onDismiss={onDismiss}>
-      <p className="modal-description">
+      <p className="form-description">
         <strong>{projectName}</strong> will be converted back to a local-only project. All
         collaborators will immediately lose access and the shared file will no longer be updated.
         Your local data is unaffected.
       </p>
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="secondary" onClick={onDismiss} disabled={working}>Cancel</Button>
         <Button variant="danger" onClick={handleConfirm} disabled={working}>
           {working ? 'Unsharing…' : 'Unshare project'}
@@ -957,12 +957,12 @@ function RotateKeyModal({
 
   return (
     <Modal title="Rotate encryption key" onDismiss={onDismiss}>
-      <p className="modal-description">
+      <p className="form-description">
         This will generate a new encryption key for <strong>{projectName}</strong>. All current
         collaborators will immediately lose access. You'll be shown a new share link to redistribute
         out-of-band.
       </p>
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="secondary" onClick={onDismiss} disabled={working}>Cancel</Button>
         <Button variant="danger" onClick={handleConfirm} disabled={working}>
           {working ? 'Rotating…' : 'Rotate key'}

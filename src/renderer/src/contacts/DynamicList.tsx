@@ -56,7 +56,7 @@ export default function DynamicList({
       <div className="ac-dynamic-row">
         {enableDragReorder && <span className="ac-drag-handle" {...handleProps}>⠿</span>}
         <input
-          className="ac-input"
+          className="form-input"
           value={v}
           placeholder={placeholder}
           onChange={(e) => {
@@ -89,8 +89,8 @@ export default function DynamicList({
 
   if (label) {
     return (
-      <div className="ac-field">
-        <label className="modal-label">{label}</label>
+      <div className="form-field">
+        <label className="form-label">{label}</label>
         {rows}
         {addButton}
       </div>

@@ -191,15 +191,15 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   return (
     <Modal title="Add contact" onDismiss={onCancel} className="ac-add-contact">
       <form ref={formRef} onSubmit={handleSubmit} className="ac-form">
-        <p className="modal-description">Only a name is required — everything else can be filled in later.</p>
+        <p className="form-description">Only a name is required — everything else can be filled in later.</p>
 
-          <div className="ac-field">
-            <label htmlFor="ac-name" className="modal-label">
-              Name <span className="modal-required">*</span>
+          <div className="form-field">
+            <label htmlFor="ac-name" className="form-label">
+              Name <span className="form-required">*</span>
             </label>
             <input
               id="ac-name"
-              className="ac-input"
+              className="form-input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -209,11 +209,11 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
-          <div className="ac-field">
-            <label htmlFor="ac-org" className="modal-label">Organization</label>
+          <div className="form-field">
+            <label htmlFor="ac-org" className="form-label">Organization</label>
             <input
               id="ac-org"
-              className="ac-input"
+              className="form-input"
               type="text"
               value={org}
               onChange={(e) => setOrg(e.target.value)}
@@ -235,11 +235,11 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           </button>
 
           {expanded && <>
-          <div className="ac-field">
-            <label htmlFor="ac-title" className="modal-label">Title / Role</label>
+          <div className="form-field">
+            <label htmlFor="ac-title" className="form-label">Title / Role</label>
             <input
               id="ac-title"
-              className="ac-input"
+              className="form-input"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -248,8 +248,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
-          <div className="ac-field">
-            <label className="modal-label">Date of birth</label>
+          <div className="form-field">
+            <label className="form-label">Date of birth</label>
             <CalendarPicker
               label="Select date"
               value={dob}
@@ -260,13 +260,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             />
           </div>
 
-          <div className="ac-field">
-            <label className="modal-label">Email</label>
+          <div className="form-field">
+            <label className="form-label">Email</label>
             {emails.map((entry, i) => (
               <div key={i}>
                 <div className="ac-phone-row">
                   <input
-                    className="ac-input"
+                    className="form-input"
                     type="email"
                     value={entry.email}
                     placeholder="email@example.com"
@@ -282,7 +282,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     disabled={submitting}
                   />
                   <input
-                    className="ac-input"
+                    className="form-input"
                     type="text"
                     value={entry.label}
                     placeholder="label"
@@ -316,13 +316,13 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
               + Add email
             </Button>
           </div>
-          <div className="ac-field">
-            <label className="modal-label">Phone</label>
+          <div className="form-field">
+            <label className="form-label">Phone</label>
             {phones.map((entry, i) => (
               <div key={i}>
                 <div className="ac-phone-row">
                   <input
-                    className="ac-input"
+                    className="form-input"
                     type="text"
                     value={entry.phone}
                     placeholder="+1 555 000 0000"
@@ -348,7 +348,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     disabled={submitting}
                   />
                   <input
-                    className="ac-input"
+                    className="form-input"
                     type="text"
                     value={entry.label}
                     placeholder="label"
@@ -389,12 +389,12 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             </Button>
           </div>
 
-          <div className="ac-field">
-            <label className="modal-label">Messaging</label>
+          <div className="form-field">
+            <label className="form-label">Messaging</label>
             {handles.map((entry, i) => (
               <div key={i} className="ac-phone-row">
                 <select
-                  className="ac-input ac-handle-type"
+                  className="form-input ac-handle-type"
                   value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
                   onChange={(e) => setHandles(handles.map((h, j) => j === i ? { ...h, type: e.target.value } : h))}
                   disabled={submitting}
@@ -404,7 +404,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                   ))}
                 </select>
                 <input
-                  className="ac-input"
+                  className="form-input"
                   type="text"
                   value={entry.handle}
                   placeholder={HANDLE_META[(HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other') as HandleType].placeholder}
@@ -483,8 +483,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           ))}
 
           {projects.length > 0 && (
-            <div className="ac-field">
-              <label className="modal-label">Add to projects</label>
+            <div className="form-field">
+              <label className="form-label">Add to projects</label>
               <div className="ac-project-select" ref={projectWrapRef}>
                 <div className="ac-project-chips">
                   {[...selectedProjectIds].map((id) => {
@@ -531,11 +531,11 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             </div>
           )}
 
-          <div className="ac-field">
-            <label htmlFor="ac-notes" className="modal-label">Notes</label>
+          <div className="form-field">
+            <label htmlFor="ac-notes" className="form-label">Notes</label>
             <textarea
               id="ac-notes"
-              className="ac-textarea"
+              className="form-textarea"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Preferred contact method, topics they will or won't discuss, relationship history…"
