@@ -162,7 +162,7 @@ export function registerSettingsHandlers(): void {
         // Verify the current password by comparing derived key against the active in-memory key
         const salt = await fs.readFile(saltPath);
         const currentKeyHex = await deriveKey(currentPassword, salt);
-        if (currentKeyHex !== getKeyHex()) {
+        if (!crypto.timingSafeEqual(Buffer.from(currentKeyHex, 'hex'), Buffer.from(getKeyHex(), 'hex'))) {
           return { success: false, error: 'Current password is incorrect.' };
         }
 

@@ -243,3 +243,36 @@ describe('contacts:get', () => {
     expect(() => handlers.get('contacts:get')!({}, 'non-existent-id')).toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// contacts:merge validation (#285)
+// ---------------------------------------------------------------------------
+
+describe('contacts:merge validation', () => {
+  it('throws when winnerId and loserId are the same', () => {
+    const id = insertContact(testDb, 'Alice');
+    expect(() => handlers.get('contacts:merge')!({}, { winnerId: id, loserId: id, strategy: 'keep' }))
+      .toThrow('winnerId and loserId must be different');
+  });
+
+  it('throws on an invalid strategy', () => {
+    const a = insertContact(testDb, 'Alice');
+    const b = insertContact(testDb, 'Bob');
+    expect(() => handlers.get('contacts:merge')!({}, { winnerId: a, loserId: b, strategy: 'bad' }))
+      .toThrow('Invalid strategy');
+  });
+
+  it('throws when winner does not exist and leaves loser unchanged', () => {
+    const b = insertContact(testDb, 'Bob');
+    expect(() => handlers.get('contacts:merge')!({}, { winnerId: 'no-such-id', loserId: b, strategy: 'keep' }))
+      .toThrow('Contact not found');
+    expect(testDb.prepare('SELECT id FROM contacts WHERE id = ?').get(b)).toBeDefined();
+  });
+
+  it('throws when loser does not exist and leaves winner unchanged', () => {
+    const a = insertContact(testDb, 'Alice');
+    expect(() => handlers.get('contacts:merge')!({}, { winnerId: a, loserId: 'no-such-id', strategy: 'keep' }))
+      .toThrow('Contact not found');
+    expect(testDb.prepare('SELECT id FROM contacts WHERE id = ?').get(a)).toBeDefined();
+  });
+});
