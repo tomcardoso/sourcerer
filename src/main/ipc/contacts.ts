@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow, net } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
+import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
@@ -33,9 +34,9 @@ let dedupScanTimer: ReturnType<typeof setTimeout> | null = null;
 
 type Db = ReturnType<typeof getDatabase>;
 let _stmtDb: Db | null = null;
-const _stmtCache = new Map<string, ReturnType<Db['prepare']>>();
+const _stmtCache = new Map<string, Database.Statement<unknown[]>>();
 
-function stmt(db: Db, sql: string): ReturnType<Db['prepare']> {
+function stmt(db: Db, sql: string): Database.Statement<unknown[]> {
   if (_stmtDb !== db) { _stmtCache.clear(); _stmtDb = db; }
   let s = _stmtCache.get(sql);
   if (!s) { s = db.prepare(sql); _stmtCache.set(sql, s); }
