@@ -27,8 +27,10 @@ export default function Modal({ title, onDismiss, className, children }: Props) 
   // Save caller's focus, auto-focus first modal element, restore on unmount
   useEffect(() => {
     prevFocusRef.current = document.activeElement as HTMLElement;
-    const first = cardRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE)[0];
-    first?.focus();
+    if (!cardRef.current?.contains(document.activeElement)) {
+      const first = cardRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE)[0];
+      first?.focus();
+    }
     return () => { prevFocusRef.current?.focus(); };
   }, []);
 

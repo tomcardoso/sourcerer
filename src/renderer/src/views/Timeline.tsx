@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TimelineEntry, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -206,6 +206,13 @@ export default function Timeline({ projectId, projectName, user }: Props) {
     setDrawerClosing(true);
     setTimeout(() => { setSelectedContactId(null); setDrawerClosing(false); }, 160);
   }
+
+  const refreshEntries = useCallback(() => {
+    const loadPromise = projectId
+      ? window.sourcerer.listProjectTimeline(projectId)
+      : window.sourcerer.listAllTimeline();
+    loadPromise.then(setEntries).catch(() => {});
+  }, [projectId]);
 
   useEffect(() => {
     setEntries([]);
@@ -545,7 +552,7 @@ export default function Timeline({ projectId, projectName, user }: Props) {
             contactId={selectedContactId}
             onClose={closeContact}
             onDeleted={closeContact}
-            onUpdated={() => {}}
+            onUpdated={refreshEntries}
             user={user ?? null}
             closing={drawerClosing}
           />

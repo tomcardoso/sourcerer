@@ -48,8 +48,11 @@ export default function AlertMentions({ onUnseenCountChange }: Props) {
     setMentions(data);
     window.sourcerer.getFeedCount().then(setFeedCount);
     window.sourcerer.getLastFetched().then((ts) => setLastFetchedAt(ts ? ts * 1000 : null));
-    onUnseenCountChange(data.filter((m) => m.seen === 0).length);
-  }, [onUnseenCountChange]);
+  }, []);
+
+  useEffect(() => {
+    onUnseenCountChange(mentions.filter((m) => m.seen === 0).length);
+  }, [mentions, onUnseenCountChange]);
 
   useEffect(() => {
     refresh();
@@ -59,13 +62,11 @@ export default function AlertMentions({ onUnseenCountChange }: Props) {
   async function handleMarkAllSeen() {
     await window.sourcerer.markAllMentionsSeen();
     setMentions((prev) => prev.map((m) => ({ ...m, seen: 1 })));
-    onUnseenCountChange(0);
   }
 
   async function handleClearAll() {
     await window.sourcerer.clearAllMentions();
     setMentions([]);
-    onUnseenCountChange(0);
     setConfirmClear(false);
   }
 
@@ -81,13 +82,11 @@ export default function AlertMentions({ onUnseenCountChange }: Props) {
 
   function handleMarkOneSeen(id: string) {
     window.sourcerer.markMentionSeen(id);
-    setMentions((prev) => prev.map((m) => (m.id === id ? { ...m, seen: 1 } : m)));
-    onUnseenCountChange(mentions.filter((m) => m.seen === 0 && m.id !== id).length);
+    setMentions((prev) => prev.map((m) => (m.id === id ? { ...m, seen: 1 as const } : m)));
   }
 
   function handleDismiss(id: string) {
     setMentions((prev) => prev.filter((m) => m.id !== id));
-    onUnseenCountChange(mentions.filter((m) => m.seen === 0 && m.id !== id).length);
     window.sourcerer.dismissMention(id).catch(() => {});
   }
 

@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SortDir } from '../views/ContactsTable';
 
 export function useSortFilter<K extends string, F>(defaultFilters: F) {
   const [sort, setSort] = useState<{ key: K | null; dir: SortDir }>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<F>(defaultFilters);
+  const defaultFiltersRef = useRef(defaultFilters);
+  useEffect(() => { defaultFiltersRef.current = defaultFilters; }, [defaultFilters]);
 
   function setFilter(key: string, value: unknown) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -19,10 +21,10 @@ export function useSortFilter<K extends string, F>(defaultFilters: F) {
     });
   }
 
-  function resetAll() {
+  const resetAll = useCallback(() => {
     setSort({ key: null, dir: 'asc' });
-    setFilters(defaultFilters);
-  }
+    setFilters(defaultFiltersRef.current);
+  }, []);
 
   return { sort, filters, setFilter, handleSort, resetAll };
 }

@@ -222,7 +222,7 @@ export default function AppShell() {
                 setUpdateState('downloading');
                 try {
                   await window.sourcerer.downloadUpdate();
-                } catch (err) {
+                } catch {
                   setUpdatePercent(null);
                   setUpdateState('available');
                   window.sourcerer.showUpdateError();
