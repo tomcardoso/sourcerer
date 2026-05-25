@@ -358,14 +358,16 @@ export function registerContactHandlers(): void {
         .get() as { label: string } | undefined;
       const membershipId = uuidv4();
       const now = Math.floor(Date.now() / 1000);
-      const result = db.prepare(
-        `INSERT OR IGNORE INTO project_memberships
-         (id, contact_id, project_id, reporter_email, reporter_name, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(membershipId, contactId, projectId, user.email, `${user.first_name} ${user.last_name}`, defaultStatus?.label ?? null, now, now);
-      if (result.changes > 0) {
-        db.prepare('UPDATE contacts SET default_membership_id = ? WHERE id = ? AND default_membership_id IS NULL').run(membershipId, contactId);
-      }
+      db.transaction(() => {
+        const result = db.prepare(
+          `INSERT OR IGNORE INTO project_memberships
+           (id, contact_id, project_id, reporter_email, reporter_name, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(membershipId, contactId, projectId, user.email, `${user.first_name} ${user.last_name}`, defaultStatus?.label ?? null, now, now);
+        if (result.changes > 0) {
+          db.prepare('UPDATE contacts SET default_membership_id = ? WHERE id = ? AND default_membership_id IS NULL').run(membershipId, contactId);
+        }
+      })();
       broadcastContactsChanged();
     },
   );
@@ -537,35 +539,38 @@ export function registerContactHandlers(): void {
       && data.reporterEmail !== current?.reporter_email
       && validateEmail(data.reporterEmail);
 
-    db.prepare(
-      `UPDATE project_memberships
-       SET status = ?, priority = ?, theme = ?,
-           outreach_reminders_enabled = ?,
-           reporter_email = COALESCE(?, reporter_email),
-           reporter_name  = COALESCE(?, reporter_name),
-           reporter_assigned_at = CASE WHEN ? THEN ? ELSE reporter_assigned_at END,
-           reporter_conflict = CASE WHEN ? OR ? THEN 0 ELSE reporter_conflict END,
-           updated_at = ?
-       WHERE id = ?`,
-    ).run(
-      data.status ?? null,
-      data.priority ?? null,
-      data.theme ?? null,
-      newEnabled,
-      (data.reporterEmail && validateEmail(data.reporterEmail)) ? data.reporterEmail : null,
-      data.reporterName ?? null,
-      reporterChanging ? 1 : 0, now,
-      reporterChanging ? 1 : 0, data.clearConflict ? 1 : 0,
-      now,
-      data.membershipId,
-    );
-
-    if (newEnabled === 0) {
+    db.transaction(() => {
       db.prepare(
-        `DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1`,
-      ).run(data.membershipId);
-      broadcastRemindersChanged();
-    }
+        `UPDATE project_memberships
+         SET status = ?, priority = ?, theme = ?,
+             outreach_reminders_enabled = ?,
+             reporter_email = COALESCE(?, reporter_email),
+             reporter_name  = COALESCE(?, reporter_name),
+             reporter_assigned_at = CASE WHEN ? THEN ? ELSE reporter_assigned_at END,
+             reporter_conflict = CASE WHEN ? OR ? THEN 0 ELSE reporter_conflict END,
+             updated_at = ?
+         WHERE id = ?`,
+      ).run(
+        data.status ?? null,
+        data.priority ?? null,
+        data.theme ?? null,
+        newEnabled,
+        (data.reporterEmail && validateEmail(data.reporterEmail)) ? data.reporterEmail : null,
+        data.reporterName ?? null,
+        reporterChanging ? 1 : 0, now,
+        reporterChanging ? 1 : 0, data.clearConflict ? 1 : 0,
+        now,
+        data.membershipId,
+      );
+
+      if (newEnabled === 0) {
+        db.prepare(
+          `DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1`,
+        ).run(data.membershipId);
+      }
+    })();
+
+    if (newEnabled === 0) broadcastRemindersChanged();
     broadcastContactsChanged();
   });
 
@@ -733,11 +738,15 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('interaction-log:delete', (_, interactionId: string): void => {
     const db = getDatabase();
-    // Collect affected memberships before deleting so we can re-evaluate reminders.
-    const membershipIds = (
-      db.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').all(interactionId) as Array<{ membership_id: string }>
-    ).map((r) => r.membership_id);
-    db.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(interactionId);
+    // Collect affected memberships and delete in one transaction to close the
+    // TOCTOU window between the SELECT and DELETE.
+    const membershipIds = db.transaction(() => {
+      const ids = (
+        db.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').all(interactionId) as Array<{ membership_id: string }>
+      ).map((r) => r.membership_id);
+      db.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(interactionId);
+      return ids;
+    })();
     // Re-run outreach checker so reminders are recreated if this was the last log.
     checkOutreachReminders();
     broadcastContactsChanged();

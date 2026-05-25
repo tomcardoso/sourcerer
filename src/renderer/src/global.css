@@ -96,7 +96,6 @@
   /* ── Typography ───────────────────────────────── */
   --font-serif: 'Spectral', serif;
   --font-mono:  'JetBrains Mono', monospace;
-  --font:       var(--font-serif);
 
   /* ── Chrome ───────────────────────────────────── */
   --titlebar-height: 38px;
@@ -132,7 +131,7 @@ body,
 }
 
 body {
-  font-family: var(--font);
+  font-family: var(--font-serif);
   font-size: 14px;
   color: var(--color-text);
   background: var(--color-surface);

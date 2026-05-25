@@ -3,6 +3,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { LOCAL_SCHEMA_SQL } from '../main/database/schema';
 import { seedDefaults } from '../main/database/seeds';
 import { runMigrations, DB_VERSION } from '../main/database';
+import { createDbAtVersion } from './vitest.setup';
 
 function createBaseDb(): Database.Database {
   const db = new Database(':memory:');
@@ -50,10 +51,18 @@ describe('runMigrations', () => {
     db.close();
   });
 
-  // Skeleton for individual migration-step tests.
-  // When DB_VERSION is incremented and the first real migration block is added to
-  // src/main/database/index.ts, add a describe block here that:
-  //   1. Creates a DB at version N-1 (with the pre-migration schema state).
-  //   2. Calls runMigrations(db).
-  //   3. Asserts that the new column / table / index exists.
+  // Per-migration-step tests go here. For each new migration block in index.ts:
+  //   1. Call createDbAtVersion(N - 1) to get a DB stamped at the previous version.
+  //   2. Manually DROP or ALTER the table to reproduce the pre-migration schema.
+  //   3. Call runMigrations(db) and assert the new column / table / index now exists.
+  //   4. Assert user_version === N.
+  // Example:
+  //   it('migration 2: adds foo column to contacts', () => {
+  //     const db = createDbAtVersion(1);
+  //     db.prepare('ALTER TABLE contacts DROP COLUMN foo').run();
+  //     runMigrations(db);
+  //     const cols = db.pragma('table_info(contacts)') as { name: string }[];
+  //     expect(cols.some((c) => c.name === 'foo')).toBe(true);
+  //     expect(db.pragma('user_version', { simple: true })).toBe(2);
+  //   });
 });

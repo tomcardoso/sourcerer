@@ -3,7 +3,13 @@
 // Tests that need specific behaviour (e.g. Notification) use vi.mock() directly.
 export const app = {};
 export const ipcMain = { handle: () => {} };
-export const ipcRenderer = { invoke: () => Promise.resolve() };
+export const ipcRenderer = {
+  invoke: (channel: string) => {
+    throw new Error(
+      `ipcRenderer.invoke('${channel}') called in test — call handler functions directly instead of going through the IPC bridge`,
+    );
+  },
+};
 export const dialog = {
   showOpenDialog: () => Promise.resolve({ canceled: true, filePaths: [] }),
   showSaveDialog: () => Promise.resolve({ canceled: true }),
