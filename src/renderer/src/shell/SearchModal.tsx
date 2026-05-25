@@ -14,19 +14,28 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const latestQueryRef = useRef('');
 
   useEffect(() => {
+    const normalized = query.trim();
     let cancelled = false;
     setSelectedIndex(0);
-    latestQueryRef.current = query;
-    if (!query.trim()) { setResults([]); return () => { cancelled = true; }; }
+    if (!normalized) {
+      latestQueryRef.current = '';
+      setResults([]);
+      setSearching(false);
+      return () => { cancelled = true; };
+    }
+    if (normalized === latestQueryRef.current) return () => { cancelled = true; };
+    latestQueryRef.current = normalized;
+    setSearching(true);
     const timer = setTimeout(() => {
-      window.sourcerer.searchGlobal(query).then((r) => {
-        if (!cancelled && latestQueryRef.current === query) setResults(r);
+      window.sourcerer.searchGlobal(normalized).then((r) => {
+        if (!cancelled && latestQueryRef.current === normalized) { setResults(r); setSearching(false); }
       }).catch(() => {
-        if (!cancelled && latestQueryRef.current === query) setResults([]);
+        if (!cancelled && latestQueryRef.current === normalized) { setResults([]); setSearching(false); }
       });
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -132,7 +141,7 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
         </div>
       )}
 
-      {query.trim() !== '' && results.length === 0 && (
+      {query.trim() !== '' && results.length === 0 && !searching && (
         <div className="search-empty">No results for "{query}"</div>
       )}
 
