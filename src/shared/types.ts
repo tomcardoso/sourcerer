@@ -318,7 +318,6 @@ export interface Reminder {
   is_auto_outreach: 0 | 1;
   created_at: number;
   completed_at: number | null;
-  last_notified_at: number | null;
 }
 
 export interface ImportResult {
