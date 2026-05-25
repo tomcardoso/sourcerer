@@ -63,6 +63,20 @@ describe('unpackFiles — malformed input', () => {
   it('throws on a completely empty-but-nonzero truncated buffer', () => {
     expect(() => unpackFiles(Buffer.from([0x05]))).toThrow('truncated entry header');
   });
+
+  it('throws when nameLen exceeds MAX_ENTRY_NAME_LEN', () => {
+    const buf = Buffer.allocUnsafe(8);
+    buf.writeUInt32LE(4097, 0); // one byte over the 4096 limit
+    buf.writeUInt32LE(0, 4);
+    expect(() => unpackFiles(buf)).toThrow('entry exceeds maximum allowed size');
+  });
+
+  it('throws when dataLen exceeds MAX_ENTRY_DATA_LEN', () => {
+    const buf = Buffer.allocUnsafe(8);
+    buf.writeUInt32LE(1, 0);
+    buf.writeUInt32LE(512 * 1024 * 1024 + 1, 4); // one byte over 512 MB
+    expect(() => unpackFiles(buf)).toThrow('entry exceeds maximum allowed size');
+  });
 });
 
 describe('writeBackupFile / readBackupFile round-trip', () => {
@@ -160,6 +174,21 @@ describe('writeBackupFile / readBackupFile round-trip', () => {
     try {
       await fs.writeFile(outPath, Buffer.from([0x53, 0x52, 0x43, 0x52, 0x01])); // "SRCR" + 1 byte
       await expect(collect(readBackupFile(outPath, 'pass'))).rejects.toThrow('truncated file header');
+    } finally {
+      await fs.unlink(outPath).catch(() => {});
+    }
+  });
+
+  it('rejects a backup with a format version newer than this reader', async () => {
+    const outPath = await tmpFile();
+    try {
+      // Build a valid-looking 52-byte header with version = 2 (FORMAT_VERSION + 1)
+      const buf = Buffer.alloc(52, 0);
+      buf.write('SRCR', 0, 'ascii');    // magic
+      buf.writeUInt32LE(2, 4);          // version = FORMAT_VERSION + 1
+      // salt(32), baseIV(8), chunkSize(4) left as zeros — version check fires first
+      await fs.writeFile(outPath, buf);
+      await expect(collect(readBackupFile(outPath, 'pass'))).rejects.toThrow('not supported');
     } finally {
       await fs.unlink(outPath).catch(() => {});
     }
