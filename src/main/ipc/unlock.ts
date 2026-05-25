@@ -4,7 +4,7 @@ import { getPaths, deriveKey } from '../utils';
 import { unlockDatabase, maybeRunDevSeeds, setActivePassword } from '../database';
 import { autoLock } from '../auto-lock';
 import { startPoller } from '../sync/poller';
-import { startAutoBackupTimer } from '../index';
+import { startAutoBackupTimer } from '../auto-backup-timer';
 import { checkOutreachReminders, clearOutreachNotificationCache } from '../sync/outreach-checker';
 import { checkReminders, clearReminderNotificationCache } from '../sync/reminder-checker';
 import { runDedupScan } from './contacts';

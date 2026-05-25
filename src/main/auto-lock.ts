@@ -3,6 +3,7 @@ import { closeDatabase, isDatabaseOpen } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
 import { stopPoller } from './sync/poller';
 import { clearExtensionSession } from './http-server';
+import { stopAutoBackupTimer } from './auto-backup-timer';
 
 const IDLE_CHECK_INTERVAL_MS = 15_000;
 const DEFAULT_IDLE_THRESHOLD_MS = 15 * 60 * 1000;
@@ -37,6 +38,7 @@ class AutoLockManager {
 
   lock(): void {
     if (!isDatabaseOpen()) return;
+    stopAutoBackupTimer();
     stopPoller();
     closeAllSharedDbs();
     clearExtensionSession();
