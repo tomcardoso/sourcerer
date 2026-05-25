@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getDatabase, closeDatabase, updateActiveKeyHex, setActivePassword } from '../database';
+import { getDatabase, closeDatabase, getKeyHex, updateActiveKeyHex, setActivePassword } from '../database';
 import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig, detectSyncProvider } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
@@ -157,28 +157,14 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     'settings:change-password',
     async (_, { currentPassword, newPassword }: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; error?: string }> => {
-      const { dbPath, saltPath } = getPaths();
+      const { saltPath } = getPaths();
       try {
-        // Verify the current password against the existing salt
+        // Verify the current password by comparing derived key against the active in-memory key
         const salt = await fs.readFile(saltPath);
         const currentKeyHex = await deriveKey(currentPassword, salt);
-
-        const testDb = new Database(dbPath);
-        testDb.pragma(`cipher='sqlcipher'`);
-        testDb.pragma('cipher_page_size=4096');
-        testDb.pragma('kdf_iter=256000');
-        testDb.pragma('cipher_hmac_algorithm=HMAC_SHA512');
-        testDb.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
-        testDb.pragma(`key="x'${currentKeyHex}'"`);
-        try {
-          // pragma('user_version') doesn't force a page decrypt; an actual
-          // table read is required to reliably detect a wrong key.
-          testDb.prepare('SELECT id FROM users WHERE id = 1').get();
-        } catch {
-          testDb.close();
+        if (!crypto.timingSafeEqual(Buffer.from(currentKeyHex, 'hex'), Buffer.from(getKeyHex(), 'hex'))) {
           return { success: false, error: 'Current password is incorrect.' };
         }
-        testDb.close();
 
         // Derive new key with a fresh salt
         const newSalt = crypto.randomBytes(32);

@@ -274,15 +274,12 @@ export function registerContactHandlers(): void {
     const now = Math.floor(Date.now() / 1000);
     const { phone_country, wayback_enabled } = stmt(db, 'SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
-    let emails: { email: string; label: string | null }[] = [];
-    let phones: { phone: string; label: string | null }[] = [];
-
     const insert = db.transaction(() => {
       db.prepare(
         'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, now);
 
-      emails = (data.emails ?? [])
+      const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
         .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
@@ -291,7 +288,7 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, e.email, e.label, i, now);
       });
 
-      phones = (data.phones ?? [])
+      const phones = (data.phones ?? [])
         .filter((p) => p.phone.trim())
         .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
         .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
@@ -325,20 +322,16 @@ export function registerContactHandlers(): void {
         triggerWaybackSave(id, link.url.trim()).catch(() => {});
       }
     }
-    return {
-      id,
-      name: data.name.trim(),
-      organization: data.organization?.trim() || null,
-      notes: data.notes?.trim() || null,
-      created_at: now,
-      has_email: emails.length > 0 ? 1 : 0,
-      has_phone: phones.length > 0 ? 1 : 0,
-      date_first_contacted: null,
-      date_last_contacted: null,
-      emails_raw: emails.map((e) => e.email).join(' ') || null,
-      phones_raw: phones.length > 0 ? phones.map((p) => p.phone).join(' ') : null,
-      projects: [],
-    };
+
+    const row = db.prepare(
+      `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
+              EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
+              EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+              (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
+              (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw
+       FROM contacts c WHERE c.id = ?`,
+    ).get(id) as { id: string; name: string; organization: string | null; notes: string | null; created_at: number; has_email: 0|1; has_phone: 0|1; emails_raw: string|null; phones_raw: string|null };
+    return { ...row, date_first_contacted: null, date_last_contacted: null, projects: [] };
   });
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
@@ -883,7 +876,12 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'contacts:merge',
     (_, { winnerId, loserId, strategy }: { winnerId: string; loserId: string; strategy: 'keep' | 'merge' | 'skip' }): void => {
+      if (winnerId === loserId) throw new Error('winnerId and loserId must be different');
+      if (!['keep', 'merge', 'skip'].includes(strategy)) throw new Error('Invalid strategy');
       const db = getDatabase();
+      const winnerExists = db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(winnerId);
+      const loserExists = db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(loserId);
+      if (!winnerExists || !loserExists) throw new Error('Contact not found');
       if (strategy === 'skip') {
         dismissPair(db, winnerId, loserId);
       } else {
