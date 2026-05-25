@@ -106,6 +106,8 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
         )
       ).then((logs) => {
         if (!cancelled) setPrintLogs(logs);
+      }).catch(() => {
+        if (!cancelled) setPrintLogs([]);
       });
     }
     window.addEventListener('beforeprint', handleBeforePrint);

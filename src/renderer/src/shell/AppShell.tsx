@@ -65,7 +65,6 @@ export default function AppShell() {
 
   useEffect(() => {
     window.sourcerer.getUser().then(setUser);
-    window.sourcerer.listContacts().then(setContacts);
     window.sourcerer.listProjects().then(setProjects);
     window.sourcerer.getUnseenMentionCount().then(setUnseenMentions);
     window.sourcerer.getContactCount().then(setTotalContacts);
@@ -285,8 +284,8 @@ export default function AppShell() {
         onProjectDeleted={handleProjectDeleted}
         onAddContact={() => setShowAddContact(true)}
         onImportCsv={() => setShowImportCsv(true)}
-        onQuickLog={() => setShowQuickLog(true)}
-        onQuickReminder={() => setShowQuickReminder(true)}
+        onQuickLog={() => { window.sourcerer.listContacts().then(setContacts); setShowQuickLog(true); }}
+        onQuickReminder={() => { window.sourcerer.listContacts().then(setContacts); setShowQuickReminder(true); }}
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && (
