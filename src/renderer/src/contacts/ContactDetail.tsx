@@ -95,6 +95,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
 
   useEffect(() => {
     if (!contact) return;
+    let cancelled = false;
     function handleBeforePrint() {
       Promise.all(
         contact!.projects.map((p) =>
@@ -103,10 +104,15 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
             entries,
           }))
         )
-      ).then(setPrintLogs);
+      ).then((logs) => {
+        if (!cancelled) setPrintLogs(logs);
+      });
     }
     window.addEventListener('beforeprint', handleBeforePrint);
-    return () => window.removeEventListener('beforeprint', handleBeforePrint);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('beforeprint', handleBeforePrint);
+    };
   }, [contact]);
 
   function handleMembershipChanged() {
