@@ -64,14 +64,14 @@
             <h3>Chrome, Edge, Brave, Arc</h3>
             <p><a href="https://chromewebstore.google.com/detail/sourcerer/pipgdnekoknjbghnmhilapocpchdcadm" target="_blank" rel="noopener">Install from the Chrome Web Store ↗</a></p>
 
-            <h3>Firefox (142 or later)</h3>
+            <h3>Firefox (109 or later)</h3>
             <p><a href="https://addons.mozilla.org/en-CA/firefox/addon/sourcerer-for-journalists/" target="_blank" rel="noopener">Install from Firefox Add-ons ↗</a></p>
           </section>
 
           <section id="connecting">
             <h2>Connecting to the app</h2>
             <p>The extension communicates with the Sourcerer desktop app over a local HTTP server on <code>127.0.0.1:27371</code>. The app must be open and unlocked for any feature to work.</p>
-            <p>The first time you open the popup, click <strong>Connect to Sourcerer</strong>. An approval prompt will appear in the app — click <strong>Approve</strong>. This issues a session token to the extension. The token is stored in the browser's session storage and persists until you close the browser or the app is reinstalled.</p>
+            <p>The first time you open the popup, click <strong>Connect to Sourcerer</strong>. An approval prompt will appear in the app — click <strong>Approve</strong>. This issues a session token to the extension. The token is stored in the browser's session storage and persists until you close the browser. The connection must be re-granted after the app is locked — either by the auto-lock timer or manually — so you may need to reconnect after a lock/unlock cycle.</p>
             <p>If the app is locked, the popup will tell you. Unlock it first, then try again.</p>
           </section>
 
