@@ -270,6 +270,29 @@ export const LOCAL_SCHEMA_DDL_SQL = `
         VALUES ('delete', old.rowid, old.body);
       INSERT INTO interaction_log_fts(rowid, body) VALUES (new.rowid, new.body);
     END;
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS contacts_fts
+    USING fts5(name, organization, title, notes, content='contacts', content_rowid='rowid');
+
+  CREATE TRIGGER IF NOT EXISTS contacts_fts_ai
+    AFTER INSERT ON contacts BEGIN
+      INSERT INTO contacts_fts(rowid, name, organization, title, notes)
+      VALUES (new.rowid, new.name, new.organization, new.title, new.notes);
+    END;
+
+  CREATE TRIGGER IF NOT EXISTS contacts_fts_ad
+    AFTER DELETE ON contacts BEGIN
+      INSERT INTO contacts_fts(contacts_fts, rowid, name, organization, title, notes)
+        VALUES ('delete', old.rowid, old.name, old.organization, old.title, old.notes);
+    END;
+
+  CREATE TRIGGER IF NOT EXISTS contacts_fts_au
+    AFTER UPDATE ON contacts BEGIN
+      INSERT INTO contacts_fts(contacts_fts, rowid, name, organization, title, notes)
+        VALUES ('delete', old.rowid, old.name, old.organization, old.title, old.notes);
+      INSERT INTO contacts_fts(rowid, name, organization, title, notes)
+      VALUES (new.rowid, new.name, new.organization, new.title, new.notes);
+    END;
 `;
 
 export const LOCAL_SCHEMA_SQL = LOCAL_SCHEMA_PRAGMAS_SQL + LOCAL_SCHEMA_DDL_SQL;

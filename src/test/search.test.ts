@@ -127,6 +127,55 @@ describe('performSearch — log results', () => {
   });
 });
 
+describe('performSearch — contact results', () => {
+  it('finds a contact by name', () => {
+    insertContact(testDb, 'Alice Johnson');
+    const results = performSearch('Alice', testDb).filter((r) => r.type === 'contact');
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Alice Johnson');
+  });
+
+  it('finds a contact by organization', () => {
+    insertContact(testDb, 'Bob Smith', { org: 'Reuters News Agency' });
+    const results = performSearch('Reuters', testDb).filter((r) => r.type === 'contact');
+    expect(results).toHaveLength(1);
+  });
+
+  it('finds a contact by notes', () => {
+    insertContact(testDb, 'Carol Dane', { notes: 'Former Pentagon official' });
+    const results = performSearch('Pentagon', testDb).filter((r) => r.type === 'contact');
+    expect(results).toHaveLength(1);
+  });
+
+  it('finds a contact by email', () => {
+    insertContact(testDb, 'Dave Nguyen', { emails: ['dave@example.com'] });
+    const results = performSearch('dave@example', testDb).filter((r) => r.type === 'contact');
+    expect(results).toHaveLength(1);
+  });
+
+  it('insert trigger keeps contacts_fts in sync', () => {
+    expect(performSearch('Eve', testDb).filter((r) => r.type === 'contact')).toHaveLength(0);
+    insertContact(testDb, 'Eve Turner');
+    expect(performSearch('Eve', testDb).filter((r) => r.type === 'contact')).toHaveLength(1);
+  });
+
+  it('delete trigger removes contact from FTS index', () => {
+    const id = insertContact(testDb, 'Frank Castle');
+    expect(performSearch('Frank', testDb).filter((r) => r.type === 'contact')).toHaveLength(1);
+    testDb.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    expect(performSearch('Frank', testDb).filter((r) => r.type === 'contact')).toHaveLength(0);
+  });
+
+  it('update trigger re-indexes the contact', () => {
+    const id = insertContact(testDb, 'Grace Hopper');
+    expect(performSearch('Hopper', testDb).filter((r) => r.type === 'contact')).toHaveLength(1);
+    expect(performSearch('Miller', testDb).filter((r) => r.type === 'contact')).toHaveLength(0);
+    testDb.prepare('UPDATE contacts SET name = ?, updated_at = ? WHERE id = ?').run('Grace Miller', Math.floor(Date.now() / 1000), id);
+    expect(performSearch('Hopper', testDb).filter((r) => r.type === 'contact')).toHaveLength(0);
+    expect(performSearch('Miller', testDb).filter((r) => r.type === 'contact')).toHaveLength(1);
+  });
+});
+
 describe('performSearch — FTS input escaping', () => {
   it('treats FTS operator keywords as literal search terms', () => {
     const contactId = insertContact(testDb, 'Jane Smith');
