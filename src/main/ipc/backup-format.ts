@@ -27,7 +27,7 @@ export function packFiles(entries: Array<{ name: string; data: Buffer }>): Buffe
 }
 
 const MAX_ENTRY_NAME_LEN = 4096;
-const MAX_ENTRY_DATA_LEN = 600 * 1024 * 1024; // matches MAX_BACKUP_BYTES in backup.ts
+const MAX_ENTRY_DATA_LEN = 512 * 1024 * 1024; // matches MAX_BACKUP_BYTES in backup.ts
 
 export function unpackFiles(buf: Buffer): Array<{ name: string; data: Buffer }> {
   const entries: Array<{ name: string; data: Buffer }> = [];

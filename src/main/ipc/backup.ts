@@ -33,16 +33,19 @@ export function registerBackupHandlers(): void {
       });
       if (canceled || !filePath) return { success: false };
 
-      const tmpSnapPath = path.join(os.tmpdir(), `sourcerer-snap-${Date.now()}.db`);
+      const tmpSnapDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sourcerer-snap-'));
+      const tmpSnapPath = path.join(tmpSnapDir, 'snapshot.db');
+      const tmpOutPath = path.join(path.dirname(filePath), `.sourcerer-backup-${crypto.randomBytes(8).toString('hex')}.tmp`);
       try {
         await getDatabase().backup(tmpSnapPath);
-        await writeBackupFile(createBackupEntries(tmpSnapPath, saltPath, screenshotsPath), filePath, password);
+        await writeBackupFile(createBackupEntries(tmpSnapPath, saltPath, screenshotsPath), tmpOutPath, password);
+        await fs.rename(tmpOutPath, filePath);
         return { success: true };
       } catch (err) {
-        await fs.unlink(filePath).catch(() => {});
+        await fs.unlink(tmpOutPath).catch(() => {});
         return { success: false, error: String(err) };
       } finally {
-        await fs.unlink(tmpSnapPath).catch(() => {});
+        await fs.rm(tmpSnapDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   );
