@@ -112,7 +112,7 @@ export interface ContactLink {
 
 export interface ContactHandle {
   id: string;
-  type: string;
+  type: 'signal' | 'whatsapp' | 'telegram' | 'other';
   handle: string;
   sort_order: number;
 }

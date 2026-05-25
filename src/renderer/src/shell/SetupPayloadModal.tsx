@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import './SetupPayloadModal.css';
@@ -12,6 +12,12 @@ interface Props {
 export default function SetupPayloadModal({ projectName, payload, onDone }: Props) {
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    };
+  }, []);
 
   function handleCopy() {
     navigator.clipboard.writeText(payload).then(() => {
