@@ -48,11 +48,36 @@ export default function DynamicList({
   warnings,
   enableDragReorder = false,
 }: DynamicListProps) {
-  const { getDragProps, handleProps } = useDragReorder(values, onChange);
+  // Stable keys prevent React from reusing DOM nodes when items are removed or reordered,
+  // which would reset cursor position and break IME composition.
+  const keysRef = useRef<string[]>([]);
+  while (keysRef.current.length < values.length) keysRef.current.push(crypto.randomUUID());
+
+  function handleRemove(i: number) {
+    keysRef.current.splice(i, 1);
+    onChange(values.filter((_, j) => j !== i));
+  }
+
+  function handleAdd() {
+    keysRef.current.push(crypto.randomUUID());
+    onChange([...values, '']);
+  }
+
+  function handleReorder(next: string[]) {
+    // Reorder keys to match the new value order.
+    const newKeys = next.map((v) => {
+      const origIdx = values.indexOf(v);
+      return origIdx !== -1 ? keysRef.current[origIdx] : crypto.randomUUID();
+    });
+    keysRef.current = newKeys;
+    onChange(next);
+  }
+
+  const { getDragProps, handleProps } = useDragReorder(values, handleReorder);
   const showRemove = enableDragReorder || values.length > 1;
 
   const rows = values.map((v, i) => (
-    <div key={i} {...(enableDragReorder ? getDragProps(i) : {})}>
+    <div key={keysRef.current[i]} {...(enableDragReorder ? getDragProps(i) : {})}>
       <div className="ac-dynamic-row">
         {enableDragReorder && <span className="ac-drag-handle" {...handleProps}>⠿</span>}
         <input
@@ -71,7 +96,7 @@ export default function DynamicList({
           <button
             className="ac-remove"
             type="button"
-            onClick={() => onChange(values.filter((_, j) => j !== i))}
+            onClick={() => handleRemove(i)}
           />
         )}
       </div>
@@ -82,7 +107,7 @@ export default function DynamicList({
   ));
 
   const addButton = (
-    <Button variant="ghost" type="button" onClick={() => onChange([...values, ''])}>
+    <Button variant="ghost" type="button" onClick={handleAdd}>
       + Add{label ? ` ${label.toLowerCase()}` : ''}
     </Button>
   );

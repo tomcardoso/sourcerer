@@ -844,13 +844,13 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
               <div className={`pt-outreach-disable${noReminders || globallyDisabled ? ' pt-outreach-disable--no-priority' : ''}`}>
                 <button
                   type="button"
-                  className={`sv-toggle${!localOutreachEnabled ? ' sv-toggle--on' : ''}`}
+                  className={`sv-toggle${localOutreachEnabled ? ' sv-toggle--on' : ''}`}
                   onClick={() => handleOutreachEnabledChange(!localOutreachEnabled)}
-                  aria-pressed={!localOutreachEnabled}
+                  aria-pressed={localOutreachEnabled}
                   disabled={noReminders || globallyDisabled}
                 >
                   <span className="sv-toggle-knob" />
-                  <span className="sv-toggle-label">{!localOutreachEnabled ? 'ON' : 'OFF'}</span>
+                  <span className="sv-toggle-label">{localOutreachEnabled ? 'ON' : 'OFF'}</span>
                 </button>
                 {globallyDisabled
                   ? <span className="sv-toggle-text pt-outreach-no-priority">Outreach reminders are off globally</span>

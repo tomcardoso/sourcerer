@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail, InteractionLogEntry } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
@@ -22,6 +23,8 @@ const SOCIAL_LABELS: Record<string, string> = {
 };
 
 export default function ContactPrintSheet({ contact, logs }: Props) {
+  const printedAt = useMemo(() => new Date(), []);
+
   const websites = contact.links.filter((l) => l.type === 'website');
   const socials = contact.links.filter((l) => l.type !== 'website');
 
@@ -157,9 +160,9 @@ export default function ContactPrintSheet({ contact, logs }: Props) {
       <footer className="cps-footer">
         <span>Printed from Sourcerer</span>
         <span>
-          {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+          {printedAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
           {' · '}
-          {new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+          {printedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
         </span>
       </footer>
     </div>,
