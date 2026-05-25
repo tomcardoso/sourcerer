@@ -310,13 +310,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     if (!project) return;
     setBulkWorking(true);
     try {
-      await Promise.all(
-        [...checkedIds].map((id) => window.sourcerer.removeFromProject(id, project.id)),
+      const ids = [...checkedIds];
+      const results = await Promise.allSettled(
+        ids.map((id) => window.sourcerer.removeFromProject(id, project.id)),
       );
-      const removed = checkedIds;
+      const removed = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
       setRows((prev) => prev.filter((r) => !removed.has(r.id)));
       if (selectedId && removed.has(selectedId)) setSelectedId(null);
-      setCheckedIds(new Set());
+      setCheckedIds((prev) => new Set([...prev].filter((id) => !removed.has(id))));
       setConfirmRemove(false);
     } finally {
       setBulkWorking(false);
@@ -350,11 +351,12 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   async function handleBulkDelete() {
     setBulkWorking(true);
     try {
-      await Promise.all([...checkedIds].map((id) => window.sourcerer.deleteContact(id)));
-      const deleted = checkedIds;
+      const ids = [...checkedIds];
+      const results = await Promise.allSettled(ids.map((id) => window.sourcerer.deleteContact(id)));
+      const deleted = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
       setRows((prev) => prev.filter((r) => !deleted.has(r.id)));
       if (selectedId && deleted.has(selectedId)) setSelectedId(null);
-      setCheckedIds(new Set());
+      setCheckedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id))));
       setConfirmDelete(false);
     } finally {
       setBulkWorking(false);

@@ -3,6 +3,7 @@ import type { ContactDetail, ContactListItem } from '@shared/types';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
+import { useClickOutside } from '../hooks/useClickOutside';
 import './QuickLogModal.css';
 
 interface Props {
@@ -26,6 +27,8 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pickerWrapRef = useRef<HTMLDivElement>(null);
+  useClickOutside(pickerWrapRef, () => setDropdownOpen(false), { isOpen: dropdownOpen, escapeKey: false });
 
   useEffect(() => {
     window.sourcerer.listContacts().then(setContacts);
@@ -96,7 +99,7 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
             <button type="button" className="qlm-clear-btn" onClick={clearContact} aria-label="Clear contact">×</button>
           </div>
         ) : (
-          <div className="qlm-picker-wrap">
+          <div className="qlm-picker-wrap" ref={pickerWrapRef}>
             <input
               ref={inputRef}
               className="qlm-picker-input"
@@ -104,7 +107,6 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
               value={query}
               onChange={(e) => { setQuery(e.target.value); setDropdownOpen(true); }}
               onFocus={() => setDropdownOpen(true)}
-              onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
               autoFocus
             />
             {dropdownOpen && filtered.length > 0 && (
