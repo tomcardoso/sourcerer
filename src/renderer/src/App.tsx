@@ -45,11 +45,11 @@ export default function App() {
 
   const extensionModal = showExtensionApproval ? (
     <Modal title="Browser extension requesting access" onDismiss={handleDeny}>
-      <p className="modal-description">
+      <p className="form-description">
         The Sourcerer browser extension wants to connect to this app. Approve only if you
         just triggered this from the extension.
       </p>
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="secondary" onClick={handleDeny}>
           Deny
         </Button>

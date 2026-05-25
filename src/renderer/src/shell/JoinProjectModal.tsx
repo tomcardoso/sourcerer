@@ -73,9 +73,9 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   return (
     <Modal title="Join shared project" onDismiss={onCancel} className="join-modal">
       <form onSubmit={handleSubmit}>
-          <div className="modal-field">
-            <label htmlFor="join-payload" className="modal-label">
-              Setup link <span className="modal-required">*</span>
+          <div className="form-field">
+            <label htmlFor="join-payload" className="form-label">
+              Setup link <span className="form-required">*</span>
             </label>
             <textarea
               id="join-payload"
@@ -125,7 +125,7 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
 
           {error && <p className="join-error">{error}</p>}
 
-          <div className="modal-actions">
+          <div className="form-actions">
             <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
               Cancel
             </Button>

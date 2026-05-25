@@ -317,23 +317,23 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   if (editing) {
     return (
       <div className="detail-body" ref={formRef}>
-        <div className="ac-field">
-          <label className="modal-label">Name <span className="modal-required">*</span></label>
-          <input className="ac-input" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+        <div className="form-field">
+          <label className="form-label">Name <span className="form-required">*</span></label>
+          <input className="form-input" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Organization</label>
-          <input className="ac-input" value={editOrg} onChange={(e) => setEditOrg(e.target.value)} />
+        <div className="form-field">
+          <label className="form-label">Organization</label>
+          <input className="form-input" value={editOrg} onChange={(e) => setEditOrg(e.target.value)} />
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Title / Role</label>
-          <input className="ac-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="e.g. Senior Editor" />
+        <div className="form-field">
+          <label className="form-label">Title / Role</label>
+          <input className="form-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="e.g. Senior Editor" />
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Date of birth</label>
+        <div className="form-field">
+          <label className="form-label">Date of birth</label>
           <CalendarPicker
             label="Select date"
             value={editDob}
@@ -343,8 +343,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           />
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Email</label>
+        <div className="form-field">
+          <label className="form-label">Email</label>
           {editEmails.map((entry, i) => (
             <div
               key={i}
@@ -353,7 +353,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               <div className="ac-phone-row">
                 <span className="ac-drag-handle" {...emailHandleProps}>⠿</span>
                 <input
-                  className="ac-input"
+                  className="form-input"
                   value={entry.email}
                   placeholder="email@example.com"
                   disabled={saving}
@@ -380,7 +380,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   onBlur={() => checkEmailBlur(entry.email.trim())}
                 />
                 <input
-                  className="ac-input"
+                  className="form-input"
                   value={entry.label}
                   placeholder="label"
                   disabled={saving}
@@ -422,8 +422,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Phone</label>
+        <div className="form-field">
+          <label className="form-label">Phone</label>
           {editPhones.map((entry, i) => (
             <div
               key={i}
@@ -432,7 +432,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               <div className="ac-phone-row">
                 <span className="ac-drag-handle" {...phoneHandleProps}>⠿</span>
                 <input
-                  className="ac-input"
+                  className="form-input"
                   value={entry.phone}
                   placeholder="+1 555 000 0000"
                   disabled={saving}
@@ -459,7 +459,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   onBlur={() => checkPhoneBlur(entry.phone.trim())}
                 />
                 <input
-                  className="ac-input"
+                  className="form-input"
                   value={entry.label}
                   placeholder="label"
                   disabled={saving}
@@ -503,12 +503,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Messaging</label>
+        <div className="form-field">
+          <label className="form-label">Messaging</label>
           {editHandles.map((entry, i) => (
             <div key={i} className="ac-phone-row">
               <select
-                className="ac-input ac-handle-type"
+                className="form-input ac-handle-type"
                 value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
                 onChange={(e) => {
                   const next = [...editHandles];
@@ -521,7 +521,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 ))}
               </select>
               <input
-                className="ac-input"
+                className="form-input"
                 value={entry.handle}
                 placeholder={HANDLE_META[(HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other') as HandleType].placeholder}
                 onChange={(e) => {
@@ -549,8 +549,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         {NON_OTHER_SOCIAL_TYPES.map((type) => (
-          <div key={type} className="ac-field">
-            <label className="modal-label">{SOCIAL_META[type].label}</label>
+          <div key={type} className="form-field">
+            <label className="form-label">{SOCIAL_META[type].label}</label>
             <DynamicList
               enableDragReorder
               values={editSocials[type]}
@@ -582,8 +582,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         ))}
 
-        <div className="ac-field">
-          <label className="modal-label">Other social</label>
+        <div className="form-field">
+          <label className="form-label">Other social</label>
           {editOtherSocials.map((entry, i) => (
             <div
               key={i}
@@ -592,7 +592,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               <div className="ac-other-social-row">
                 <span className="ac-drag-handle" {...otherSocialHandleProps}>⠿</span>
                 <input
-                  className="ac-input"
+                  className="form-input"
                   value={entry.label}
                   placeholder="Platform (e.g. TikTok)"
                   maxLength={OTHER_LABEL_MAX}
@@ -608,7 +608,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                   }}
                 />
                 <input
-                  className="ac-input"
+                  className="form-input"
                   value={entry.url}
                   placeholder="https://…"
                   onChange={(e) => {
@@ -655,8 +655,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           </div>
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Website</label>
+        <div className="form-field">
+          <label className="form-label">Website</label>
           <DynamicList
             enableDragReorder
             values={editWebsites}
@@ -686,14 +686,14 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             )}
           />
           {user?.wayback_enabled !== 0 && user?.wayback_keys_configured !== 0 && (
-            <p className="ac-field-hint">Wayback Machine archiving is enabled.</p>
+            <p className="form-field-hint">Wayback Machine archiving is enabled.</p>
           )}
         </div>
 
-        <div className="ac-field">
-          <label className="modal-label">Notes</label>
+        <div className="form-field">
+          <label className="form-label">Notes</label>
           <textarea
-            className="ac-textarea"
+            className="form-textarea"
             value={editNotes}
             onChange={(e) => setEditNotes(e.target.value)}
             rows={4}

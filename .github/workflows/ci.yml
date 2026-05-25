@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -30,10 +34,6 @@ jobs:
       - name: Install dependencies
         if: steps.cache-modules.outputs.cache-hit != 'true'
         run: npm ci
-
-      - name: Rebuild native modules for Node
-        if: steps.cache-modules.outputs.cache-hit != 'true'
-        run: npm run rebuild:node
 
       - name: Typecheck
         run: npm run typecheck

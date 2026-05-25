@@ -56,7 +56,7 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
 
         {format === 'csv' ? (
           <>
-            <p className="modal-description">
+            <p className="form-description">
               Import a spreadsheet of contacts. Your file must use the following column headers
               (extra columns are ignored):
             </p>
@@ -98,7 +98,7 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
           </>
         ) : (
           <>
-            <p className="modal-description">
+            <p className="form-description">
               Import contacts from a .vcf file exported by Apple Contacts, Google Contacts, or any
               standard address book. The following fields are imported:
             </p>
@@ -138,7 +138,7 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
           </div>
         )}
 
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="secondary" onClick={onClose} disabled={importing}>
           Cancel
         </Button>

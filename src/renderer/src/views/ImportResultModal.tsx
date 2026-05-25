@@ -53,7 +53,7 @@ export default function ImportResultModal({ result, onClose }: Props) {
           </div>
         )}
 
-      <div className="modal-actions">
+      <div className="form-actions">
         <Button variant="primary" onClick={onClose}>
           Done
         </Button>
