@@ -19,16 +19,17 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    const cleanup = () => { cancelled = true; };
     setSelectedIndex(0);
     latestQueryRef.current = query;
-    if (!query.trim()) { setResults([]); return cleanup; }
-    window.sourcerer.searchGlobal(query).then((r) => {
-      if (!cancelled && latestQueryRef.current === query) setResults(r);
-    }).catch(() => {
-      if (!cancelled && latestQueryRef.current === query) setResults([]);
-    });
-    return cleanup;
+    if (!query.trim()) { setResults([]); return () => { cancelled = true; }; }
+    const timer = setTimeout(() => {
+      window.sourcerer.searchGlobal(query).then((r) => {
+        if (!cancelled && latestQueryRef.current === query) setResults(r);
+      }).catch(() => {
+        if (!cancelled && latestQueryRef.current === query) setResults([]);
+      });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [query]);
 
   function pick(result: SearchResult) {
