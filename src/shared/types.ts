@@ -112,7 +112,7 @@ export interface ContactLink {
 
 export interface ContactHandle {
   id: string;
-  type: string;
+  type: 'signal' | 'whatsapp' | 'telegram' | 'other';
   handle: string;
   sort_order: number;
 }
@@ -318,6 +318,7 @@ export interface Reminder {
   is_auto_outreach: 0 | 1;
   created_at: number;
   completed_at: number | null;
+  last_notified_at: number | null;
 }
 
 export interface ImportResult {

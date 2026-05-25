@@ -622,6 +622,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'interaction-log:add',
     (_, { membershipId, body, createdAt, extraMembershipIds }: { membershipId: string; body: string; createdAt?: number; extraMembershipIds?: string[] }): InteractionLogEntry => {
+      if (!body.trim()) throw new Error('body is required');
       const db = getDatabase();
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const membership = db
@@ -685,6 +686,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'interaction-log:add-global',
     (_, { contactId, body, createdAt, membershipIds }: { contactId: string; body: string; createdAt?: number; membershipIds?: string[] }): ContactLogEntry => {
+      if (!body.trim()) throw new Error('body is required');
       const db = getDatabase();
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const id = uuidv4();

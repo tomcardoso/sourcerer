@@ -54,6 +54,7 @@ export default function AppShell() {
   // without closing over a stale value.
   const updateStateRef = useRef<'idle' | 'available' | 'downloading' | 'ready'>('idle');
   updateStateRef.current = updateState;
+  const globalContactCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshOverdue = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -160,9 +161,20 @@ export default function AppShell() {
     window.dispatchEvent(new Event('sourcerer:global-nav'));
   }
 
+  useEffect(() => {
+    return () => {
+      if (globalContactCloseTimer.current) clearTimeout(globalContactCloseTimer.current);
+    };
+  }, []);
+
   function closeGlobalContact() {
+    if (globalContactCloseTimer.current) clearTimeout(globalContactCloseTimer.current);
     setGlobalDrawerClosing(true);
-    setTimeout(() => { setGlobalContactId(null); setGlobalDrawerClosing(false); }, 160);
+    globalContactCloseTimer.current = setTimeout(() => {
+      globalContactCloseTimer.current = null;
+      setGlobalContactId(null);
+      setGlobalDrawerClosing(false);
+    }, 160);
   }
 
   function handleProjectCreated(project: Project) {

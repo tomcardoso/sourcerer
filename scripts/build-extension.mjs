@@ -11,11 +11,9 @@
  *   - Firefox uses extension/manifest.firefox.json (adds browser_specific_settings)
  */
 
-import { createWriteStream, readFileSync, readdirSync, statSync } from 'node:fs';
-import { mkdir, rm, cp } from 'node:fs/promises';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { mkdir, rm } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
-import { createGzip } from 'node:zlib';
-import { pipeline } from 'node:stream/promises';
 
 // ---------------------------------------------------------------------------
 // Minimal zip builder (no external dependencies)

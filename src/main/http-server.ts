@@ -75,7 +75,7 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   }
 
   if (req.method === 'GET' && url.pathname === '/status') {
-    json(res, 200, { running: true, locked: !isDatabaseOpen(), version: '1.0.0' });
+    json(res, 200, { running: true, locked: !isDatabaseOpen(), version: app.getVersion() });
     return;
   }
 
