@@ -157,8 +157,8 @@ export function broadcastContactsChanged(): void {
 
 export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
-    const rows = getDatabase()
-      .prepare(
+    const db = getDatabase();
+    const rows = stmt(db,
         `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
