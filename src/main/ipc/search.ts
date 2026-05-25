@@ -33,21 +33,29 @@ export function performSearch(query: string, db: Database.Database): SearchResul
       )
       .all(ftsQuery) as typeof contacts;
 
-    // Email search on the small, indexed contact_emails table
+    // Email/phone searches for contacts not matched by FTS
     const emailContacts = db
       .prepare(
         `SELECT DISTINCT c.id, c.name, c.organization
          FROM contact_emails ce
          JOIN contacts c ON c.id = ce.contact_id
-         WHERE ce.email LIKE ? ESCAPE '\\'
-         LIMIT 5`,
+         WHERE ce.email LIKE ? ESCAPE '\\'`,
       )
       .all(pattern) as typeof contacts;
 
-    // Merge: preserve FTS rank order, append any email-only hits after
+    const phoneContacts = db
+      .prepare(
+        `SELECT DISTINCT c.id, c.name, c.organization
+         FROM contact_phones cp
+         JOIN contacts c ON c.id = cp.contact_id
+         WHERE cp.phone LIKE ? ESCAPE '\\'`,
+      )
+      .all(pattern) as typeof contacts;
+
+    // Merge: preserve FTS rank order, append email-only then phone-only hits
     const seen = new Set(ftsContacts.map((c) => c.id));
     contacts = [...ftsContacts];
-    for (const c of emailContacts) {
+    for (const c of [...emailContacts, ...phoneContacts]) {
       if (!seen.has(c.id)) { contacts.push(c); seen.add(c.id); }
     }
     if (contacts.length > 15) contacts = contacts.slice(0, 15);

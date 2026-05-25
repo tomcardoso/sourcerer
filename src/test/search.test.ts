@@ -153,6 +153,13 @@ describe('performSearch — contact results', () => {
     expect(results).toHaveLength(1);
   });
 
+  it('finds a contact by phone number', () => {
+    insertContact(testDb, 'Eve Turner', { phones: ['+12024561111'] });
+    const results = performSearch('+12024561', testDb).filter((r) => r.type === 'contact');
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Eve Turner');
+  });
+
   it('insert trigger keeps contacts_fts in sync', () => {
     expect(performSearch('Eve', testDb).filter((r) => r.type === 'contact')).toHaveLength(0);
     insertContact(testDb, 'Eve Turner');
