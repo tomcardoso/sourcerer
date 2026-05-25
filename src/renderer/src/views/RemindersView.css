@@ -154,11 +154,11 @@
 }
 
 .reminders-item-overdue {
-  background: #fff5f5;
+  background: var(--color-danger-bg);
 }
 
 .reminders-item-overdue:hover {
-  background: #fee2e2;
+  background: var(--color-danger-bg-hover);
 }
 
 .reminders-item-overdue-outreach {

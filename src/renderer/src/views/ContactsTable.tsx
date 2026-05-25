@@ -265,6 +265,7 @@ export default function ContactsTable(props: ContactsTableProps) {
               ref={selectAllRef}
               checked={allChecked}
               onChange={() => onCheckAll()}
+              aria-label="Select all contacts"
             />
           </th>
 

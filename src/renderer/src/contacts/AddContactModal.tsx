@@ -230,7 +230,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
           >
             <span className="ac-expand-toggle-label">
               {expanded ? 'Fewer details' : 'More details'}
-              <span className="ac-expand-toggle-icon">{expanded ? '▴' : '▾'}</span>
+              <span className="ac-expand-toggle-icon" aria-hidden="true">{expanded ? '▴' : '▾'}</span>
             </span>
           </button>
 

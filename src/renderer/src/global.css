@@ -77,6 +77,8 @@
   /* ── Semantic ─────────────────────────────────── */
   --color-success:         #2d8f6a;
   --color-danger:          #b91c1c;
+  --color-danger-bg:       #fff5f5;
+  --color-danger-bg-hover: #fee2e2;
   --color-warning-bg:      #fef3c7;
   --color-warning-border:  #f59e0b;
   --color-warning-text:    #92400e;

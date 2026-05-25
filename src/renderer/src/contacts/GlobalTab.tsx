@@ -318,22 +318,22 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     return (
       <div className="detail-body" ref={formRef}>
         <div className="ac-field">
-          <label className="ac-label">Name <span className="ac-required">*</span></label>
+          <label className="modal-label">Name <span className="modal-required">*</span></label>
           <input className="ac-input" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Organization</label>
+          <label className="modal-label">Organization</label>
           <input className="ac-input" value={editOrg} onChange={(e) => setEditOrg(e.target.value)} />
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Title / Role</label>
+          <label className="modal-label">Title / Role</label>
           <input className="ac-input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="e.g. Senior Editor" />
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Date of birth</label>
+          <label className="modal-label">Date of birth</label>
           <CalendarPicker
             label="Select date"
             value={editDob}
@@ -344,7 +344,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Email</label>
+          <label className="modal-label">Email</label>
           {editEmails.map((entry, i) => (
             <div
               key={i}
@@ -423,7 +423,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Phone</label>
+          <label className="modal-label">Phone</label>
           {editPhones.map((entry, i) => (
             <div
               key={i}
@@ -504,7 +504,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Messaging</label>
+          <label className="modal-label">Messaging</label>
           {editHandles.map((entry, i) => (
             <div key={i} className="ac-phone-row">
               <select
@@ -550,7 +550,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
 
         {NON_OTHER_SOCIAL_TYPES.map((type) => (
           <div key={type} className="ac-field">
-            <label className="ac-label">{SOCIAL_META[type].label}</label>
+            <label className="modal-label">{SOCIAL_META[type].label}</label>
             <DynamicList
               enableDragReorder
               values={editSocials[type]}
@@ -583,7 +583,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         ))}
 
         <div className="ac-field">
-          <label className="ac-label">Other social</label>
+          <label className="modal-label">Other social</label>
           {editOtherSocials.map((entry, i) => (
             <div
               key={i}
@@ -656,7 +656,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Website</label>
+          <label className="modal-label">Website</label>
           <DynamicList
             enableDragReorder
             values={editWebsites}
@@ -691,7 +691,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         </div>
 
         <div className="ac-field">
-          <label className="ac-label">Notes</label>
+          <label className="modal-label">Notes</label>
           <textarea
             className="ac-textarea"
             value={editNotes}

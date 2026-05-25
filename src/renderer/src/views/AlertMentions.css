@@ -179,24 +179,3 @@
 .alerts-item:hover .alerts-dismiss-btn {
   opacity: 1;
 }
-
-.alerts-dismiss-btn {
-  background: none;
-  border: none;
-  padding: 0 2px;
-  font-size: 16px;
-  line-height: 1;
-  color: var(--color-text-dim);
-  cursor: pointer;
-  margin-top: 2px;
-  opacity: 0;
-  transition: opacity 0.1s;
-}
-
-.alerts-dismiss-btn:hover {
-  color: var(--color-text);
-}
-
-.alerts-item:hover .alerts-dismiss-btn {
-  opacity: 1;
-}
