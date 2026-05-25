@@ -43,9 +43,11 @@ describe('parseVcf — single contact', () => {
     expect(c.name).toBe('Bob Jones');
   });
 
-  it('returns [] when FN and N are both absent', () => {
+  it('returns a contact with empty name when FN and N are both absent', () => {
     const vcf = ['BEGIN:VCARD', 'EMAIL:anon@example.com', 'END:VCARD'].join('\n');
-    expect(parseVcf(vcf)).toHaveLength(0);
+    const contacts = parseVcf(vcf);
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0].name).toBe('');
   });
 
   it('synthesises name from N field when FN is absent', () => {
@@ -60,9 +62,17 @@ describe('parseVcf — single contact', () => {
     expect(c.name).toBe('Alice Smith');
   });
 
-  it('returns [] when FN is empty', () => {
+  it('handles escaped semicolons in N field components', () => {
+    const vcf = ['BEGIN:VCARD', 'N:Smith\\;Jr;Alice;;;', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.name).toBe('Alice Smith;Jr');
+  });
+
+  it('returns a contact with empty name when FN is empty', () => {
     const vcf = ['BEGIN:VCARD', 'FN:', 'END:VCARD'].join('\n');
-    expect(parseVcf(vcf)).toHaveLength(0);
+    const contacts = parseVcf(vcf);
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0].name).toBe('');
   });
 });
 
@@ -79,12 +89,15 @@ describe('parseVcf — multi-contact file', () => {
     expect(contacts.map((c) => c.name)).toEqual(['Alice Smith', 'Bob Jones', 'Carol White']);
   });
 
-  it('skips invalid blocks and still returns valid ones', () => {
+  it('returns all blocks including nameless ones', () => {
     const vcf = [
       'BEGIN:VCARD', 'FN:Good Contact', 'END:VCARD',
       'BEGIN:VCARD', 'NOTE:no name here', 'END:VCARD',
     ].join('\n');
-    expect(parseVcf(vcf)).toHaveLength(1);
+    const contacts = parseVcf(vcf);
+    expect(contacts).toHaveLength(2);
+    expect(contacts[0].name).toBe('Good Contact');
+    expect(contacts[1].name).toBe('');
   });
 });
 
@@ -309,6 +322,14 @@ function makeContact(overrides: Partial<VcfContact> = {}): VcfContact {
 beforeEach(() => {
   db = createTestDb();
   projectId = insertProject(db, 'Test Project');
+});
+
+describe('processVcfContacts — missing name', () => {
+  it('skips a nameless contact and reports missing-name', () => {
+    const result = processVcfContacts([makeContact({ name: '' })], db, BASE_OPTS);
+    expect(result.imported).toBe(0);
+    expect(result.skipped).toEqual([{ name: '(unnamed contact)', reason: 'missing-name' }]);
+  });
 });
 
 describe('processVcfContacts — basic import', () => {
