@@ -218,9 +218,9 @@ export function registerExportHandlers(): void {
         const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
         const links = linksByContact.get(m.contact_id) ?? [];
         const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
-        const interactionLog = mode === 'full'
-          ? (logsByMembership.get(m.membership_id) ?? []).join('\n')
-          : '';
+        const logStrings = logsByMembership.get(m.membership_id) ?? [];
+        const interactionLog = mode === 'full' ? logStrings.join('\n') : '';
+        logsByMembership.delete(m.membership_id);
 
         rows.push({
           Name: m.name,
@@ -350,6 +350,8 @@ export function registerExportHandlers(): void {
       const rows: AllContactsRow[] = contacts.map((c) => {
         const links = linksById.get(c.id) ?? [];
         const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+        const interactionLog = (logsByContactId.get(c.id) ?? []).join('\n');
+        logsByContactId.delete(c.id);
         return {
           Name: c.name,
           Organization: c.organization ?? '',
@@ -365,7 +367,7 @@ export function registerExportHandlers(): void {
           Website: byType2('website'),
           'Other links': byType2('other'),
           Notes: c.notes ?? '',
-          'Interaction log': (logsByContactId.get(c.id) ?? []).join('\n'),
+          'Interaction log': interactionLog,
         };
       });
 
