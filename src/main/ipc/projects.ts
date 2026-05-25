@@ -150,20 +150,21 @@ export function registerProjectHandlers(): void {
       const projectDesc = meta?.description ?? decoded.description ?? null;
       const now = Math.floor(Date.now() / 1000);
 
-      db.prepare(
-        `INSERT INTO projects (id, name, description, is_shared, shared_db_path, shared_db_key, created_at)
-         VALUES (?, ?, ?, 1, ?, ?, ?)`,
-      ).run(id, projectName, projectDesc, localPath, keyBytes, now);
+      db.transaction(() => {
+        db.prepare(
+          `INSERT INTO projects (id, name, description, is_shared, shared_db_path, shared_db_key, created_at)
+           VALUES (?, ?, ?, 1, ?, ?, ?)`,
+        ).run(id, projectName, projectDesc, localPath, keyBytes, now);
 
-      // Add self to project_reporters
-      db.prepare(
-        'INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
-      ).run(
-        uuidv4(),
-        id,
-        `${user.first_name} ${user.last_name}`.trim(),
-        user.email,
-      );
+        db.prepare(
+          'INSERT INTO project_reporters (id, project_id, name, email, is_self) VALUES (?, ?, ?, ?, 1)',
+        ).run(
+          uuidv4(),
+          id,
+          `${user.first_name} ${user.last_name}`.trim(),
+          user.email,
+        );
+      })();
 
       // Initial pull from shared
       try {
@@ -343,21 +344,22 @@ export function registerProjectHandlers(): void {
         project.description,
       );
 
-      // Update local project record with new path and key
-      db.prepare(
-        'UPDATE projects SET shared_db_path = ?, shared_db_key = ? WHERE id = ?',
-      ).run(filePath, keyBytes, projectId);
+      // Update local project record and reset synced_at atomically.
+      db.transaction(() => {
+        db.prepare(
+          'UPDATE projects SET shared_db_path = ?, shared_db_key = ? WHERE id = ?',
+        ).run(filePath, keyBytes, projectId);
 
-      // Reset synced_at so all contacts/memberships get pushed to the new file.
-      const memberContactIds = (db
-        .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
-        .all(projectId) as { contact_id: string }[])
-        .map((r) => r.contact_id);
-      if (memberContactIds.length > 0) {
-        const ph = memberContactIds.map(() => '?').join(',');
-        db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
-      }
-      db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+        const memberContactIds = (db
+          .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
+          .all(projectId) as { contact_id: string }[])
+          .map((r) => r.contact_id);
+        if (memberContactIds.length > 0) {
+          const ph = memberContactIds.map(() => '?').join(',');
+          db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
+        }
+        db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+      })();
 
       // Push all local project data to the fresh shared file
       try {
