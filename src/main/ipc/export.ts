@@ -98,6 +98,7 @@ function formatLogEntry(e: { id: string; created_at: number; reporter_name: stri
 type ExportMode = 'full' | 'sanitized';
 
 const LOG_BATCH_SIZE = 500;
+const MEMBERSHIP_CHUNK = 200;
 
 export function registerExportHandlers(): void {
   ipcMain.handle(
@@ -158,7 +159,6 @@ export function registerExportHandlers(): void {
       }[];
 
       const contactIds = memberships.map((m) => m.contact_id);
-      const membershipIds = memberships.map((m) => m.membership_id);
       const ph = (arr: unknown[]) => arr.map(() => '?').join(',');
 
       const bulkEmails = contactIds.length
@@ -185,67 +185,70 @@ export function registerExportHandlers(): void {
       const handlesByContact = new Map<string, { type: string; handle: string }[]>();
       for (const r of bulkHandles) { const a = handlesByContact.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesByContact.set(r.contact_id, a); }
 
-      const logsByMembership = new Map<string, string[]>();
-      if (mode === 'full' && membershipIds.length) {
-        type LogRow = { id: string; membership_id: string; reporter_name: string; body: string; created_at: number };
-        const iter = db.prepare(
-          `SELECT ile.id, ip.membership_id, ile.reporter_name, ile.body, ile.created_at
-           FROM interaction_log_entries ile
-           JOIN interaction_projects ip ON ip.interaction_id = ile.id
-           WHERE ip.membership_id IN (${ph(membershipIds)})
-           ORDER BY ile.created_at ASC`,
-        ).iterate(...membershipIds) as IterableIterator<LogRow>;
-        let batch: LogRow[] = [];
-        const flush = () => {
-          if (!batch.length) return;
-          const projMap = fetchProjectsByInteraction(db, batch.map((e) => e.id));
-          for (const e of batch) {
-            const arr = logsByMembership.get(e.membership_id) ?? [];
-            arr.push(formatLogEntry(e, projMap));
-            logsByMembership.set(e.membership_id, arr);
-          }
-          batch = [];
-        };
-        for (const row of iter) { batch.push(row); if (batch.length >= LOG_BATCH_SIZE) flush(); }
-        flush();
-      }
-
+      type LogRow = { id: string; membership_id: string; reporter_name: string; body: string; created_at: number };
       const rows: ExportRow[] = [];
 
-      for (const m of memberships) {
-        const emails = (emailsByContact.get(m.contact_id) ?? []).join('; ');
-        const phones = (phonesByContact.get(m.contact_id) ?? []).join('; ');
-        const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
-        const links = linksByContact.get(m.contact_id) ?? [];
-        const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
-        const logStrings = logsByMembership.get(m.membership_id) ?? [];
-        const interactionLog = mode === 'full' ? logStrings.join('\n') : '';
-        logsByMembership.delete(m.membership_id);
+      for (let ci = 0; ci < memberships.length; ci += MEMBERSHIP_CHUNK) {
+        const chunk = memberships.slice(ci, ci + MEMBERSHIP_CHUNK);
+        const chunkMembershipIds = chunk.map((m) => m.membership_id);
 
-        rows.push({
-          Name: m.name,
-          Organization: m.organization ?? '',
-          Title: m.title ?? '',
-          DOB: m.dob ?? '',
-          Emails: emails,
-          Phones: phones,
-          Handles: handles,
-          LinkedIn: byType('linkedin'),
-          Facebook: byType('facebook'),
-          Instagram: byType('instagram'),
-          X: byType('x'),
-          Website: byType('website'),
-          'Other links': byType('other'),
-          Notes: mode === 'full' ? (m.notes ?? '') : '',
-          Reporter: m.reporter_name,
-          Theme: m.theme ?? '',
-          Priority: m.priority ?? '',
-          Status: m.status ?? '',
-          'First outreach': m.first_log_at
-            ? new Date(m.first_log_at * 1000).toLocaleDateString()
-            : '',
-          'Interaction log': interactionLog,
-        });
+        // Fetch and format logs only for this chunk; map is scoped here so
+        // log strings become GC-eligible as soon as the chunk's rows are built.
+        const logsByMembership = new Map<string, string[]>();
+        if (mode === 'full' && chunkMembershipIds.length) {
+          const iter = db.prepare(
+            `SELECT ile.id, ip.membership_id, ile.reporter_name, ile.body, ile.created_at
+             FROM interaction_log_entries ile
+             JOIN interaction_projects ip ON ip.interaction_id = ile.id
+             WHERE ip.membership_id IN (${ph(chunkMembershipIds)})
+             ORDER BY ile.created_at ASC`,
+          ).iterate(...chunkMembershipIds) as IterableIterator<LogRow>;
+          let batch: LogRow[] = [];
+          const flush = () => {
+            if (!batch.length) return;
+            const projMap = fetchProjectsByInteraction(db, batch.map((e) => e.id));
+            for (const e of batch) {
+              const arr = logsByMembership.get(e.membership_id) ?? [];
+              arr.push(formatLogEntry(e, projMap));
+              logsByMembership.set(e.membership_id, arr);
+            }
+            batch = [];
+          };
+          for (const row of iter) { batch.push(row); if (batch.length >= LOG_BATCH_SIZE) flush(); }
+          flush();
+        }
+
+        for (const m of chunk) {
+          const emails = (emailsByContact.get(m.contact_id) ?? []).join('; ');
+          const phones = (phonesByContact.get(m.contact_id) ?? []).join('; ');
+          const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
+          const links = linksByContact.get(m.contact_id) ?? [];
+          const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+          rows.push({
+            Name: m.name,
+            Organization: m.organization ?? '',
+            Title: m.title ?? '',
+            DOB: m.dob ?? '',
+            Emails: emails,
+            Phones: phones,
+            Handles: handles,
+            LinkedIn: byType('linkedin'),
+            Facebook: byType('facebook'),
+            Instagram: byType('instagram'),
+            X: byType('x'),
+            Website: byType('website'),
+            'Other links': byType('other'),
+            Notes: mode === 'full' ? (m.notes ?? '') : '',
+            Reporter: m.reporter_name,
+            Theme: m.theme ?? '',
+            Priority: m.priority ?? '',
+            Status: m.status ?? '',
+            'First outreach': m.first_log_at
+              ? new Date(m.first_log_at * 1000).toLocaleDateString()
+              : '',
+            'Interaction log': mode === 'full' ? (logsByMembership.get(m.membership_id) ?? []).join('\n') : '',
+          });
+        }
       }
 
       const tmpPath = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
@@ -323,53 +326,59 @@ export function registerExportHandlers(): void {
       const handlesById = new Map<string, { type: string; handle: string }[]>();
       for (const r of allHandles2) { const a = handlesById.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesById.set(r.contact_id, a); }
 
-      const logsByContactId = new Map<string, string[]>();
-      if (allContactIds.length) {
-        type LogRow2 = { id: string; contact_id: string; reporter_name: string; body: string; created_at: number };
-        const iter2 = db.prepare(
-          `SELECT id, contact_id, reporter_name, body, created_at
-           FROM interaction_log_entries
-           WHERE contact_id IN (${ph2(allContactIds)})
-           ORDER BY created_at ASC`,
-        ).iterate(...allContactIds) as IterableIterator<LogRow2>;
-        let batch2: LogRow2[] = [];
-        const flush2 = () => {
-          if (!batch2.length) return;
-          const projMap2 = fetchProjectsByInteraction(db, batch2.map((e) => e.id));
-          for (const e of batch2) {
-            const arr = logsByContactId.get(e.contact_id) ?? [];
-            arr.push(formatLogEntry(e, projMap2));
-            logsByContactId.set(e.contact_id, arr);
-          }
-          batch2 = [];
-        };
-        for (const row of iter2) { batch2.push(row); if (batch2.length >= LOG_BATCH_SIZE) flush2(); }
-        flush2();
-      }
+      type LogRow2 = { id: string; contact_id: string; reporter_name: string; body: string; created_at: number };
+      const rows: AllContactsRow[] = [];
 
-      const rows: AllContactsRow[] = contacts.map((c) => {
-        const links = linksById.get(c.id) ?? [];
-        const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
-        const interactionLog = (logsByContactId.get(c.id) ?? []).join('\n');
-        logsByContactId.delete(c.id);
-        return {
-          Name: c.name,
-          Organization: c.organization ?? '',
-          Title: c.title ?? '',
-          DOB: c.dob ?? '',
-          Emails: (emailsById.get(c.id) ?? []).join('; '),
-          Phones: (phonesById.get(c.id) ?? []).join('; '),
-          Handles: (handlesById.get(c.id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; '),
-          LinkedIn: byType2('linkedin'),
-          Facebook: byType2('facebook'),
-          Instagram: byType2('instagram'),
-          X: byType2('x'),
-          Website: byType2('website'),
-          'Other links': byType2('other'),
-          Notes: c.notes ?? '',
-          'Interaction log': interactionLog,
-        };
-      });
+      for (let ci2 = 0; ci2 < contacts.length; ci2 += MEMBERSHIP_CHUNK) {
+        const chunk2 = contacts.slice(ci2, ci2 + MEMBERSHIP_CHUNK);
+        const chunkContactIds = chunk2.map((c) => c.id);
+
+        // Scoped per-chunk so log strings become GC-eligible after each chunk's rows are built.
+        const logsByContactId = new Map<string, string[]>();
+        if (chunkContactIds.length) {
+          const iter2 = db.prepare(
+            `SELECT id, contact_id, reporter_name, body, created_at
+             FROM interaction_log_entries
+             WHERE contact_id IN (${ph2(chunkContactIds)})
+             ORDER BY created_at ASC`,
+          ).iterate(...chunkContactIds) as IterableIterator<LogRow2>;
+          let batch2: LogRow2[] = [];
+          const flush2 = () => {
+            if (!batch2.length) return;
+            const projMap2 = fetchProjectsByInteraction(db, batch2.map((e) => e.id));
+            for (const e of batch2) {
+              const arr = logsByContactId.get(e.contact_id) ?? [];
+              arr.push(formatLogEntry(e, projMap2));
+              logsByContactId.set(e.contact_id, arr);
+            }
+            batch2 = [];
+          };
+          for (const row of iter2) { batch2.push(row); if (batch2.length >= LOG_BATCH_SIZE) flush2(); }
+          flush2();
+        }
+
+        for (const c of chunk2) {
+          const links = linksById.get(c.id) ?? [];
+          const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+          rows.push({
+            Name: c.name,
+            Organization: c.organization ?? '',
+            Title: c.title ?? '',
+            DOB: c.dob ?? '',
+            Emails: (emailsById.get(c.id) ?? []).join('; '),
+            Phones: (phonesById.get(c.id) ?? []).join('; '),
+            Handles: (handlesById.get(c.id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; '),
+            LinkedIn: byType2('linkedin'),
+            Facebook: byType2('facebook'),
+            Instagram: byType2('instagram'),
+            X: byType2('x'),
+            Website: byType2('website'),
+            'Other links': byType2('other'),
+            Notes: c.notes ?? '',
+            'Interaction log': (logsByContactId.get(c.id) ?? []).join('\n'),
+          });
+        }
+      }
 
       const tmpPath2 = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
       try {
