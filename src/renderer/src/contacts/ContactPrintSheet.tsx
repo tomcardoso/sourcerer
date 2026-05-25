@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail, InteractionLogEntry } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
@@ -23,13 +23,7 @@ const SOCIAL_LABELS: Record<string, string> = {
 };
 
 export default function ContactPrintSheet({ contact, logs }: Props) {
-  const [printedAt, setPrintedAt] = useState<Date | null>(null);
-
-  useEffect(() => {
-    function onBeforePrint() { setPrintedAt(new Date()); }
-    window.addEventListener('beforeprint', onBeforePrint);
-    return () => window.removeEventListener('beforeprint', onBeforePrint);
-  }, []);
+  const printedAt = useMemo(() => new Date(), []);
 
   const websites = contact.links.filter((l) => l.type === 'website');
   const socials = contact.links.filter((l) => l.type !== 'website');
@@ -165,13 +159,11 @@ export default function ContactPrintSheet({ contact, logs }: Props) {
 
       <footer className="cps-footer">
         <span>Printed from Sourcerer</span>
-        {printedAt && (
-          <span>
-            {printedAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
-            {' · '}
-            {printedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-          </span>
-        )}
+        <span>
+          {printedAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+          {' · '}
+          {printedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        </span>
       </footer>
     </div>,
     document.body
