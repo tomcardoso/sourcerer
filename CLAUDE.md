@@ -64,8 +64,6 @@ Releases are triggered by pushing a version tag (`v*`). Because `main` is protec
    ```
 6. The `build.yml` workflow builds on macOS, Windows, and Linux, then creates a GitHub Release with all artifacts automatically
 
-> The old `npm run release:patch` / `npm run release:minor` scripts do steps 2+5 in one shot but bypass the PR requirement — don't use them now that `main` is protected.
-
 ## UI design system
 
 All design tokens are CSS custom properties defined in `src/renderer/src/global.css`.
