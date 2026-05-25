@@ -7,12 +7,12 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import './QuickLogModal.css';
 
 interface Props {
+  contacts: ContactListItem[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function QuickReminderModal({ onClose, onSaved }: Props) {
-  const [contacts, setContacts] = useState<ContactListItem[]>([]);
+export default function QuickReminderModal({ contacts, onClose, onSaved }: Props) {
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -29,10 +29,6 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pickerWrapRef = useRef<HTMLDivElement>(null);
   useClickOutside(pickerWrapRef, () => setDropdownOpen(false), { isOpen: dropdownOpen, escapeKey: false });
-
-  useEffect(() => {
-    window.sourcerer.listContacts().then(setContacts);
-  }, []);
 
   useEffect(() => {
     if (!selectedContactId) {
