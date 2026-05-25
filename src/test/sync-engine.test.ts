@@ -306,6 +306,51 @@ describe('syncProject — push path', () => {
 });
 
 // ---------------------------------------------------------------------------
+// pullAppendOnly — overlap window reconciliation
+// ---------------------------------------------------------------------------
+
+describe('pullAppendOnly — overlap window', () => {
+  it('pulls a late-arriving log entry whose created_at falls within the 30s overlap window', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Overlap Test');
+
+    // Pre-seed both DBs with the same contact UUID so syncProject skips UUID adoption.
+    const contactId = uuidv4();
+    const membershipId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Alice', NOW, NOW);
+    localDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order) VALUES (?, ?, ?, ?)').run(uuidv4(), contactId, 'alice@example.com', 0);
+    sharedInsertContact(sharedDb, contactId, 'Alice', { emails: ['alice@example.com'] });
+
+    // Matching membership with the same ID in both DBs.
+    localDb.prepare(
+      'INSERT INTO project_memberships (id, contact_id, project_id, reporter_email, reporter_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(membershipId, contactId, projectId, 'r@r.com', 'Reporter', NOW, NOW);
+    sharedInsertMembership(sharedDb, membershipId, contactId);
+
+    // Existing local entry at NOW establishes the high-watermark.
+    localDb.prepare(
+      'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(uuidv4(), contactId, 'r@r.com', 'Reporter', 'existing', NOW);
+
+    // Shared entry at NOW - 25 is below the local max but within the 30s overlap window.
+    const lateEntryId = uuidv4();
+    sharedDb.prepare(
+      'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(lateEntryId, contactId, 'r@r.com', 'Reporter', 'late entry', NOW - 25);
+    sharedDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(lateEntryId, membershipId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    // Late entry and its project link should be pulled into local DB.
+    expect(localDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(lateEntryId)).toBeDefined();
+    const ip = localDb.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').get(lateEntryId) as { membership_id: string } | undefined;
+    expect(ip?.membership_id).toBe(membershipId);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // LWW (last-write-wins): newer version should win (#268)
 // ---------------------------------------------------------------------------
 

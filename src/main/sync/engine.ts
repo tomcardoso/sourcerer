@@ -497,7 +497,7 @@ function pullAppendOnly(
   const fetchedAtWatermark = Math.max(0, maxFetchedAt - 30);
 
   for (const sm of shared.prepare(
-    'SELECT * FROM contact_alert_mentions WHERE fetched_at > ?',
+    'SELECT * FROM contact_alert_mentions WHERE fetched_at >= ?',
   ).all(fetchedAtWatermark) as {
     id: string;
     contact_id: string;
@@ -525,7 +525,7 @@ function pullAppendOnly(
   const createdAtWatermark = Math.max(0, maxCreatedAt - 30);
 
   for (const se of shared.prepare(
-    'SELECT * FROM interaction_log_entries WHERE created_at > ?',
+    'SELECT * FROM interaction_log_entries WHERE created_at >= ?',
   ).all(createdAtWatermark) as {
     id: string;
     contact_id: string;
@@ -546,8 +546,8 @@ function pullAppendOnly(
   for (const sip of shared.prepare(
     `SELECT ip.* FROM interaction_projects ip
      JOIN interaction_log_entries ile ON ile.id = ip.interaction_id
-     WHERE ile.created_at > ?`,
-  ).all(maxCreatedAt) as {
+     WHERE ile.created_at >= ?`,
+  ).all(createdAtWatermark) as {
     interaction_id: string;
     membership_id: string;
   }[]) {
