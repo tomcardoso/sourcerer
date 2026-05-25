@@ -245,9 +245,10 @@ export const LOCAL_SCHEMA_DDL_SQL = `
   CREATE INDEX IF NOT EXISTS idx_reminders_membership_id            ON reminders(membership_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_reminders_membership_outreach ON reminders(membership_id) WHERE is_auto_outreach = 1;
   CREATE INDEX IF NOT EXISTS idx_reminders_contact_id             ON reminders(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_reminders_due_incomplete         ON reminders(due_date) WHERE completed_at IS NULL;
   CREATE INDEX IF NOT EXISTS idx_alert_mentions_contact_id        ON contact_alert_mentions(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_mentions_contact_guid   ON contact_alert_mentions(contact_id, guid);
-  CREATE INDEX IF NOT EXISTS idx_alert_mentions_seen_dismissed    ON contact_alert_mentions(seen, dismissed);
+  CREATE INDEX IF NOT EXISTS idx_alert_mentions_active            ON contact_alert_mentions(seen) WHERE dismissed = 0;
 
   CREATE VIRTUAL TABLE IF NOT EXISTS interaction_log_fts
     USING fts5(body, content='interaction_log_entries', content_rowid='rowid');
