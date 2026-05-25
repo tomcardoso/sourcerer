@@ -58,8 +58,6 @@ Releases are triggered automatically by CI when a version tag is pushed. Because
 
 The `build.yml` workflow builds on macOS, Windows, and Linux and creates a GitHub Release with all artifacts automatically.
 
-> Do not use `npm run release:patch` / `npm run release:minor` — these scripts bypass the PR requirement and should not be used now that `main` is protected.
-
 ---
 
 ## Browser extensions
