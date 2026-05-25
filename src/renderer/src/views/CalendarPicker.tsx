@@ -182,7 +182,7 @@ export function CalendarPicker({
                 <button
                   type="button"
                   className={`cal-year-btn${mode !== 'days' ? ' cal-year-btn--active' : ''}`}
-                  onClick={() => { setYearPageOffset(0); setMode('years'); }}
+                  onClick={() => { setYearPageOffset(0); if (value) setViewYear(isoToYMD(value).y); setMode('years'); }}
                 >
                   {viewYear}
                 </button>
@@ -263,7 +263,7 @@ export function CalendarPicker({
                       isToday ? 'cal-day--today' : '',
                       isDisabled ? 'cal-day--disabled' : '',
                     ].filter(Boolean).join(' ')}
-                    onClick={() => !isDisabled && selectDay(cell.y, cell.m, cell.d)}
+                    onClick={() => selectDay(cell.y, cell.m, cell.d)}
                     disabled={isDisabled}
                   >
                     {cell.d}
