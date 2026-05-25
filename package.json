@@ -6,8 +6,6 @@
   "author": "Tom Cardoso",
   "main": "out/main/index.js",
   "scripts": {
-    "release:patch": "npm version patch && git push origin main --follow-tags",
-    "release:minor": "npm version minor && git push origin main --follow-tags",
     "build:extension": "node scripts/build-extension.mjs",
     "postinstall": "electron-builder install-app-deps",
     "dev": "electron-vite dev",
