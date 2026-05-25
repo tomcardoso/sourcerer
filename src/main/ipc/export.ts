@@ -97,6 +97,7 @@ function formatLogEntry(e: { id: string; created_at: number; reporter_name: stri
 
 type ExportMode = 'full' | 'sanitized';
 
+const LOG_BATCH_SIZE = 500;
 
 export function registerExportHandlers(): void {
   ipcMain.handle(
@@ -184,13 +185,30 @@ export function registerExportHandlers(): void {
       const handlesByContact = new Map<string, { type: string; handle: string }[]>();
       for (const r of bulkHandles) { const a = handlesByContact.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesByContact.set(r.contact_id, a); }
 
-      const bulkLogs: { id: string; membership_id: string; reporter_name: string; body: string; created_at: number }[] =
-        mode === 'full' && membershipIds.length
-          ? (db.prepare(`SELECT ile.id, ip.membership_id, ile.reporter_name, ile.body, ile.created_at FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id IN (${ph(membershipIds)}) ORDER BY ile.created_at ASC`).all(...membershipIds) as { id: string; membership_id: string; reporter_name: string; body: string; created_at: number }[])
-          : [];
-      const projectsByInteraction = fetchProjectsByInteraction(db, bulkLogs.map((e) => e.id));
-      const logsByMembership = new Map<string, { id: string; reporter_name: string; body: string; created_at: number }[]>();
-      for (const r of bulkLogs) { const a = logsByMembership.get(r.membership_id) ?? []; a.push(r); logsByMembership.set(r.membership_id, a); }
+      const logsByMembership = new Map<string, string[]>();
+      if (mode === 'full' && membershipIds.length) {
+        type LogRow = { id: string; membership_id: string; reporter_name: string; body: string; created_at: number };
+        const iter = db.prepare(
+          `SELECT ile.id, ip.membership_id, ile.reporter_name, ile.body, ile.created_at
+           FROM interaction_log_entries ile
+           JOIN interaction_projects ip ON ip.interaction_id = ile.id
+           WHERE ip.membership_id IN (${ph(membershipIds)})
+           ORDER BY ile.created_at ASC`,
+        ).iterate(...membershipIds) as IterableIterator<LogRow>;
+        let batch: LogRow[] = [];
+        const flush = () => {
+          if (!batch.length) return;
+          const projMap = fetchProjectsByInteraction(db, batch.map((e) => e.id));
+          for (const e of batch) {
+            const arr = logsByMembership.get(e.membership_id) ?? [];
+            arr.push(formatLogEntry(e, projMap));
+            logsByMembership.set(e.membership_id, arr);
+          }
+          batch = [];
+        };
+        for (const row of iter) { batch.push(row); if (batch.length >= LOG_BATCH_SIZE) flush(); }
+        flush();
+      }
 
       const rows: ExportRow[] = [];
 
@@ -201,9 +219,7 @@ export function registerExportHandlers(): void {
         const links = linksByContact.get(m.contact_id) ?? [];
         const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
         const interactionLog = mode === 'full'
-          ? (logsByMembership.get(m.membership_id) ?? [])
-              .map((e) => formatLogEntry(e, projectsByInteraction))
-              .join('\n')
+          ? (logsByMembership.get(m.membership_id) ?? []).join('\n')
           : '';
 
         rows.push({
@@ -307,12 +323,29 @@ export function registerExportHandlers(): void {
       const handlesById = new Map<string, { type: string; handle: string }[]>();
       for (const r of allHandles2) { const a = handlesById.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesById.set(r.contact_id, a); }
 
-      const allLogs = allContactIds.length
-        ? (db.prepare(`SELECT id, contact_id, reporter_name, body, created_at FROM interaction_log_entries WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY created_at ASC`).all(...allContactIds) as { id: string; contact_id: string; reporter_name: string; body: string; created_at: number }[])
-        : [];
-      const logsByContactId = new Map<string, { id: string; reporter_name: string; body: string; created_at: number }[]>();
-      for (const r of allLogs) { const a = logsByContactId.get(r.contact_id) ?? []; a.push(r); logsByContactId.set(r.contact_id, a); }
-      const allLogProjects = fetchProjectsByInteraction(db, allLogs.map((e) => e.id));
+      const logsByContactId = new Map<string, string[]>();
+      if (allContactIds.length) {
+        type LogRow2 = { id: string; contact_id: string; reporter_name: string; body: string; created_at: number };
+        const iter2 = db.prepare(
+          `SELECT id, contact_id, reporter_name, body, created_at
+           FROM interaction_log_entries
+           WHERE contact_id IN (${ph2(allContactIds)})
+           ORDER BY created_at ASC`,
+        ).iterate(...allContactIds) as IterableIterator<LogRow2>;
+        let batch2: LogRow2[] = [];
+        const flush2 = () => {
+          if (!batch2.length) return;
+          const projMap2 = fetchProjectsByInteraction(db, batch2.map((e) => e.id));
+          for (const e of batch2) {
+            const arr = logsByContactId.get(e.contact_id) ?? [];
+            arr.push(formatLogEntry(e, projMap2));
+            logsByContactId.set(e.contact_id, arr);
+          }
+          batch2 = [];
+        };
+        for (const row of iter2) { batch2.push(row); if (batch2.length >= LOG_BATCH_SIZE) flush2(); }
+        flush2();
+      }
 
       const rows: AllContactsRow[] = contacts.map((c) => {
         const links = linksById.get(c.id) ?? [];
@@ -332,9 +365,7 @@ export function registerExportHandlers(): void {
           Website: byType2('website'),
           'Other links': byType2('other'),
           Notes: c.notes ?? '',
-          'Interaction log': (logsByContactId.get(c.id) ?? [])
-            .map((e) => formatLogEntry(e, allLogProjects))
-            .join('\n'),
+          'Interaction log': (logsByContactId.get(c.id) ?? []).join('\n'),
         };
       });
 
