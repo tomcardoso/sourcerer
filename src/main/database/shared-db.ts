@@ -26,6 +26,10 @@ const connections = new Map<string, Database.Database>();
 function openRaw(filePath: string, keyHex: string): Database.Database {
   const db = new Database(filePath);
   db.pragma(`cipher='sqlcipher'`);
+  db.pragma('cipher_page_size=4096');
+  db.pragma('kdf_iter=256000');
+  db.pragma('cipher_hmac_algorithm=HMAC_SHA512');
+  db.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
   db.pragma(`key="x'${keyHex}'"`);
   try {
     db.pragma('user_version');
@@ -105,6 +109,10 @@ export function createSharedDb(
   const db = new Database(filePath);
   try {
     db.pragma(`cipher='sqlcipher'`);
+    db.pragma('cipher_page_size=4096');
+    db.pragma('kdf_iter=256000');
+    db.pragma('cipher_hmac_algorithm=HMAC_SHA512');
+    db.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
     db.pragma(`key="x'${keyHex}'"`);
     db.pragma('foreign_keys = ON');
     db.pragma('busy_timeout = 5000');
