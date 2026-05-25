@@ -231,6 +231,7 @@ function ScratchpadSection({
 }) {
   const [drafts, setDrafts] = useState<ScratchpadDraft[]>([]);
   const [draftEdits, setDraftEdits] = useState<Record<string, { label: string; body: string }>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -255,20 +256,25 @@ function ScratchpadSection({
   }
 
   async function handleSave(draft: ScratchpadDraft) {
+    setSaveError(null);
     const edit = getEdit(draft);
-    const saved = await window.sourcerer.saveScratchpad({
-      id: draft.id,
-      contactId,
-      projectId: membership.id,
-      label: edit.label,
-      body: edit.body,
-    });
-    setDrafts((prev) => prev.map((d) => (d.id === saved.id ? saved : d)));
-    setDraftEdits((prev) => {
-      const next = { ...prev };
-      delete next[draft.id];
-      return next;
-    });
+    try {
+      const saved = await window.sourcerer.saveScratchpad({
+        id: draft.id,
+        contactId,
+        projectId: membership.id,
+        label: edit.label,
+        body: edit.body,
+      });
+      setDrafts((prev) => prev.map((d) => (d.id === saved.id ? saved : d)));
+      setDraftEdits((prev) => {
+        const next = { ...prev };
+        delete next[draft.id];
+        return next;
+      });
+    } catch {
+      setSaveError('Failed to save draft. Please try again.');
+    }
   }
 
   async function handleNewDraft() {
@@ -294,6 +300,7 @@ function ScratchpadSection({
           + Add
         </Button>
       </div>
+      {saveError && <p className="pt-draft-error">{saveError}</p>}
       {drafts.length === 0 && <p className="pt-reminders-empty">No drafts yet.</p>}
       {drafts.map((draft) => {
         const edit = getEdit(draft);

@@ -255,22 +255,36 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   }
 
   async function handleTimeoutChange(seconds: number) {
+    const prev = idleTimeout;
     setIdleTimeout(seconds);
-    await window.sourcerer.setIdleTimeout(seconds);
+    try {
+      await window.sourcerer.setIdleTimeout(seconds);
+    } catch {
+      setIdleTimeout(prev);
+    }
   }
 
   async function handleStalenessToggle(enabled: boolean) {
     setStalenessEnabled(enabled);
-    const updated = await window.sourcerer.setStalenessEnabled(enabled);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setStalenessEnabled(enabled);
+      onUserUpdated(updated);
+    } catch {
+      setStalenessEnabled(!enabled);
+    }
   }
 
   async function handleStalenessThresholdBlur() {
     const days = parseInt(stalenessThresholdInput, 10);
     if (!isNaN(days) && days > 0 && days !== stalenessThreshold) {
       setStalenessThreshold(days);
-      const updated = await window.sourcerer.setStalenessThreshold(days);
-      onUserUpdated(updated);
+      try {
+        const updated = await window.sourcerer.setStalenessThreshold(days);
+        onUserUpdated(updated);
+      } catch {
+        setStalenessThreshold(stalenessThreshold);
+        setStalenessThresholdInput(String(stalenessThreshold));
+      }
     } else {
       setStalenessThresholdInput(String(stalenessThreshold));
     }
@@ -278,20 +292,33 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   async function handleAlertNotificationsToggle(enabled: boolean) {
     setAlertNotificationsEnabled(enabled);
-    const updated = await window.sourcerer.setAlertNotificationsEnabled(enabled);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setAlertNotificationsEnabled(enabled);
+      onUserUpdated(updated);
+    } catch {
+      setAlertNotificationsEnabled(!enabled);
+    }
   }
 
   async function handleRssPollIntervalChange(hours: number) {
+    const prev = rssPollIntervalHours;
     setRssPollIntervalHours(hours);
-    const updated = await window.sourcerer.setRssPollInterval(hours);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setRssPollInterval(hours);
+      onUserUpdated(updated);
+    } catch {
+      setRssPollIntervalHours(prev);
+    }
   }
 
   async function handleWaybackToggle(enabled: boolean) {
     setWaybackEnabled(enabled);
-    const updated = await window.sourcerer.setWaybackEnabled(enabled);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setWaybackEnabled(enabled);
+      onUserUpdated(updated);
+    } catch {
+      setWaybackEnabled(!enabled);
+    }
   }
 
   async function handleArchiveKeysSave() {
@@ -304,26 +331,43 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   async function handleReminderNotificationsToggle(enabled: boolean) {
     setReminderNotificationsEnabled(enabled);
-    const updated = await window.sourcerer.setReminderNotificationsEnabled(enabled);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setReminderNotificationsEnabled(enabled);
+      onUserUpdated(updated);
+    } catch {
+      setReminderNotificationsEnabled(!enabled);
+    }
   }
 
   async function handleOutreachToggle(enabled: boolean) {
     setOutreachRemindersEnabled(enabled);
-    const updated = await window.sourcerer.setOutreachRemindersEnabled(enabled);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setOutreachRemindersEnabled(enabled);
+      onUserUpdated(updated);
+    } catch {
+      setOutreachRemindersEnabled(!enabled);
+    }
   }
 
   async function handleOutreachRequireInteractionToggle(required: boolean) {
     setOutreachRequireInteraction(required);
-    const updated = await window.sourcerer.setOutreachRequireInteraction(required);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setOutreachRequireInteraction(required);
+      onUserUpdated(updated);
+    } catch {
+      setOutreachRequireInteraction(!required);
+    }
   }
 
   async function handlePhoneCountryChange(country: string) {
+    const prev = phoneCountry;
     setPhoneCountry(country);
-    const updated = await window.sourcerer.setPhoneCountry(country);
-    onUserUpdated(updated);
+    try {
+      const updated = await window.sourcerer.setPhoneCountry(country);
+      onUserUpdated(updated);
+    } catch {
+      setPhoneCountry(prev);
+    }
   }
 
   async function handleChooseBackupFolder() {
