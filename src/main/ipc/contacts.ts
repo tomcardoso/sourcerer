@@ -28,6 +28,11 @@ import type {
 import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb, loadDismissedPairs, dismissPair } from '../dedup';
 import type { DuplicatePair } from '@shared/types';
 
+// Separators used by the projects_raw GROUP_CONCAT in contacts:list.
+// char(30) / char(31) in SQL must match these JS values exactly.
+const GROUP_SEP = '\x1e'; // char(30) — between project entries
+const UNIT_SEP = '\x1f';  // char(31) — between project_id and name within an entry
+
 let cachedPairs: DuplicatePair[] = [];
 let dedupScanTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -158,9 +163,11 @@ export function registerContactHandlers(): void {
                 (SELECT MAX(ile.created_at)
                  FROM interaction_log_entries ile
                  WHERE ile.contact_id = c.id) AS date_last_contacted,
-                (SELECT GROUP_CONCAT(pm.project_id || char(31) || p.name, char(30))
-                 FROM project_memberships pm JOIN projects p ON p.id = pm.project_id
-                 WHERE pm.contact_id = c.id) AS projects_raw
+                (SELECT GROUP_CONCAT(pid || char(31) || pname, char(30))
+                 FROM (SELECT pm.project_id AS pid, p.name AS pname
+                       FROM project_memberships pm JOIN projects p ON p.id = pm.project_id
+                       WHERE pm.contact_id = c.id
+                       ORDER BY p.name COLLATE NOCASE ASC)) AS projects_raw
          FROM contacts c
          ORDER BY c.name COLLATE NOCASE ASC`,
       )
@@ -192,8 +199,8 @@ export function registerContactHandlers(): void {
       date_first_contacted: row.date_first_contacted,
       date_last_contacted: row.date_last_contacted,
       projects: row.projects_raw
-        ? row.projects_raw.split('\x1e').map((p) => {
-            const sep = p.indexOf('\x1f');
+        ? row.projects_raw.split(GROUP_SEP).map((p) => {
+            const sep = p.indexOf(UNIT_SEP);
             return { id: p.slice(0, sep), name: p.slice(sep + 1) };
           })
         : [],

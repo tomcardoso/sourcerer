@@ -462,7 +462,7 @@ export function registerProjectHandlers(): void {
        JOIN interaction_projects ip ON ip.interaction_id = ile.id
        JOIN project_memberships pm ON pm.id = ip.membership_id
        WHERE pm.project_id = ?
-       ORDER BY ile.created_at DESC
+       ORDER BY ile.created_at DESC, ile.id DESC
        LIMIT 200`,
     ).all(projectId) as BaseRow[];
     return attachProjects(db, entries);
@@ -476,7 +476,7 @@ export function registerProjectHandlers(): void {
               c.id AS contact_id, c.name AS contact_name, c.organization AS contact_organization
        FROM interaction_log_entries ile
        JOIN contacts c ON c.id = ile.contact_id
-       ORDER BY ile.created_at DESC
+       ORDER BY ile.created_at DESC, ile.id DESC
        LIMIT 200`,
     ).all() as BaseRow[];
     return attachProjects(db, entries);

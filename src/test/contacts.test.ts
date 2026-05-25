@@ -31,6 +31,54 @@ beforeEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+// contacts:list (#179)
+// ---------------------------------------------------------------------------
+
+describe('contacts:list', () => {
+  it('returns one row per contact even with multiple project memberships', async () => {
+    const contactId = insertContact(testDb, 'Alice Smith');
+    const proj1 = insertProject(testDb, 'Alpha');
+    const proj2 = insertProject(testDb, 'Beta');
+    const now = Math.floor(Date.now() / 1000);
+    for (const projId of [proj1, proj2]) {
+      const membershipId = uuidv4();
+      testDb.prepare(
+        'INSERT INTO project_memberships (id, contact_id, project_id, reporter_email, reporter_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).run(membershipId, contactId, projId, TEST_REPORTER.email, TEST_REPORTER.name, now, now);
+    }
+
+    const results = await handlers.get('contacts:list')!({}) as { id: string; projects: { id: string; name: string }[] }[];
+    expect(results).toHaveLength(1);
+    expect(results[0].projects).toHaveLength(2);
+    const names = results[0].projects.map((p) => p.name);
+    expect(names).toContain('Alpha');
+    expect(names).toContain('Beta');
+  });
+
+  it('returns an empty projects array for a contact with no memberships', async () => {
+    insertContact(testDb, 'Bob Jones');
+    const results = await handlers.get('contacts:list')!({}) as { projects: unknown[] }[];
+    expect(results).toHaveLength(1);
+    expect(results[0].projects).toEqual([]);
+  });
+
+  it('returns projects ordered by name', async () => {
+    const contactId = insertContact(testDb, 'Carol White');
+    const now = Math.floor(Date.now() / 1000);
+    for (const name of ['Zebra', 'Alpha', 'Mango']) {
+      const projId = insertProject(testDb, name);
+      const membershipId = uuidv4();
+      testDb.prepare(
+        'INSERT INTO project_memberships (id, contact_id, project_id, reporter_email, reporter_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).run(membershipId, contactId, projId, TEST_REPORTER.email, TEST_REPORTER.name, now, now);
+    }
+
+    const results = await handlers.get('contacts:list')!({}) as { projects: { name: string }[] }[];
+    expect(results[0].projects.map((p) => p.name)).toEqual(['Alpha', 'Mango', 'Zebra']);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // contacts:create (#192)
 // ---------------------------------------------------------------------------
 
