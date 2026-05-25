@@ -20,10 +20,19 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Cache node_modules (including compiled native binaries)
+        id: cache-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node20-modules-${{ hashFiles('package-lock.json') }}
+
       - name: Install dependencies
+        if: steps.cache-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Rebuild native modules for Node
+        if: steps.cache-modules.outputs.cache-hit != 'true'
         run: npm run rebuild:node
 
       - name: Typecheck
