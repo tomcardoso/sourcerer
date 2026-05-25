@@ -18,28 +18,28 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const latestQueryRef = useRef('');
 
+  const normalizedQuery = query.trim();
+
   useEffect(() => {
-    const normalized = query.trim();
     let cancelled = false;
     setSelectedIndex(0);
-    if (!normalized) {
+    if (!normalizedQuery) {
       latestQueryRef.current = '';
       setResults([]);
       setSearching(false);
       return () => { cancelled = true; };
     }
-    if (normalized === latestQueryRef.current) return () => { cancelled = true; };
-    latestQueryRef.current = normalized;
+    latestQueryRef.current = normalizedQuery;
     setSearching(true);
     const timer = setTimeout(() => {
-      window.sourcerer.searchGlobal(normalized).then((r) => {
-        if (!cancelled && latestQueryRef.current === normalized) { setResults(r); setSearching(false); }
+      window.sourcerer.searchGlobal(normalizedQuery).then((r) => {
+        if (!cancelled && latestQueryRef.current === normalizedQuery) { setResults(r); setSearching(false); }
       }).catch(() => {
-        if (!cancelled && latestQueryRef.current === normalized) { setResults([]); setSearching(false); }
+        if (!cancelled && latestQueryRef.current === normalizedQuery) { setResults([]); setSearching(false); }
       });
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query]);
+  }, [normalizedQuery]);
 
   function pick(result: SearchResult) {
     if (result.type === 'contact') {
