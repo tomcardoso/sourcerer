@@ -491,9 +491,14 @@ function pullAppendOnly(
     .prepare('SELECT COALESCE(MAX(fetched_at), 0) AS m FROM contact_alert_mentions')
     .get() as { m: number }).m;
 
+  // Subtract a 30-second overlap window so rows that arrive late (due to clock
+  // skew between clients) are always eventually reconciled. Duplicates are safe
+  // because the INSERT below uses OR IGNORE.
+  const fetchedAtWatermark = Math.max(0, maxFetchedAt - 30);
+
   for (const sm of shared.prepare(
     'SELECT * FROM contact_alert_mentions WHERE fetched_at > ?',
-  ).all(maxFetchedAt) as {
+  ).all(fetchedAtWatermark) as {
     id: string;
     contact_id: string;
     headline: string;
@@ -516,9 +521,12 @@ function pullAppendOnly(
     .prepare('SELECT COALESCE(MAX(created_at), 0) AS m FROM interaction_log_entries')
     .get() as { m: number }).m;
 
+  // Same 30-second overlap window as above.
+  const createdAtWatermark = Math.max(0, maxCreatedAt - 30);
+
   for (const se of shared.prepare(
     'SELECT * FROM interaction_log_entries WHERE created_at > ?',
-  ).all(maxCreatedAt) as {
+  ).all(createdAtWatermark) as {
     id: string;
     contact_id: string;
     reporter_email: string;
