@@ -417,7 +417,7 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  border-radius: 3px;
+  border-radius: 0;
   padding: 1px 5px;
 }
 
