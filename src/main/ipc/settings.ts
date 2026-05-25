@@ -370,15 +370,17 @@ export function registerSettingsHandlers(): void {
     'settings:set-auto-backup',
     (_, data: { enabled?: boolean; destPath?: string | null; maxCount?: number }): void => {
       const db = getDatabase();
-      if (data.enabled !== undefined) {
-        db.prepare('UPDATE users SET auto_backup_enabled = ? WHERE id = 1').run(data.enabled ? 1 : 0);
-      }
-      if (data.destPath !== undefined) {
-        db.prepare('UPDATE users SET auto_backup_dest_path = ? WHERE id = 1').run(data.destPath ?? null);
-      }
-      if (data.maxCount !== undefined) {
-        db.prepare('UPDATE users SET auto_backup_max_count = ? WHERE id = 1').run(Math.max(1, data.maxCount));
-      }
+      db.transaction(() => {
+        if (data.enabled !== undefined) {
+          db.prepare('UPDATE users SET auto_backup_enabled = ? WHERE id = 1').run(data.enabled ? 1 : 0);
+        }
+        if (data.destPath !== undefined) {
+          db.prepare('UPDATE users SET auto_backup_dest_path = ? WHERE id = 1').run(data.destPath ?? null);
+        }
+        if (data.maxCount !== undefined) {
+          db.prepare('UPDATE users SET auto_backup_max_count = ? WHERE id = 1').run(Math.max(1, data.maxCount));
+        }
+      })();
     },
   );
 
