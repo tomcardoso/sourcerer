@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
 import { getDatabase, isDatabaseOpen } from '../database';
@@ -82,7 +82,7 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
     // Close after each sync so the file handle is released and Dropbox/OneDrive
     // can detect the change and upload it promptly.
     closeSharedDb(projectId);
-    deleteConflictCopies(filePath);
+    deleteConflictCopies(filePath).catch(() => {});
 
     const project = localDb
       .prepare('SELECT shared_pending_writes FROM projects WHERE id = ?')
@@ -119,19 +119,20 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
   return result;
 }
 
-function deleteConflictCopies(filePath: string): void {
+async function deleteConflictCopies(filePath: string): Promise<void> {
   const dir = path.dirname(filePath);
   const ext = path.extname(filePath);
   const base = path.basename(filePath, ext);
   try {
-    for (const file of fs.readdirSync(dir)) {
+    const files = await fs.readdir(dir);
+    for (const file of files) {
       if (
         file !== path.basename(filePath) &&
         file.startsWith(base) &&
         file.endsWith(ext) &&
         /conflicted copy/i.test(file)
       ) {
-        try { fs.unlinkSync(path.join(dir, file)); } catch { /* best-effort */ }
+        try { await fs.unlink(path.join(dir, file)); } catch { /* best-effort */ }
       }
     }
   } catch { /* best-effort */ }
