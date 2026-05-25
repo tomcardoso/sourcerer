@@ -27,6 +27,17 @@ export function createTestDb(): Database.Database {
   return db;
 }
 
+/**
+ * Creates a test DB stamped at a specific user_version, for migration-step tests.
+ * The caller is responsible for removing columns/tables that didn't exist at version n
+ * before calling runMigrations() — this helper only sets the version counter.
+ */
+export function createDbAtVersion(version: number): Database.Database {
+  const db = createTestDb();
+  db.pragma(`user_version = ${version}`);
+  return db;
+}
+
 export function insertProject(db: Database.Database, name: string): string {
   const id = uuidv4();
   db.prepare(

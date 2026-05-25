@@ -359,7 +359,7 @@
   border: 1px solid var(--color-border-strong);
   color: var(--color-text);
   font-size: 13px;
-  font-family: var(--font);
+  font-family: var(--font-serif);
   outline: none;
 }
 
