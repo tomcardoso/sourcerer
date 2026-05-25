@@ -16,6 +16,7 @@ export function startAutoBackupTimer(): void {
       .get() as { auto_backup_enabled: number; auto_backup_dest_path: string | null } | undefined;
     if (!user?.auto_backup_enabled || !user.auto_backup_dest_path) return;
     const lastMs = await getLastAutoBackupTime(user.auto_backup_dest_path);
+    if (!isDatabaseOpen()) return;
     if (lastMs === null || Date.now() - lastMs >= ONE_DAY) {
       runAutoBackup().catch(() => {});
     }
