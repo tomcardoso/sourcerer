@@ -5,32 +5,9 @@ import type { SearchResult } from '@shared/types';
 
 export function performSearch(query: string, db: Database.Database): SearchResult[] {
   if (!query.trim()) return [];
+
   const escaped = query.trim().replace(/[%_\\]/g, '\\$&');
   const pattern = `%${escaped}%`;
-
-  const contacts = db
-    .prepare(
-      `SELECT DISTINCT c.id, c.name, c.organization
-       FROM contacts c
-       LEFT JOIN contact_emails ce ON ce.contact_id = c.id
-       LEFT JOIN contact_phones cp ON cp.contact_id = c.id
-       WHERE c.name LIKE ? ESCAPE '\\' OR c.organization LIKE ? ESCAPE '\\' OR c.title LIKE ? ESCAPE '\\'
-          OR c.notes LIKE ? ESCAPE '\\' OR ce.email LIKE ? ESCAPE '\\' OR cp.phone LIKE ? ESCAPE '\\'
-       ORDER BY c.name COLLATE NOCASE
-       LIMIT 15`,
-    )
-    .all(pattern, pattern, pattern, pattern, pattern, pattern) as Array<{
-    id: string;
-    name: string;
-    organization: string | null;
-  }>;
-
-  const projects = db
-    .prepare(
-      `SELECT id, name FROM projects WHERE name LIKE ? ESCAPE '\\'
-       ORDER BY name COLLATE NOCASE LIMIT 5`,
-    )
-    .all(pattern) as Array<{ id: string; name: string }>;
 
   // Quote each whitespace-delimited token so FTS operators/punctuation in user
   // input are treated as literals, then append * for prefix matching.
@@ -40,6 +17,73 @@ export function performSearch(query: string, db: Database.Database): SearchResul
     .filter(Boolean)
     .map((t) => `"${t.replace(/"/g, '')}"*`)
     .join(' ');
+
+  // Contacts — FTS5 primary path; falls back to LIKE if the table doesn't
+  // exist (old DB) or if the user typed an FTS syntax error.
+  let contacts: Array<{ id: string; name: string; organization: string | null }> = [];
+  try {
+    const ftsContacts = db
+      .prepare(
+        `SELECT c.id, c.name, c.organization
+         FROM contacts_fts f
+         JOIN contacts c ON c.rowid = f.rowid
+         WHERE contacts_fts MATCH ?
+         ORDER BY f.rank
+         LIMIT 15`,
+      )
+      .all(ftsQuery) as typeof contacts;
+
+    // Email/phone searches for contacts not matched by FTS
+    const emailContacts = db
+      .prepare(
+        `SELECT DISTINCT c.id, c.name, c.organization
+         FROM contact_emails ce
+         JOIN contacts c ON c.id = ce.contact_id
+         WHERE ce.email LIKE ? ESCAPE '\\'`,
+      )
+      .all(pattern) as typeof contacts;
+
+    const phoneContacts = db
+      .prepare(
+        `SELECT DISTINCT c.id, c.name, c.organization
+         FROM contact_phones cp
+         JOIN contacts c ON c.id = cp.contact_id
+         WHERE cp.phone LIKE ? ESCAPE '\\'`,
+      )
+      .all(pattern) as typeof contacts;
+
+    // Merge: preserve FTS rank order, append email-only then phone-only hits
+    const seen = new Set(ftsContacts.map((c) => c.id));
+    contacts = [...ftsContacts];
+    for (const c of [...emailContacts, ...phoneContacts]) {
+      if (!seen.has(c.id)) { contacts.push(c); seen.add(c.id); }
+    }
+    if (contacts.length > 15) contacts = contacts.slice(0, 15);
+  } catch (e) {
+    if (e instanceof Error && (/fts5: syntax error/i.test(e.message) || /no such table/i.test(e.message))) {
+      contacts = db
+        .prepare(
+          `SELECT DISTINCT c.id, c.name, c.organization
+           FROM contacts c
+           LEFT JOIN contact_emails ce ON ce.contact_id = c.id
+           LEFT JOIN contact_phones cp ON cp.contact_id = c.id
+           WHERE c.name LIKE ? ESCAPE '\\' OR c.organization LIKE ? ESCAPE '\\' OR c.title LIKE ? ESCAPE '\\'
+              OR c.notes LIKE ? ESCAPE '\\' OR ce.email LIKE ? ESCAPE '\\' OR cp.phone LIKE ? ESCAPE '\\'
+           ORDER BY c.name COLLATE NOCASE
+           LIMIT 15`,
+        )
+        .all(pattern, pattern, pattern, pattern, pattern, pattern) as typeof contacts;
+    } else {
+      throw e;
+    }
+  }
+
+  const projects = db
+    .prepare(
+      `SELECT id, name FROM projects WHERE name LIKE ? ESCAPE '\\'
+       ORDER BY name COLLATE NOCASE LIMIT 5`,
+    )
+    .all(pattern) as Array<{ id: string; name: string }>;
 
   let logResults: Array<{
     entry_id: string;
@@ -71,7 +115,7 @@ export function performSearch(query: string, db: Database.Database): SearchResul
     // (e.g. table corruption whose message might also contain "fts5:").
     if (e instanceof Error && /fts5: syntax error/i.test(e.message)) {
       // FTS log results are simply omitted — contacts and projects still return
-      // their LIKE results computed above.
+      // their results computed above.
     } else {
       throw e;
     }
