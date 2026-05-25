@@ -95,16 +95,18 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
 
   useEffect(() => {
     if (!contact) return;
-    let cancelled = false;
-    Promise.all(
-      contact.projects.map((p) =>
-        window.sourcerer.listInteractionLog(p.membership_id).then((entries) => ({
-          projectName: p.name,
-          entries,
-        }))
-      )
-    ).then((logs) => { if (!cancelled) setPrintLogs(logs); });
-    return () => { cancelled = true; };
+    function handleBeforePrint() {
+      Promise.all(
+        contact!.projects.map((p) =>
+          window.sourcerer.listInteractionLog(p.membership_id).then((entries) => ({
+            projectName: p.name,
+            entries,
+          }))
+        )
+      ).then(setPrintLogs);
+    }
+    window.addEventListener('beforeprint', handleBeforePrint);
+    return () => window.removeEventListener('beforeprint', handleBeforePrint);
   }, [contact]);
 
   function handleMembershipChanged() {

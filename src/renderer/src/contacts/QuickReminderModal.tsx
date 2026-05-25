@@ -6,12 +6,12 @@ import { CalendarPicker } from '../views/CalendarPicker';
 import './QuickLogModal.css';
 
 interface Props {
+  contacts: ContactListItem[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function QuickReminderModal({ onClose, onSaved }: Props) {
-  const [contacts, setContacts] = useState<ContactListItem[]>([]);
+export default function QuickReminderModal({ contacts, onClose, onSaved }: Props) {
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -26,10 +26,6 @@ export default function QuickReminderModal({ onClose, onSaved }: Props) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    window.sourcerer.listContacts().then(setContacts);
-  }, []);
 
   useEffect(() => {
     if (!selectedContactId) {

@@ -56,14 +56,11 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   }, [openContactId, onOpenContactIdConsumed]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
     if (refreshTrigger) refresh();
   }, [refreshTrigger, refresh]);
 
   useEffect(() => {
+    refresh();
     return window.sourcerer.onContactsChanged(refresh);
   }, [refresh]);
 

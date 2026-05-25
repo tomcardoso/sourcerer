@@ -12,12 +12,12 @@ function todayISO(): string {
 }
 
 interface Props {
+  contacts: ContactListItem[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function QuickLogModal({ onClose, onSaved }: Props) {
-  const [contacts, setContacts] = useState<ContactListItem[]>([]);
+export default function QuickLogModal({ contacts, onClose, onSaved }: Props) {
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -28,10 +28,6 @@ export default function QuickLogModal({ onClose, onSaved }: Props) {
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    window.sourcerer.listContacts().then(setContacts);
-  }, []);
 
   useEffect(() => {
     if (!selectedContactId) {
