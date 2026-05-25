@@ -36,9 +36,27 @@ Both platforms are signed in CI. Local builds are unsigned.
 
 ### Publishing a release
 
-1. Bump `version` in `package.json`.
-2. Build the installers for each platform.
-3. Create a GitHub release tagged `v<version>` and attach the `.dmg`, `.exe`, and `.AppImage` files.
+Releases are triggered automatically by CI when a version tag is pushed. Because `main` is protected, the version bump goes through a PR first.
+
+1. Create a version bump branch: `git checkout -b chore/v<version>`
+2. Bump the version (runs typecheck + tests automatically before bumping):
+   ```bash
+   npm version patch   # 0.1.x → 0.1.x+1
+   # or
+   npm version minor   # 0.1.x → 0.2.0
+   ```
+3. Push the branch and open a PR:
+   ```bash
+   git push -u origin chore/v<version>
+   gh pr create ...
+   ```
+4. Once the PR is merged, push the tag to trigger the build:
+   ```bash
+   git checkout main && git pull
+   git push origin v<version>
+   ```
+
+The `build.yml` workflow builds on macOS, Windows, and Linux and creates a GitHub Release with all artifacts automatically.
 
 ---
 
@@ -108,7 +126,7 @@ Temporary add-ons are removed when Firefox closes. For persistent local installs
 
 - [ ] `version` bumped in `package.json`, `manifest.json`, and `manifest.firefox.json`
 - [ ] `npm run typecheck` passes
-- [ ] `npm test` passes (100/100)
+- [ ] `npm test` exits 0 (all tests pass)
 - [ ] `npm run build:extension` run after any extension changes
 - [ ] Desktop installers built and smoke-tested on each target platform
 - [ ] GitHub release created and assets attached

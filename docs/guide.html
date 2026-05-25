@@ -64,7 +64,13 @@
             <h2>Getting started</h2>
 
             <h3>Installation</h3>
-            <p>Pre-built installers for macOS (Apple Silicon) and Windows (x64) are available on the <a href="https://github.com/tomcardoso/sourcerer/releases/latest">releases page</a>. Download the <code>.dmg</code> (macOS) or <code>.exe</code> (Windows) and follow the standard installation steps for your platform.</p>
+            <p>Pre-built installers for macOS (Apple Silicon), Windows (x64), and Linux (x64) are available on the <a href="https://github.com/tomcardoso/sourcerer/releases/latest">releases page</a>.</p>
+            <p><strong>macOS:</strong> Download the <code>.dmg</code> and follow the standard installation steps. Because the app is not distributed through the Mac App Store, macOS may block it on first launch — right-click the app and choose <strong>Open</strong> to bypass the Gatekeeper warning.</p>
+            <p><strong>Windows:</strong> Download the <code>.exe</code> installer and run it. Windows Defender SmartScreen may warn you because the app is not widely distributed — click <strong>More info → Run anyway</strong> to proceed.</p>
+            <p><strong>Linux:</strong> Download the <code>.AppImage</code> file. Make it executable and run it:</p>
+            <pre><code>chmod +x Sourcerer-*.AppImage
+./Sourcerer-*.AppImage</code></pre>
+            <p>On Ubuntu 22.04 and later, AppImage requires <code>libfuse2</code>, which is not installed by default. Install it with: <code>sudo apt install libfuse2</code></p>
 
             <h3>First launch</h3>
             <p>The first time you open Sourcerer, setup happens in two steps.</p>
@@ -263,7 +269,7 @@
             <p>See the <a href="extension.html">extension guide</a> for connection instructions and full feature details.</p>
 
             <h3>Connecting</h3>
-            <p>Click the Sourcerer icon in the browser toolbar. If this is your first time, click <strong>Connect to Sourcerer</strong> — an approval prompt will appear in the app. Click <strong>Approve</strong>. The session token persists until the app is reinstalled or you revoke it manually.</p>
+            <p>Click the Sourcerer icon in the browser toolbar. If this is your first time, click <strong>Connect to Sourcerer</strong> — an approval prompt will appear in the app. Click <strong>Approve</strong>. The connection persists across app restarts, but must be re-granted after the app is locked — either by the auto-lock timer or manually.</p>
 
             <h3>What you can do</h3>
             <ul>
@@ -315,6 +321,9 @@
 
             <h3>Redaction mode</h3>
             <p>Press <strong>Ctrl+Shift+R</strong> at any time to toggle redaction mode. While active, all contact names, organisations, emails, phones, handles, links, and notes are blurred on screen. This is useful when working in a public place or sharing your screen. Press the shortcut again to disable it.</p>
+
+            <h3>Phone number country</h3>
+            <p>Sourcerer normalises all phone numbers to international format (e.g. <code>+1 202 555 0100</code>) using a default country for numbers entered without a country code. The default is <strong>Canada (CA)</strong>. If you are based in a different country, update this setting so that locally-formatted numbers are parsed correctly. You can find it in Settings under <strong>Phone number country</strong>. Choose the two-letter country code that matches where your contacts are primarily located.</p>
 
             <h3>Calendar feed</h3>
             <p>Sourcerer can expose your upcoming reminders as a calendar feed, which you can subscribe to from any local calendar app (Apple Calendar, Outlook, Thunderbird, and others). Copy the calendar URL from Settings and paste it into your calendar app's “Subscribe to calendar” dialog. The feed is served over <code>webcal://</code> on your local machine — it is only accessible while Sourcerer is running, and only from this computer. The feed URL contains a token — if you believe it has been compromised, click <strong>Regenerate token</strong> to invalidate the old URL.</p>
