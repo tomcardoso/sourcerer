@@ -17,7 +17,7 @@ import { registerReminderHandlers } from './ipc/reminders';
 import { registerImportHandlers } from './ipc/import';
 import { registerBackupHandlers } from './ipc/backup';
 import { registerAutoBackupHandlers, runAutoBackup } from './ipc/auto-backup';
-import { startAutoBackupTimer, stopAutoBackupTimer } from './auto-backup-timer';
+import { stopAutoBackupTimer } from './auto-backup-timer';
 import { registerScreenshotHandlers } from './ipc/screenshots';
 import { registerSearchHandlers } from './ipc/search';
 import { registerUpdaterHandlers, triggerUpdateCheck } from './ipc/updater';
