@@ -148,7 +148,6 @@ export function registerContactHandlers(): void {
     const rows = getDatabase()
       .prepare(
         `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
-                pm.project_id, p.name AS project_name,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
                 (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
@@ -158,10 +157,13 @@ export function registerContactHandlers(): void {
                  WHERE ile.contact_id = c.id) AS date_first_contacted,
                 (SELECT MAX(ile.created_at)
                  FROM interaction_log_entries ile
-                 WHERE ile.contact_id = c.id) AS date_last_contacted
+                 WHERE ile.contact_id = c.id) AS date_last_contacted,
+                (SELECT json_group_array(json_object('id', pid, 'name', pname))
+                 FROM (SELECT pm.project_id AS pid, p.name AS pname
+                       FROM project_memberships pm JOIN projects p ON p.id = pm.project_id
+                       WHERE pm.contact_id = c.id
+                       ORDER BY p.name COLLATE NOCASE ASC)) AS projects_raw
          FROM contacts c
-         LEFT JOIN project_memberships pm ON pm.contact_id = c.id
-         LEFT JOIN projects p ON p.id = pm.project_id
          ORDER BY c.name COLLATE NOCASE ASC`,
       )
       .all() as Array<{
@@ -176,33 +178,25 @@ export function registerContactHandlers(): void {
       phones_raw: string | null;
       date_first_contacted: number | null;
       date_last_contacted: number | null;
-      project_id: string | null;
-      project_name: string | null;
+      projects_raw: string | null;
     }>;
 
-    const map = new Map<string, ContactListItem>();
-    for (const row of rows) {
-      if (!map.has(row.id)) {
-        map.set(row.id, {
-          id: row.id,
-          name: row.name,
-          organization: row.organization,
-          notes: row.notes,
-          created_at: row.created_at,
-          has_email: row.has_email,
-          has_phone: row.has_phone,
-          emails_raw: row.emails_raw,
-          phones_raw: row.phones_raw,
-          date_first_contacted: row.date_first_contacted,
-          date_last_contacted: row.date_last_contacted,
-          projects: [],
-        });
-      }
-      if (row.project_id) {
-        map.get(row.id)!.projects.push({ id: row.project_id, name: row.project_name! });
-      }
-    }
-    return [...map.values()];
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      organization: row.organization,
+      notes: row.notes,
+      created_at: row.created_at,
+      has_email: row.has_email,
+      has_phone: row.has_phone,
+      emails_raw: row.emails_raw,
+      phones_raw: row.phones_raw,
+      date_first_contacted: row.date_first_contacted,
+      date_last_contacted: row.date_last_contacted,
+      projects: row.projects_raw
+        ? (JSON.parse(row.projects_raw) as { id: string; name: string }[])
+        : [],
+    }));
   });
 
   ipcMain.handle('contacts:get', (_, id: string): ContactDetail => {

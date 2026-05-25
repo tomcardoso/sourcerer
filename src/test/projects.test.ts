@@ -177,4 +177,45 @@ describe('projects:list-timeline', () => {
     const results = await handlers.get('projects:list-timeline')!({}, projId) as unknown[];
     expect(results).toHaveLength(0);
   });
+
+  it('returns at most 200 entries when more exist', async () => {
+    const projId = insertProject(testDb, 'Big Project');
+    const contactId = insertContact(testDb, 'Alice Smith');
+    const now = Math.floor(Date.now() / 1000);
+    const membershipId = uuidv4();
+    testDb.prepare(
+      'INSERT INTO project_memberships (id, contact_id, project_id, reporter_email, reporter_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(membershipId, contactId, projId, TEST_REPORTER.email, TEST_REPORTER.name, now, now);
+
+    for (let i = 0; i < 201; i++) {
+      const logId = uuidv4();
+      testDb.prepare(
+        'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(logId, contactId, TEST_REPORTER.email, TEST_REPORTER.name, `Entry ${i}`, now - i);
+      testDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipId);
+    }
+
+    const results = await handlers.get('projects:list-timeline')!({}, projId) as unknown[];
+    expect(results.length).toBeLessThanOrEqual(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// contacts:list-timeline
+// ---------------------------------------------------------------------------
+
+describe('contacts:list-timeline', () => {
+  it('returns at most 200 entries when more exist', async () => {
+    const contactId = insertContact(testDb, 'Bob Jones');
+    const now = Math.floor(Date.now() / 1000);
+
+    for (let i = 0; i < 201; i++) {
+      testDb.prepare(
+        'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(uuidv4(), contactId, TEST_REPORTER.email, TEST_REPORTER.name, `Entry ${i}`, now - i);
+    }
+
+    const results = await handlers.get('contacts:list-timeline')!({}) as unknown[];
+    expect(results.length).toBeLessThanOrEqual(200);
+  });
 });
