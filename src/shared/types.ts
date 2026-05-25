@@ -322,8 +322,9 @@ export interface Reminder {
 
 export interface ImportResult {
   imported: number;
-  skipped: Array<{ name: string; reason: 'name' | 'email' }>;
+  skipped: Array<{ name: string; reason: 'name' | 'email' | 'missing-name' }>;
   cancelled: boolean;
+  error?: string;
 }
 
 export interface ContactAlertRss {

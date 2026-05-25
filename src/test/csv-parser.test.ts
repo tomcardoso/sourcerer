@@ -81,4 +81,18 @@ describe('parseCsv', () => {
     expect(rows[0][2]).toBe('');
     expect(rows[1][2]).toBe('');
   });
+
+  it('strips a leading UTF-8 BOM so Excel exports parse correctly (#328)', () => {
+    const bom = '﻿';
+    const input = `${bom}Name,Email\nAlice,alice@example.com\n`;
+    const rows = parseCsv(input);
+    expect(rows[0][0]).toBe('Name');
+  });
+
+  it('heals malformed quoted fields with junk after closing quote (#328)', () => {
+    // "Smith, Jr."suffix — the suffix should be discarded, not shift columns
+    const input = 'Name,Email\n"Smith, Jr."suffix,alice@example.com\n';
+    const rows = parseCsv(input);
+    expect(rows[1]).toEqual(['Smith, Jr.', 'alice@example.com']);
+  });
 });

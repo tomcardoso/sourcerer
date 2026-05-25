@@ -10,6 +10,9 @@ const SAMPLE_HEADERS =
   'Name,Organization,Title,DOB,Notes,Email,Phone,LinkedIn,X,Website,Theme,Status,Priority\n';
 
 export function parseCsv(text: string): string[][] {
+  // Strip UTF-8 BOM so Excel-exported files parse correctly
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
   const result: string[][] = [];
   let i = 0;
   const n = text.length;
@@ -24,6 +27,8 @@ export function parseCsv(text: string): string[][] {
           i += 2;
         } else if (text[i] === '"') {
           i++;
+          // Consume any junk after the closing quote (non-RFC-4180 suffix like "Smith, Jr."suffix)
+          while (i < n && text[i] !== ',' && text[i] !== '\r' && text[i] !== '\n') i++;
           break;
         } else {
           s += text[i++];
@@ -99,7 +104,7 @@ export function parseVcf(text: string): VcfContact[] {
       continue;
     }
     if (upper === 'END:VCARD') {
-      if (cur?.name) contacts.push(cur);
+      if (cur) contacts.push(cur);
       cur = null;
       continue;
     }
@@ -117,6 +122,14 @@ export function parseVcf(text: string): VcfContact[] {
     switch (prop) {
       case 'FN':
         cur.name = decodeVcfValue(value);
+        break;
+      case 'N':
+        // Synthesise display name from structured N field only if FN was absent
+        if (!cur.name) {
+          const [last, first, middle] = value.split(/(?<!\\);/).map(decodeVcfValue);
+          const synthesised = [first, middle, last].filter(Boolean).join(' ').trim();
+          if (synthesised) cur.name = synthesised;
+        }
         break;
       case 'ORG':
         cur.organization = decodeVcfValue(value.split(';')[0]) || null;
@@ -196,7 +209,7 @@ export function processVcfContacts(
 
   db.transaction(() => {
     for (const c of vcfContacts) {
-      if (!c.name) continue;
+      if (!c.name) { skipped.push({ name: '(unnamed contact)', reason: 'missing-name' }); continue; }
 
       const emails = [
         ...new Set(
@@ -407,6 +420,9 @@ export function registerImportHandlers(): void {
       });
       if (canceled || filePaths.length === 0) return { imported: 0, skipped: [], cancelled: true };
 
+      const stat = await fs.stat(filePaths[0]);
+      if (stat.size > 50 * 1024 * 1024) return { imported: 0, skipped: [], cancelled: false, error: 'File too large (max 50 MB).' };
+
       const content = await fs.readFile(filePaths[0], 'utf-8');
       const rows = parseCsv(content);
       const db = getDatabase();
@@ -445,6 +461,9 @@ export function registerImportHandlers(): void {
         properties: ['openFile'],
       });
       if (canceled || filePaths.length === 0) return { imported: 0, skipped: [], cancelled: true };
+
+      const stat = await fs.stat(filePaths[0]);
+      if (stat.size > 50 * 1024 * 1024) return { imported: 0, skipped: [], cancelled: false, error: 'File too large (max 50 MB).' };
 
       const content = await fs.readFile(filePaths[0], 'utf-8');
       const vcfContacts = parseVcf(content);
