@@ -8,7 +8,7 @@ import { getPaths, deriveKey, filenameDateStamp } from '../utils';
 import { closeDatabase, getDatabase, getKeyHex, applyCipherPragmas } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
-import { writeBackupFile, readBackupFile, createBackupEntries } from './backup-format';
+import { writeBackupFile, readBackupFile, createBackupEntries, MAX_BACKUP_BYTES } from './backup-format';
 
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
@@ -39,6 +39,7 @@ export function registerBackupHandlers(): void {
       try {
         await getDatabase().backup(tmpSnapPath);
         await writeBackupFile(createBackupEntries(tmpSnapPath, saltPath, screenshotsPath), tmpOutPath, password);
+        await fs.unlink(filePath).catch(() => {}); // pre-remove so rename works on Windows
         await fs.rename(tmpOutPath, filePath);
         return { success: true };
       } catch (err) {
@@ -71,7 +72,6 @@ export function registerBackupHandlers(): void {
 
       try {
         // db.sqlite is buffered in memory during restore, so keep this limit tight.
-        const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
         const stat = await fs.stat(filePaths[0]);
         if (stat.size > MAX_BACKUP_BYTES) {
           return { success: false, error: 'Backup file is too large (max 512 MB).' };
@@ -171,7 +171,6 @@ export function registerBackupHandlers(): void {
             }
             win?.webContents.send('app:locked');
           }
-          if (screensWritten) await fs.rm(tmpScreensDir, { recursive: true, force: true }).catch(() => {});
         }
       } catch (err) {
         return { success: false, error: String(err) };
