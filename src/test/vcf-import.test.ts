@@ -43,9 +43,21 @@ describe('parseVcf — single contact', () => {
     expect(c.name).toBe('Bob Jones');
   });
 
-  it('returns [] when FN is absent', () => {
+  it('returns [] when FN and N are both absent', () => {
     const vcf = ['BEGIN:VCARD', 'EMAIL:anon@example.com', 'END:VCARD'].join('\n');
     expect(parseVcf(vcf)).toHaveLength(0);
+  });
+
+  it('synthesises name from N field when FN is absent', () => {
+    const vcf = ['BEGIN:VCARD', 'N:Smith;Alice;M;;', 'EMAIL:alice@example.com', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.name).toBe('Alice M Smith');
+  });
+
+  it('prefers FN over N when both are present', () => {
+    const vcf = ['BEGIN:VCARD', 'FN:Alice Smith', 'N:Smith;Alice;;;', 'END:VCARD'].join('\n');
+    const [c] = parseVcf(vcf);
+    expect(c.name).toBe('Alice Smith');
   });
 
   it('returns [] when FN is empty', () => {
