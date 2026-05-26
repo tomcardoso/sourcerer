@@ -49,6 +49,45 @@ async function requestAccess() {
   await fetch(`${BASE}/request-access`, { method: 'POST', signal: AbortSignal.timeout(3000) });
 }
 
+function renderFieldList(query, allContacts, onSelect) {
+  const list = document.getElementById('field-list');
+  const matches = query
+    ? allContacts.filter((c) =>
+        c.name.toLowerCase().includes(query.toLowerCase()) ||
+        (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
+    : allContacts;
+  list.replaceChildren();
+  if (matches.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'contact-list-empty';
+    empty.textContent = query ? 'No contacts match.' : 'No contacts found.';
+    list.appendChild(empty);
+    return;
+  }
+  matches.slice(0, 40).forEach((c) => {
+    const btn = document.createElement('button');
+    btn.className = 'contact-item';
+    btn.dataset.id = c.id;
+    const nameEl = document.createElement('span');
+    nameEl.className = 'contact-item-name';
+    nameEl.textContent = c.name;
+    btn.appendChild(nameEl);
+    if (c.organization) {
+      const orgEl = document.createElement('span');
+      orgEl.className = 'contact-item-org';
+      orgEl.textContent = c.organization;
+      btn.appendChild(orgEl);
+    }
+    btn.onclick = () => {
+      list.querySelectorAll('.contact-item').forEach((b) => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onSelect(c.id);
+      document.getElementById('btn-field-assign').disabled = false;
+    };
+    list.appendChild(btn);
+  });
+}
+
 async function pollAccessStatus() {
   return new Promise((resolve) => {
     const start = Date.now();
@@ -431,45 +470,6 @@ async function wireConnected(token) {
       let allContacts = [];
       let selectedContactId = null;
 
-      function renderFieldListCtx(query) {
-        const list = document.getElementById('field-list');
-        const matches = query
-          ? allContacts.filter((c) =>
-              c.name.toLowerCase().includes(query.toLowerCase()) ||
-              (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
-          : allContacts;
-        list.innerHTML = '';
-        if (matches.length === 0) {
-          const empty = document.createElement('p');
-          empty.className = 'contact-list-empty';
-          empty.textContent = query ? 'No contacts match.' : 'No contacts found.';
-          list.appendChild(empty);
-          return;
-        }
-        matches.slice(0, 40).forEach((c) => {
-          const btn = document.createElement('button');
-          btn.className = 'contact-item';
-          btn.dataset.id = c.id;
-          const nameEl = document.createElement('span');
-          nameEl.className = 'contact-item-name';
-          nameEl.textContent = c.name;
-          btn.appendChild(nameEl);
-          if (c.organization) {
-            const orgEl = document.createElement('span');
-            orgEl.className = 'contact-item-org';
-            orgEl.textContent = c.organization;
-            btn.appendChild(orgEl);
-          }
-          btn.onclick = () => {
-            list.querySelectorAll('.contact-item').forEach((b) => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            selectedContactId = c.id;
-            document.getElementById('btn-field-assign').disabled = false;
-          };
-          list.appendChild(btn);
-        });
-      }
-
       document.getElementById('btn-field-back').onclick = () => showScreen('screen-main');
       document.getElementById('btn-field-assign').disabled = true;
       const st = document.getElementById('field-status');
@@ -482,8 +482,8 @@ async function wireConnected(token) {
         st.textContent = 'Could not connect to Sourcerer — is the app running?';
         st.className = 'screen-status err';
       }
-      renderFieldListCtx('');
-      document.getElementById('field-search').oninput = (e) => renderFieldListCtx(e.target.value);
+      renderFieldList('', allContacts, (id) => { selectedContactId = id; });
+      document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value, allContacts, (id) => { selectedContactId = id; });
       setTimeout(() => document.getElementById('field-search').focus(), 50);
 
       document.getElementById('btn-field-assign').onclick = async () => {
@@ -506,45 +506,6 @@ async function wireConnected(token) {
     let allContacts = [];
     let selectedContactId = null;
 
-    function renderFieldList(query) {
-      const list = document.getElementById('field-list');
-      const matches = query
-        ? allContacts.filter((c) =>
-            c.name.toLowerCase().includes(query.toLowerCase()) ||
-            (c.organization ?? '').toLowerCase().includes(query.toLowerCase()))
-        : allContacts;
-      list.innerHTML = '';
-      if (matches.length === 0) {
-      const empty = document.createElement('p');
-      empty.className = 'contact-list-empty';
-      empty.textContent = query ? 'No contacts match.' : 'No contacts found.';
-      list.appendChild(empty);
-      return;
-    }
-    matches.slice(0, 40).forEach((c) => {
-        const btn = document.createElement('button');
-        btn.className = 'contact-item';
-        btn.dataset.id = c.id;
-        const nameEl = document.createElement('span');
-        nameEl.className = 'contact-item-name';
-        nameEl.textContent = c.name;
-        btn.appendChild(nameEl);
-        if (c.organization) {
-          const orgEl = document.createElement('span');
-          orgEl.className = 'contact-item-org';
-          orgEl.textContent = c.organization;
-          btn.appendChild(orgEl);
-        }
-        btn.onclick = () => {
-          document.querySelectorAll('.contact-item').forEach((b) => b.classList.remove('selected'));
-          btn.classList.add('selected');
-          selectedContactId = c.id;
-          document.getElementById('btn-field-assign').disabled = false;
-        };
-        list.appendChild(btn);
-      });
-    }
-
     document.getElementById('btn-field-back').onclick = () => showScreen('screen-main');
 
     btnSaveField.onclick = async () => {
@@ -563,8 +524,8 @@ async function wireConnected(token) {
           st.className = 'screen-status err';
         }
       }
-      renderFieldList('');
-      document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value);
+      renderFieldList('', allContacts, (id) => { selectedContactId = id; });
+      document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value, allContacts, (id) => { selectedContactId = id; });
       showScreen('screen-field');
       setTimeout(() => document.getElementById('field-search').focus(), 50);
     };

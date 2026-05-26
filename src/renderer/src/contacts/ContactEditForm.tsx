@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, User } from '@shared/types';
 import Button from '../shell/Button';
 import DynamicList, { useDragReorder } from './DynamicList';
@@ -49,7 +50,6 @@ export default function ContactEditForm({
   onSaved,
   onCancel,
 }: Props) {
-  const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -153,46 +153,45 @@ export default function ContactEditForm({
     setEditSocials((prev) => ({ ...prev, [type]: values }));
   }
 
-  async function handleSave() {
+  const { execute: doSave, isPending: saving } = useMutation(async () => {
+    const links = [
+      ...NON_OTHER_SOCIAL_TYPES.flatMap((type) =>
+        editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
+      ),
+      ...editOtherSocials
+        .filter((e) => e.url.trim())
+        .map((e) => {
+          const label = sanitizeOtherLabel(e.label);
+          return { type: 'other' as const, url: e.url, ...(label ? { label } : {}) };
+        }),
+      ...editWebsites.filter((u) => u.trim()).map((url) => ({ type: 'website' as const, url })),
+    ];
+    await window.sourcerer.updateContact({
+      id: contact.id,
+      name: editName,
+      organization: editOrg,
+      title: editTitle,
+      dob: editDob || undefined,
+      notes: editNotes,
+      emails: editEmails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
+      phones: editPhones.filter((p) => p.phone?.trim()).map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
+      links,
+      handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
+    });
+    const pendingRss = newRssUrl.trim();
+    if (pendingRss && isGoogleAlertUrl(pendingRss) && !alertRssList.some((f) => f.rss_url === pendingRss)) {
+      await window.sourcerer.addAlertRss(contact.id, pendingRss);
+    }
+    onSaved();
+  });
+
+  function handleSave() {
     if (!editName.trim()) return;
     if (emailDuplicates.size > 0 || phoneDuplicates.size > 0 || urlDuplicates.size > 0) {
       formRef.current?.querySelector<HTMLElement>('.ac-collision-warn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    setSaving(true);
-    try {
-      const links = [
-        ...NON_OTHER_SOCIAL_TYPES.flatMap((type) =>
-          editSocials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
-        ),
-        ...editOtherSocials
-          .filter((e) => e.url.trim())
-          .map((e) => {
-            const label = sanitizeOtherLabel(e.label);
-            return { type: 'other' as const, url: e.url, ...(label ? { label } : {}) };
-          }),
-        ...editWebsites.filter((u) => u.trim()).map((url) => ({ type: 'website' as const, url })),
-      ];
-      await window.sourcerer.updateContact({
-        id: contact.id,
-        name: editName,
-        organization: editOrg,
-        title: editTitle,
-        dob: editDob || undefined,
-        notes: editNotes,
-        emails: editEmails.filter((e) => e.email.trim()).map((e) => ({ email: e.email, label: e.label.trim() || undefined })),
-        phones: editPhones.filter((p) => p.phone?.trim()).map((p) => ({ phone: p.phone, label: p.label.trim() || undefined })),
-        links,
-        handles: editHandles.filter((h) => h.handle.trim() && h.type.trim()),
-      });
-      const pendingRss = newRssUrl.trim();
-      if (pendingRss && isGoogleAlertUrl(pendingRss) && !alertRssList.some((f) => f.rss_url === pendingRss)) {
-        await window.sourcerer.addAlertRss(contact.id, pendingRss);
-      }
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
+    doSave();
   }
 
   return (

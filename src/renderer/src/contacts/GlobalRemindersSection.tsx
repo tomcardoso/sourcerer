@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import type { ContactDetail as ContactDetailType, Reminder } from '@shared/types';
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
@@ -10,7 +11,6 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [completing, setCompleting] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
-  const [addingSaving, setAddingSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
@@ -24,7 +24,6 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
     setCompleting(new Set());
     setEditingId(null);
     setAdding(false);
-    setAddingSaving(false);
     setDueDate('');
     setNote('');
     setSelectedProjectId(null);
@@ -48,25 +47,24 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
     setEditingId(null);
   }
 
-  async function handleAdd() {
+  const { execute: doAdd, isPending: addingSaving } = useMutation(async () => {
+    const ts = dateStrToUnix(dueDate);
+    const r = await window.sourcerer.createReminder({
+      contactId: contact.id,
+      projectId: selectedProjectId ?? undefined,
+      dueDate: ts,
+      note: note.trim(),
+    });
+    setReminders((prev) => [...prev, r].sort(sortReminders));
+    setAdding(false);
+    setDueDate('');
+    setNote('');
+    setSelectedProjectId(null);
+  });
+
+  function handleAdd() {
     if (!dueDate || !note.trim() || addingSaving) return;
-    setAddingSaving(true);
-    try {
-      const ts = dateStrToUnix(dueDate);
-      const r = await window.sourcerer.createReminder({
-        contactId: contact.id,
-        projectId: selectedProjectId ?? undefined,
-        dueDate: ts,
-        note: note.trim(),
-      });
-      setReminders((prev) => [...prev, r].sort(sortReminders));
-      setAdding(false);
-      setDueDate('');
-      setNote('');
-      setSelectedProjectId(null);
-    } finally {
-      setAddingSaving(false);
-    }
+    doAdd();
   }
 
   function handleStartEdit(r: Reminder) {
