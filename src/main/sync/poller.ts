@@ -13,6 +13,7 @@ const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let rssPollIntervalMs = 6 * 60 * 60 * 1000; // default 6 hours
 let lastRssPollAt = 0;
+let isPolling = false;
 
 export function setRssPollIntervalHours(hours: number): void {
   rssPollIntervalMs = Math.max(1, hours) * 60 * 60 * 1000;
@@ -48,6 +49,8 @@ export function stopPoller(): void {
 
 export function pollAll(): void {
   if (!isDatabaseOpen()) return;
+  if (isPolling) return;
+  isPolling = true;
 
   const localDb = getDatabase();
   const projects = localDb
@@ -59,14 +62,18 @@ export function pollAll(): void {
     syncOne(project.id, project.shared_db_path, project.shared_db_key);
   }
 
+  checkOutreachReminders();
+  checkReminders();
+
   const now = Date.now();
   if (now - lastRssPollAt >= rssPollIntervalMs) {
     lastRssPollAt = now;
-    pollAllRss().catch(() => {});
+    // Keep isPolling true until the async RSS fetch finishes so a slow fetch
+    // cannot overlap with the next interval tick.
+    pollAllRss().catch(() => {}).finally(() => { isPolling = false; });
+  } else {
+    isPolling = false;
   }
-
-  checkOutreachReminders();
-  checkReminders();
 }
 
 export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): SyncStatusEvent {

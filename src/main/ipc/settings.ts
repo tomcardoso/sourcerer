@@ -51,7 +51,7 @@ export function registerSettingsHandlers(): void {
           db.prepare('UPDATE project_reporters    SET email          = ?        WHERE email          = ?').run(newEmail, oldEmail);
           db.prepare('UPDATE project_memberships  SET reporter_email = ?, updated_at = ? WHERE reporter_email = ?').run(newEmail, now, oldEmail);
           db.prepare('UPDATE membership_reporters SET reporter_email = ?        WHERE reporter_email = ?').run(newEmail, oldEmail);
-          // interaction_log_entries intentionally not updated — historical records
+          db.prepare('UPDATE interaction_log_entries SET reporter_email = ? WHERE reporter_email = ?').run(newEmail, oldEmail);
         }
 
         if (newName !== oldName) {
