@@ -286,6 +286,7 @@
   letter-spacing: normal;
 }
 
-.ac-project-option:hover {
+.ac-project-option:hover,
+.ac-project-option--active {
   background: var(--color-surface-2);
 }

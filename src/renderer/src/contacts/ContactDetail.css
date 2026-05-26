@@ -604,7 +604,8 @@
   border-bottom: none;
 }
 
-.pt-reporter-option:hover {
+.pt-reporter-option:hover,
+.pt-reporter-option--active {
   background: var(--color-surface);
 }
 

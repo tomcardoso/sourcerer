@@ -1,4 +1,4 @@
-import { useState, useRef, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 
 function hashColour(id: string, colours: string[]): string {
   let h = 0;
@@ -66,6 +66,13 @@ export default function Sidebar({
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameCancelledRef = useRef(false);
+  const deleteCancelRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+
+  useEffect(() => {
+    if (deletingId) {
+      deleteCancelRefs.current.get(deletingId)?.focus();
+    }
+  }, [deletingId]);
 
   function startRename(project: Project) {
     setRenamingId(project.id);
@@ -235,7 +242,11 @@ export default function Sidebar({
                     <span className="sidebar-delete-label">Delete "{project.name}"?</span>
                     <div className="sidebar-delete-actions">
                       <button className="sidebar-delete-yes" onClick={() => confirmDelete(project.id)}>Delete</button>
-                      <button className="sidebar-delete-no" onClick={() => setDeletingId(null)}>Cancel</button>
+                      <button
+                        className="sidebar-delete-no"
+                        ref={(el) => { deleteCancelRefs.current.set(project.id, el); }}
+                        onClick={() => setDeletingId(null)}
+                      >Cancel</button>
                     </div>
                   </div>
                 ) : (
