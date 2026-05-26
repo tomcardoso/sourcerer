@@ -483,7 +483,11 @@ async function wireConnected(token) {
         st.className = 'screen-status err';
       }
       renderFieldList('', allContacts, (id) => { selectedContactId = id; });
-      document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value, allContacts, (id) => { selectedContactId = id; });
+      document.getElementById('field-search').oninput = (e) => {
+        selectedContactId = null;
+        document.getElementById('btn-field-assign').disabled = true;
+        renderFieldList(e.target.value, allContacts, (id) => { selectedContactId = id; });
+      };
       setTimeout(() => document.getElementById('field-search').focus(), 50);
 
       document.getElementById('btn-field-assign').onclick = async () => {
@@ -525,7 +529,11 @@ async function wireConnected(token) {
         }
       }
       renderFieldList('', allContacts, (id) => { selectedContactId = id; });
-      document.getElementById('field-search').oninput = (e) => renderFieldList(e.target.value, allContacts, (id) => { selectedContactId = id; });
+      document.getElementById('field-search').oninput = (e) => {
+        selectedContactId = null;
+        document.getElementById('btn-field-assign').disabled = true;
+        renderFieldList(e.target.value, allContacts, (id) => { selectedContactId = id; });
+      };
       showScreen('screen-field');
       setTimeout(() => document.getElementById('field-search').focus(), 50);
     };

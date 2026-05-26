@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useMutation<TArgs extends unknown[], TResult = void>(
   fn: (...args: TArgs) => Promise<TResult>,
@@ -12,6 +12,11 @@ export function useMutation<TArgs extends unknown[], TResult = void>(
   const [error, setError] = useState<string | null>(null);
   const fnRef = useRef(fn);
   fnRef.current = fn;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const execute = useCallback(async (...args: TArgs): Promise<TResult | undefined> => {
     setIsPending(true);
@@ -19,10 +24,10 @@ export function useMutation<TArgs extends unknown[], TResult = void>(
     try {
       return await fnRef.current(...args);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (mountedRef.current) setError(err instanceof Error ? err.message : String(err));
       return undefined;
     } finally {
-      setIsPending(false);
+      if (mountedRef.current) setIsPending(false);
     }
   }, []);
 
