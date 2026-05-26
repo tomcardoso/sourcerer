@@ -9,17 +9,20 @@ let activeDb: Database.Database | null = null;
 let activeKeyHex: string | null = null;
 let activePassword: string | null = null;
 
-function openRaw(dbPath: string, keyHex: string): Database.Database {
-  const db = new Database(dbPath);
-
-  // All cipher settings must be set before key pragma; these pin SQLCipher 4 parameters
-  // explicitly so behaviour doesn't change if library defaults are ever revised.
+/** Apply the SQLCipher 4 pinning pragmas + key to a freshly-opened Database.
+ *  Must be called before any other pragma or query. */
+export function applyCipherPragmas(db: Database.Database, keyHex: string): void {
   db.pragma(`cipher='sqlcipher'`);
   db.pragma('cipher_page_size=4096');
   db.pragma('kdf_iter=256000');
   db.pragma('cipher_hmac_algorithm=HMAC_SHA512');
   db.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
   db.pragma(`key="x'${keyHex}'"`);
+}
+
+function openRaw(dbPath: string, keyHex: string): Database.Database {
+  const db = new Database(dbPath);
+  applyCipherPragmas(db, keyHex);
 
   // Verify the key is correct — wrong key throws "file is not a database"
   try {

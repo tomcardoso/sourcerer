@@ -4,6 +4,7 @@ import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
 import LogProjectPicker from './LogProjectPicker';
+import { useClickOutside } from '../hooks/useClickOutside';
 import './QuickLogModal.css';
 
 function todayISO(): string {
@@ -12,12 +13,12 @@ function todayISO(): string {
 }
 
 interface Props {
+  contacts: ContactListItem[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function QuickLogModal({ onClose, onSaved }: Props) {
-  const [contacts, setContacts] = useState<ContactListItem[]>([]);
+export default function QuickLogModal({ contacts, onClose, onSaved }: Props) {
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -28,10 +29,8 @@ export default function QuickLogModal({ onClose, onSaved }: Props) {
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    window.sourcerer.listContacts().then(setContacts);
-  }, []);
+  const pickerWrapRef = useRef<HTMLDivElement>(null);
+  useClickOutside(pickerWrapRef, () => setDropdownOpen(false), { isOpen: dropdownOpen, escapeKey: false });
 
   useEffect(() => {
     if (!selectedContactId) {
@@ -99,7 +98,7 @@ export default function QuickLogModal({ onClose, onSaved }: Props) {
             <button type="button" className="qlm-clear-btn" onClick={clearContact} aria-label="Clear contact">×</button>
           </div>
         ) : (
-          <div className="qlm-picker-wrap">
+          <div className="qlm-picker-wrap" ref={pickerWrapRef}>
             <input
               ref={inputRef}
               className="qlm-picker-input"
@@ -107,7 +106,6 @@ export default function QuickLogModal({ onClose, onSaved }: Props) {
               value={query}
               onChange={(e) => { setQuery(e.target.value); setDropdownOpen(true); }}
               onFocus={() => setDropdownOpen(true)}
-              onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
               autoFocus
             />
             {dropdownOpen && filtered.length > 0 && (

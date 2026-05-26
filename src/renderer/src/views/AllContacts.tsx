@@ -56,14 +56,11 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   }, [openContactId, onOpenContactIdConsumed]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
     if (refreshTrigger) refresh();
   }, [refreshTrigger, refresh]);
 
   useEffect(() => {
+    refresh();
     return window.sourcerer.onContactsChanged(refresh);
   }, [refresh]);
 
@@ -237,11 +234,12 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   async function handleBulkDelete() {
     setBulkWorking(true);
     try {
-      await Promise.all([...checkedIds].map((id) => window.sourcerer.deleteContact(id)));
-      const deleted = checkedIds;
+      const ids = [...checkedIds];
+      const results = await Promise.allSettled(ids.map((id) => window.sourcerer.deleteContact(id)));
+      const deleted = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
       setContacts((prev) => prev.filter((c) => !deleted.has(c.id)));
       if (detailId && deleted.has(detailId)) setDetailId(null);
-      setCheckedIds(new Set());
+      setCheckedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id))));
       setConfirmDelete(false);
     } finally {
       setBulkWorking(false);

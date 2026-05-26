@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ImportResult, Project, User } from '@shared/types';
+import type { ContactListItem, ImportResult, Project, User } from '@shared/types';
 import Sidebar from './Sidebar';
 import SearchModal from './SearchModal';
 import SetupPayloadModal from './SetupPayloadModal';
@@ -28,6 +28,7 @@ export type NavTarget =
 
 export default function AppShell() {
   const [user, setUser] = useState<User | null>(null);
+  const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [nav, setNav] = useState<NavTarget>({ view: 'all-contacts' });
   const [pendingPayload, setPendingPayload] = useState<{
@@ -105,6 +106,7 @@ export default function AppShell() {
 
   useEffect(() => {
     return window.sourcerer.onContactsChanged(() => {
+      window.sourcerer.listContacts().then(setContacts);
       window.sourcerer.getContactCount().then(setTotalContacts);
       refreshOverdue();
     });
@@ -282,8 +284,8 @@ export default function AppShell() {
         onProjectDeleted={handleProjectDeleted}
         onAddContact={() => setShowAddContact(true)}
         onImportCsv={() => setShowImportCsv(true)}
-        onQuickLog={() => setShowQuickLog(true)}
-        onQuickReminder={() => setShowQuickReminder(true)}
+        onQuickLog={() => { window.sourcerer.listContacts().then(setContacts); setShowQuickLog(true); }}
+        onQuickReminder={() => { window.sourcerer.listContacts().then(setContacts); setShowQuickReminder(true); }}
       />
       <main className="app-content">
         {nav.view === 'all-contacts' && (
@@ -384,6 +386,7 @@ export default function AppShell() {
 
       {showQuickLog && (
         <QuickLogModal
+          contacts={contacts}
           onClose={() => setShowQuickLog(false)}
           onSaved={() => {
             setShowQuickLog(false);
@@ -395,6 +398,7 @@ export default function AppShell() {
 
       {showQuickReminder && (
         <QuickReminderModal
+          contacts={contacts}
           onClose={() => setShowQuickReminder(false)}
           onSaved={() => {
             setShowQuickReminder(false);

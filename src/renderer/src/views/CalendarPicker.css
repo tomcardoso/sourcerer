@@ -189,7 +189,6 @@
 .cal-day--disabled {
   opacity: 0.25;
   cursor: not-allowed;
-  pointer-events: none;
 }
 
 /* ── Footer clear link ─────────────────────────────────────── */

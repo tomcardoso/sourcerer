@@ -16,12 +16,13 @@ import { registerAlertHandlers } from './ipc/alerts';
 import { registerReminderHandlers } from './ipc/reminders';
 import { registerImportHandlers } from './ipc/import';
 import { registerBackupHandlers } from './ipc/backup';
-import { registerAutoBackupHandlers, runAutoBackup, getLastAutoBackupTime } from './ipc/auto-backup';
+import { registerAutoBackupHandlers, runAutoBackup } from './ipc/auto-backup';
+import { stopAutoBackupTimer } from './auto-backup-timer';
 import { registerScreenshotHandlers } from './ipc/screenshots';
 import { registerSearchHandlers } from './ipc/search';
 import { registerUpdaterHandlers, triggerUpdateCheck } from './ipc/updater';
 import { autoLock } from './auto-lock';
-import { closeDatabase, getDatabase, isDatabaseOpen } from './database';
+import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
 import { startHttpServer } from './http-server';
 import { stopPoller } from './sync/poller';
@@ -224,6 +225,8 @@ app.whenReady().then(() => {
 // so it won't recurse.
 app.on('before-quit', (event) => {
   event.preventDefault();
+  autoLock.stop();
+  stopAutoBackupTimer();
   runAutoBackup().catch(() => {}).finally(() => app.exit(0));
 });
 
@@ -231,35 +234,8 @@ app.on('window-all-closed', () => {
   stopPoller();
   closeAllSharedDbs();
   closeDatabase();
+  stopAutoBackupTimer();
   autoLock.stop();
   if (process.platform !== 'darwin') app.quit();
 });
-
-// Daily auto-backup timer: check every hour if 24h have passed since the last backup
-let autoBackupInterval: ReturnType<typeof setInterval> | null = null;
-
-export function startAutoBackupTimer(): void {
-  if (autoBackupInterval) return;
-  const ONE_HOUR = 60 * 60 * 1000;
-  const ONE_DAY = 24 * ONE_HOUR;
-  autoBackupInterval = setInterval(async () => {
-    if (!isDatabaseOpen()) return;
-    const db = getDatabase();
-    const user = db
-      .prepare('SELECT auto_backup_enabled, auto_backup_dest_path FROM users WHERE id = 1')
-      .get() as { auto_backup_enabled: number; auto_backup_dest_path: string | null } | undefined;
-    if (!user?.auto_backup_enabled || !user.auto_backup_dest_path) return;
-    const lastMs = await getLastAutoBackupTime(user.auto_backup_dest_path);
-    if (lastMs === null || Date.now() - lastMs >= ONE_DAY) {
-      runAutoBackup().catch(() => {});
-    }
-  }, ONE_HOUR);
-}
-
-export function stopAutoBackupTimer(): void {
-  if (autoBackupInterval) {
-    clearInterval(autoBackupInterval);
-    autoBackupInterval = null;
-  }
-}
 

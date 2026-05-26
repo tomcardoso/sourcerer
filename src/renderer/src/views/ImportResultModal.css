@@ -63,3 +63,9 @@
   line-height: 1.8;
   list-style-type: none;
 }
+
+.ir-error {
+  font-size: 13px;
+  color: var(--color-danger);
+  margin: 0 0 10px;
+}

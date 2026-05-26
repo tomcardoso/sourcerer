@@ -1034,6 +1034,11 @@
   background: rgba(200, 122, 26, 0.08);
 }
 
+.pt-draft-error {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin: 0 0 8px;
+}
 
 .detail-rss-feed {
   margin-bottom: 6px;

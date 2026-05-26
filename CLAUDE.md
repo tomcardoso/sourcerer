@@ -38,6 +38,7 @@ npm run db:export     # prompts for app password, writes sourcerer-plain.db
 - Branch naming: `feature/`, `fix/`, `dev/` prefixes
 - Always push to a feature branch and open a PR via `gh pr create`
 - CI runs a `test` status check — PRs won't merge until it passes
+- To auto-close issues on merge, use one `Closes #N` line per issue — **not** `Closes #1, #2, #3` (GitHub only closes the first number in a comma-separated list)
 
 ## Cutting a release
 

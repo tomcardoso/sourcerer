@@ -14,22 +14,32 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const latestQueryRef = useRef('');
 
+  const normalizedQuery = query.trim();
+
   useEffect(() => {
     let cancelled = false;
-    const cleanup = () => { cancelled = true; };
     setSelectedIndex(0);
-    latestQueryRef.current = query;
-    if (!query.trim()) { setResults([]); return cleanup; }
-    window.sourcerer.searchGlobal(query).then((r) => {
-      if (!cancelled && latestQueryRef.current === query) setResults(r);
-    }).catch(() => {
-      if (!cancelled && latestQueryRef.current === query) setResults([]);
-    });
-    return cleanup;
-  }, [query]);
+    if (!normalizedQuery) {
+      latestQueryRef.current = '';
+      setResults([]);
+      setSearching(false);
+      return () => { cancelled = true; };
+    }
+    latestQueryRef.current = normalizedQuery;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      window.sourcerer.searchGlobal(normalizedQuery).then((r) => {
+        if (!cancelled && latestQueryRef.current === normalizedQuery) { setResults(r); setSearching(false); }
+      }).catch(() => {
+        if (!cancelled && latestQueryRef.current === normalizedQuery) { setResults([]); setSearching(false); }
+      });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [normalizedQuery]);
 
   function pick(result: SearchResult) {
     if (result.type === 'contact') {
@@ -131,7 +141,7 @@ export default function SearchModal({ onClose, onNav, onOpenContact }: Props) {
         </div>
       )}
 
-      {query.trim() !== '' && results.length === 0 && (
+      {query.trim() !== '' && results.length === 0 && !searching && (
         <div className="search-empty">No results for "{query}"</div>
       )}
 
