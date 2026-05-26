@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useSortFilter } from '../hooks/useSortFilter';
+import { useProjectContacts } from '../hooks/useProjectContacts';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
+import BulkBar from './BulkBar';
 import ContactsTable, {
   type ProjectFilters as Filters,
   DEFAULT_PROJECT_FILTERS as DEFAULT_FILTERS,
   isProjectFilterActive as isFilterActive,
-  buildOrderMap,
 } from './ContactsTable';
 import './View.css';
 import './AllContacts.css';
@@ -61,17 +62,10 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const lastCheckedIdRef = useRef<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState(false);
-  const [showUnshareModal, setShowUnshareModal] = useState(false);
-  const [confirmRegen, setConfirmRegen] = useState(false);
-  const [showRotateModal, setShowRotateModal] = useState(false);
-  const [bulkWorking, setBulkWorking] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [fileUnreachable, setFileUnreachable] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showBulkActions, setShowBulkActions] = useState(false);
   const [exporting, setExporting] = useState(false);
   const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -82,15 +76,15 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [showUnshareModal, setShowUnshareModal] = useState(false);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const [showRotateModal, setShowRotateModal] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const bulkActionsRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const syncStartedAt = useRef<number>(0);
 
   const handleCloseExportMenu = useCallback(() => setShowExportMenu(false), []);
   useClickOutside(exportMenuRef, handleCloseExportMenu, { isOpen: showExportMenu });
-  const handleCloseBulkActions = useCallback(() => setShowBulkActions(false), []);
-  useClickOutside(bulkActionsRef, handleCloseBulkActions, { isOpen: showBulkActions });
 
   const projectId = project?.id;
   const refresh = useCallback(() => {
@@ -101,8 +95,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   useEffect(() => {
     setSelectedId(null);
     setCheckedIds(new Set());
-    setConfirmDelete(false);
-    setConfirmRemove(false);
     setRows([]);
     resetSortFilter();
     setOpenFilter(null);
@@ -117,7 +109,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     window.sourcerer.listPriorityOptions().then(setPriorityOptions);
   }, []);
 
-  // Open a contact navigated from the Timeline view
   useEffect(() => {
     if (openContactId) {
       setSelectedId(openContactId);
@@ -262,8 +253,16 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     }
   }
 
-  // Bulk selection handlers (allChecked/someChecked are computed after displayed is built below)
   const checkedCount = checkedIds.size;
+
+  const displayed = useProjectContacts(rows, filters, sort, statusOptions, priorityOptions);
+
+  const allChecked = displayed.length > 0 && displayed.every((r) => checkedIds.has(r.id));
+  const someChecked = !allChecked && displayed.some((r) => checkedIds.has(r.id));
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someChecked;
+  }, [someChecked]);
 
   function toggleCheck(id: string, e: React.MouseEvent) {
     e.stopPropagation();
@@ -280,8 +279,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
           else rangeIds.forEach((rid) => next.add(rid));
           return next;
         });
-        setConfirmDelete(false);
-        setConfirmRemove(false);
         return;
       }
     }
@@ -292,8 +289,6 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       else next.add(id);
       return next;
     });
-    setConfirmDelete(false);
-    setConfirmRemove(false);
   }
 
   function toggleAll() {
@@ -302,186 +297,47 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     } else {
       setCheckedIds(new Set(displayed.map((r) => r.id)));
     }
-    setConfirmDelete(false);
-    setConfirmRemove(false);
   }
 
   async function handleBulkRemove() {
     if (!project) return;
-    setBulkWorking(true);
-    try {
-      const ids = [...checkedIds];
-      const results = await Promise.allSettled(
-        ids.map((id) => window.sourcerer.removeFromProject(id, project.id)),
-      );
-      const removed = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
-      setRows((prev) => prev.filter((r) => !removed.has(r.id)));
-      if (selectedId && removed.has(selectedId)) setSelectedId(null);
-      setCheckedIds((prev) => new Set([...prev].filter((id) => !removed.has(id))));
-      setConfirmRemove(false);
-    } finally {
-      setBulkWorking(false);
-    }
+    const ids = [...checkedIds];
+    const results = await Promise.allSettled(
+      ids.map((id) => window.sourcerer.removeFromProject(id, project.id)),
+    );
+    const removed = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
+    setRows((prev) => prev.filter((r) => !removed.has(r.id)));
+    if (selectedId && removed.has(selectedId)) setSelectedId(null);
+    setCheckedIds((prev) => new Set([...prev].filter((id) => !removed.has(id))));
   }
 
   async function handleBulkSetStatus(status: string | null) {
     if (!project) return;
-    setBulkWorking(true);
-    try {
-      const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
-      await window.sourcerer.bulkUpdateMemberships({ membershipIds, status });
-      setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, status } : r));
-    } finally {
-      setBulkWorking(false);
-    }
+    const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
+    await window.sourcerer.bulkUpdateMemberships({ membershipIds, status });
+    setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, status } : r));
   }
 
   async function handleBulkSetPriority(priority: string | null) {
     if (!project) return;
-    setBulkWorking(true);
-    try {
-      const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
-      await window.sourcerer.bulkUpdateMemberships({ membershipIds, priority });
-      setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, priority } : r));
-    } finally {
-      setBulkWorking(false);
-    }
+    const membershipIds = rows.filter((r) => checkedIds.has(r.id)).map((r) => r.membership_id);
+    await window.sourcerer.bulkUpdateMemberships({ membershipIds, priority });
+    setRows((prev) => prev.map((r) => checkedIds.has(r.id) ? { ...r, priority } : r));
   }
 
   async function handleBulkDelete() {
-    setBulkWorking(true);
-    try {
-      const ids = [...checkedIds];
-      const results = await Promise.allSettled(ids.map((id) => window.sourcerer.deleteContact(id)));
-      const deleted = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
-      setRows((prev) => prev.filter((r) => !deleted.has(r.id)));
-      if (selectedId && deleted.has(selectedId)) setSelectedId(null);
-      setCheckedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id))));
-      setConfirmDelete(false);
-    } finally {
-      setBulkWorking(false);
-    }
+    const ids = [...checkedIds];
+    const results = await Promise.allSettled(ids.map((id) => window.sourcerer.deleteContact(id)));
+    const deleted = new Set(ids.filter((_, i) => results[i].status === 'fulfilled'));
+    setRows((prev) => prev.filter((r) => !deleted.has(r.id)));
+    if (selectedId && deleted.has(selectedId)) setSelectedId(null);
+    setCheckedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id))));
   }
 
   function toggleFilter(col: string) {
     setOpenFilter((prev) => (prev === col ? null : col));
   }
 
-  const displayed = useMemo(() => {
-    const statusOrderMap = buildOrderMap(statusOptions);
-    const priorityOrderMap = buildOrderMap(priorityOptions);
-    const now = Math.floor(Date.now() / 1000);
-    let result = rows;
-
-    if (filters.name) {
-      const q = filters.name.toLowerCase();
-      result = result.filter((r) => r.name.toLowerCase().includes(q));
-    }
-    if (filters.organization) {
-      const q = filters.organization.toLowerCase();
-      result = result.filter((r) => (r.organization ?? '').toLowerCase().includes(q));
-    }
-    if (filters.theme) {
-      const q = filters.theme.toLowerCase();
-      result = result.filter((r) => (r.theme ?? '').toLowerCase().includes(q));
-    }
-    if (filters.notes) {
-      const q = filters.notes.toLowerCase();
-      result = result.filter((r) => (r.notes ?? '').toLowerCase().includes(q));
-    }
-    if (filters.email) {
-      const q = filters.email.toLowerCase();
-      result = result.filter((r) => (r.emails_raw ?? '').toLowerCase().includes(q));
-    }
-    if (filters.phone) {
-      const q = filters.phone.toLowerCase();
-      result = result.filter((r) => (r.phones_raw ?? '').toLowerCase().includes(q));
-    }
-    if (filters.hasEmail !== null) {
-      result = result.filter((r) => (filters.hasEmail ? r.has_email === 1 : r.has_email === 0));
-    }
-    if (filters.hasPhone !== null) {
-      result = result.filter((r) => (filters.hasPhone ? r.has_phone === 1 : r.has_phone === 0));
-    }
-    if (filters.dateLastContacted === 'never') {
-      result = result.filter((r) => r.date_last_contacted === null);
-    } else if (filters.dateLastContacted === 'contacted') {
-      result = result.filter((r) => r.date_last_contacted !== null);
-    } else if (filters.dateLastContacted === 'not_30') {
-      result = result.filter(
-        (r) => r.date_last_contacted === null || r.date_last_contacted < now - 30 * 86400,
-      );
-    } else if (filters.dateLastContacted === 'not_90') {
-      result = result.filter(
-        (r) => r.date_last_contacted === null || r.date_last_contacted < now - 90 * 86400,
-      );
-    }
-    if (filters.dateAddedFrom) {
-      const from = Math.floor(new Date(filters.dateAddedFrom).getTime() / 1000);
-      result = result.filter((r) => r.membership_created_at >= from);
-    }
-    if (filters.dateAddedTo) {
-      const to = Math.floor(new Date(filters.dateAddedTo).getTime() / 1000) + 86399;
-      result = result.filter((r) => r.membership_created_at <= to);
-    }
-    if (filters.status.length > 0) {
-      result = result.filter((r) => filters.status.includes(r.status ?? ''));
-    }
-    if (filters.priority.length > 0) {
-      result = result.filter((r) => filters.priority.includes(r.priority ?? ''));
-    }
-    if (filters.reporter.length > 0) {
-      result = result.filter((r) => filters.reporter.includes(r.reporter_name));
-    }
-
-    if (sort.key) {
-      const dir = sort.dir === 'asc' ? 1 : -1;
-      result = [...result].sort((a, b) => {
-        let cmp = 0;
-        if (sort.key === 'name') {
-          cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-        } else if (sort.key === 'organization') {
-          cmp = (a.organization ?? '').localeCompare(b.organization ?? '', undefined, {
-            sensitivity: 'base',
-          });
-        } else if (sort.key === 'theme') {
-          cmp = (a.theme ?? '').localeCompare(b.theme ?? '', undefined, { sensitivity: 'base' });
-        } else if (sort.key === 'status') {
-          const si = (s: string | null) => statusOrderMap.get(s ?? '') ?? 9999;
-          cmp = si(a.status) - si(b.status);
-        } else if (sort.key === 'priority') {
-          const pi = (p: string | null) => priorityOrderMap.get(p ?? '') ?? 9999;
-          cmp = pi(a.priority) - pi(b.priority);
-        } else if (sort.key === 'reporter') {
-          cmp = a.reporter_name.localeCompare(b.reporter_name, undefined, { sensitivity: 'base' });
-        } else if (sort.key === 'date_first_contacted') {
-          if (a.date_first_contacted === null && b.date_first_contacted === null) cmp = 0;
-          else if (a.date_first_contacted === null) cmp = 1;
-          else if (b.date_first_contacted === null) cmp = -1;
-          else cmp = a.date_first_contacted - b.date_first_contacted;
-        } else if (sort.key === 'date_last_contacted') {
-          if (a.date_last_contacted === null && b.date_last_contacted === null) cmp = 0;
-          else if (a.date_last_contacted === null) cmp = 1;
-          else if (b.date_last_contacted === null) cmp = -1;
-          else cmp = a.date_last_contacted - b.date_last_contacted;
-        } else if (sort.key === 'membership_created_at') {
-          cmp = a.membership_created_at - b.membership_created_at;
-        }
-        return cmp * dir;
-      });
-    }
-
-    return result;
-  }, [rows, filters, sort, statusOptions, priorityOptions]);
-
-  const allChecked = displayed.length > 0 && displayed.every((r) => checkedIds.has(r.id));
-  const someChecked = !allChecked && displayed.some((r) => checkedIds.has(r.id));
-
-  useEffect(() => {
-    if (selectAllRef.current) selectAllRef.current.indeterminate = someChecked;
-  }, [someChecked]);
-
-  // Pre-compute filter options from the unfiltered row set (not displayed)
   const reporterOptions = [
     ...new Map(rows.map((r) => [r.reporter_name, { value: r.reporter_name, label: r.reporter_name }])).values(),
   ].sort((a, b) => a.label.localeCompare(b.label));
@@ -659,135 +515,16 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
       )}
 
       {checkedCount > 0 && (
-        <div className="bulk-bar">
-          <div className="bulk-bar-element">
-            <span className="bulk-bar-count">{checkedCount} selected</span>
-            <button
-              className="bulk-bar-clear"
-              onClick={() => { setCheckedIds(new Set()); setConfirmDelete(false); setConfirmRemove(false); }}
-              title="Clear selection"
-            >
-              ×
-            </button>
-          </div>
-          {confirmRemove ? (
-            <div className="bulk-bar-element">
-              <span className="bulk-delete-confirm-text">
-                Remove {checkedCount} contact{checkedCount !== 1 ? 's' : ''} from this project?
-              </span>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleBulkRemove}
-                disabled={bulkWorking}
-              >
-                {bulkWorking ? 'Removing…' : 'Confirm remove'}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setConfirmRemove(false)}
-                disabled={bulkWorking}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : confirmDelete ? (
-            <div className="bulk-bar-element">
-              <span className="bulk-delete-confirm-text">
-                Permanently delete {checkedCount} contact{checkedCount !== 1 ? 's' : ''}?
-              </span>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={bulkWorking}
-              >
-                {bulkWorking ? 'Deleting…' : 'Confirm delete'}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setConfirmDelete(false)}
-                disabled={bulkWorking}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <>
-              {statusOptions.length > 0 && (
-                <div className="bulk-bar-element">
-                  <label className="bulk-bar-label">Status</label>
-                  <select
-                    className="bulk-bar-select"
-                    value=""
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === '__clear__') { handleBulkSetStatus(null); return; }
-                      const opt = statusOptions.find((o) => o.id === v);
-                      if (opt) handleBulkSetStatus(opt.label);
-                    }}
-                    disabled={bulkWorking}
-                  >
-                    <option value="" disabled>Set status</option>
-                    {statusOptions.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))}
-                    <option value="__clear__">— clear —</option>
-                  </select>
-                </div>
-              )}
-              {priorityOptions.length > 0 && (
-                <div className="bulk-bar-element">
-                  <label className="bulk-bar-label">Priority</label>
-                  <select
-                    className="bulk-bar-select"
-                    value=""
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === '__clear__') { handleBulkSetPriority(null); return; }
-                      const opt = priorityOptions.find((o) => o.id === v);
-                      if (opt) handleBulkSetPriority(opt.label);
-                    }}
-                    disabled={bulkWorking}
-                  >
-                    <option value="" disabled>Set priority</option>
-                    {priorityOptions.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))}
-                    <option value="__clear__">— clear —</option>
-                  </select>
-                </div>
-              )}
-              <div className="bulk-bar-element bulk-bar-element--right bulk-actions-wrap" ref={bulkActionsRef}>
-                <button
-                  className="bulk-actions-trigger"
-                  onClick={() => setShowBulkActions((v) => !v)}
-                  disabled={bulkWorking}
-                >
-                  Remove from…
-                </button>
-                {showBulkActions && (
-                  <div className="bulk-actions-menu">
-                    <button
-                      className="bulk-actions-item bulk-actions-item--danger"
-                      onClick={() => { setShowBulkActions(false); setConfirmRemove(true); }}
-                    >
-                      Project
-                    </button>
-                    <button
-                      className="bulk-actions-item bulk-actions-item--danger"
-                      onClick={() => { setShowBulkActions(false); setConfirmDelete(true); }}
-                    >
-                      Sourcerer
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        <BulkBar
+          checkedCount={checkedCount}
+          statusOptions={statusOptions}
+          priorityOptions={priorityOptions}
+          onClearSelection={() => setCheckedIds(new Set())}
+          onRemove={handleBulkRemove}
+          onDelete={handleBulkDelete}
+          onSetStatus={handleBulkSetStatus}
+          onSetPriority={handleBulkSetPriority}
+        />
       )}
 
       <div className="contacts-body">

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
 import type { User } from '@shared/types';
-import { isValidEmail } from '../contacts/contactValidation';
 import Button from '../shell/Button';
+import Toggle from './SettingsToggle';
+import ProfileSection from './ProfileSection';
+import BackupSection from './BackupSection';
 import './View.css';
 import './SettingsView.css';
 
@@ -10,7 +12,6 @@ interface Props {
   user: User | null;
   onUserUpdated: (user: User) => void;
 }
-
 
 const TIMEOUT_OPTIONS = [
   { label: '1 minute', seconds: 60 },
@@ -21,35 +22,7 @@ const TIMEOUT_OPTIONS = [
   { label: 'Never', seconds: 0 },
 ];
 
-function Toggle({ checked, onChange, label, hint, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean }) {
-  return (
-    <div className={`sv-toggle-row${hint ? ' sv-toggle-row--has-hint' : ''}`}>
-      <button
-        type="button"
-        className={`sv-toggle${checked ? ' sv-toggle--on' : ''}${disabled ? ' sv-toggle--disabled' : ''}`}
-        onClick={() => !disabled && onChange(!checked)}
-        aria-pressed={checked}
-        disabled={disabled}
-      >
-        <span className="sv-toggle-knob" />
-        <span className="sv-toggle-label">{checked ? 'ON' : 'OFF'}</span>
-      </button>
-      <div>
-        <div className="sv-toggle-text">{label}</div>
-        {hint && <div className="sv-hint sv-hint--inline">{hint}</div>}
-      </div>
-    </div>
-  );
-}
-
 export default function SettingsView({ user, onUserUpdated }: Props) {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [profileSaved, setProfileSaved] = useState(false);
-  const emailValid = !email.trim() || isValidEmail(email);
-
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('CA');
   const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
@@ -64,46 +37,21 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
   const [calendarUrl, setCalendarUrl] = useState('');
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordResult, setPasswordResult] = useState<{ ok: boolean; msg: string } | null>(null);
-
-  const [backingUp, setBackingUp] = useState(false);
-  const [backupError, setBackupError] = useState<string | null>(null);
-  const [exportConfirm, setExportConfirm] = useState(false);
-  const [backupSaved, setBackupSaved] = useState(false);
-  const [exportPassword, setExportPassword] = useState('');
-  const [restoreConfirm, setRestoreConfirm] = useState(false);
-  const [restorePassword, setRestorePassword] = useState('');
-  const [restoringBackup, setRestoringBackup] = useState(false);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
-  const [panicWipeInput, setPanicWipeInput] = useState('');
-  const [panicWiping, setPanicWiping] = useState(false);
   const [screenshotFolderBytes, setScreenshotFolderBytes] = useState<number>(0);
 
   const [archiveAccessKey, setArchiveAccessKey] = useState('');
   const [archiveSecretKey, setArchiveSecretKey] = useState('');
   const [archiveKeysSaved, setArchiveKeysSaved] = useState(false);
-
-  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
-  const [autoBackupDestPath, setAutoBackupDestPath] = useState<string | null>(null);
-  const [autoBackupMaxCount, setAutoBackupMaxCount] = useState(10);
-  const [autoBackupMaxCountInput, setAutoBackupMaxCountInput] = useState('10');
-  const [autoBackupRunning, setAutoBackupRunning] = useState(false);
-  const [autoBackupResult, setAutoBackupResult] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
-
-  const profileSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const backupSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const archiveKeysSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoBackupResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [vaultPath, setVaultPath] = useState<string>('');
   const [movingVault, setMovingVault] = useState(false);
   const [moveVaultError, setMoveVaultError] = useState<string | null>(null);
   const [moveVaultSuccess, setMoveVaultSuccess] = useState(false);
+
+  const [panicWipeConfirm, setPanicWipeConfirm] = useState(false);
+  const [panicWipeInput, setPanicWipeInput] = useState('');
+  const [panicWiping, setPanicWiping] = useState(false);
 
   const countryOptions = useMemo(() => {
     const names = new Intl.DisplayNames([navigator.language], { type: 'region' });
@@ -118,9 +66,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   useEffect(() => {
     if (user) {
-      setFirstName(user.first_name);
-      setLastName(user.last_name);
-      setEmail(user.email);
       setPhoneCountry(user.phone_country ?? 'CA');
       setOutreachRemindersEnabled(user.outreach_reminders_enabled !== 0);
       setOutreachRequireInteraction(user.outreach_require_interaction !== 0);
@@ -136,115 +81,10 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
     window.sourcerer.getScreenshotFolderSize().then(setScreenshotFolderBytes);
     window.sourcerer.getVaultPath().then(setVaultPath);
-    window.sourcerer.getAutoBackupSettings().then(({ enabled, destPath, maxCount }) => {
-      setAutoBackupEnabled(enabled);
-      setAutoBackupDestPath(destPath);
-      setAutoBackupMaxCount(maxCount);
-      setAutoBackupMaxCountInput(String(maxCount));
-    });
-  }, [user?.id]);
-
-  useEffect(() => {
     return () => {
-      if (profileSavedTimerRef.current) clearTimeout(profileSavedTimerRef.current);
-      if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
       if (archiveKeysSavedTimerRef.current) clearTimeout(archiveKeysSavedTimerRef.current);
-      if (autoBackupResultTimerRef.current) clearTimeout(autoBackupResultTimerRef.current);
     };
-  }, []);
-
-  async function handleProfileSave() {
-    if (!firstName.trim() || !email.trim() || !isValidEmail(email)) return;
-    setProfileSaving(true);
-    try {
-      const updated = await window.sourcerer.updateUser({ firstName, lastName, email });
-      onUserUpdated(updated);
-      setProfileSaved(true);
-      if (profileSavedTimerRef.current) clearTimeout(profileSavedTimerRef.current);
-      profileSavedTimerRef.current = setTimeout(() => setProfileSaved(false), 2000);
-    } finally {
-      setProfileSaving(false);
-    }
-  }
-
-  async function handleChangePassword() {
-    if (newPassword.length < 12) {
-      setPasswordResult({ ok: false, msg: 'New password must be at least 12 characters.' });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordResult({ ok: false, msg: 'New passwords do not match.' });
-      return;
-    }
-    setPasswordSaving(true);
-    setPasswordResult(null);
-    try {
-      const result = await window.sourcerer.changePassword(currentPassword, newPassword);
-      if (result.success) {
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setPasswordResult({ ok: true, msg: 'Password updated successfully.' });
-      } else {
-        setPasswordResult({ ok: false, msg: result.error ?? 'Failed to change password.' });
-      }
-    } finally {
-      setPasswordSaving(false);
-    }
-  }
-
-  async function handleExportBackup() {
-    if (!exportPassword) return;
-    setBackingUp(true);
-    setBackupError(null);
-    try {
-      const result = await window.sourcerer.exportBackup(exportPassword);
-      if (result.success) {
-        setExportConfirm(false);
-        setExportPassword('');
-        setBackupSaved(true);
-        if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
-        backupSavedTimerRef.current = setTimeout(() => setBackupSaved(false), 3000);
-      } else if (result.error) {
-        setBackupError(result.error);
-      }
-    } catch {
-      setBackupError('Export failed. Please try again.');
-    } finally {
-      setBackingUp(false);
-    }
-  }
-
-  async function handleRestoreBackup() {
-    if (!restorePassword) return;
-    setRestoringBackup(true);
-    setRestoreError(null);
-    try {
-      const result = await window.sourcerer.restoreBackup(restorePassword);
-      if (result.canceled) {
-        setRestoreConfirm(false);
-        setRestorePassword('');
-        return;
-      }
-      if (!result.success) {
-        setRestoreError(result.error ?? 'Restore failed.');
-      }
-    } catch {
-      setRestoreError('Restore failed. Please try again.');
-    } finally {
-      setRestoringBackup(false);
-    }
-  }
-
-  async function handlePanicWipe() {
-    if (panicWipeInput !== 'WIPE') return;
-    setPanicWiping(true);
-    try {
-      await window.sourcerer.panicWipe();
-    } finally {
-      setPanicWiping(false);
-    }
-  }
+  }, [user?.id]);
 
   async function handleRegenerateToken() {
     const updated = await window.sourcerer.regenerateCalendarToken();
@@ -370,28 +210,6 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     }
   }
 
-  async function handleChooseBackupFolder() {
-    const chosen = await window.sourcerer.chooseBackupFolder();
-    if (!chosen) return;
-    setAutoBackupDestPath(chosen);
-    await window.sourcerer.setAutoBackupSettings({ destPath: chosen });
-  }
-
-  async function handleAutoBackupToggle(enabled: boolean) {
-    setAutoBackupEnabled(enabled);
-    await window.sourcerer.setAutoBackupSettings({ enabled });
-  }
-
-  async function handleAutoBackupMaxCountBlur() {
-    const n = parseInt(autoBackupMaxCountInput, 10);
-    if (!isNaN(n) && n >= 1) {
-      setAutoBackupMaxCount(n);
-      await window.sourcerer.setAutoBackupSettings({ maxCount: n });
-    } else {
-      setAutoBackupMaxCountInput(String(autoBackupMaxCount));
-    }
-  }
-
   async function handleMoveVault() {
     setMovingVault(true);
     setMoveVaultError(null);
@@ -406,21 +224,15 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     }
   }
 
-  async function handleRunAutoBackupNow() {
-    setAutoBackupRunning(true);
-    setAutoBackupResult(null);
-    const result = await window.sourcerer.runAutoBackup();
-    setAutoBackupRunning(false);
-    setAutoBackupResult(result.success
-      ? { kind: 'success', message: 'Backup saved.' }
-      : { kind: 'error', message: result.error ?? 'Backup failed.' });
-    if (autoBackupResultTimerRef.current) clearTimeout(autoBackupResultTimerRef.current);
-    autoBackupResultTimerRef.current = setTimeout(() => setAutoBackupResult(null), 3000);
+  async function handlePanicWipe() {
+    if (panicWipeInput !== 'WIPE') return;
+    setPanicWiping(true);
+    try {
+      await window.sourcerer.panicWipe();
+    } finally {
+      setPanicWiping(false);
+    }
   }
-
-  const profileDirty =
-    user &&
-    (firstName !== user.first_name || lastName !== user.last_name || email !== user.email);
 
   return (
     <div className="view">
@@ -432,113 +244,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       </div>
 
       <div className="sv-body">
-        {/* Profile */}
-        <div className="sv-section">
-          <div className="sv-section-title">Profile</div>
-          <p className="sv-hint">Your name and email are attached to notes and interactions you log across projects.</p>
-          <div className="sv-fields">
-            <div className="sv-field">
-              <label className="sv-label">First name</label>
-              <input
-                className="sv-input"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
-              />
-            </div>
-            <div className="sv-field">
-              <label className="sv-label">Last name</label>
-              <input
-                className="sv-input"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
-              />
-            </div>
-            <div className="sv-field sv-field--full">
-              <label className="sv-label">Email</label>
-              <input
-                className="sv-input"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleProfileSave(); }}
-              />
-              {!emailValid && (
-                <p className="sv-field-error">Enter a valid email address.</p>
-              )}
-            </div>
-          </div>
-          <div className="sv-profile-actions">
-            <Button
-              variant="accent"
-              size="sm"
-              onClick={handleProfileSave}
-              disabled={profileSaving || !profileDirty || !firstName.trim() || !email.trim() || !emailValid}
-            >
-              {profileSaved ? 'Saved!' : profileSaving ? 'Saving…' : 'Save profile'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Security */}
-        <div className="sv-section">
-          <div className="sv-section-title">Security</div>
-          <p className="sv-hint">
-            Change your Sourcerer password. You'll need to enter your current password to confirm the change.
-          </p>
-          <div className="sv-fields">
-            <div className="sv-field sv-field--full">
-              <label className="sv-label">Current password</label>
-              <input
-                className="sv-input"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => { setCurrentPassword(e.target.value); setPasswordResult(null); }}
-                autoComplete="current-password"
-              />
-            </div>
-            <div className="sv-field">
-              <label className="sv-label">New password</label>
-              <input
-                className="sv-input"
-                type="password"
-                value={newPassword}
-                onChange={(e) => { setNewPassword(e.target.value); setPasswordResult(null); }}
-                autoComplete="new-password"
-              />
-            </div>
-            <div className="sv-field">
-              <label className="sv-label">Confirm new password</label>
-              <input
-                className="sv-input"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setPasswordResult(null); }}
-                autoComplete="new-password"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword(); }}
-              />
-            </div>
-          </div>
-          <p className="sv-hint sv-hint--small">
-            Minimum 12 characters. Tip: a passphrase like "coral fence orbit lamp" is easier to remember and just as strong.
-          </p>
-          {passwordResult && (
-            <p className={passwordResult.ok ? 'sv-success' : 'sv-error-inline'}>
-              {passwordResult.msg}
-            </p>
-          )}
-          <div className="sv-profile-actions">
-            <Button
-              variant="accent"
-              size="sm"
-              onClick={handleChangePassword}
-              disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
-            >
-              {passwordSaving ? 'Updating…' : 'Update password'}
-            </Button>
-          </div>
-        </div>
+        <ProfileSection user={user} onUserUpdated={onUserUpdated} />
 
         {/* Staleness */}
         <div className="sv-section">
@@ -812,172 +518,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
           {moveVaultSuccess && <p className="sv-success sv-move-vault-msg">Vault moved. You&apos;ll be asked to unlock again.</p>}
         </div>
 
-        {/* Backup */}
-        <div className="sv-section">
-          <div className="sv-section-title">Backup</div>
-          {!exportConfirm ? (
-            <div className="sv-field">
-              <div className="sv-backup-export-restore">
-                <div className="sv-hint">
-                  Save your encrypted database as a <code>.sourcerer-backup</code> file. The backup is encrypted with your master password — only someone with your password can restore it.
-                </div>
-                <div className="sv-inline-actions">
-                  <Button variant="accent" size="sm" onClick={() => { setExportConfirm(true); setBackupError(null); setExportPassword(''); setBackupSaved(false); }}>
-                    Export backup
-                  </Button>
-                  {backupSaved && <span className="sv-backup-saved">Backup saved.</span>}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="sv-wipe-confirm">
-              <p className="sv-wipe-warning">
-                Enter your master password to encrypt the backup file.
-              </p>
-              <div className="sv-wipe-row">
-                <input
-                  className="sv-input sv-backup-pw-input"
-                  type="password"
-                  placeholder="Master password"
-                  value={exportPassword}
-                  onChange={(e) => { setExportPassword(e.target.value); setBackupError(null); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && exportPassword && !backingUp) handleExportBackup(); }}
-                  autoComplete="current-password"
-                  disabled={backingUp}
-                />
-                <Button
-                  variant="accent"
-                  size="sm"
-                  onClick={handleExportBackup}
-                  disabled={backingUp || !exportPassword}
-                >
-                  {backingUp ? 'Exporting…' : 'Export backup'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => { setExportConfirm(false); setExportPassword(''); setBackupError(null); }}
-                  disabled={backingUp}
-                >
-                  Cancel
-                </Button>
-              </div>
-              {backupError && <div className="sv-error-inline">{backupError}</div>}
-            </div>
-          )}
-          {!restoreConfirm ? (
-            <div className="sv-field">
-              <div>
-                <div className="sv-hint">
-                  Restore a <code>.sourcerer-backup</code> file. Your current database will be permanently replaced.
-                </div>
-                <Button
-                  variant="accent"
-                  size="sm"
-                  onClick={() => { setRestoreConfirm(true); setRestoreError(null); setRestorePassword(''); }}
-                >
-                  Restore from backup
-                </Button>
-                {restoreError && <div className="sv-error-inline">{restoreError}</div>}
-              </div>
-            </div>
-          ) : (
-            <div className="sv-wipe-confirm">
-              <p className="sv-wipe-warning">
-                Restoring a backup will permanently overwrite your current database and cannot be undone.
-                Enter the master password used when the backup was created, then choose the file.
-              </p>
-              <div className="sv-wipe-row">
-                <input
-                  className="sv-input"
-                  type="password"
-                  placeholder="Backup password"
-                  value={restorePassword}
-                  onChange={(e) => { setRestorePassword(e.target.value); setRestoreError(null); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && restorePassword && !restoringBackup) handleRestoreBackup(); }}
-                  autoComplete="current-password"
-                  disabled={restoringBackup}
-                />
-                <Button
-                  variant="accent"
-                  size="sm"
-                  onClick={handleRestoreBackup}
-                  disabled={restoringBackup || !restorePassword}
-                >
-                  {restoringBackup ? 'Restoring…' : 'Choose backup file…'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => { setRestoreConfirm(false); setRestorePassword(''); setRestoreError(null); }}
-                  disabled={restoringBackup}
-                >
-                  Cancel
-                </Button>
-              </div>
-              {restoreError && <div className="sv-error-inline">{restoreError}</div>}
-            </div>
-          )}
-        </div>
-
-        {/* Automatic backups */}
-        <div className="sv-section">
-          <div className="sv-section-title">Automatic backups</div>
-          <div className="sv-field">
-            <div className="sv-hint">
-              Choose a folder and Sourcerer will silently save an encrypted backup on every clean quit
-              and once per day while the app is running. Backups use the same format as manual exports
-              and can be restored using your master password.
-            </div>
-          </div>
-          <div className="sv-field">
-            <label className="sv-label">Backup folder</label>
-            <div className="sv-row">
-              <code className="sv-path-code">
-                {autoBackupDestPath ?? 'No folder selected'}
-              </code>
-              <Button
-                variant="accent"
-                size="sm"
-                onClick={handleChooseBackupFolder}
-              >
-                Choose folder…
-              </Button>
-            </div>
-          </div>
-          <Toggle
-            checked={autoBackupEnabled}
-            onChange={handleAutoBackupToggle}
-            label="Enable automatic backups"
-            hint={autoBackupDestPath ? undefined : 'Choose a backup folder first.'}
-            disabled={!autoBackupDestPath}
-          />
-          <div className="sv-field sv-field--inline-row">
-            <label className="sv-label">Max backups to keep</label>
-            <div className="sv-inline-actions">
-              <input
-                className="sv-input sv-input--short"
-                type="number"
-                min={1}
-                value={autoBackupMaxCountInput}
-                onChange={(e) => setAutoBackupMaxCountInput(e.target.value)}
-                onBlur={handleAutoBackupMaxCountBlur}
-                disabled={!autoBackupDestPath || !autoBackupEnabled}
-              />
-              <Button
-                variant="accent"
-                size="sm"
-                onClick={handleRunAutoBackupNow}
-                disabled={autoBackupRunning || !autoBackupDestPath || !autoBackupEnabled}
-              >
-                {autoBackupRunning ? 'Backing up…' : 'Back up now'}
-              </Button>
-              {autoBackupResult && (
-                <span className={autoBackupResult.kind === 'success' ? 'sv-backup-saved' : 'sv-error-inline'}>{autoBackupResult.message}</span>
-              )}
-            </div>
-          </div>
-        </div>
+        <BackupSection />
 
         {/* Danger Zone */}
         <div className="sv-section sv-danger-zone">
