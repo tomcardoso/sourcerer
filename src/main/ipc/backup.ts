@@ -5,7 +5,7 @@ import os from 'os';
 import crypto from 'crypto';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths, deriveKey, filenameDateStamp } from '../utils';
-import { closeDatabase, getDatabase, getKeyHex, applyCipherPragmas } from '../database';
+import { closeDatabase, getKeyHex, applyCipherPragmas } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
 import { writeBackupFile, readBackupFile, createBackupEntries, MAX_BACKUP_BYTES } from './backup-format';
@@ -17,7 +17,7 @@ export function registerBackupHandlers(): void {
   ipcMain.handle(
     'backup:export',
     async (_, { password }: { password: string }): Promise<{ success: boolean; error?: string }> => {
-      const { saltPath, screenshotsPath } = getPaths();
+      const { dbPath, saltPath, screenshotsPath } = getPaths();
 
       const dbSalt = await fs.readFile(saltPath);
       const verifyKeyHex = await deriveKey(password, dbSalt);
@@ -37,7 +37,7 @@ export function registerBackupHandlers(): void {
       const tmpSnapPath = path.join(tmpSnapDir, 'snapshot.db');
       const tmpOutPath = path.join(path.dirname(filePath), `.sourcerer-backup-${crypto.randomBytes(8).toString('hex')}.tmp`);
       try {
-        await getDatabase().backup(tmpSnapPath);
+        await fs.copyFile(dbPath, tmpSnapPath);
         await writeBackupFile(createBackupEntries(tmpSnapPath, saltPath, screenshotsPath), tmpOutPath, password);
         await fs.unlink(filePath).catch(() => {}); // pre-remove so rename works on Windows
         await fs.rename(tmpOutPath, filePath);
