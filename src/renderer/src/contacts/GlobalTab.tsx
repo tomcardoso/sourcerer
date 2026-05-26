@@ -139,7 +139,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
         onNewRssUrlChange={setNewRssUrl}
         onAddRss={handleAddRss}
         onRemoveRss={handleRemoveRss}
-        onSaved={() => { onRefresh(); setEditingAndNotify(false); }}
+        onSaved={() => {
+          window.sourcerer.listAlertRss(contact.id).then(setAlertRssList);
+          onRefresh();
+          setEditingAndNotify(false);
+        }}
         onCancel={() => setEditingAndNotify(false)}
       />
     );
