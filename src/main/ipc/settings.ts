@@ -198,7 +198,7 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get-calendar-url', (): string => {
     const db = getDatabase();
     const { calendar_token } = db.prepare('SELECT calendar_token FROM users WHERE id = 1').get() as { calendar_token: string };
-    return `webcal://127.0.0.1:27371/calendar/reminders.ics?token=${calendar_token}`;
+    return `http://localhost:27371/calendar/reminders.ics?token=${calendar_token}`;
   });
 
   ipcMain.handle('settings:regenerate-calendar-token', (): User => {
