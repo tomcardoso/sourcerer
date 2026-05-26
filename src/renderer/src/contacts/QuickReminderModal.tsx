@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import type { ContactDetail, ContactListItem } from '@shared/types';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
@@ -26,7 +27,6 @@ export default function QuickReminderModal({ contacts, onClose, onSaved }: Props
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pickerWrapRef = useRef<HTMLDivElement>(null);
   useClickOutside(pickerWrapRef, () => setDropdownOpen(false), { isOpen: dropdownOpen, escapeKey: false });
@@ -67,21 +67,20 @@ export default function QuickReminderModal({ contacts, onClose, onSaved }: Props
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  async function handleSave() {
+  const { execute: doSave, isPending: saving } = useMutation(async () => {
+    const ts = dateStrToUnix(date);
+    await window.sourcerer.createReminder({
+      contactId: selectedContactId!,
+      projectId: selectedProjectId ?? undefined,
+      dueDate: ts,
+      note: note.trim() || undefined,
+    });
+    onSaved();
+  });
+
+  function handleSave() {
     if (!selectedContactId || !date) return;
-    setSaving(true);
-    try {
-      const ts = dateStrToUnix(date);
-      await window.sourcerer.createReminder({
-        contactId: selectedContactId,
-        projectId: selectedProjectId ?? undefined,
-        dueDate: ts,
-        note: note.trim() || undefined,
-      });
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
+    doSave();
   }
 
   const canSave = !!selectedContactId && !!date && note.trim().length > 0 && !saving;

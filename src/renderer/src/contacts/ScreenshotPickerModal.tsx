@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import type { ContactListItem } from '@shared/types';
 import Button from '../shell/Button';
 import Modal from '../shell/Modal';
@@ -12,8 +13,6 @@ interface Props {
 export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [query, setQuery] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     window.sourcerer.listContacts().then(setContacts);
@@ -26,17 +25,11 @@ export default function ScreenshotPickerModal({ tempId, onClose }: Props) {
       )
     : contacts;
 
-  async function handlePick(contactId: string) {
-    setSaving(true);
-    setError(null);
+  const { execute: handlePick, isPending: saving, error } = useMutation(async (contactId: string) => {
     const result = await window.sourcerer.assignScreenshot({ tempId, contactId });
-    setSaving(false);
-    if (result.success) {
-      onClose();
-    } else {
-      setError(result.error ?? 'Failed to save screenshot.');
-    }
-  }
+    if (!result.success) throw new Error(result.error ?? 'Failed to save screenshot.');
+    onClose();
+  });
 
   return (
     <Modal title="Assign screenshot" onDismiss={onClose} className="spm-modal">

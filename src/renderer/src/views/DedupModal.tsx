@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import type { DedupContact, DuplicatePair } from '@shared/types';
 import Button from '../shell/Button';
 import Modal from '../shell/Modal';
@@ -99,8 +100,6 @@ function ContactCard({ contact, other }: { contact: DedupContact; other: DedupCo
 export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
   const [pairs, setPairs] = useState(initialPairs);
   const [index, setIndex] = useState(0);
-  const [working, setWorking] = useState(false);
-
   function advance() {
     const newPairs = pairs.filter((_, i) => i !== index);
     setPairs(newPairs);
@@ -109,26 +108,28 @@ export default function DedupModal({ pairs: initialPairs, onClose }: Props) {
     }
   }
 
-  async function handleAction(
+  const { execute: doAction, isPending: working } = useMutation(async (
     winnerId: string | null,
     loserId: string | null,
     strategy: 'keep' | 'merge' | 'skip',
-  ) {
+  ) => {
     if (strategy === 'skip') {
       const pair = pairs[0];
       if (pair) {
         await window.sourcerer.mergeContacts({ winnerId: pair.a.id, loserId: pair.b.id, strategy: 'skip' });
       }
-      advance();
-      return;
-    }
-    setWorking(true);
-    try {
+    } else {
       await window.sourcerer.mergeContacts({ winnerId: winnerId!, loserId: loserId!, strategy });
-      advance();
-    } finally {
-      setWorking(false);
     }
+    advance();
+  });
+
+  function handleAction(
+    winnerId: string | null,
+    loserId: string | null,
+    strategy: 'keep' | 'merge' | 'skip',
+  ) {
+    doAction(winnerId, loserId, strategy);
   }
 
   if (pairs.length === 0) {

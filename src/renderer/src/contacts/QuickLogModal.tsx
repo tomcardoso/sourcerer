@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import type { ContactDetail, ContactListItem } from '@shared/types';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
@@ -27,7 +28,6 @@ export default function QuickLogModal({ contacts, onClose, onSaved }: Props) {
   const [membershipIds, setMembershipIds] = useState<string[]>([]);
   const [date, setDate] = useState(todayISO());
   const [body, setBody] = useState('');
-  const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pickerWrapRef = useRef<HTMLDivElement>(null);
   useClickOutside(pickerWrapRef, () => setDropdownOpen(false), { isOpen: dropdownOpen, escapeKey: false });
@@ -68,22 +68,21 @@ export default function QuickLogModal({ contacts, onClose, onSaved }: Props) {
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  async function handleSave() {
+  const { execute: doSave, isPending: saving } = useMutation(async () => {
+    const [y, m, d] = date.split('-').map(Number);
+    const ts = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+    await window.sourcerer.addGlobalLogEntry(
+      selectedContactId!,
+      body.trim(),
+      ts,
+      membershipIds.length > 0 ? membershipIds : undefined,
+    );
+    onSaved();
+  });
+
+  function handleSave() {
     if (!selectedContactId || !body.trim() || !date) return;
-    setSaving(true);
-    try {
-      const [y, m, d] = date.split('-').map(Number);
-      const ts = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
-      await window.sourcerer.addGlobalLogEntry(
-        selectedContactId,
-        body.trim(),
-        ts,
-        membershipIds.length > 0 ? membershipIds : undefined,
-      );
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
+    doSave();
   }
 
   const canSave = !!selectedContactId && body.trim().length > 0 && !!date && !saving;

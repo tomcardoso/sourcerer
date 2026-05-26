@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMutation } from '../hooks/useMutation';
 import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
 import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -356,7 +357,6 @@ function RemindersSection({
   const [dueDate, setDueDate] = useState('');
   const [note, setNote] = useState('');
   const [adding, setAdding] = useState(false);
-  const [addingSaving, setAddingSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDueDate, setEditDueDate] = useState('');
   const [editNote, setEditNote] = useState('');
@@ -375,24 +375,23 @@ function RemindersSection({
     return () => { cancelled = true; };
   }, [contactId, projectId, refreshToken]);
 
-  async function handleAdd() {
+  const { execute: doAdd, isPending: addingSaving } = useMutation(async () => {
+    const ts = dateStrToUnix(dueDate);
+    const r = await window.sourcerer.createReminder({
+      contactId,
+      projectId,
+      dueDate: ts,
+      note: note.trim(),
+    });
+    setReminders((prev) => [...prev, r].sort(sortReminders));
+    setDueDate('');
+    setNote('');
+    setAdding(false);
+  });
+
+  function handleAdd() {
     if (!dueDate || !note.trim() || addingSaving) return;
-    setAddingSaving(true);
-    try {
-      const ts = dateStrToUnix(dueDate);
-      const r = await window.sourcerer.createReminder({
-        contactId,
-        projectId,
-        dueDate: ts,
-        note: note.trim(),
-      });
-      setReminders((prev) => [...prev, r].sort(sortReminders));
-      setDueDate('');
-      setNote('');
-      setAdding(false);
-    } finally {
-      setAddingSaving(false);
-    }
+    doAdd();
   }
 
   function handleStartEdit(r: Reminder) {
