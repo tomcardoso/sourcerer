@@ -4,6 +4,7 @@ import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { dateStrToUnix } from '../utils/fmtDate';
 import './QuickLogModal.css';
 
 interface Props {
@@ -70,7 +71,7 @@ export default function QuickReminderModal({ contacts, onClose, onSaved }: Props
     if (!selectedContactId || !date) return;
     setSaving(true);
     try {
-      const ts = Math.floor(new Date(`${date}T09:00:00`).getTime() / 1000);
+      const ts = dateStrToUnix(date);
       await window.sourcerer.createReminder({
         contactId: selectedContactId,
         projectId: selectedProjectId ?? undefined,

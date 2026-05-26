@@ -42,6 +42,11 @@ export function fmtDateRelative(ts: number | null, fetched: number): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/** Convert a YYYY-MM-DD date string to a Unix timestamp (seconds) at 09:00 local time. */
+export function dateStrToUnix(dateStr: string): number {
+  return Math.floor(new Date(`${dateStr}T09:00:00`).getTime() / 1000);
+}
+
 /**
  * Format a Unix timestamp (seconds) as a full date always including the year.
  * Returns '—' when ts is null.
