@@ -608,8 +608,7 @@ export default function ContactsTable(props: ContactsTableProps) {
           <>
             {paddingTop > 0 && (
               <tr aria-hidden="true">
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td colSpan={colSpan} className="virt-spacer" style={{ height: paddingTop }} />
+                <td colSpan={colSpan} className="virt-spacer" style={{ '--spacer-height': `${paddingTop}px` } as React.CSSProperties} />
               </tr>
             )}
             {rowsToRender.map((row) => {
@@ -724,8 +723,7 @@ export default function ContactsTable(props: ContactsTableProps) {
             })}
             {paddingBottom > 0 && (
               <tr aria-hidden="true">
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td colSpan={colSpan} className="virt-spacer" style={{ height: paddingBottom }} />
+                <td colSpan={colSpan} className="virt-spacer" style={{ '--spacer-height': `${paddingBottom}px` } as React.CSSProperties} />
               </tr>
             )}
           </>

@@ -60,6 +60,7 @@
 
 .sidebar-action-btns .btn {
   height: 26px;
+  justify-content: flex-start;
 }
 
 

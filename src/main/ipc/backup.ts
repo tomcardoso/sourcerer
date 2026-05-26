@@ -5,10 +5,10 @@ import os from 'os';
 import crypto from 'crypto';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { getPaths, deriveKey, filenameDateStamp } from '../utils';
-import { closeDatabase, getKeyHex } from '../database';
+import { closeDatabase, getDatabase, getKeyHex, applyCipherPragmas } from '../database';
 import { stopPoller } from '../sync/poller';
 import { clearExtensionSession } from '../http-server';
-import { writeBackupFile, readBackupFile, createBackupEntries } from './backup-format';
+import { writeBackupFile, readBackupFile, createBackupEntries, MAX_BACKUP_BYTES } from './backup-format';
 
 const AUTH_WIDTH = 560;
 const AUTH_HEIGHT = 720;
@@ -17,7 +17,7 @@ export function registerBackupHandlers(): void {
   ipcMain.handle(
     'backup:export',
     async (_, { password }: { password: string }): Promise<{ success: boolean; error?: string }> => {
-      const { dbPath, saltPath, screenshotsPath } = getPaths();
+      const { saltPath, screenshotsPath } = getPaths();
 
       const dbSalt = await fs.readFile(saltPath);
       const verifyKeyHex = await deriveKey(password, dbSalt);
@@ -33,12 +33,20 @@ export function registerBackupHandlers(): void {
       });
       if (canceled || !filePath) return { success: false };
 
+      const tmpSnapDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sourcerer-snap-'));
+      const tmpSnapPath = path.join(tmpSnapDir, 'snapshot.db');
+      const tmpOutPath = path.join(path.dirname(filePath), `.sourcerer-backup-${crypto.randomBytes(8).toString('hex')}.tmp`);
       try {
-        await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), filePath, password);
+        await getDatabase().backup(tmpSnapPath);
+        await writeBackupFile(createBackupEntries(tmpSnapPath, saltPath, screenshotsPath), tmpOutPath, password);
+        await fs.unlink(filePath).catch(() => {}); // pre-remove so rename works on Windows
+        await fs.rename(tmpOutPath, filePath);
         return { success: true };
       } catch (err) {
-        await fs.unlink(filePath).catch(() => {});
+        await fs.unlink(tmpOutPath).catch(() => {});
         return { success: false, error: String(err) };
+      } finally {
+        await fs.rm(tmpSnapDir, { recursive: true, force: true }).catch(() => {});
       }
     },
   );
@@ -64,7 +72,6 @@ export function registerBackupHandlers(): void {
 
       try {
         // db.sqlite is buffered in memory during restore, so keep this limit tight.
-        const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
         const stat = await fs.stat(filePaths[0]);
         if (stat.size > MAX_BACKUP_BYTES) {
           return { success: false, error: 'Backup file is too large (max 512 MB).' };
@@ -107,13 +114,8 @@ export function registerBackupHandlers(): void {
         try {
           await fs.writeFile(tmpDbPath, dbBuf, { mode: 0o600 });
           const testDb = new Database(tmpDbPath);
-          testDb.pragma(`cipher='sqlcipher'`);
-          testDb.pragma('cipher_page_size=4096');
-          testDb.pragma('kdf_iter=256000');
-          testDb.pragma('cipher_hmac_algorithm=HMAC_SHA512');
-          testDb.pragma('cipher_kdf_algorithm=PBKDF2_HMAC_SHA512');
           const dbKeyHex = await deriveKey(password, dbSalt);
-          testDb.pragma(`key="x'${dbKeyHex}'"`);
+          applyCipherPragmas(testDb, dbKeyHex);
           try {
             testDb.prepare('SELECT id FROM users WHERE id = 1').get();
           } catch {
@@ -125,41 +127,51 @@ export function registerBackupHandlers(): void {
           await fs.unlink(tmpDbPath).catch(() => {});
         }
 
-        stopPoller();
-        clearExtensionSession();
-        closeDatabase();
+        // Beyond this point the vault is closed; always lock the UI in finally.
+        let vaultClosed = false;
+        try {
+          stopPoller();
+          clearExtensionSession();
+          closeDatabase();
+          vaultClosed = true;
 
-        await fs.writeFile(dbPath, dbBuf, { mode: 0o600 });
-        await fs.writeFile(saltPath, dbSalt, { mode: 0o600 });
+          await fs.writeFile(dbPath, dbBuf, { mode: 0o600 });
+          await fs.writeFile(saltPath, dbSalt, { mode: 0o600 });
 
-        // Restore screenshots only after the DB is confirmed and written.
-        // Clear the existing folder first so stale screenshots from the previous
-        // vault don't linger alongside the restored ones.
-        await fs.rm(screenshotsPath, { recursive: true, force: true });
-        await fs.mkdir(screenshotsPath, { recursive: true });
-        if (screensWritten) {
-          for (const file of await fs.readdir(tmpScreensDir)) {
-            const src = path.join(tmpScreensDir, file);
-            const dst = path.join(screenshotsPath, file);
-            try {
-              await fs.rename(src, dst);
-            } catch (err) {
-              if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
-              await fs.copyFile(src, dst);
-              await fs.chmod(dst, 0o600);
+          // Restore screenshots only after the DB is confirmed and written.
+          // Clear the existing folder first so stale screenshots from the previous
+          // vault don't linger alongside the restored ones.
+          await fs.rm(screenshotsPath, { recursive: true, force: true });
+          await fs.mkdir(screenshotsPath, { recursive: true });
+          if (screensWritten) {
+            for (const file of await fs.readdir(tmpScreensDir)) {
+              const src = path.join(tmpScreensDir, file);
+              const dst = path.join(screenshotsPath, file);
+              try {
+                await fs.rename(src, dst);
+              } catch (err) {
+                if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err;
+                await fs.copyFile(src, dst);
+                await fs.chmod(dst, 0o600);
+              }
             }
           }
-        }
 
-        if (win) {
-          win.setResizable(false);
-          win.setMinimumSize(0, 0);
-          win.setSize(AUTH_WIDTH, AUTH_HEIGHT, true);
-          win.center();
+          return { success: true };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        } finally {
+          // Always lock the UI once the vault is closed, regardless of outcome.
+          if (vaultClosed) {
+            if (win) {
+              win.setResizable(false);
+              win.setMinimumSize(0, 0);
+              win.setSize(AUTH_WIDTH, AUTH_HEIGHT, true);
+              win.center();
+            }
+            win?.webContents.send('app:locked');
+          }
         }
-        win?.webContents.send('app:locked');
-
-        return { success: true };
       } catch (err) {
         return { success: false, error: String(err) };
       } finally {

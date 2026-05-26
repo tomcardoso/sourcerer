@@ -26,6 +26,10 @@ export function packFiles(entries: Array<{ name: string; data: Buffer }>): Buffe
   return Buffer.concat(parts);
 }
 
+const MAX_ENTRY_NAME_LEN = 4096;
+export const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
+const MAX_ENTRY_DATA_LEN = MAX_BACKUP_BYTES;
+
 export function unpackFiles(buf: Buffer): Array<{ name: string; data: Buffer }> {
   const entries: Array<{ name: string; data: Buffer }> = [];
   let offset = 0;
@@ -33,6 +37,7 @@ export function unpackFiles(buf: Buffer): Array<{ name: string; data: Buffer }> 
     if (offset + 8 > buf.length) throw new Error('Corrupted backup: truncated entry header.');
     const nameLen = buf.readUInt32LE(offset); offset += 4;
     const dataLen = buf.readUInt32LE(offset); offset += 4;
+    if (nameLen > MAX_ENTRY_NAME_LEN || dataLen > MAX_ENTRY_DATA_LEN) throw new Error('Corrupted backup: entry exceeds maximum allowed size.');
     if (offset + nameLen + dataLen > buf.length) throw new Error('Corrupted backup: entry length exceeds buffer.');
     const name = buf.subarray(offset, offset + nameLen).toString('utf8'); offset += nameLen;
     const data = buf.subarray(offset, offset + dataLen); offset += dataLen;
@@ -166,7 +171,7 @@ export async function* readBackupFile(
     if (!fileHeaderBuf.subarray(0, 4).equals(MAGIC)) throw new Error('Unrecognised backup file format.');
 
     const version = fileHeaderBuf.readUInt32LE(4);
-    if (version !== FORMAT_VERSION) throw new Error('This backup format is not supported. Please create a new backup.');
+    if (version > FORMAT_VERSION) throw new Error('This backup format is not supported. Please create a new backup.');
 
     const backupSalt = fileHeaderBuf.subarray(8, 40);
     const baseIV = fileHeaderBuf.subarray(40, 48);
@@ -192,6 +197,7 @@ export async function* readBackupFile(
         }
         const nameLen = pendingBufs[0].readUInt32LE(0);
         const dataLen = pendingBufs[0].readUInt32LE(4);
+        if (nameLen > MAX_ENTRY_NAME_LEN || dataLen > MAX_ENTRY_DATA_LEN) throw new Error('Corrupted backup: entry exceeds maximum allowed size.');
         const entrySize = 8 + nameLen + dataLen;
         if (pendingLen < entrySize) break;
         // Flatten exactly once per complete entry

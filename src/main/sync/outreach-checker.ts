@@ -19,7 +19,7 @@ interface OutreachRow {
 
 export function nextWeekday(unixSeconds: number): number {
   const d = new Date(unixSeconds * 1000);
-  const day = d.getUTCDay();
+  const day = d.getDay();
   if (day === 6) return unixSeconds + 2 * 86400; // Saturday → Monday
   if (day === 0) return unixSeconds + 86400;      // Sunday → Monday
   return unixSeconds;

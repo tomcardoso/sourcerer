@@ -27,6 +27,7 @@
 
 .virt-spacer {
   padding: 0;
+  height: var(--spacer-height, 0);
 }
 
 .contacts-table {

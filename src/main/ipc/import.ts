@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase } from '../database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
-import type { User, ImportResult } from '@shared/types';
+import type { User, ImportResult, ContactHandleType } from '@shared/types';
 
 const SAMPLE_HEADERS =
   'Name,Organization,Title,DOB,Notes,Email,Phone,LinkedIn,X,Website,Theme,Status,Priority\n';
@@ -74,7 +74,7 @@ export interface VcfContact {
   emails: string[];
   phones: string[];
   urls: string[];
-  handles: Array<{ type: string; handle: string }>;
+  handles: Array<{ type: ContactHandleType; handle: string }>;
 }
 
 function parseBday(value: string): string | null {
@@ -159,7 +159,7 @@ export function parseVcf(text: string): VcfContact[] {
         let handle = '';
         try { handle = decodeURIComponent(value.slice(schemeColon + 1)).trim(); } catch { handle = value.slice(schemeColon + 1).trim(); }
         if (!handle) break;
-        const typeMap: Record<string, string> = { signal: 'signal', whatsapp: 'whatsapp', telegram: 'telegram' };
+        const typeMap: Record<string, ContactHandleType> = { signal: 'signal', whatsapp: 'whatsapp', telegram: 'telegram' };
         cur.handles.push({ type: typeMap[scheme] ?? 'other', handle });
         break;
       }

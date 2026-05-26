@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 
+
 export interface SyncResult {
   success: boolean;
   error?: string;
@@ -93,12 +94,13 @@ function adoptSharedUuid(local: Database.Database, fromId: string, toId: string)
       'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     .run(toId, c.name, c.organization, c.title ?? null, c.dob ?? null, c.notes, c.created_at, c.updated_at, null);
-  // Remap every table with a contact_id FK — derived at runtime so new tables are never missed.
+  // Remap every table with a FK pointing at contacts — derived at runtime so new tables are never missed.
   const allTableNames = (local.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
   for (const table of allTableNames) {
+    if (table === 'dedup_dismissed_pairs') continue; // handled below
     const fks = local.prepare(`PRAGMA foreign_key_list("${table}")`).all() as { from: string; table: string }[];
-    if (fks.some((fk) => fk.from === 'contact_id' && fk.table === 'contacts')) {
-      local.prepare(`UPDATE "${table}" SET contact_id = ? WHERE contact_id = ?`).run(toId, fromId);
+    for (const fk of fks.filter((f) => f.table === 'contacts')) {
+      local.prepare(`UPDATE "${table}" SET "${fk.from}" = ? WHERE "${fk.from}" = ?`).run(toId, fromId);
     }
   }
   // dedup_dismissed_pairs has two separate contact FK columns — remap before delete
@@ -472,7 +474,22 @@ function pullAppendOnly(
   local: Database.Database,
   shared: Database.Database,
 ): void {
-  for (const sm of shared.prepare('SELECT * FROM contact_alert_mentions').all() as {
+  // Use high-watermarks to avoid loading entire shared tables on every sync.
+  // INSERT OR IGNORE is idempotent so re-fetching rows we already have is safe;
+  // the watermark merely avoids the memory cost of loading them all upfront.
+
+  const maxFetchedAt = (local
+    .prepare('SELECT COALESCE(MAX(fetched_at), 0) AS m FROM contact_alert_mentions')
+    .get() as { m: number }).m;
+
+  // Subtract a 30-second overlap window so rows that arrive late (due to clock
+  // skew between clients) are always eventually reconciled. Duplicates are safe
+  // because the INSERT below uses OR IGNORE.
+  const fetchedAtWatermark = Math.max(0, maxFetchedAt - 30);
+
+  for (const sm of shared.prepare(
+    'SELECT * FROM contact_alert_mentions WHERE fetched_at >= ?',
+  ).all(fetchedAtWatermark) as {
     id: string;
     contact_id: string;
     headline: string;
@@ -488,19 +505,19 @@ function pullAppendOnly(
            (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(
-        sm.id,
-        sm.contact_id,
-        sm.headline,
-        sm.source_url,
-        sm.published_at,
-        sm.fetched_at,
-        sm.guid,
-        sm.seen,
-      );
+      .run(sm.id, sm.contact_id, sm.headline, sm.source_url, sm.published_at, sm.fetched_at, sm.guid, sm.seen);
   }
 
-  for (const se of shared.prepare('SELECT * FROM interaction_log_entries').all() as {
+  const maxCreatedAt = (local
+    .prepare('SELECT COALESCE(MAX(created_at), 0) AS m FROM interaction_log_entries')
+    .get() as { m: number }).m;
+
+  // Same 30-second overlap window as above.
+  const createdAtWatermark = Math.max(0, maxCreatedAt - 30);
+
+  for (const se of shared.prepare(
+    'SELECT * FROM interaction_log_entries WHERE created_at >= ?',
+  ).all(createdAtWatermark) as {
     id: string;
     contact_id: string;
     reporter_email: string;
@@ -517,7 +534,11 @@ function pullAppendOnly(
       .run(se.id, se.contact_id, se.reporter_email, se.reporter_name, se.body, se.created_at);
   }
 
-  for (const sip of shared.prepare('SELECT * FROM interaction_projects').all() as {
+  for (const sip of shared.prepare(
+    `SELECT ip.* FROM interaction_projects ip
+     JOIN interaction_log_entries ile ON ile.id = ip.interaction_id
+     WHERE ile.created_at >= ?`,
+  ).all(createdAtWatermark) as {
     interaction_id: string;
     membership_id: string;
   }[]) {

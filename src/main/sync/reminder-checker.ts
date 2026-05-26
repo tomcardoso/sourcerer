@@ -41,9 +41,10 @@ export function checkReminders(): void {
   for (const row of rows) {
     if (notifiedThisSession.has(row.id)) continue;
     notifiedThisSession.add(row.id);
-    stamp.run(now, row.id);
 
     if (!notificationsEnabled) continue;
+
+    stamp.run(now, row.id);
 
     const body = row.note
       ? (row.project_name ? `${row.project_name} · ${row.note}` : row.note)

@@ -38,31 +38,6 @@ export default function ScreenshotPanel({ contactId }: Props) {
   }, [contactId]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadAll() {
-      for (const s of screenshots) {
-        if (cancelled) return;
-        if (screenshotImagesRef.current[s.id]) continue;
-        const result = await window.sourcerer.loadScreenshot(s.id);
-        if (cancelled) return;
-        if ('data' in result) {
-          setScreenshotImages((prev) => ({ ...prev, [s.id]: result.data }));
-        } else {
-          console.error('[screenshot] load failed for', s.id, '—', result.error);
-          setScreenshotImages((prev) => ({ ...prev, [s.id]: `error:${result.error}` }));
-        }
-      }
-    }
-
-    loadAll().catch(console.error);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [screenshots]);
-
-  useEffect(() => {
     if (viewingScreenshot) {
       viewerRef.current?.focus();
       setZoomMode('fit');

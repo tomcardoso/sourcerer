@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
-import { fmtDateFull } from '../utils/fmtDate';
+import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
@@ -383,7 +383,7 @@ function RemindersSection({
     if (!dueDate || !note.trim() || addingSaving) return;
     setAddingSaving(true);
     try {
-      const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
+      const ts = dateStrToUnix(dueDate);
       const r = await window.sourcerer.createReminder({
         contactId,
         projectId,
@@ -412,7 +412,7 @@ function RemindersSection({
 
   async function handleSaveEdit(id: string) {
     if (!editDueDate || !editNote.trim()) return;
-    const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
+    const ts = dateStrToUnix(editDueDate);
     try {
       const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
       setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));

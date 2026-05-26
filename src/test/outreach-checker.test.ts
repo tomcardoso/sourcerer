@@ -28,20 +28,19 @@ import { broadcastRemindersChanged } from '../main/ipc/reminders';
 const broadcast = vi.mocked(broadcastRemindersChanged);
 
 describe('nextWeekday', () => {
-  // Jan 6 2024 = Saturday, Jan 7 = Sunday, Jan 8 = Monday (UTC)
-  const saturday = Date.UTC(2024, 0, 6) / 1000;
-  const sunday   = Date.UTC(2024, 0, 7) / 1000;
-  const monday   = Date.UTC(2024, 0, 8) / 1000;
-  const tuesday  = Date.UTC(2024, 0, 9) / 1000;
+  // Noon local time — unambiguously the correct calendar day regardless of system timezone.
+  // Jan 6 2024 = Saturday, Jan 7 = Sunday, Jan 8 = Monday, Jan 9 = Tuesday.
+  const saturday = new Date(2024, 0, 6, 12, 0, 0).getTime() / 1000;
+  const sunday   = new Date(2024, 0, 7, 12, 0, 0).getTime() / 1000;
+  const monday   = new Date(2024, 0, 8, 12, 0, 0).getTime() / 1000;
+  const tuesday  = new Date(2024, 0, 9, 12, 0, 0).getTime() / 1000;
 
   it('advances Saturday by 2 days to Monday', () => {
     expect(nextWeekday(saturday)).toBe(saturday + 2 * 86400);
-    expect(nextWeekday(saturday)).toBe(monday);
   });
 
   it('advances Sunday by 1 day to Monday', () => {
     expect(nextWeekday(sunday)).toBe(sunday + 86400);
-    expect(nextWeekday(sunday)).toBe(monday);
   });
 
   it('leaves a weekday (Tuesday) unchanged', () => {

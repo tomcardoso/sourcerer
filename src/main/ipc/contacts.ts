@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow, net } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
+import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
@@ -30,6 +31,17 @@ import type { DuplicatePair } from '@shared/types';
 
 let cachedPairs: DuplicatePair[] = [];
 let dedupScanTimer: ReturnType<typeof setTimeout> | null = null;
+
+type Db = ReturnType<typeof getDatabase>;
+let _stmtDb: Db | null = null;
+const _stmtCache = new Map<string, Database.Statement<unknown[]>>();
+
+function stmt(db: Db, sql: string): Database.Statement<unknown[]> {
+  if (_stmtDb !== db) { _stmtCache.clear(); _stmtDb = db; }
+  let s = _stmtCache.get(sql);
+  if (!s) { s = db.prepare(sql); _stmtCache.set(sql, s); }
+  return s;
+}
 
 export async function triggerWaybackSave(contactId: string, url: string): Promise<void> {
   console.log(`[wayback] Requesting archive for ${url}`);
@@ -145,9 +157,9 @@ export function broadcastContactsChanged(): void {
 
 export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
-    const rows = getDatabase()
-      .prepare(
-        `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
+    const db = getDatabase();
+    const rows = stmt(db,
+        `SELECT c.id, c.name, c.organization, c.title, c.notes, c.created_at,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
                 (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
@@ -170,6 +182,7 @@ export function registerContactHandlers(): void {
       id: string;
       name: string;
       organization: string | null;
+      title: string | null;
       notes: string | null;
       created_at: number;
       has_email: 0 | 1;
@@ -185,6 +198,7 @@ export function registerContactHandlers(): void {
       id: row.id,
       name: row.name,
       organization: row.organization,
+      title: row.title,
       notes: row.notes,
       created_at: row.created_at,
       has_email: row.has_email,
@@ -201,8 +215,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:get', (_, id: string): ContactDetail => {
     const db = getDatabase();
-    const contact = db
-      .prepare('SELECT id, name, organization, title, dob, notes, default_membership_id, created_at, updated_at FROM contacts WHERE id = ?')
+    const contact = stmt(db, 'SELECT id, name, organization, title, dob, notes, default_membership_id, created_at, updated_at FROM contacts WHERE id = ?')
       .get(id) as {
       id: string;
       name: string;
@@ -215,35 +228,29 @@ export function registerContactHandlers(): void {
       updated_at: number;
     } | undefined;
     if (!contact) throw new Error(`Contact not found: ${id}`);
-    const emails = db
-      .prepare('SELECT id, email, label, sort_order FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
+    const emails = stmt(db, 'SELECT id, email, label, sort_order FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactEmail[];
-    const phones = db
-      .prepare('SELECT id, phone, label, sort_order FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
+    const phones = stmt(db, 'SELECT id, phone, label, sort_order FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactPhone[];
-    const links = db
-      .prepare('SELECT id, type, label, url, wayback_url, sort_order FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
+    const links = stmt(db, 'SELECT id, type, label, url, wayback_url, sort_order FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactLink[];
-    const handles = db
-      .prepare('SELECT id, type, handle, sort_order FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
+    const handles = stmt(db, 'SELECT id, type, handle, sort_order FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
       .all(id) as ContactHandle[];
-    const projects = db
-      .prepare(
-        `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
-                pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
-                pm.outreach_reminders_enabled, pm.reporter_conflict,
-                (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
-                 JOIN interaction_projects ip ON ip.interaction_id = ile.id
-                 WHERE ip.membership_id = pm.id) AS first_log_at,
-                (SELECT MAX(ile.created_at) FROM interaction_log_entries ile
-                 JOIN interaction_projects ip ON ip.interaction_id = ile.id
-                 WHERE ip.membership_id = pm.id) AS date_last_contacted
-         FROM project_memberships pm
-         JOIN projects p ON p.id = pm.project_id
-         WHERE pm.contact_id = ?
-         ORDER BY p.name ASC`,
-      )
-      .all(id) as Omit<ContactProject, 'reporters'>[];
+    const projects = stmt(db,
+      `SELECT p.id, p.name, pm.id AS membership_id, pm.status, pm.priority,
+              pm.theme, pm.first_outreach_at, pm.reporter_name, pm.reporter_email,
+              pm.outreach_reminders_enabled, pm.reporter_conflict,
+              (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
+               JOIN interaction_projects ip ON ip.interaction_id = ile.id
+               WHERE ip.membership_id = pm.id) AS first_log_at,
+              (SELECT MAX(ile.created_at) FROM interaction_log_entries ile
+               JOIN interaction_projects ip ON ip.interaction_id = ile.id
+               WHERE ip.membership_id = pm.id) AS date_last_contacted
+       FROM project_memberships pm
+       JOIN projects p ON p.id = pm.project_id
+       WHERE pm.contact_id = ?
+       ORDER BY p.name ASC`,
+    ).all(id) as Omit<ContactProject, 'reporters'>[];
 
     const membershipIds = projects.map((p) => p.membership_id);
     const allReporters = membershipIds.length
@@ -267,17 +274,14 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const id = uuidv4();
     const now = Math.floor(Date.now() / 1000);
-    const { phone_country, wayback_enabled } = db.prepare('SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
-
-    let emails: { email: string; label: string | null }[] = [];
-    let phones: { phone: string; label: string | null }[] = [];
+    const { phone_country, wayback_enabled } = stmt(db, 'SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
     const insert = db.transaction(() => {
       db.prepare(
         'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       ).run(id, data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, now);
 
-      emails = (data.emails ?? [])
+      const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
         .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
@@ -286,7 +290,7 @@ export function registerContactHandlers(): void {
         ).run(uuidv4(), id, e.email, e.label, i, now);
       });
 
-      phones = (data.phones ?? [])
+      const phones = (data.phones ?? [])
         .filter((p) => p.phone.trim())
         .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
         .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
@@ -320,20 +324,16 @@ export function registerContactHandlers(): void {
         triggerWaybackSave(id, link.url.trim()).catch(() => {});
       }
     }
-    return {
-      id,
-      name: data.name.trim(),
-      organization: data.organization?.trim() || null,
-      notes: data.notes?.trim() || null,
-      created_at: now,
-      has_email: emails.length > 0 ? 1 : 0,
-      has_phone: phones.length > 0 ? 1 : 0,
-      date_first_contacted: null,
-      date_last_contacted: null,
-      emails_raw: emails.map((e) => e.email).join(' ') || null,
-      phones_raw: phones.length > 0 ? phones.map((p) => p.phone).join(' ') : null,
-      projects: [],
-    };
+
+    const row = db.prepare(
+      `SELECT c.id, c.name, c.organization, c.title, c.notes, c.created_at,
+              EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
+              EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+              (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
+              (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw
+       FROM contacts c WHERE c.id = ?`,
+    ).get(id) as { id: string; name: string; organization: string | null; title: string | null; notes: string | null; created_at: number; has_email: 0|1; has_phone: 0|1; emails_raw: string|null; phones_raw: string|null };
+    return { ...row, date_first_contacted: null, date_last_contacted: null, projects: [] };
   });
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
@@ -404,30 +404,29 @@ export function registerContactHandlers(): void {
   );
 
   ipcMain.handle('contacts:list-for-project', (_, projectId: string): ProjectContactRow[] => {
-    return getDatabase()
-      .prepare(
-        `SELECT c.id, c.name, c.organization, c.notes,
-                pm.id AS membership_id, pm.created_at AS membership_created_at,
-                pm.reporter_name, pm.reporter_email,
-                pm.theme, pm.priority, pm.status,
-                EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
-                EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
-                (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
-                (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
-                (SELECT MIN(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_first_contacted,
-                (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted
-         FROM project_memberships pm
-         JOIN contacts c ON c.id = pm.contact_id
-         WHERE pm.project_id = ?
-         ORDER BY c.name COLLATE NOCASE ASC`,
-      )
-      .all(projectId) as ProjectContactRow[];
+    const db = getDatabase();
+    return stmt(db,
+      `SELECT c.id, c.name, c.organization, c.notes,
+              pm.id AS membership_id, pm.created_at AS membership_created_at,
+              pm.reporter_name, pm.reporter_email,
+              pm.theme, pm.priority, pm.status,
+              EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
+              EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
+              (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
+              (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
+              (SELECT MIN(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_first_contacted,
+              (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted
+       FROM project_memberships pm
+       JOIN contacts c ON c.id = pm.contact_id
+       WHERE pm.project_id = ?
+       ORDER BY c.name COLLATE NOCASE ASC`,
+    ).all(projectId) as ProjectContactRow[];
   });
 
   ipcMain.handle('contacts:update', (_, data: UpdateContactInput): void => {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
-    const { phone_country, wayback_enabled } = db.prepare('SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
+    const { phone_country, wayback_enabled } = stmt(db, 'SELECT phone_country, wayback_enabled FROM users WHERE id = 1').get() as { phone_country: string; wayback_enabled: number };
 
     // All pre-read snapshots (created_at timestamps, wayback URLs) and writes are
     // inside a single transaction to eliminate the TOCTOU window between the reads
@@ -435,62 +434,61 @@ export function registerContactHandlers(): void {
     let existingWaybacks = new Map<string, string | null>();
     const run = db.transaction(() => {
       // Preserve existing website Wayback URLs before re-insert
-      const existingWebsites = db
-        .prepare("SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
+      const existingWebsites = stmt(db, "SELECT url, wayback_url FROM contact_links WHERE contact_id = ? AND type = 'website'")
         .all(data.id) as { url: string; wayback_url: string | null }[];
       existingWaybacks = new Map(existingWebsites.map((r) => [r.url, r.wayback_url]));
 
       // Snapshot created_at values keyed by normalised value so they survive the re-insert.
       const existingEmailCreatedAt = new Map(
-        (db.prepare('SELECT email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { email: string; created_at: number }[])
+        (stmt(db, 'SELECT email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { email: string; created_at: number }[])
           .map((r) => [r.email, r.created_at])
       );
       const existingPhoneCreatedAt = new Map(
-        (db.prepare('SELECT phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { phone: string; created_at: number }[])
+        (stmt(db, 'SELECT phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { phone: string; created_at: number }[])
           .map((r) => [r.phone, r.created_at])
       );
       const existingLinkCreatedAt = new Map(
-        (db.prepare('SELECT url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { url: string; created_at: number }[])
+        (stmt(db, 'SELECT url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { url: string; created_at: number }[])
           .map((r) => [r.url.trim(), r.created_at])
       );
 
-      db.prepare(
+      stmt(db,
         'UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ? WHERE id = ?',
       ).run(data.name.trim(), data.organization?.trim() || null, data.title?.trim() || null, /^\d{4}-\d{2}-\d{2}$/.test(data.dob?.trim() ?? '') ? data.dob!.trim() : null, data.notes?.trim() || null, now, data.id);
 
-      db.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
+      stmt(db, 'DELETE FROM contact_emails WHERE contact_id = ?').run(data.id);
       const emails = (data.emails ?? [])
         .map((e) => ({ email: normalizeEmail(e.email), label: e.label?.trim() || null }))
         .filter((e) => e.email && validateEmail(e.email));
       emails.forEach((e, i) => {
-        db.prepare(
+        stmt(db,
           'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, e.email, e.label, i, existingEmailCreatedAt.get(e.email) ?? now);
       });
 
-      db.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
+      stmt(db, 'DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
       const phones = (data.phones ?? [])
         .filter((p) => p.phone.trim())
         .map((p) => ({ phone: normalizePhone(p.phone, phone_country), label: p.label?.trim() || null }))
         .filter((p): p is { phone: string; label: string | null } => p.phone !== null);
       phones.forEach((p, i) => {
-        db.prepare(
+        stmt(db,
           'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, p.phone, p.label, i, existingPhoneCreatedAt.get(p.phone) ?? now);
       });
 
-      db.prepare('DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
+      stmt(db, 'DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
       const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim() && validateUrl(l.url));
       links.forEach((link: ContactLinkInput, i: number) => {
-        db.prepare(
+        stmt(db,
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i, existingLinkCreatedAt.get(link.url.trim()) ?? now);
       });
 
-      db.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(data.id);
+      stmt(db, 'DELETE FROM contact_handles WHERE contact_id = ?').run(data.id);
       const handles = (data.handles ?? []).filter((h: ContactHandleInput) => h.handle.trim() && h.type.trim());
       handles.forEach((h: ContactHandleInput, i: number) => {
-        db.prepare(
+        stmt(db,
           'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, h.type.trim(), h.handle.trim(), i, now);
       });
@@ -498,7 +496,7 @@ export function registerContactHandlers(): void {
       // Restore wayback_urls for previously saved website links
       for (const [url, waybackUrl] of existingWaybacks) {
         if (waybackUrl) {
-          db.prepare(
+          stmt(db,
             "UPDATE contact_links SET wayback_url = ? WHERE contact_id = ? AND type = 'website' AND url = ?"
           ).run(waybackUrl, data.id, url);
         }
@@ -813,15 +811,13 @@ export function registerContactHandlers(): void {
   });
 
   ipcMain.handle('status-options:list', (): StatusOption[] => {
-    return getDatabase()
-      .prepare('SELECT * FROM status_options ORDER BY sort_order ASC')
-      .all() as StatusOption[];
+    const db = getDatabase();
+    return stmt(db, 'SELECT * FROM status_options ORDER BY sort_order ASC').all() as StatusOption[];
   });
 
   ipcMain.handle('priority-options:list', (): PriorityOption[] => {
-    return getDatabase()
-      .prepare('SELECT * FROM priority_options ORDER BY sort_order ASC')
-      .all() as PriorityOption[];
+    const db = getDatabase();
+    return stmt(db, 'SELECT * FROM priority_options ORDER BY sort_order ASC').all() as PriorityOption[];
   });
 
   ipcMain.handle(
@@ -882,7 +878,12 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'contacts:merge',
     (_, { winnerId, loserId, strategy }: { winnerId: string; loserId: string; strategy: 'keep' | 'merge' | 'skip' }): void => {
+      if (winnerId === loserId) throw new Error('winnerId and loserId must be different');
+      if (!['keep', 'merge', 'skip'].includes(strategy)) throw new Error('Invalid strategy');
       const db = getDatabase();
+      const winnerExists = db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(winnerId);
+      const loserExists = db.prepare('SELECT 1 FROM contacts WHERE id = ?').get(loserId);
+      if (!winnerExists || !loserExists) throw new Error('Contact not found');
       if (strategy === 'skip') {
         dismissPair(db, winnerId, loserId);
       } else {
