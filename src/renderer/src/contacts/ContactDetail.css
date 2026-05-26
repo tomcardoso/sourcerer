@@ -954,12 +954,71 @@
 
 /* Scratchpad */
 .pt-draft {
-  border: 1px solid var(--color-border);
-  padding: 10px;
-  margin-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+  padding: 13px 0;
   background: var(--color-bg);
 }
 
+.pt-draft--editing {
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* View mode (read-only) */
+.pt-draft-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pt-draft-view-label {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-serif);
+  color: var(--color-text);
+}
+
+.pt-draft-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pt-draft-view-body {
+  font-size: 13px;
+  font-family: var(--font-serif);
+  color: var(--color-text);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.pt-draft-view-body p {
+  margin: 0;
+  word-break: break-word;
+}
+
+.pt-draft-view-body p:not(:last-child) {
+  padding-bottom: 10px;
+}
+
+.pt-draft-view-body--empty {
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+
+.pt-draft-view-meta {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+/* Edit mode */
 .pt-draft-header {
   display: flex;
   gap: 6px;
@@ -987,8 +1046,9 @@
 .pt-draft-delete {
   background: none;
   border: none;
-  font-size: 16px;
-  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--color-text-dim);
   cursor: pointer;
   padding: 0 4px;
   flex-shrink: 0;

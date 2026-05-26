@@ -36,6 +36,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
   const [stalenessThresholdInput, setStalenessThresholdInput] = useState<string>('90');
   const [calendarRegenConfirm, setCalendarRegenConfirm] = useState(false);
   const [calendarUrl, setCalendarUrl] = useState('');
+  const [calendarUrlCopied, setCalendarUrlCopied] = useState(false);
 
   const [screenshotFolderBytes, setScreenshotFolderBytes] = useState<number>(0);
 
@@ -448,10 +449,14 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
               variant="secondary"
               size="sm"
               onClick={() => {
-                if (calendarUrl) navigator.clipboard.writeText(calendarUrl);
+                if (!calendarUrl) return;
+                navigator.clipboard.writeText(calendarUrl).then(() => {
+                  setCalendarUrlCopied(true);
+                  setTimeout(() => setCalendarUrlCopied(false), 2000);
+                });
               }}
             >
-              Copy
+              {calendarUrlCopied ? 'Copied!' : 'Copy'}
             </Button>
           </div>
           {calendarRegenConfirm ? (
