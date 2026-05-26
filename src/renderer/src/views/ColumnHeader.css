@@ -84,6 +84,8 @@
 
 .col-filter-dropdown {
   position: fixed;
+  top: var(--dropdown-top);
+  left: var(--dropdown-left);
   min-width: 190px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);

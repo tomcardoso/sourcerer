@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ContactDetail as ContactDetailType, Reminder } from '@shared/types';
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
+import { dateStrToUnix } from '../utils/fmtDate';
 import './ContactDetail.css';
 
 export default function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
@@ -54,7 +55,7 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
     if (!dueDate || !note.trim() || addingSaving) return;
     setAddingSaving(true);
     try {
-      const ts = Math.floor(new Date(`${dueDate}T09:00:00`).getTime() / 1000);
+      const ts = dateStrToUnix(dueDate);
       const r = await window.sourcerer.createReminder({
         contactId: contact.id,
         projectId: selectedProjectId ?? undefined,
@@ -81,7 +82,7 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
 
   async function handleSaveEdit(id: string) {
     if (!editDueDate || !editNote.trim()) return;
-    const ts = Math.floor(new Date(`${editDueDate}T09:00:00`).getTime() / 1000);
+    const ts = dateStrToUnix(editDueDate);
     try {
       const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
       setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
