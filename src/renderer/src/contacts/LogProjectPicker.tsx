@@ -53,7 +53,8 @@ export default function LogProjectPicker({ projects, selectedIds, onChange, lock
                 type="button"
                 className="lpp-tag-remove"
                 aria-label={`Remove ${p.name}`}
-                onMouseDown={(e) => { e.stopPropagation(); remove(p.membership_id); }}
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => { e.stopPropagation(); remove(p.membership_id); }}
               >×</button>
             )}
           </span>
@@ -68,7 +69,14 @@ export default function LogProjectPicker({ projects, selectedIds, onChange, lock
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          onKeyDown={listbox.handleInputKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' && query === '' && selected.length > 0) {
+              e.preventDefault();
+              remove(selected[selected.length - 1].membership_id);
+              return;
+            }
+            listbox.handleInputKeyDown(e);
+          }}
         />
       </div>
       {open && available.length > 0 && (

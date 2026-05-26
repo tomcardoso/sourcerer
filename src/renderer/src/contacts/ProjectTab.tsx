@@ -802,7 +802,9 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
                   {r.name}
                   <button
                     className="pt-reporter-chip-remove"
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeReporter(r.email); }}
+                    aria-label={`Remove ${r.name}`}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onClick={(e) => { e.stopPropagation(); removeReporter(r.email); }}
                   >×</button>
                 </span>
               ))}

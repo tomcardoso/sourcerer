@@ -61,6 +61,7 @@ export function useListboxKeyboard({
       } else if (e.key === 'Escape') {
         if (isOpen) {
           e.preventDefault();
+          e.stopPropagation();
           onClose();
         }
       }
