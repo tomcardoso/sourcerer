@@ -507,7 +507,7 @@ function RemindersSection({
         return (
           <div key={r.id} className={`pt-reminder-row${overdue ? ' pt-reminder-row--overdue' : ''}${done ? ' pt-reminder-row--completing' : ''}`}>
             <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
-              {fmtReminderDate(r.due_date, overdue)}
+              {fmtReminderDate(r.due_date, overdue, now)}
             </div>
             <div className="pt-reminder-row-note">{r.note || ''}</div>
             {!done && (

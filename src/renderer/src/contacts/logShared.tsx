@@ -9,8 +9,7 @@ export function sortReminders(a: Reminder, b: Reminder): number {
   return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
 }
 
-export function fmtReminderDate(ts: number, overdue: boolean): string {
-  const now = Math.floor(Date.now() / 1000);
+export function fmtReminderDate(ts: number, overdue: boolean, now: number): string {
   const d = new Date(ts * 1000);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
