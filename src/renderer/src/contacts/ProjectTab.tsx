@@ -4,7 +4,7 @@ import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
-import { LogRow, LogAllModal } from './logShared';
+import { LogRow, LogAllModal, fmtReminderDate, sortReminders } from './logShared';
 import LogProjectPicker from './LogProjectPicker';
 import './ContactDetail.css';
 import type {
@@ -375,10 +375,6 @@ function RemindersSection({
     return () => { cancelled = true; };
   }, [contactId, projectId, refreshToken]);
 
-  function sortReminders(a: Reminder, b: Reminder) {
-    return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
-  }
-
   async function handleAdd() {
     if (!dueDate || !note.trim() || addingSaving) return;
     setAddingSaving(true);
@@ -452,19 +448,6 @@ function RemindersSection({
 
   const now = Math.floor(Date.now() / 1000);
 
-  function fmtReminderDate(ts: number, overdue: boolean): string {
-    const d = new Date(ts * 1000);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const dateStr = `${mm}.${dd}`;
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const dayName = days[d.getDay()];
-    const diffDays = Math.ceil((ts - now) / 86400);
-    if (overdue) return `WAS ${dayName} · ${dateStr}`;
-    if (diffDays <= 7) return `${dayName} · ${dateStr}`;
-    return dateStr;
-  }
-
   return (
     <div className="pt-section">
       <div className="pt-reminders-header">
@@ -525,7 +508,7 @@ function RemindersSection({
         return (
           <div key={r.id} className={`pt-reminder-row${overdue ? ' pt-reminder-row--overdue' : ''}${done ? ' pt-reminder-row--completing' : ''}`}>
             <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
-              {fmtReminderDate(r.due_date, overdue)}
+              {fmtReminderDate(r.due_date, overdue, now)}
             </div>
             <div className="pt-reminder-row-note">{r.note || ''}</div>
             {!done && (

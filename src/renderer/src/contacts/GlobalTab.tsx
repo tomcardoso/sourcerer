@@ -5,15 +5,15 @@ import GlobalLogSection from './GlobalLogSection';
 import GlobalRemindersSection from './GlobalRemindersSection';
 import DynamicList, { useDragReorder } from './DynamicList';
 import {
-  isValidEmail,
-  isValidUrl,
   isGoogleAlertUrl,
   hasDisallowedPhoneChars,
   normalizePhoneForComparison,
   sanitizeOtherLabel,
   OTHER_LABEL_MAX,
-  findDuplicates,
 } from './contactValidation';
+import { NON_OTHER_SOCIAL_TYPES, SOCIAL_TYPES, SOCIAL_META, localToday } from './contactConstants';
+import type { SocialType, NonOtherSocialType } from './contactConstants';
+import { useContactFieldValidation } from './useContactFieldValidation';
 import { CalendarPicker } from '../views/CalendarPicker';
 import RssAlertPanel from './RssAlertPanel';
 import ScreenshotPanel from './ScreenshotPanel';
@@ -31,22 +31,8 @@ interface Props {
   user?: User | null;
 }
 
-const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook', 'other'] as const;
-type SocialType = (typeof SOCIAL_TYPES)[number];
-
 import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
 import type { HandleType } from './handleMeta';
-
-const NON_OTHER_SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
-type NonOtherSocialType = (typeof NON_OTHER_SOCIAL_TYPES)[number];
-
-const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
-  linkedin:  { label: 'LinkedIn',    placeholder: 'https://linkedin.com/in/…' },
-  x:         { label: 'X / Twitter', placeholder: 'https://x.com/…' },
-  instagram: { label: 'Instagram',   placeholder: 'https://instagram.com/…' },
-  facebook:  { label: 'Facebook',    placeholder: 'https://facebook.com/…' },
-  'other':  { label: 'Other social',    placeholder: 'https://…' },
-};
 
 const KNOWN_LINK_TYPES = new Set<string>([...SOCIAL_TYPES, 'website']);
 
@@ -113,31 +99,39 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const { getDragProps: otherSocialDragProps, handleProps: otherSocialHandleProps } = useDragReorder(editOtherSocials, setEditOtherSocials);
   const [editWebsites, setEditWebsites] = useState<string[]>([]);
   const [newRssUrl, setNewRssUrl] = useState('');
-  const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
-  const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
-  const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
-  const [phoneFormatWarnings, setPhoneFormatWarnings] = useState<Record<string, true>>({});
-  const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
-
-  // Computed within-form duplicate sets — derived from state, no extra state needed.
-  const emailDuplicates = useMemo(
-    () => findDuplicates(editEmails.map((e) => e.email.trim().toLowerCase())),
-    [editEmails],
-  );
-
-  const phoneDuplicates = useMemo(
-    () => findDuplicates(editPhones.map((p) => normalizePhoneForComparison(p.phone))),
-    [editPhones],
-  );
-
-  const urlDuplicates = useMemo(
-    () => findDuplicates([
+  const urlValues = useMemo(
+    () => [
       ...editWebsites,
       ...NON_OTHER_SOCIAL_TYPES.flatMap((t) => editSocials[t]),
       ...editOtherSocials.map((e) => e.url),
-    ].map((u) => u.trim())),
+    ],
     [editWebsites, editSocials, editOtherSocials],
   );
+
+  const {
+    emailCollisions,
+    phoneCollisions,
+    emailFormatWarnings,
+    phoneFormatWarnings,
+    urlFormatWarnings,
+    emailDuplicates,
+    phoneDuplicates,
+    urlDuplicates,
+    checkEmailBlur,
+    checkPhoneBlur,
+    clearEmailWarnings,
+    clearPhoneWarnings,
+    updatePhoneFormatWarning,
+    clearUrlWarning,
+    updateUrlFormatWarning,
+    resetAll,
+  } = useContactFieldValidation({
+    excludeId: contact.id,
+    mounted,
+    emails: editEmails,
+    phones: editPhones,
+    urlValues,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -147,43 +141,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     return () => { cancelled = true; };
   }, [contact.id]);
 
-
-  async function checkEmailBlur(value: string) {
-    if (!value) return;
-    const valid = isValidEmail(value);
-    setEmailFormatWarnings((prev) => {
-      const next = { ...prev };
-      if (!valid) next[value] = true; else delete next[value];
-      return next;
-    });
-    if (!valid) return;
-    const result = await window.sourcerer.checkCollision({ emails: [value], phones: [], excludeId: contact.id });
-    if (!mounted.current) return;
-    setEmailCollisions((prev) => {
-      const next = { ...prev };
-      if (result.email[value]) next[value] = result.email[value]; else delete next[value];
-      return next;
-    });
-  }
-
-  async function checkPhoneBlur(value: string) {
-    if (!value) return;
-    const [isValid, collision] = await Promise.all([
-      window.sourcerer.validatePhone(value),
-      window.sourcerer.checkCollision({ emails: [], phones: [value], excludeId: contact.id }),
-    ]);
-    if (!mounted.current) return;
-    setPhoneFormatWarnings((prev) => {
-      const next = { ...prev };
-      if (!isValid) next[value] = true; else delete next[value];
-      return next;
-    });
-    setPhoneCollisions((prev) => {
-      const next = { ...prev };
-      if (collision.phone[value]) next[value] = collision.phone[value]; else delete next[value];
-      return next;
-    });
-  }
 
   function setSocial(type: NonOtherSocialType, values: string[]) {
     setEditSocials((prev) => ({ ...prev, [type]: values }));
@@ -210,11 +167,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     );
     setEditWebsites(contact.links.filter((l) => l.type === 'website').map((l) => l.url));
     setNewRssUrl('');
-    setEmailCollisions({});
-    setPhoneCollisions({});
-    setEmailFormatWarnings({});
-    setPhoneFormatWarnings({});
-    setUrlFormatWarnings({});
+    resetAll();
     setEditingAndNotify(true);
   }
 
@@ -362,20 +315,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                     const next = [...editEmails];
                     next[i] = { ...next[i], email: e.target.value };
                     setEditEmails(next);
-                    if (prev) {
-                      setEmailFormatWarnings((w) => {
-                        if (!w[prev]) return w;
-                        const updated = { ...w };
-                        delete updated[prev];
-                        return updated;
-                      });
-                      setEmailCollisions((c) => {
-                        if (!c[prev]) return c;
-                        const updated = { ...c };
-                        delete updated[prev];
-                        return updated;
-                      });
-                    }
+                    if (prev) clearEmailWarnings(prev);
                   }}
                   onBlur={() => checkEmailBlur(entry.email.trim())}
                 />
@@ -442,19 +382,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                     next[i] = { ...next[i], phone: e.target.value };
                     setEditPhones(next);
                     const newVal = e.target.value.trim();
-                    if (prev && prev !== newVal) {
-                      setPhoneFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
-                      setPhoneCollisions((c) => { if (!c[prev]) return c; const u = { ...c }; delete u[prev]; return u; });
-                    }
-                    if (newVal) {
-                      setPhoneFormatWarnings((w) => {
-                        const bad = hasDisallowedPhoneChars(newVal);
-                        if (bad === !!w[newVal]) return w;
-                        const u = { ...w };
-                        if (bad) u[newVal] = true; else delete u[newVal];
-                        return u;
-                      });
-                    }
+                    if (prev && prev !== newVal) clearPhoneWarnings(prev);
+                    if (newVal) updatePhoneFormatWarning(newVal);
                   }}
                   onBlur={() => checkPhoneBlur(entry.phone.trim())}
                 />
@@ -556,18 +485,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
               values={editSocials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
-              onChangeItem={(oldVal) => {
-                if (!oldVal) return;
-                setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
-              }}
-              onBlurItem={(val) => {
-                if (!val) return;
-                setUrlFormatWarnings((prev) => {
-                  const next = { ...prev };
-                  if (!isValidUrl(val)) next[val] = true; else delete next[val];
-                  return next;
-                });
-              }}
+              onChangeItem={(oldVal) => { if (oldVal) clearUrlWarning(oldVal); }}
+              onBlurItem={(val) => { if (val) updateUrlFormatWarning(val); }}
               warnings={Object.fromEntries(
                 editSocials[type]
                   .map((v) => v.trim())
@@ -616,18 +535,11 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                     const next = [...editOtherSocials];
                     next[i] = { ...next[i], url: e.target.value };
                     setEditOtherSocials(next);
-                    if (prev) {
-                      setUrlFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
-                    }
+                    if (prev) clearUrlWarning(prev);
                   }}
                   onBlur={() => {
                     const val = entry.url.trim();
-                    if (!val) return;
-                    setUrlFormatWarnings((prev) => {
-                      const next = { ...prev };
-                      if (!isValidUrl(val)) next[val] = true; else delete next[val];
-                      return next;
-                    });
+                    if (val) updateUrlFormatWarning(val);
                   }}
                 />
                 <button
@@ -662,18 +574,8 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
             values={editWebsites}
             placeholder="https://example.com"
             onChange={setEditWebsites}
-            onChangeItem={(oldVal) => {
-              if (!oldVal) return;
-              setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
-            }}
-            onBlurItem={(val) => {
-              if (!val) return;
-              setUrlFormatWarnings((prev) => {
-                const next = { ...prev };
-                if (!isValidUrl(val)) next[val] = true; else delete next[val];
-                return next;
-              });
-            }}
+            onChangeItem={(oldVal) => { if (oldVal) clearUrlWarning(oldVal); }}
+            onBlurItem={(val) => { if (val) updateUrlFormatWarning(val); }}
             warnings={Object.fromEntries(
               editWebsites
                 .map((v) => v.trim())
@@ -725,11 +627,6 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     const d = new Date(`${dob}T12:00:00`);
     if (isNaN(d.getTime())) return dob;
     return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
-  }
-
-  function localToday(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   return (

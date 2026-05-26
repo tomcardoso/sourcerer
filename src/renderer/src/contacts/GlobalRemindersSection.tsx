@@ -3,6 +3,7 @@ import type { ContactDetail as ContactDetailType, Reminder } from '@shared/types
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
 import { dateStrToUnix } from '../utils/fmtDate';
+import { fmtReminderDate, sortReminders } from './logShared';
 import './ContactDetail.css';
 
 export default function GlobalRemindersSection({ contact }: { contact: ContactDetailType }) {
@@ -35,10 +36,6 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
     });
     return () => { cancelled = true; };
   }, [contact.id]);
-
-  function sortReminders(a: Reminder, b: Reminder) {
-    return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
-  }
 
   function handleStartAdd() {
     const defaultProject = contact.default_membership_id
@@ -111,19 +108,6 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
 
   const now = Math.floor(Date.now() / 1000);
 
-  function fmtReminderDate(ts: number, overdue: boolean): string {
-    const d = new Date(ts * 1000);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const dateStr = `${mm}.${dd}`;
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const dayName = days[d.getDay()];
-    const diffDays = Math.ceil((ts - now) / 86400);
-    if (overdue) return `WAS ${dayName} · ${dateStr}`;
-    if (diffDays <= 7) return `${dayName} · ${dateStr}`;
-    return dateStr;
-  }
-
   const manualReminders = reminders.filter((r) => r.is_auto_outreach === 0);
 
   return (
@@ -156,7 +140,7 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
         return (
           <div key={r.id} className={`pt-reminder-row${overdue ? ' pt-reminder-row--overdue' : ''}${done ? ' pt-reminder-row--completing' : ''}`}>
             <div className={`pt-reminder-row-date${overdue && !done ? ' pt-reminder-row-date--overdue' : ''}`}>
-              {fmtReminderDate(r.due_date, overdue)}
+              {fmtReminderDate(r.due_date, overdue, now)}
             </div>
             <div className="pt-reminder-row-body">
               <span>{r.note || ''}</span>

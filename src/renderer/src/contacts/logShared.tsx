@@ -1,9 +1,26 @@
 import { useState } from 'react';
-import type { InteractionLogEntry } from '@shared/types';
+import type { InteractionLogEntry, Reminder } from '@shared/types';
 import { linkifyText } from '../utils/linkify';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import './ContactDetail.css';
+
+export function sortReminders(a: Reminder, b: Reminder): number {
+  return b.is_auto_outreach - a.is_auto_outreach || a.due_date - b.due_date;
+}
+
+export function fmtReminderDate(ts: number, overdue: boolean, now: number): string {
+  const d = new Date(ts * 1000);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const dateStr = `${mm}.${dd}`;
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const dayName = days[d.getDay()];
+  const diffDays = Math.ceil((ts - now) / 86400);
+  if (overdue) return `WAS ${dayName} · ${dateStr}`;
+  if (diffDays <= 7) return `${dayName} · ${dateStr}`;
+  return dateStr;
+}
 
 function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
