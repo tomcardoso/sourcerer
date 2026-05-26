@@ -992,8 +992,16 @@
   color: var(--color-text-muted);
   line-height: 1.55;
   margin: 0;
+}
+
+.pt-draft-view-body p {
+  margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.pt-draft-view-body p:not(:last-child) {
+  padding-bottom: 10px;
 }
 
 .pt-draft-view-body--empty {

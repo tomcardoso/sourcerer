@@ -374,7 +374,11 @@ function ScratchpadSection({
                   </div>
                 </div>
                 {draft.body
-                  ? <p className="pt-draft-view-body">{draft.body}</p>
+                  ? (
+                    <div className="pt-draft-view-body">
+                      {draft.body.split(/\n\n+/).map((para, i) => <p key={i}>{para}</p>)}
+                    </div>
+                  )
                   : <p className="pt-draft-view-body pt-draft-view-body--empty">No content yet.</p>
                 }
                 <p className="pt-draft-view-meta">Updated {fmtLogDate(draft.updated_at)}</p>
