@@ -989,7 +989,7 @@
 .pt-draft-view-body {
   font-size: 13px;
   font-family: var(--font-serif);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   line-height: 1.55;
   margin: 0;
 }
@@ -1046,8 +1046,9 @@
 .pt-draft-delete {
   background: none;
   border: none;
-  font-size: 16px;
-  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--color-text-dim);
   cursor: pointer;
   padding: 0 4px;
   flex-shrink: 0;
