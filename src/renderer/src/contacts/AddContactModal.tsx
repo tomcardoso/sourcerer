@@ -5,12 +5,12 @@ import Button from '../shell/Button';
 import DynamicList from './DynamicList';
 import { CalendarPicker } from '../views/CalendarPicker';
 import {
-  isValidEmail,
-  isValidUrl,
   hasDisallowedPhoneChars,
   normalizePhoneForComparison,
-  findDuplicates,
 } from './contactValidation';
+import { NON_OTHER_SOCIAL_TYPES, SOCIAL_META, localToday } from './contactConstants';
+import type { NonOtherSocialType } from './contactConstants';
+import { useContactFieldValidation } from './useContactFieldValidation';
 import Modal from '../shell/Modal';
 import './AddContactModal.css';
 
@@ -19,23 +19,8 @@ interface Props {
   onCancel: () => void;
 }
 
-const SOCIAL_TYPES = ['linkedin', 'x', 'instagram', 'facebook'] as const;
-type SocialType = (typeof SOCIAL_TYPES)[number];
-
-const SOCIAL_META: Record<SocialType, { label: string; placeholder: string }> = {
-  linkedin:  { label: 'LinkedIn',   placeholder: 'https://linkedin.com/in/…' },
-  x:         { label: 'X / Twitter', placeholder: 'https://x.com/…' },
-  instagram: { label: 'Instagram',  placeholder: 'https://instagram.com/…' },
-  facebook:  { label: 'Facebook',   placeholder: 'https://facebook.com/…' },
-};
-
 import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
 import type { HandleType } from './handleMeta';
-
-function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [name, setName] = useState('');
@@ -45,7 +30,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [emails, setEmails] = useState<Array<{ email: string; label: string }>>([{ email: '', label: '' }]);
   const [phones, setPhones] = useState<Array<{ phone: string; label: string }>>([{ phone: '', label: '' }]);
   const [websites, setWebsites] = useState<string[]>(['']);
-  const [socials, setSocials] = useState<Record<SocialType, string[]>>({
+  const [socials, setSocials] = useState<Record<NonOtherSocialType, string[]>>({
     linkedin: [''], x: [], instagram: [], facebook: [],
   });
   const [handles, setHandles] = useState<Array<{ type: HandleType; handle: string }>>([]);
@@ -53,27 +38,31 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [emailCollisions, setEmailCollisions] = useState<Record<string, string>>({});
-  const [phoneCollisions, setPhoneCollisions] = useState<Record<string, string>>({});
-  const [emailFormatWarnings, setEmailFormatWarnings] = useState<Record<string, true>>({});
-  const [phoneFormatWarnings, setPhoneFormatWarnings] = useState<Record<string, true>>({});
-  const [urlFormatWarnings, setUrlFormatWarnings] = useState<Record<string, true>>({});
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
-  // Computed within-form duplicate sets — derived from state, no extra state needed.
-  const emailDuplicates = useMemo(
-    () => findDuplicates(emails.map((e) => e.email.trim().toLowerCase())),
-    [emails],
-  );
-
-  const phoneDuplicates = useMemo(
-    () => findDuplicates(phones.map((p) => normalizePhoneForComparison(p.phone))),
-    [phones],
-  );
-
-  const urlDuplicates = useMemo(
-    () => findDuplicates([...websites, ...SOCIAL_TYPES.flatMap((t) => socials[t])].map((u) => u.trim())),
+  const urlValues = useMemo(
+    () => [...websites, ...NON_OTHER_SOCIAL_TYPES.flatMap((t) => socials[t])],
     [websites, socials],
   );
+
+  const {
+    emailCollisions,
+    phoneCollisions,
+    emailFormatWarnings,
+    phoneFormatWarnings,
+    urlFormatWarnings,
+    emailDuplicates,
+    phoneDuplicates,
+    urlDuplicates,
+    checkEmailBlur,
+    checkPhoneBlur,
+    clearEmailWarnings,
+    clearPhoneWarnings,
+    updatePhoneFormatWarning,
+    clearUrlWarning,
+    updateUrlFormatWarning,
+  } = useContactFieldValidation({ mounted, emails, phones, urlValues });
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
@@ -82,8 +71,6 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const projectWrapRef = useRef<HTMLDivElement>(null);
-  const mounted = useRef(true);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     window.sourcerer.listProjects().then((p) => { if (mounted.current) setProjects(p); });
@@ -106,46 +93,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     setSelectedProjectIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
   }
 
-  async function checkEmailBlur(value: string) {
-    if (!value) return;
-    const valid = isValidEmail(value);
-    setEmailFormatWarnings((prev) => {
-      const next = { ...prev };
-      if (!valid) next[value] = true; else delete next[value];
-      return next;
-    });
-    if (!valid) return;
-    const result = await window.sourcerer.checkCollision({ emails: [value], phones: [] });
-    if (!mounted.current) return;
-    setEmailCollisions((prev) => {
-      const next = { ...prev };
-      if (result.email[value]) next[value] = result.email[value];
-      else delete next[value];
-      return next;
-    });
-  }
-
-  async function checkPhoneBlur(value: string) {
-    if (!value) return;
-    const [isValid, collision] = await Promise.all([
-      window.sourcerer.validatePhone(value),
-      window.sourcerer.checkCollision({ emails: [], phones: [value] }),
-    ]);
-    if (!mounted.current) return;
-    setPhoneFormatWarnings((prev) => {
-      const next = { ...prev };
-      if (!isValid) next[value] = true; else delete next[value];
-      return next;
-    });
-    setPhoneCollisions((prev) => {
-      const next = { ...prev };
-      if (collision.phone[value]) next[value] = collision.phone[value];
-      else delete next[value];
-      return next;
-    });
-  }
-
-  function setSocial(type: SocialType, values: string[]) {
+  function setSocial(type: NonOtherSocialType, values: string[]) {
     setSocials((prev) => ({ ...prev, [type]: values }));
   }
 
@@ -160,7 +108,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
 
     const links = [
       ...websites.filter((u) => u.trim()).map((url) => ({ type: 'website' as const, url })),
-      ...SOCIAL_TYPES.flatMap((type) =>
+      ...NON_OTHER_SOCIAL_TYPES.flatMap((type) =>
         socials[type].filter((u) => u.trim()).map((url) => ({ type, url })),
       ),
     ];
@@ -273,10 +221,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     onChange={(e) => {
                       const prev = entry.email.trim();
                       setEmails(emails.map((em, j) => j === i ? { ...em, email: e.target.value } : em));
-                      if (prev) {
-                        setEmailFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
-                        setEmailCollisions((c) => { if (!c[prev]) return c; const u = { ...c }; delete u[prev]; return u; });
-                      }
+                      if (prev) clearEmailWarnings(prev);
                     }}
                     onBlur={() => checkEmailBlur(entry.email.trim())}
                     disabled={submitting}
@@ -330,19 +275,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                       const prev = entry.phone.trim();
                       const newVal = e.target.value.trim();
                       setPhones(phones.map((p, j) => j === i ? { ...p, phone: e.target.value } : p));
-                      if (prev && prev !== newVal) {
-                        setPhoneFormatWarnings((w) => { if (!w[prev]) return w; const u = { ...w }; delete u[prev]; return u; });
-                        setPhoneCollisions((c) => { if (!c[prev]) return c; const u = { ...c }; delete u[prev]; return u; });
-                      }
-                      if (newVal) {
-                        setPhoneFormatWarnings((w) => {
-                          const bad = hasDisallowedPhoneChars(newVal);
-                          if (bad === !!w[newVal]) return w;
-                          const u = { ...w };
-                          if (bad) u[newVal] = true; else delete u[newVal];
-                          return u;
-                        });
-                      }
+                      if (prev && prev !== newVal) clearPhoneWarnings(prev);
+                      if (newVal) updatePhoneFormatWarning(newVal);
                     }}
                     onBlur={() => checkPhoneBlur(entry.phone.trim())}
                     disabled={submitting}
@@ -432,18 +366,8 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             values={websites}
             placeholder="https://example.com"
             onChange={setWebsites}
-            onChangeItem={(oldVal) => {
-              if (!oldVal) return;
-              setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
-            }}
-            onBlurItem={(val) => {
-              if (!val) return;
-              setUrlFormatWarnings((prev) => {
-                const next = { ...prev };
-                if (!isValidUrl(val)) next[val] = true; else delete next[val];
-                return next;
-              });
-            }}
+            onChangeItem={(oldVal) => { if (oldVal) clearUrlWarning(oldVal); }}
+            onBlurItem={(val) => { if (val) updateUrlFormatWarning(val); }}
             warnings={Object.fromEntries(
               websites.map((v) => v.trim()).filter(Boolean).flatMap((v) => {
                 if (urlFormatWarnings[v]) return [[v, '⚠ Invalid URL']];
@@ -453,25 +377,15 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
             )}
           />
 
-          {SOCIAL_TYPES.map((type) => (
+          {NON_OTHER_SOCIAL_TYPES.map((type) => (
             <DynamicList
               key={type}
               label={SOCIAL_META[type].label}
               values={socials[type]}
               placeholder={SOCIAL_META[type].placeholder}
               onChange={(vals) => setSocial(type, vals)}
-              onChangeItem={(oldVal) => {
-                if (!oldVal) return;
-                setUrlFormatWarnings((w) => { if (!w[oldVal]) return w; const u = { ...w }; delete u[oldVal]; return u; });
-              }}
-              onBlurItem={(val) => {
-                if (!val) return;
-                setUrlFormatWarnings((prev) => {
-                  const next = { ...prev };
-                  if (!isValidUrl(val)) next[val] = true; else delete next[val];
-                  return next;
-                });
-              }}
+              onChangeItem={(oldVal) => { if (oldVal) clearUrlWarning(oldVal); }}
+              onBlurItem={(val) => { if (val) updateUrlFormatWarning(val); }}
               warnings={Object.fromEntries(
                 socials[type].map((v) => v.trim()).filter(Boolean).flatMap((v) => {
                   if (urlFormatWarnings[v]) return [[v, '⚠ Invalid URL']];
