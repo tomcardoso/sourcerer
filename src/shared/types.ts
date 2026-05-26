@@ -76,6 +76,7 @@ export interface ContactListItem {
   id: string;
   name: string;
   organization: string | null;
+  title: string | null;
   notes: string | null;
   created_at: number;
   has_email: 0 | 1;
@@ -110,15 +111,17 @@ export interface ContactLink {
   sort_order: number;
 }
 
+export type ContactHandleType = 'signal' | 'whatsapp' | 'telegram' | 'other';
+
 export interface ContactHandle {
   id: string;
-  type: 'signal' | 'whatsapp' | 'telegram' | 'other';
+  type: ContactHandleType;
   handle: string;
   sort_order: number;
 }
 
 export interface ContactHandleInput {
-  type: string;
+  type: ContactHandleType;
   handle: string;
 }
 

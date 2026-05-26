@@ -48,7 +48,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
   const [socials, setSocials] = useState<Record<SocialType, string[]>>({
     linkedin: [''], x: [], instagram: [], facebook: [],
   });
-  const [handles, setHandles] = useState<Array<{ type: string; handle: string }>>([]);
+  const [handles, setHandles] = useState<Array<{ type: HandleType; handle: string }>>([]);
   const [notes, setNotes] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -396,7 +396,7 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                 <select
                   className="form-input ac-handle-type"
                   value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
-                  onChange={(e) => setHandles(handles.map((h, j) => j === i ? { ...h, type: e.target.value } : h))}
+                  onChange={(e) => setHandles(handles.map((h, j) => j === i ? { ...h, type: e.target.value as HandleType } : h))}
                   disabled={submitting}
                 >
                   {HANDLE_TYPES.map((t) => (
