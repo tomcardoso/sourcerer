@@ -196,7 +196,7 @@ function LogSection({
             rows={3}
             autoFocus
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && text.trim() && logDate && !submitting) handleSubmit();
             }}
           />
           <div className="pt-log-projects">
@@ -288,6 +288,14 @@ function ScratchpadSection({
     setDrafts((prev) => [...prev, draft]);
   }
 
+  function handleDiscard(id: string) {
+    setDraftEdits((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
   async function handleDelete(id: string) {
     await window.sourcerer.deleteScratchpad(id);
     setDrafts((prev) => prev.filter((d) => d.id !== id));
@@ -327,9 +335,10 @@ function ScratchpadSection({
               rows={5}
             />
             {dirty && (
-              <button className="pt-draft-save" onClick={() => handleSave(draft)}>
-                Save draft
-              </button>
+              <div className="pt-reminder-form-actions">
+                <button className="pt-log-submit" onClick={() => handleSave(draft)}>Save</button>
+                <button className="pt-reminder-cancel" onClick={() => handleDiscard(draft.id)}>Discard</button>
+              </div>
             )}
           </div>
         );

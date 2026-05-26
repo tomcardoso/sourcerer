@@ -134,7 +134,7 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
             rows={3}
             autoFocus
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleLogSubmit();
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && logText.trim() && logDate && !logSubmitting) handleLogSubmit();
             }}
           />
           {contact.projects.length > 0 && (

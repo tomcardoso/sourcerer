@@ -153,7 +153,7 @@
             <p>The calendar feed URL includes a persistent token. Anyone with this URL can read your upcoming reminders (but not your contacts, notes, or any other data). If you believe the URL has been compromised, regenerate the token from Settings — the old URL will immediately stop working.</p>
 
             <h3>CORS</h3>
-            <p>Cross-Origin Resource Sharing headers are set to allow requests only from the extension's own origin. Web pages cannot make requests to the local server.</p>
+            <p>CORS headers are only set when the request includes an <code>Origin</code> or <code>Referer</code> header matching an extension scheme (<code>chrome-extension://</code> or <code>moz-extension://</code>). In that case the header is reflected back to permit the request. Ordinary web pages — whose origins are <code>http://</code> or <code>https://</code> — never receive CORS headers and cannot make cross-origin requests to the local server. The session token is the primary authentication gate; CORS is a defence-in-depth measure against browser-based cross-origin attacks.</p>
           </section>
 
           <section id="panic-wipe">
