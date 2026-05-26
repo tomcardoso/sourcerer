@@ -960,6 +960,43 @@
   background: var(--color-bg);
 }
 
+/* View mode (read-only) */
+.pt-draft-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pt-draft-view-label {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-serif);
+  color: var(--color-text);
+}
+
+.pt-draft-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pt-draft-view-body {
+  font-size: 13px;
+  font-family: var(--font-serif);
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pt-draft-view-body--empty {
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+
+/* Edit mode */
 .pt-draft-header {
   display: flex;
   gap: 6px;
