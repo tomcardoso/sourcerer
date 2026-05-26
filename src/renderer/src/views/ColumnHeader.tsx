@@ -72,7 +72,7 @@ export default function ColumnHeader({
             <div className="col-filter-overlay" aria-hidden="true" onClick={() => onFilterToggle?.()} />
             <div
               className="col-filter-dropdown"
-              style={{ top: dropdownPos.top, left: dropdownPos.left }}
+              style={{ '--dropdown-top': `${dropdownPos.top}px`, '--dropdown-left': `${dropdownPos.left}px` } as React.CSSProperties}
               onClick={(e) => e.stopPropagation()}
             >
               {filterContent}
