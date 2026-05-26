@@ -4,7 +4,7 @@ import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
-import { LogRow, LogAllModal, fmtReminderDate, sortReminders } from './logShared';
+import { LogRow, LogAllModal, fmtReminderDate, sortReminders, fmtLogDate } from './logShared';
 import LogProjectPicker from './LogProjectPicker';
 import './ContactDetail.css';
 import type {
@@ -377,6 +377,7 @@ function ScratchpadSection({
                   ? <p className="pt-draft-view-body">{draft.body}</p>
                   : <p className="pt-draft-view-body pt-draft-view-body--empty">No content yet.</p>
                 }
+                <p className="pt-draft-view-meta">Updated {fmtLogDate(draft.updated_at)}</p>
               </>
             )}
           </div>

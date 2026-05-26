@@ -1001,6 +1001,16 @@
   font-style: italic;
 }
 
+.pt-draft-view-meta {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
 /* Edit mode */
 .pt-draft-header {
   display: flex;
