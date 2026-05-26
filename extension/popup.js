@@ -208,7 +208,8 @@ async function captureFullPage(tabId, onProgress) {
         ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
         : (() => { const r = el.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; })();
       return {
-        totalHeight: Math.min(el.scrollHeight, 15000),
+        totalHeight: Math.min(el.scrollHeight, 25000),
+        fullHeight: el.scrollHeight,
         origScrollTop: el.scrollTop,
         dpr: window.devicePixelRatio || 1,
         scrollElLeft: rect.left,
@@ -220,7 +221,7 @@ async function captureFullPage(tabId, onProgress) {
   });
 
   if (!metricsResult?.result) throw new Error('Could not read page dimensions — try reloading the tab.');
-  const { totalHeight, origScrollTop, dpr,
+  const { totalHeight, fullHeight, origScrollTop, dpr,
           scrollElLeft, scrollElTop, scrollElWidth, scrollElHeight } = metricsResult.result;
 
   // Guard band: for non-first strips we scroll back this many px so the top
@@ -233,7 +234,11 @@ async function captureFullPage(tabId, onProgress) {
   const effectiveStep = scrollElHeight - GUARD;
   const totalSteps = 1 + Math.ceil(Math.max(0, totalHeight - scrollElHeight) / effectiveStep);
 
-  onProgress(`Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`);
+  const capped = fullHeight > totalHeight;
+  const progressMsg = capped
+    ? `Page is ${Math.round(fullHeight)}px — capturing first ${Math.round(totalHeight)}px (${totalSteps} section${totalSteps === 1 ? '' : 's'})`
+    : `Page is ${Math.round(totalHeight)}px — ${totalSteps} section${totalSteps === 1 ? '' : 's'}`;
+  onProgress(progressMsg);
   await new Promise(r => setTimeout(r, 600));
 
   // Best-effort: hide fixed/sticky elements that exist at capture start.
