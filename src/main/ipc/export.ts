@@ -98,7 +98,7 @@ function formatLogEntry(e: { id: string; created_at: number; reporter_name: stri
 type ExportMode = 'full' | 'sanitized';
 
 const LOG_BATCH_SIZE = 500;
-const MEMBERSHIP_CHUNK = 200;
+const EXPORT_CHUNK_SIZE = 200;
 
 export function registerExportHandlers(): void {
   ipcMain.handle(
@@ -188,8 +188,8 @@ export function registerExportHandlers(): void {
       type LogRow = { id: string; membership_id: string; reporter_name: string; body: string; created_at: number };
       const rows: ExportRow[] = [];
 
-      for (let ci = 0; ci < memberships.length; ci += MEMBERSHIP_CHUNK) {
-        const chunk = memberships.slice(ci, ci + MEMBERSHIP_CHUNK);
+      for (let ci = 0; ci < memberships.length; ci += EXPORT_CHUNK_SIZE) {
+        const chunk = memberships.slice(ci, ci + EXPORT_CHUNK_SIZE);
         const chunkMembershipIds = chunk.map((m) => m.membership_id);
 
         // Fetch and format logs only for this chunk; map is scoped here so
@@ -224,6 +224,9 @@ export function registerExportHandlers(): void {
           const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
           const links = linksByContact.get(m.contact_id) ?? [];
           const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+          const logStrings = logsByMembership.get(m.membership_id) ?? [];
+          const interactionLog = mode === 'full' ? logStrings.join('\n') : '';
+          logsByMembership.delete(m.membership_id);
           rows.push({
             Name: m.name,
             Organization: m.organization ?? '',
@@ -246,7 +249,7 @@ export function registerExportHandlers(): void {
             'First outreach': m.first_log_at
               ? new Date(m.first_log_at * 1000).toLocaleDateString()
               : '',
-            'Interaction log': mode === 'full' ? (logsByMembership.get(m.membership_id) ?? []).join('\n') : '',
+            'Interaction log': interactionLog,
           });
         }
       }
@@ -329,8 +332,8 @@ export function registerExportHandlers(): void {
       type LogRow2 = { id: string; contact_id: string; reporter_name: string; body: string; created_at: number };
       const rows: AllContactsRow[] = [];
 
-      for (let ci2 = 0; ci2 < contacts.length; ci2 += MEMBERSHIP_CHUNK) {
-        const chunk2 = contacts.slice(ci2, ci2 + MEMBERSHIP_CHUNK);
+      for (let ci2 = 0; ci2 < contacts.length; ci2 += EXPORT_CHUNK_SIZE) {
+        const chunk2 = contacts.slice(ci2, ci2 + EXPORT_CHUNK_SIZE);
         const chunkContactIds = chunk2.map((c) => c.id);
 
         // Scoped per-chunk so log strings become GC-eligible after each chunk's rows are built.
@@ -360,6 +363,8 @@ export function registerExportHandlers(): void {
         for (const c of chunk2) {
           const links = linksById.get(c.id) ?? [];
           const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+          const interactionLog = (logsByContactId.get(c.id) ?? []).join('\n');
+          logsByContactId.delete(c.id);
           rows.push({
             Name: c.name,
             Organization: c.organization ?? '',
@@ -375,7 +380,7 @@ export function registerExportHandlers(): void {
             Website: byType2('website'),
             'Other links': byType2('other'),
             Notes: c.notes ?? '',
-            'Interaction log': (logsByContactId.get(c.id) ?? []).join('\n'),
+            'Interaction log': interactionLog,
           });
         }
       }
