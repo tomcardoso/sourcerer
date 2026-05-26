@@ -101,7 +101,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
   const [editTitle, setEditTitle] = useState('');
   const [editDob, setEditDob] = useState('');
   const [editNotes, setEditNotes] = useState('');
-  const [editHandles, setEditHandles] = useState<Array<{ type: string; handle: string }>>([]);
+  const [editHandles, setEditHandles] = useState<Array<{ type: HandleType; handle: string }>>([]);
   const [editEmails, setEditEmails] = useState<Array<{ email: string; label: string }>>([]);
   const [editPhones, setEditPhones] = useState<Array<{ phone: string; label: string }>>([]);
   const [editSocials, setEditSocials] = useState<Record<NonOtherSocialType, string[]>>({
@@ -512,7 +512,7 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
                 value={HANDLE_TYPES.includes(entry.type as HandleType) ? entry.type : 'other'}
                 onChange={(e) => {
                   const next = [...editHandles];
-                  next[i] = { ...next[i], type: e.target.value };
+                  next[i] = { ...next[i], type: e.target.value as HandleType };
                   setEditHandles(next);
                 }}
               >

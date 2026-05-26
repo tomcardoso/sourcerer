@@ -159,7 +159,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle('contacts:list', (): ContactListItem[] => {
     const db = getDatabase();
     const rows = stmt(db,
-        `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
+        `SELECT c.id, c.name, c.organization, c.title, c.notes, c.created_at,
                 EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
                 EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
                 (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
@@ -182,6 +182,7 @@ export function registerContactHandlers(): void {
       id: string;
       name: string;
       organization: string | null;
+      title: string | null;
       notes: string | null;
       created_at: number;
       has_email: 0 | 1;
@@ -197,6 +198,7 @@ export function registerContactHandlers(): void {
       id: row.id,
       name: row.name,
       organization: row.organization,
+      title: row.title,
       notes: row.notes,
       created_at: row.created_at,
       has_email: row.has_email,
@@ -324,13 +326,13 @@ export function registerContactHandlers(): void {
     }
 
     const row = db.prepare(
-      `SELECT c.id, c.name, c.organization, c.notes, c.created_at,
+      `SELECT c.id, c.name, c.organization, c.title, c.notes, c.created_at,
               EXISTS(SELECT 1 FROM contact_emails WHERE contact_id = c.id) AS has_email,
               EXISTS(SELECT 1 FROM contact_phones WHERE contact_id = c.id) AS has_phone,
               (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
               (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw
        FROM contacts c WHERE c.id = ?`,
-    ).get(id) as { id: string; name: string; organization: string | null; notes: string | null; created_at: number; has_email: 0|1; has_phone: 0|1; emails_raw: string|null; phones_raw: string|null };
+    ).get(id) as { id: string; name: string; organization: string | null; title: string | null; notes: string | null; created_at: number; has_email: 0|1; has_phone: 0|1; emails_raw: string|null; phones_raw: string|null };
     return { ...row, date_first_contacted: null, date_last_contacted: null, projects: [] };
   });
 
