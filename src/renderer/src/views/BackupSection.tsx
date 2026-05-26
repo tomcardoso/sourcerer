@@ -24,13 +24,16 @@ export default function BackupSection() {
   const autoBackupResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     window.sourcerer.getAutoBackupSettings().then(({ enabled, destPath, maxCount }) => {
+      if (cancelled) return;
       setAutoBackupEnabled(enabled);
       setAutoBackupDestPath(destPath);
       setAutoBackupMaxCount(maxCount);
       setAutoBackupMaxCountInput(String(maxCount));
     });
     return () => {
+      cancelled = true;
       if (backupSavedTimerRef.current) clearTimeout(backupSavedTimerRef.current);
       if (autoBackupResultTimerRef.current) clearTimeout(autoBackupResultTimerRef.current);
     };

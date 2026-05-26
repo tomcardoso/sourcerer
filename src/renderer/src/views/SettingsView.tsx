@@ -81,6 +81,9 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
     window.sourcerer.getCalendarUrl().then(setCalendarUrl);
     window.sourcerer.getScreenshotFolderSize().then(setScreenshotFolderBytes);
     window.sourcerer.getVaultPath().then(setVaultPath);
+    return () => {
+      if (archiveKeysSavedTimerRef.current) clearTimeout(archiveKeysSavedTimerRef.current);
+    };
   }, [user?.id]);
 
   async function handleRegenerateToken() {

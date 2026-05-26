@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StatusOption, PriorityOption } from '@shared/types';
+import { useClickOutside } from '../hooks/useClickOutside';
 import Button from '../shell/Button';
 
 interface Props {
@@ -27,10 +28,15 @@ export default function BulkBar({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const bulkActionsRef = useRef<HTMLDivElement>(null);
+
+  const handleCloseBulkActions = useCallback(() => setShowBulkActions(false), []);
+  useClickOutside(bulkActionsRef, handleCloseBulkActions, { isOpen: showBulkActions });
 
   useEffect(() => {
     setConfirmRemove(false);
     setConfirmDelete(false);
+    setShowBulkActions(false);
   }, [checkedCount]);
 
   async function handleRemove() {
@@ -155,7 +161,7 @@ export default function BulkBar({
               </select>
             </div>
           )}
-          <div className="bulk-bar-element bulk-bar-element--right bulk-actions-wrap">
+          <div className="bulk-bar-element bulk-bar-element--right bulk-actions-wrap" ref={bulkActionsRef}>
             <button
               className="bulk-actions-trigger"
               onClick={() => setShowBulkActions((v) => !v)}

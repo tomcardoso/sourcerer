@@ -4,7 +4,7 @@ import type { SortDir } from '../views/ContactsTable';
 export type SortState<K extends string> = { key: K | null; dir: SortDir };
 
 export function useSortFilter<K extends string, F>(defaultFilters: F) {
-  const [sort, setSort] = useState<{ key: K | null; dir: SortDir }>({ key: null, dir: 'asc' });
+  const [sort, setSort] = useState<SortState<K>>({ key: null, dir: 'asc' });
   const [filters, setFilters] = useState<F>(defaultFilters);
   const defaultFiltersRef = useRef(defaultFilters);
   useEffect(() => { defaultFiltersRef.current = defaultFilters; }, [defaultFilters]);
