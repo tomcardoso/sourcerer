@@ -353,6 +353,9 @@ function ScratchpadSection({
                   onChange={(e) => setEdit(draft.id, { body: e.target.value })}
                   placeholder="Write your draft message here…"
                   rows={5}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSave(draft);
+                  }}
                 />
                 <div className="pt-reminder-form-actions">
                   <button className="pt-log-submit" onClick={() => handleSave(draft)}>Save</button>
