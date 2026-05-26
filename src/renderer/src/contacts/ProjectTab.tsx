@@ -376,7 +376,7 @@ function ScratchpadSection({
                 {draft.body
                   ? (
                     <div className="pt-draft-view-body">
-                      {draft.body.split(/\n\n+/).map((para, i) => <p key={i}>{para}</p>)}
+                      {draft.body.split('\n').map((line, i) => <p key={i}>{line}</p>)}
                     </div>
                   )
                   : <p className="pt-draft-view-body pt-draft-view-body--empty">No content yet.</p>
