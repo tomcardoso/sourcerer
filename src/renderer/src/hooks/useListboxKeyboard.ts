@@ -54,7 +54,7 @@ export function useListboxKeyboard({
           setActiveIndex((i) => (i <= 0 ? optionCount - 1 : i - 1));
         }
       } else if (e.key === 'Enter') {
-        if (isOpen && activeIndex >= 0) {
+        if (isOpen && activeIndex >= 0 && activeIndex < optionCount) {
           e.preventDefault();
           onSelect(activeIndex);
         }

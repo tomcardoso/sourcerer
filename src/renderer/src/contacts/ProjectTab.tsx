@@ -689,6 +689,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     const next = [...localReporters, r];
     setLocalReporters(next);
     setReporterQuery('');
+    listboxPt.resetActiveIndex();
     await window.sourcerer.setMembershipReporters(membership.membership_id, next);
     onMembershipUpdated();
   }
