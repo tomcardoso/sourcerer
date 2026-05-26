@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import './CalendarPicker.css';
 
@@ -84,9 +84,49 @@ export function CalendarPicker({
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth() + 1);
   const [yearPageOffset, setYearPageOffset] = useState(0);
+  const [focusedDayIndex, setFocusedDayIndex] = useState<number | null>(null);
+  const [focusedMonthIndex, setFocusedMonthIndex] = useState<number | null>(null);
+  const [focusedYearIndex, setFocusedYearIndex] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dayGridRef = useRef<HTMLDivElement>(null);
+  const monthGridRef = useRef<HTMLDivElement>(null);
+  const yearGridRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(wrapRef, () => { setOpen(false); setMode('days'); }, { isOpen: open });
+
+  const moveFocusAfterNavRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (mode === 'days') {
+      const dayCells = dayGridRef.current?.querySelectorAll<HTMLButtonElement>('.cal-day:not(.cal-day--disabled)');
+      if (!dayCells || !dayCells.length) return;
+      if (focusedDayIndex === null || moveFocusAfterNavRef.current) {
+        moveFocusAfterNavRef.current = false;
+        const selectedBtn = dayGridRef.current?.querySelector<HTMLButtonElement>('.cal-day--selected');
+        const defaultIdx = selectedBtn ? Array.from(dayCells).indexOf(selectedBtn) : 0;
+        const idx = Math.max(0, defaultIdx);
+        setFocusedDayIndex(idx);
+        dayCells[idx]?.focus();
+      }
+    } else if (mode === 'months') {
+      const monthCells = monthGridRef.current?.querySelectorAll<HTMLButtonElement>('.cal-month-cell:not(:disabled)');
+      if (!monthCells || !monthCells.length) return;
+      moveFocusAfterNavRef.current = false;
+      const idx = focusedMonthIndex ?? (viewMonth - 1);
+      setFocusedMonthIndex(idx);
+      monthCells[idx]?.focus();
+    } else if (mode === 'years') {
+      const yearCells = yearGridRef.current?.querySelectorAll<HTMLButtonElement>('.cal-year-cell:not(:disabled)');
+      if (!yearCells || !yearCells.length) return;
+      moveFocusAfterNavRef.current = false;
+      const idx = focusedYearIndex ?? Math.floor(YEAR_WINDOW / 2);
+      setFocusedYearIndex(idx);
+      yearCells[idx]?.focus();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, viewYear, viewMonth, yearPageOffset]);
 
   function openCalendar() {
     if (value) {
@@ -100,6 +140,9 @@ export function CalendarPicker({
     }
     setMode('days');
     setYearPageOffset(0);
+    setFocusedDayIndex(null);
+    setFocusedMonthIndex(null);
+    setFocusedYearIndex(null);
     setOpen((v) => !v);
   }
 
@@ -118,15 +161,18 @@ export function CalendarPicker({
     onChange(iso);
     setOpen(false);
     setMode('days');
+    triggerRef.current?.focus();
   }
 
   function selectYear(y: number) {
     setViewYear(y);
+    setFocusedMonthIndex(null);
     setMode('months');
   }
 
   function selectMonth(m: number) {
     setViewMonth(m);
+    setFocusedDayIndex(null);
     setMode('days');
   }
 
@@ -135,6 +181,132 @@ export function CalendarPicker({
     onChange('');
     setOpen(false);
     setMode('days');
+  }
+
+  function handleDayGridKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const buttons = Array.from(
+      dayGridRef.current?.querySelectorAll<HTMLButtonElement>('.cal-day:not(.cal-day--disabled)') ?? [],
+    );
+    if (!buttons.length) return;
+    const current = document.activeElement as HTMLButtonElement | null;
+    const idx = current ? buttons.indexOf(current) : -1;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = idx + 1 < buttons.length ? idx + 1 : 0;
+      buttons[next].focus();
+      setFocusedDayIndex(next);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prev = idx - 1 >= 0 ? idx - 1 : buttons.length - 1;
+      buttons[prev].focus();
+      setFocusedDayIndex(prev);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = idx + 7 < buttons.length ? idx + 7 : idx;
+      buttons[next].focus();
+      setFocusedDayIndex(next);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = idx - 7 >= 0 ? idx - 7 : idx;
+      buttons[prev].focus();
+      setFocusedDayIndex(prev);
+    } else if (e.key === 'PageDown') {
+      e.preventDefault();
+      moveFocusAfterNavRef.current = true;
+      setFocusedDayIndex(null);
+      nextMonth();
+    } else if (e.key === 'PageUp') {
+      e.preventDefault();
+      moveFocusAfterNavRef.current = true;
+      setFocusedDayIndex(null);
+      prevMonth();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      setMode('days');
+      triggerRef.current?.focus();
+    }
+  }
+
+  function handleMonthGridKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const buttons = Array.from(
+      monthGridRef.current?.querySelectorAll<HTMLButtonElement>('.cal-month-cell:not(:disabled)') ?? [],
+    );
+    if (!buttons.length) return;
+    const current = document.activeElement as HTMLButtonElement | null;
+    const idx = current ? buttons.indexOf(current) : -1;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = idx + 1 < buttons.length ? idx + 1 : 0;
+      buttons[next].focus();
+      setFocusedMonthIndex(next);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prev = idx - 1 >= 0 ? idx - 1 : buttons.length - 1;
+      buttons[prev].focus();
+      setFocusedMonthIndex(prev);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = idx + 3 < buttons.length ? idx + 3 : idx;
+      buttons[next].focus();
+      setFocusedMonthIndex(next);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = idx - 3 >= 0 ? idx - 3 : idx;
+      buttons[prev].focus();
+      setFocusedMonthIndex(prev);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setMode('days');
+      setFocusedDayIndex(null);
+    }
+  }
+
+  function handleYearGridKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const buttons = Array.from(
+      yearGridRef.current?.querySelectorAll<HTMLButtonElement>('.cal-year-cell:not(:disabled)') ?? [],
+    );
+    if (!buttons.length) return;
+    const current = document.activeElement as HTMLButtonElement | null;
+    const idx = current ? buttons.indexOf(current) : -1;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const next = idx + 1 < buttons.length ? idx + 1 : 0;
+      buttons[next].focus();
+      setFocusedYearIndex(next);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prev = idx - 1 >= 0 ? idx - 1 : buttons.length - 1;
+      buttons[prev].focus();
+      setFocusedYearIndex(prev);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = idx + 3 < buttons.length ? idx + 3 : idx;
+      buttons[next].focus();
+      setFocusedYearIndex(next);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = idx - 3 >= 0 ? idx - 3 : idx;
+      buttons[prev].focus();
+      setFocusedYearIndex(prev);
+    } else if (e.key === 'PageDown') {
+      e.preventDefault();
+      moveFocusAfterNavRef.current = true;
+      setFocusedYearIndex(null);
+      setYearPageOffset((o) => o + 1);
+    } else if (e.key === 'PageUp') {
+      e.preventDefault();
+      moveFocusAfterNavRef.current = true;
+      setFocusedYearIndex(null);
+      setYearPageOffset((o) => o - 1);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setMode('days');
+      setFocusedDayIndex(null);
+    }
   }
 
   const cells = buildCells(viewYear, viewMonth);
@@ -149,6 +321,7 @@ export function CalendarPicker({
   return (
     <div ref={wrapRef} className="cal-wrap">
       <button
+        ref={triggerRef}
         type="button"
         className={`project-meta-action-btn${value ? ' project-meta-action-btn--active' : ''}`}
         onClick={openCalendar}
@@ -198,13 +371,17 @@ export function CalendarPicker({
           </div>
 
           {mode === 'years' ? (
-            <div className="cal-year-grid">
+            <div ref={yearGridRef} className="cal-year-grid" onKeyDown={handleYearGridKeyDown}>
               {yearRange.map((y) => {
                 const yearDisabled = maxY !== undefined && y > maxY;
+                const enabledButtons = yearRange.filter((yr) => !(maxY !== undefined && yr > maxY));
+                const enabledIdx = enabledButtons.indexOf(y);
+                const isFocused = !yearDisabled && enabledIdx === focusedYearIndex;
                 return (
                   <button
                     type="button"
                     key={y}
+                    tabIndex={isFocused ? 0 : -1}
                     className={[
                       'cal-year-cell',
                       y === viewYear ? 'cal-year-cell--selected' : '',
@@ -220,14 +397,21 @@ export function CalendarPicker({
               })}
             </div>
           ) : mode === 'months' ? (
-            <div className="cal-month-grid">
+            <div ref={monthGridRef} className="cal-month-grid" onKeyDown={handleMonthGridKeyDown}>
               {MONTHS_SHORT.map((name, i) => {
                 const monthDisabled = maxY !== undefined && maxM !== undefined &&
                   (viewYear > maxY || (viewYear === maxY && i + 1 > maxM));
+                const enabledMonths = MONTHS_SHORT.map((_, mi) => mi).filter((mi) => {
+                  if (maxY === undefined || maxM === undefined) return true;
+                  return !(viewYear > maxY || (viewYear === maxY && mi + 1 > maxM));
+                });
+                const enabledIdx = enabledMonths.indexOf(i);
+                const isFocused = !monthDisabled && enabledIdx === focusedMonthIndex;
                 return (
                 <button
                   type="button"
                   key={name}
+                  tabIndex={isFocused ? 0 : -1}
                   className={[
                     'cal-month-cell',
                     i + 1 === viewMonth ? 'cal-month-cell--selected' : '',
@@ -243,7 +427,7 @@ export function CalendarPicker({
               })}
             </div>
           ) : (
-            <div className="cal-grid">
+            <div ref={dayGridRef} className="cal-grid" onKeyDown={handleDayGridKeyDown}>
               {DAY_NAMES.map((n) => (
                 <div key={n} className="cal-day-name">{n}</div>
               ))}
@@ -252,10 +436,17 @@ export function CalendarPicker({
                 const isSelected = iso === value;
                 const isToday = iso === todayStr && !isSelected;
                 const isDisabled = !!maxDate && iso > maxDate;
+                const enabledCells = cells.filter((_, ci) => {
+                  const ciso = `${cells[ci].y}-${String(cells[ci].m).padStart(2, '0')}-${String(cells[ci].d).padStart(2, '0')}`;
+                  return !(!!maxDate && ciso > maxDate);
+                });
+                const enabledIdx = !isDisabled ? enabledCells.indexOf(cell) : -1;
+                const isFocused = !isDisabled && enabledIdx === focusedDayIndex;
                 return (
                   <button
                     type="button"
                     key={i}
+                    tabIndex={isFocused ? 0 : -1}
                     className={[
                       'cal-day',
                       cell.overflow ? 'cal-day--overflow' : '',

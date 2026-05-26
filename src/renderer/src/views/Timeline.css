@@ -247,7 +247,8 @@
   border-bottom: none;
 }
 
-.ptl-ms-option:hover {
+.ptl-ms-option:hover,
+.ptl-ms-option--active {
   background: var(--color-bg);
 }
 

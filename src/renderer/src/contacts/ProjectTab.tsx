@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
 import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
@@ -688,6 +689,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     const next = [...localReporters, r];
     setLocalReporters(next);
     setReporterQuery('');
+    listboxPt.resetActiveIndex();
     await window.sourcerer.setMembershipReporters(membership.membership_id, next);
     onMembershipUpdated();
   }
@@ -704,6 +706,14 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
       !localReporters.some((lr) => lr.email === r.email) &&
       r.name.toLowerCase().includes(reporterQuery.toLowerCase()),
   );
+
+  const listboxPt = useListboxKeyboard({
+    isOpen: reporterDropdownOpen,
+    optionCount: filteredReporterOptions.length,
+    onSelect: (i) => addReporter(filteredReporterOptions[i]),
+    onClose: () => { setReporterDropdownOpen(false); setReporterQuery(''); },
+    onOpen: () => setReporterDropdownOpen(true),
+  });
 
   async function handleDismissConflict() {
     await window.sourcerer.updateMembership({
@@ -793,30 +803,42 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
                   {r.name}
                   <button
                     className="pt-reporter-chip-remove"
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeReporter(r.email); }}
+                    aria-label={`Remove ${r.name}`}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onClick={(e) => { e.stopPropagation(); removeReporter(r.email); }}
                   >×</button>
                 </span>
               ))}
               <input
                 className="pt-reporter-search"
+                role="combobox"
+                aria-expanded={reporterDropdownOpen}
+                aria-controls={listboxPt.listboxId}
+                aria-activedescendant={listboxPt.activeIndex >= 0 ? listboxPt.getOptionId(listboxPt.activeIndex) : undefined}
                 value={reporterQuery}
                 onChange={(e) => { setReporterQuery(e.target.value); setReporterDropdownOpen(true); }}
                 onFocus={() => setReporterDropdownOpen(true)}
                 onKeyDown={(e) => {
                   if (e.key === 'Backspace' && reporterQuery === '' && localReporters.length > 0) {
                     removeReporter(localReporters[localReporters.length - 1].email);
+                    return;
                   }
+                  listboxPt.handleInputKeyDown(e);
                 }}
                 placeholder={localReporters.length === 0 ? 'Assign reporters…' : ''}
               />
             </div>
             {reporterDropdownOpen && filteredReporterOptions.length > 0 && (
-              <div className="pt-reporter-dropdown">
-                {filteredReporterOptions.map((r) => (
+              <div id={listboxPt.listboxId} className="pt-reporter-dropdown" role="listbox">
+                {filteredReporterOptions.map((r, i) => (
                   <button
                     key={r.email}
-                    className="pt-reporter-option"
+                    id={listboxPt.getOptionId(i)}
+                    role="option"
+                    aria-selected={listboxPt.activeIndex === i}
+                    className={`pt-reporter-option${listboxPt.activeIndex === i ? ' pt-reporter-option--active' : ''}`}
                     onMouseDown={(e) => { e.preventDefault(); addReporter(r); }}
+                    onMouseEnter={() => listboxPt.setActiveIndex(i)}
                   >
                     {r.name}
                   </button>

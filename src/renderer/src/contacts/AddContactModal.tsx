@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
+import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
 import type { ContactListItem, CreateContactInput, Project } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import Button from '../shell/Button';
@@ -101,6 +102,14 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
     setProjectQuery('');
     projectInputRef.current?.focus();
   }
+
+  const listboxAcm = useListboxKeyboard({
+    isOpen: projectDropdownOpen,
+    optionCount: filteredProjects.length,
+    onSelect: (i) => selectProject(filteredProjects[i].id),
+    onClose: () => setProjectDropdownOpen(false),
+    onOpen: () => setProjectDropdownOpen(true),
+  });
 
   function removeProject(id: string) {
     setSelectedProjectIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
@@ -506,21 +515,30 @@ export default function AddContactModal({ onCreated, onCancel }: Props) {
                     ref={projectInputRef}
                     className="ac-project-search"
                     type="text"
+                    role="combobox"
+                    aria-expanded={projectDropdownOpen}
+                    aria-controls={listboxAcm.listboxId}
+                    aria-activedescendant={listboxAcm.activeIndex >= 0 ? listboxAcm.getOptionId(listboxAcm.activeIndex) : undefined}
                     value={projectQuery}
                     onChange={(e) => { setProjectQuery(e.target.value); setProjectDropdownOpen(true); }}
                     onFocus={() => setProjectDropdownOpen(true)}
+                    onKeyDown={listboxAcm.handleInputKeyDown}
                     placeholder={selectedProjectIds.size === 0 ? 'Search projects…' : ''}
                     disabled={submitting}
                   />
                 </div>
                 {projectDropdownOpen && filteredProjects.length > 0 && (
-                  <div className="ac-project-dropdown">
-                    {filteredProjects.map((p) => (
+                  <div id={listboxAcm.listboxId} className="ac-project-dropdown" role="listbox">
+                    {filteredProjects.map((p, i) => (
                       <button
                         key={p.id}
+                        id={listboxAcm.getOptionId(i)}
                         type="button"
-                        className="ac-project-option"
+                        role="option"
+                        aria-selected={listboxAcm.activeIndex === i}
+                        className={`ac-project-option${listboxAcm.activeIndex === i ? ' ac-project-option--active' : ''}`}
                         onMouseDown={(e) => { e.preventDefault(); selectProject(p.id); }}
+                        onMouseEnter={() => listboxAcm.setActiveIndex(i)}
                       >
                         {p.name}
                       </button>

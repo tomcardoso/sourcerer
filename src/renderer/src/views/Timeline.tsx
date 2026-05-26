@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
 import { createPortal } from 'react-dom';
 import type { TimelineEntry, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -125,12 +126,20 @@ function MultiSelect({
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
-  const close = () => { setOpen(false); setQuery(''); };
-  useClickOutside(ref, close, { isOpen: open, escapeKey: false });
-
   const filtered = options.filter(
     (o) => !selected.includes(o) && o.toLowerCase().includes(query.toLowerCase()),
   );
+
+  const listbox = useListboxKeyboard({
+    isOpen: open,
+    optionCount: filtered.length,
+    onSelect: (i) => { onChange([...selected, filtered[i]]); setQuery(''); },
+    onClose: () => { setOpen(false); setQuery(''); },
+    onOpen: () => setOpen(true),
+  });
+
+  const close = () => { setOpen(false); setQuery(''); };
+  useClickOutside(ref, close, { isOpen: open, escapeKey: false });
 
   return (
     <div ref={ref} className="ptl-ms">
@@ -140,6 +149,8 @@ function MultiSelect({
             {s}
             <button
               className="ptl-ms-chip-remove"
+              aria-label={`Remove ${s}`}
+              tabIndex={0}
               onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onChange(selected.filter((x) => x !== s)); }}
             >
               ×
@@ -148,24 +159,34 @@ function MultiSelect({
         ))}
         <input
           className="ptl-ms-input"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listbox.listboxId}
+          aria-activedescendant={listbox.activeIndex >= 0 ? listbox.getOptionId(listbox.activeIndex) : undefined}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
             if (e.key === 'Backspace' && query === '' && selected.length > 0) {
               onChange(selected.slice(0, -1));
+              return;
             }
+            listbox.handleInputKeyDown(e);
           }}
           placeholder={selected.length === 0 ? placeholder : ''}
         />
       </div>
       {open && filtered.length > 0 && (
-        <div className="ptl-ms-dropdown">
-          {filtered.map((opt) => (
+        <div id={listbox.listboxId} className="ptl-ms-dropdown" role="listbox">
+          {filtered.map((opt, i) => (
             <button
               key={opt}
-              className="ptl-ms-option"
+              id={listbox.getOptionId(i)}
+              role="option"
+              aria-selected={listbox.activeIndex === i}
+              className={`ptl-ms-option${listbox.activeIndex === i ? ' ptl-ms-option--active' : ''}`}
               onMouseDown={(e) => { e.preventDefault(); onChange([...selected, opt]); setQuery(''); }}
+              onMouseEnter={() => listbox.setActiveIndex(i)}
             >
               {opt}
             </button>
