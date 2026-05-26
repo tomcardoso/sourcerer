@@ -93,12 +93,13 @@ function adoptSharedUuid(local: Database.Database, fromId: string, toId: string)
       'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     .run(toId, c.name, c.organization, c.title ?? null, c.dob ?? null, c.notes, c.created_at, c.updated_at, null);
-  // Remap every table with a contact_id FK — derived at runtime so new tables are never missed.
+  // Remap every table with a FK pointing at contacts — derived at runtime so new tables are never missed.
   const allTableNames = (local.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
   for (const table of allTableNames) {
+    if (table === 'dedup_dismissed_pairs') continue; // handled below
     const fks = local.prepare(`PRAGMA foreign_key_list("${table}")`).all() as { from: string; table: string }[];
-    if (fks.some((fk) => fk.from === 'contact_id' && fk.table === 'contacts')) {
-      local.prepare(`UPDATE "${table}" SET contact_id = ? WHERE contact_id = ?`).run(toId, fromId);
+    for (const fk of fks.filter((f) => f.table === 'contacts')) {
+      local.prepare(`UPDATE "${table}" SET "${fk.from}" = ? WHERE "${fk.from}" = ?`).run(toId, fromId);
     }
   }
   // dedup_dismissed_pairs has two separate contact FK columns — remap before delete
