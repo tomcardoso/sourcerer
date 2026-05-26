@@ -1,21 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 
-// All tables with a contact_id FK to contacts — used by adoptSharedUuid to
-// remap UUIDs without querying PRAGMA foreign_key_list on every sync cycle.
-const CONTACT_ID_FK_TABLES = [
-  'contact_emails',
-  'contact_phones',
-  'contact_links',
-  'contact_handles',
-  'contact_alert_rss',
-  'contact_alert_mentions',
-  'project_memberships',
-  'interaction_log_entries',
-  'message_scratchpad_drafts',
-  'reminders',
-  'contact_screenshots',
-];
 
 export interface SyncResult {
   success: boolean;
@@ -109,8 +94,14 @@ function adoptSharedUuid(local: Database.Database, fromId: string, toId: string)
       'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     .run(toId, c.name, c.organization, c.title ?? null, c.dob ?? null, c.notes, c.created_at, c.updated_at, null);
-  for (const table of CONTACT_ID_FK_TABLES) {
-    local.prepare(`UPDATE "${table}" SET contact_id = ? WHERE contact_id = ?`).run(toId, fromId);
+  // Remap every table with a FK pointing at contacts — derived at runtime so new tables are never missed.
+  const allTableNames = (local.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
+  for (const table of allTableNames) {
+    if (table === 'dedup_dismissed_pairs') continue; // handled below
+    const fks = local.prepare(`PRAGMA foreign_key_list("${table}")`).all() as { from: string; table: string }[];
+    for (const fk of fks.filter((f) => f.table === 'contacts')) {
+      local.prepare(`UPDATE "${table}" SET "${fk.from}" = ? WHERE "${fk.from}" = ?`).run(toId, fromId);
+    }
   }
   // dedup_dismissed_pairs has two separate contact FK columns — remap before delete
   const dedupRows = local

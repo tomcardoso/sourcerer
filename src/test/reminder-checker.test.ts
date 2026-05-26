@@ -90,6 +90,18 @@ describe('checkReminders', () => {
     expect(MockNotification).not.toHaveBeenCalled();
   });
 
+  it('does not stamp last_notified_at when notifications are disabled', () => {
+    insertUser({ reminder_notifications_enabled: 0 });
+    const cid = insertContact(testDb, 'Bob Jones');
+    const pid = insertProject(testDb, 'Beta');
+    const reminderId = insertReminder(cid, pid);
+
+    checkReminders();
+
+    const row = testDb.prepare('SELECT last_notified_at FROM reminders WHERE id = ?').get(reminderId) as { last_notified_at: number | null };
+    expect(row.last_notified_at).toBeNull();
+  });
+
   it('does not fire for a completed reminder', () => {
     insertUser();
     const cid = insertContact(testDb, 'Carol White');
