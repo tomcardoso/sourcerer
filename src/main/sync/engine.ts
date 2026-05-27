@@ -48,21 +48,40 @@ export function syncProject(
       pullAppendOnly(localDb, sharedDb);
     })();
 
-    // Phase 3: push from local → shared
+    // Phase 3: push from local → shared (pure sharedDb writes; synced_at stamps deferred to phase 4)
     const memberRows = localDb
       .prepare('SELECT id, contact_id FROM project_memberships WHERE project_id = ?')
       .all(projectId) as { id: string; contact_id: string }[];
     const contactIds = memberRows.map((r) => r.contact_id);
     const membershipIds = memberRows.map((r) => r.id);
 
+    let pushedContactIds: string[];
+    let pushedMembershipIds: string[];
+    let pushedMentionIds: string[];
+    let pushedLogEntryIds: string[];
+
     sharedDb.transaction(() => {
-      pushContacts(localDb, sharedDb, contactIds, now);
-      pushMemberships(localDb, sharedDb, projectId, now);
-      pushAppendOnly(localDb, sharedDb, contactIds, membershipIds, now);
+      pushedContactIds = pushContacts(localDb, sharedDb, contactIds);
+      pushedMembershipIds = pushMemberships(localDb, sharedDb, projectId);
+      ({ mentionIds: pushedMentionIds, logEntryIds: pushedLogEntryIds } =
+        pushAppendOnly(localDb, sharedDb, contactIds, membershipIds));
     })();
 
-    // Phase 4: stamp sync metadata on the local project record
+    // Phase 4: stamp synced_at on all successfully-pushed local rows, plus project metadata.
+    // Runs after sharedDb.transaction() commits so stamps only apply when the push succeeded.
     localDb.transaction(() => {
+      for (const id of pushedContactIds!) {
+        localDb.prepare('UPDATE contacts SET synced_at = ? WHERE id = ?').run(now, id);
+      }
+      for (const id of pushedMembershipIds!) {
+        localDb.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?').run(now, id);
+      }
+      for (const id of pushedMentionIds!) {
+        localDb.prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?').run(now, id);
+      }
+      for (const id of pushedLogEntryIds!) {
+        localDb.prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?').run(now, id);
+      }
       localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
     })();
 
@@ -562,8 +581,8 @@ function pushContacts(
   local: Database.Database,
   shared: Database.Database,
   contactIds: string[],
-  now: number,
-): void {
+): string[] {
+  const pushed: string[] = [];
   for (const contactId of contactIds) {
     const lc = local.prepare('SELECT * FROM contacts WHERE id = ?').get(contactId) as
       | {
@@ -593,10 +612,10 @@ function pushContacts(
         .run(lc.id, lc.name, lc.organization, lc.title, lc.dob ?? null, lc.notes, lc.created_at, lc.updated_at);
 
       pushSubTablesToShared(local, shared, contactId);
-
-      local.prepare('UPDATE contacts SET synced_at = ? WHERE id = ?').run(now, contactId);
+      pushed.push(contactId);
     }
   }
+  return pushed;
 }
 
 function pushSubTablesToShared(
@@ -672,8 +691,8 @@ function pushMemberships(
   local: Database.Database,
   shared: Database.Database,
   projectId: string,
-  now: number,
-): void {
+): string[] {
+  const pushed: string[] = [];
   const memberships = local
     .prepare('SELECT * FROM project_memberships WHERE project_id = ?')
     .all(projectId) as {
@@ -715,9 +734,10 @@ function pushMemberships(
           m.created_at,
           m.updated_at,
         );
-      local.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?').run(now, m.id);
+      pushed.push(m.id);
     }
   }
+  return pushed;
 }
 
 function pushAppendOnly(
@@ -725,8 +745,9 @@ function pushAppendOnly(
   shared: Database.Database,
   contactIds: string[],
   membershipIds: string[],
-  now: number,
-): void {
+): { mentionIds: string[]; logEntryIds: string[] } {
+  const mentionIds: string[] = [];
+  const logEntryIds: string[] = [];
   if (contactIds.length > 0) {
     const cPlaceholders = contactIds.map(() => '?').join(',');
 
@@ -761,9 +782,7 @@ function pushAppendOnly(
           m.guid,
           m.seen,
         );
-      local
-        .prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?')
-        .run(now, m.id);
+      mentionIds.push(m.id);
     }
   }
 
@@ -801,11 +820,11 @@ function pushAppendOnly(
           .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
           .run(ip.interaction_id, ip.membership_id);
       }
-      local
-        .prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?')
-        .run(now, e.id);
+      logEntryIds.push(e.id);
     }
   }
+
+  return { mentionIds, logEntryIds };
 }
 
 // ---------------------------------------------------------------------------
