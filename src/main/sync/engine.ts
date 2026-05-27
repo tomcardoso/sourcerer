@@ -269,6 +269,23 @@ function mergeSubTablesFromShared(
   shared: Database.Database,
   contactId: string,
 ): void {
+  // Sub-table merge strategy: union of shared rows + local-only rows (rows that
+  // exist locally but not in shared). This is additive on the pull side.
+  //
+  // Deletion behaviour:
+  //   Deletions propagate through the PUSH path: when a client deletes a sub-table
+  //   row and saves (bumping updated_at), they become the newer editor and push the
+  //   trimmed sub-tables to shared on the next sync. Other clients then pull that
+  //   state from shared.
+  //
+  //   The one failure case: if another client edits the same contact after the
+  //   deletion (making their updated_at newer), the deleting client will pull on
+  //   next sync and the merge will restore the deleted row from shared (resurrection).
+  //   This self-heals one cycle later: the deleting client is now the newer editor
+  //   (their updated_at was overwritten by the pull, but they will push again and
+  //   the deletion lands in shared). With 2-minute polling the inconsistency window
+  //   in shared is short and no data is permanently lost.
+  //
   // ── Emails ────────────────────────────────────────────────────────────────
   // Stored emails are already normalised (lowercased, trimmed) — compare directly.
   const sharedEmails = shared

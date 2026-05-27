@@ -740,3 +740,65 @@ describe('syncProject — idempotency', () => {
     expect(sharedEmailsAfterSecond).toEqual(sharedEmailsAfterFirst);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Sub-table deletion self-healing
+//
+// When client B pushes an unrelated edit (e.g. a phone) AFTER client A has
+// added an email that B has not yet seen, B's push wipes A's email from shared
+// (pushSubTablesToShared is a full replace). This is a temporary inconsistency:
+// on A's next sync, A pulls (shared is now newer), the merge preserves A's
+// email as "local-only", and A re-pushes it back to shared. No data is
+// permanently lost; the inconsistency window is one sync cycle (~2 minutes).
+// ---------------------------------------------------------------------------
+
+describe('sub-table deletion self-healing', () => {
+  it('restores an email wiped from shared by a concurrent phone push after one extra sync cycle', () => {
+    const T1 = NOW - 20; // A adds email
+    const T2 = NOW - 10; // B adds phone (newer)
+
+    const localA = createTestDb();
+    const localB = createTestDb();
+    const sharedDb = createSharedDb();
+
+    const projectId_A = insertProject(localA, 'Project');
+    const projectId_B = insertProject(localB, 'Project');
+
+    const contactId = uuidv4();
+
+    // Both clients start with the same base contact (no sub-tables), synced_at set
+    // so the push guard fires only for their own edits.
+    for (const db of [localA, localB]) {
+      db.prepare('INSERT INTO contacts (id, name, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?)').run(contactId, 'Alice', T1 - 10, T1 - 10, T1 - 10);
+    }
+    localInsertMembership(localA, contactId, projectId_A);
+    localInsertMembership(localB, contactId, projectId_B);
+
+    sharedInsertContact(sharedDb, contactId, 'Alice', { updatedAt: T1 - 10 });
+    sharedInsertMembership(sharedDb, uuidv4(), contactId, { updatedAt: T1 - 10 });
+
+    // A adds an email at T1
+    localA.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(T1, contactId);
+    localA.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(uuidv4(), contactId, 'alice@wapo.com', T1);
+
+    // A syncs — pushes email to shared
+    syncProject(localA, sharedDb, projectId_A);
+    expect((sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email)).toContain('alice@wapo.com');
+
+    // B adds a phone at T2 (hasn't seen A's email yet)
+    localB.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(T2, contactId);
+    localB.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(uuidv4(), contactId, '+15551234567', T2);
+
+    // B syncs — B is newer, so B pushes and wipes A's email from shared
+    syncProject(localB, sharedDb, projectId_B);
+    const sharedEmailsAfterBPush = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(sharedEmailsAfterBPush).not.toContain('alice@wapo.com'); // temporarily gone
+
+    // A syncs again — shared is now newer (T2 > T1); merge preserves A's local email
+    // and A re-pushes it back to shared
+    syncProject(localA, sharedDb, projectId_A);
+    const sharedEmailsAfterHeal = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(sharedEmailsAfterHeal).toContain('alice@wapo.com'); // restored ✓
+    expect((sharedDb.prepare('SELECT phone FROM contact_phones WHERE contact_id = ?').all(contactId) as { phone: string }[]).map((r) => r.phone)).toContain('+15551234567'); // B's phone also present ✓
+  });
+});
