@@ -218,13 +218,15 @@
 .detail-project-remove {
   background: none;
   border: none;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--color-text-muted);
   cursor: pointer;
   flex-shrink: 0;
   padding: 0 2px;
   opacity: 0;
   transition: opacity 0.1s;
+  line-height: 1;
+  margin-top: 3px;
 }
 
 .detail-project-item:hover .detail-project-remove {
@@ -839,7 +841,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   color: var(--color-text-muted);
   opacity: 0;
   padding: 0 2px;
@@ -848,6 +850,7 @@
   cursor: pointer;
   transition: opacity 0.1s, color 0.1s;
   margin-top: -2px;
+  line-height: 1;
 }
 
 .detail-project-item:hover .detail-project-default {
