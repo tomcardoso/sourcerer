@@ -5,7 +5,7 @@ import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
-import { LogRow, LogAllModal, fmtReminderDate, sortReminders } from './logShared';
+import { LogRow, LogAllModal, fmtReminderDate, sortReminders, fmtLogDate } from './logShared';
 import LogProjectPicker from './LogProjectPicker';
 import './ContactDetail.css';
 import type {
@@ -197,7 +197,7 @@ function LogSection({
             rows={3}
             autoFocus
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && text.trim() && logDate && !submitting) handleSubmit();
             }}
           />
           <div className="pt-log-projects">
@@ -233,12 +233,14 @@ function ScratchpadSection({
 }) {
   const [drafts, setDrafts] = useState<ScratchpadDraft[]>([]);
   const [draftEdits, setDraftEdits] = useState<Record<string, { label: string; body: string }>>({});
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setDrafts([]);
     setDraftEdits({});
+    setEditingIds(new Set());
     window.sourcerer.listScratchpad(contactId, membership.id).then((drafts) => {
       if (!cancelled) setDrafts(drafts);
     });
@@ -254,6 +256,18 @@ function ScratchpadSection({
     setDraftEdits((prev) => {
       const current = prev[id] ?? { label: draft.label, body: draft.body };
       return { ...prev, [id]: { ...current, ...patch } };
+    });
+  }
+
+  function startEditing(id: string) {
+    setEditingIds((prev) => new Set([...prev, id]));
+  }
+
+  function stopEditing(id: string) {
+    setEditingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
     });
   }
 
@@ -274,6 +288,7 @@ function ScratchpadSection({
         delete next[draft.id];
         return next;
       });
+      stopEditing(draft.id);
     } catch {
       setSaveError('Failed to save draft. Please try again.');
     }
@@ -287,6 +302,16 @@ function ScratchpadSection({
       body: '',
     });
     setDrafts((prev) => [...prev, draft]);
+    setEditingIds((prev) => new Set([...prev, draft.id]));
+  }
+
+  function handleDiscard(id: string) {
+    setDraftEdits((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    stopEditing(id);
   }
 
   async function handleDelete(id: string) {
@@ -305,32 +330,60 @@ function ScratchpadSection({
       {saveError && <p className="pt-draft-error">{saveError}</p>}
       {drafts.length === 0 && <p className="pt-reminders-empty">No drafts yet.</p>}
       {drafts.map((draft) => {
+        const editing = editingIds.has(draft.id);
         const edit = getEdit(draft);
-        const dirty = edit.label !== draft.label || edit.body !== draft.body;
         return (
-          <div key={draft.id} className="pt-draft">
-            <div className="pt-draft-header">
-              <input
-                className="pt-draft-label"
-                value={edit.label}
-                onChange={(e) => setEdit(draft.id, { label: e.target.value })}
-                placeholder="Draft label"
-              />
-              <button className="pt-draft-delete" onClick={() => handleDelete(draft.id)} title="Delete draft">
-                ×
-              </button>
-            </div>
-            <textarea
-              className="pt-draft-body"
-              value={edit.body}
-              onChange={(e) => setEdit(draft.id, { body: e.target.value })}
-              placeholder="Write your draft message here…"
-              rows={5}
-            />
-            {dirty && (
-              <button className="pt-draft-save" onClick={() => handleSave(draft)}>
-                Save draft
-              </button>
+          <div key={draft.id} className={`pt-draft${editing ? ' pt-draft--editing' : ''}`}>
+            {editing ? (
+              <>
+                <div className="pt-draft-header">
+                  <input
+                    className="pt-draft-label"
+                    value={edit.label}
+                    onChange={(e) => setEdit(draft.id, { label: e.target.value })}
+                    placeholder="Draft label"
+                    autoFocus
+                  />
+                  <button className="pt-draft-delete" onClick={() => handleDelete(draft.id)} title="Delete draft">
+                    ×
+                  </button>
+                </div>
+                <textarea
+                  className="pt-draft-body"
+                  value={edit.body}
+                  onChange={(e) => setEdit(draft.id, { body: e.target.value })}
+                  placeholder="Write your draft message here…"
+                  rows={5}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSave(draft);
+                  }}
+                />
+                <div className="pt-reminder-form-actions">
+                  <button className="pt-log-submit" onClick={() => handleSave(draft)}>Save</button>
+                  <button className="pt-reminder-cancel" onClick={() => handleDiscard(draft.id)}>Discard</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="pt-draft-view-header">
+                  <span className="pt-draft-view-label">{draft.label || 'Draft'}</span>
+                  <div className="pt-draft-view-actions">
+                    <Button variant="ghost" onClick={() => startEditing(draft.id)}>Edit</Button>
+                    <button className="pt-draft-delete" onClick={() => handleDelete(draft.id)} title="Delete draft">
+                      ×
+                    </button>
+                  </div>
+                </div>
+                {draft.body
+                  ? (
+                    <div className="pt-draft-view-body">
+                      {draft.body.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                    </div>
+                  )
+                  : <p className="pt-draft-view-body pt-draft-view-body--empty">No content yet.</p>
+                }
+                <p className="pt-draft-view-meta">Updated {fmtLogDate(draft.updated_at)}</p>
+              </>
             )}
           </div>
         );
