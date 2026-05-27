@@ -42,8 +42,6 @@ export default function Unlock({ onUnlocked }: Props) {
     <div className="unlock-root">
       <div className="unlock-card">
         <WordmarkLogo size={64} className="unlock-wordmark" />
-        <p className="unlock-subtitle">Enter your password to continue.</p>
-
         <form onSubmit={handleSubmit} noValidate>
           <div className="unlock-field">
             <label htmlFor="password" className="unlock-label">
