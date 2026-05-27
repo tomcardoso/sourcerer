@@ -487,6 +487,10 @@ function pullAppendOnly(
   // because the INSERT below uses OR IGNORE.
   const fetchedAtWatermark = Math.max(0, maxFetchedAt - 30);
 
+  const localContactIds = new Set(
+    (local.prepare('SELECT id FROM contacts').all() as { id: string }[]).map((r) => r.id),
+  );
+
   for (const sm of shared.prepare(
     'SELECT * FROM contact_alert_mentions WHERE fetched_at >= ?',
   ).all(fetchedAtWatermark) as {
@@ -499,6 +503,7 @@ function pullAppendOnly(
     guid: string;
     seen: number;
   }[]) {
+    if (!localContactIds.has(sm.contact_id)) continue;
     local
       .prepare(
         `INSERT OR IGNORE INTO contact_alert_mentions
@@ -525,6 +530,7 @@ function pullAppendOnly(
     body: string;
     created_at: number;
   }[]) {
+    if (!localContactIds.has(se.contact_id)) continue;
     local
       .prepare(
         `INSERT OR IGNORE INTO interaction_log_entries
