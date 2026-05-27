@@ -3,11 +3,20 @@ import type { SortDir } from '../views/ContactsTable';
 
 export type SortState<K extends string> = { key: K | null; dir: SortDir };
 
-export function useSortFilter<K extends string, F>(defaultFilters: F) {
-  const [sort, setSort] = useState<SortState<K>>({ key: null, dir: 'asc' });
-  const [filters, setFilters] = useState<F>(defaultFilters);
+const stateCache = new Map<string, { sort: SortState<string>; filters: unknown }>();
+
+export function useSortFilter<K extends string, F>(defaultFilters: F, cacheKey?: string) {
+  const cached = cacheKey ? stateCache.get(cacheKey) : undefined;
+
+  const [sort, setSort] = useState<SortState<K>>((cached?.sort as SortState<K>) ?? { key: null, dir: 'asc' });
+  const [filters, setFilters] = useState<F>((cached?.filters as F) ?? defaultFilters);
   const defaultFiltersRef = useRef(defaultFilters);
   useEffect(() => { defaultFiltersRef.current = defaultFilters; }, [defaultFilters]);
+
+  const cacheKeyRef = useRef(cacheKey);
+  useEffect(() => {
+    if (cacheKeyRef.current) stateCache.set(cacheKeyRef.current, { sort, filters });
+  }, [sort, filters]);
 
   function setFilter(key: string, value: unknown) {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -26,6 +35,7 @@ export function useSortFilter<K extends string, F>(defaultFilters: F) {
   const resetAll = useCallback(() => {
     setSort({ key: null, dir: 'asc' });
     setFilters(defaultFiltersRef.current);
+    if (cacheKeyRef.current) stateCache.delete(cacheKeyRef.current);
   }, []);
 
   return { sort, filters, setFilter, handleSort, resetAll };

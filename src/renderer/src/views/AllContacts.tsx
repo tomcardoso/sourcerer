@@ -32,7 +32,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkProjectMenuOpen, setBulkProjectMenuOpen] = useState(false);
   const [bulkWorking, setBulkWorking] = useState(false);
-  const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS);
+  const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS, 'all-contacts');
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [dupCount, setDupCount] = useState(0);
   const [showDedup, setShowDedup] = useState(false);

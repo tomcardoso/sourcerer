@@ -67,7 +67,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [fileUnreachable, setFileUnreachable] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS);
+  const { sort, filters, setFilter, handleSort, resetAll: resetSortFilter } = useSortFilter<SortKey, Filters>(DEFAULT_FILTERS, project?.id ? `project-${project.id}` : undefined);
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [regenPayload, setRegenPayload] = useState<{ projectName: string; payload: string } | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -96,13 +96,12 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     setSelectedId(null);
     setCheckedIds(new Set());
     setRows([]);
-    resetSortFilter();
     setOpenFilter(null);
     setSyncError(null);
     setFileUnreachable(false);
     setLastSyncedAt(project?.last_synced_at ? project.last_synced_at * 1000 : null);
     refresh();
-  }, [project?.id, resetSortFilter, refresh]);
+  }, [project?.id, refresh]);
 
   useEffect(() => {
     window.sourcerer.listStatusOptions().then(setStatusOptions);
