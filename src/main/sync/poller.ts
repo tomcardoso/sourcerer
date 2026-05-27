@@ -14,6 +14,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let rssPollIntervalMs = 6 * 60 * 60 * 1000; // default 6 hours
 let lastRssPollAt = 0;
 let isPolling = false;
+const syncingProjects = new Set<string>();
 
 export function setRssPollIntervalHours(hours: number): void {
   rssPollIntervalMs = Math.max(1, hours) * 60 * 60 * 1000;
@@ -81,10 +82,14 @@ export function pollAll(): void {
 }
 
 export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): SyncStatusEvent {
+  if (syncingProjects.has(projectId)) {
+    return { projectId, success: false, lastSyncAt: Math.floor(Date.now() / 1000), pendingWrites: 0, error: 'sync already in progress' };
+  }
   const localDb = getDatabase();
   const keyHex = keyBytes.toString('hex');
   const now = Math.floor(Date.now() / 1000);
 
+  syncingProjects.add(projectId);
   let result: SyncStatusEvent;
 
   try {
@@ -124,6 +129,8 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
       pendingWrites: 1,
       error: String(err),
     };
+  } finally {
+    syncingProjects.delete(projectId);
   }
 
   emitSyncStatus(result);

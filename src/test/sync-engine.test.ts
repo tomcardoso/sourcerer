@@ -406,3 +406,399 @@ describe('syncProject — last-write-wins (LWW)', () => {
     expect(localRow.name).toBe('Local Name');
   });
 });
+
+// ---------------------------------------------------------------------------
+// pullAppendOnly — skip rows whose contact_id no longer exists locally (#217)
+// ---------------------------------------------------------------------------
+
+describe('pullAppendOnly — orphan contact_id filter (#217)', () => {
+  it('skips alert mentions for a contact_id that does not exist locally', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Orphan Filter Test');
+
+    const existingId = uuidv4();
+    const orphanId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(existingId, 'Alice', NOW, NOW);
+    localInsertMembership(localDb, existingId, projectId);
+    sharedInsertContact(sharedDb, existingId, 'Alice');
+    sharedInsertContact(sharedDb, orphanId, 'Orphan');
+
+    const keptId = uuidv4();
+    const droppedId = uuidv4();
+    sharedDb.prepare('INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid, seen) VALUES (?, ?, ?, ?, ?, ?, 0)').run(keptId, existingId, 'H1', 'http://a.com', NOW, 'g1');
+    sharedDb.prepare('INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid, seen) VALUES (?, ?, ?, ?, ?, ?, 0)').run(droppedId, orphanId, 'H2', 'http://b.com', NOW, 'g2');
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+    expect(localDb.prepare('SELECT id FROM contact_alert_mentions WHERE id = ?').get(keptId)).toBeDefined();
+    expect(localDb.prepare('SELECT id FROM contact_alert_mentions WHERE id = ?').get(droppedId)).toBeUndefined();
+  });
+
+  it('skips interaction log entries for a contact_id that does not exist locally', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Orphan Filter Test 2');
+
+    const existingId = uuidv4();
+    const orphanId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(existingId, 'Bob', NOW, NOW);
+    localInsertMembership(localDb, existingId, projectId);
+    sharedInsertContact(sharedDb, existingId, 'Bob');
+    sharedInsertContact(sharedDb, orphanId, 'Orphan');
+
+    const keptId = uuidv4();
+    const droppedId = uuidv4();
+    sharedDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(keptId, existingId, 'r@r.com', 'Reporter', 'Kept', NOW);
+    sharedDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(droppedId, orphanId, 'r@r.com', 'Reporter', 'Dropped', NOW);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+    expect(localDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(keptId)).toBeDefined();
+    expect(localDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(droppedId)).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Push path: synced_at only stamped after sharedDb transaction commits (#288)
+// ---------------------------------------------------------------------------
+
+describe('syncProject — deferred synced_at stamp (#288)', () => {
+  it('does not stamp synced_at when the shared push transaction fails', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Deferred Stamp Test');
+
+    const contactId = insertContact(localDb, 'Stamp Alice', { emails: ['stamp@example.com'] });
+    localInsertMembership(localDb, contactId, projectId);
+
+    // Block the shared contacts INSERT so the push transaction rolls back
+    sharedDb.prepare(
+      'CREATE TRIGGER block_contacts_insert BEFORE INSERT ON contacts BEGIN SELECT RAISE(ABORT, \'blocked for test\'); END',
+    ).run();
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(false);
+
+    // synced_at must remain null — the push transaction rolled back before phase 4
+    const row = localDb.prepare('SELECT synced_at FROM contacts WHERE id = ?').get(contactId) as { synced_at: number | null };
+    expect(row.synced_at).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sub-table merge: local-only items preserved when shared contact is newer
+// ---------------------------------------------------------------------------
+
+describe('mergeSubTablesFromShared — three-way merge', () => {
+  it('preserves a local-only email when the shared contact is newer', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Merge Test');
+
+    const contactId = uuidv4();
+    // Local has one email added before the shared contact's updated_at
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Alice', NOW - 100, NOW - 100);
+    localDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(uuidv4(), contactId, 'local@example.com', NOW - 100);
+    localInsertMembership(localDb, contactId, projectId);
+
+    // Shared is newer and has a different email
+    sharedInsertContact(sharedDb, contactId, 'Alice', { emails: ['shared@example.com'], updatedAt: NOW });
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const emails = (localDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ? ORDER BY sort_order').all(contactId) as { email: string }[]).map((r) => r.email);
+    // Both emails should survive: shared email first (from shared), then local-only email
+    expect(emails).toContain('shared@example.com');
+    expect(emails).toContain('local@example.com');
+  });
+
+  it('preserves wayback_url for a link that exists in both local and shared', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Wayback Test');
+
+    const contactId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Alice', NOW - 100, NOW - 100);
+    // Local has the link with a wayback_url
+    localDb.prepare('INSERT INTO contact_links (id, contact_id, type, url, wayback_url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)').run(uuidv4(), contactId, 'website', 'https://alice.com', 'https://web.archive.org/web/alice', NOW - 100);
+    localInsertMembership(localDb, contactId, projectId);
+
+    // Shared is newer, has the same link but no wayback_url
+    sharedInsertContact(sharedDb, contactId, 'Alice Updated', { updatedAt: NOW });
+    sharedDb.prepare('INSERT INTO contact_links (id, contact_id, type, url, sort_order, created_at) VALUES (?, ?, ?, ?, 0, ?)').run(uuidv4(), contactId, 'website', 'https://alice.com', NOW - 100);
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const link = localDb.prepare('SELECT wayback_url FROM contact_links WHERE contact_id = ?').get(contactId) as { wayback_url: string | null } | undefined;
+    expect(link?.wayback_url).toBe('https://web.archive.org/web/alice');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pull path: new contact in shared gets created locally
+// ---------------------------------------------------------------------------
+
+describe('pullContacts — new shared contact pulled to local', () => {
+  it('inserts a shared contact (with sub-tables) into the local DB when not present', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Pull New Contact');
+
+    const sharedContactId = uuidv4();
+    sharedInsertContact(sharedDb, sharedContactId, 'Brand New', { emails: ['new@example.com'], phones: ['+15550001111'] });
+    sharedInsertMembership(sharedDb, uuidv4(), sharedContactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const contact = localDb.prepare('SELECT name FROM contacts WHERE id = ?').get(sharedContactId) as { name: string } | undefined;
+    expect(contact?.name).toBe('Brand New');
+
+    const emails = (localDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(sharedContactId) as { email: string }[]).map((r) => r.email);
+    expect(emails).toContain('new@example.com');
+
+    const phones = (localDb.prepare('SELECT phone FROM contact_phones WHERE contact_id = ?').all(sharedContactId) as { phone: string }[]).map((r) => r.phone);
+    expect(phones).toContain('+15550001111');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Push path: sub-tables, memberships, log entries
+// ---------------------------------------------------------------------------
+
+describe('syncProject — push path: sub-tables, memberships, log entries', () => {
+  it('pushes contact sub-tables to shared, and removes deleted sub-table rows on re-push', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Sub-table Push Test');
+
+    const contactId = insertContact(localDb, 'Sub-table Alice', { emails: ['a@example.com', 'b@example.com'] });
+    localInsertMembership(localDb, contactId, projectId);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    const sharedEmails = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(sharedEmails).toContain('a@example.com');
+    expect(sharedEmails).toContain('b@example.com');
+
+    // Remove one email locally and bump updated_at to trigger a re-push
+    localDb.prepare('DELETE FROM contact_emails WHERE contact_id = ? AND email = ?').run(contactId, 'b@example.com');
+    localDb.prepare('UPDATE contacts SET updated_at = ?, synced_at = NULL WHERE id = ?').run(NOW + 10, contactId);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    const sharedEmailsAfter = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(sharedEmailsAfter).toContain('a@example.com');
+    expect(sharedEmailsAfter).not.toContain('b@example.com');
+  });
+
+  it('pushes a membership to shared', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Membership Push Test');
+
+    const contactId = insertContact(localDb, 'Membership Alice');
+    const membershipId = localInsertMembership(localDb, contactId, projectId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const sharedMembership = sharedDb.prepare('SELECT id FROM project_memberships WHERE id = ?').get(membershipId);
+    expect(sharedMembership).toBeDefined();
+  });
+
+  it('pushes an interaction log entry to shared and does not re-push it on the next sync', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Log Push Test');
+
+    const contactId = insertContact(localDb, 'Log Alice');
+    const membershipId = localInsertMembership(localDb, contactId, projectId);
+
+    const logId = uuidv4();
+    localDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(logId, contactId, 'r@r.com', 'Reporter', 'First contact', NOW);
+    localDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipId);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    expect(sharedDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeDefined();
+
+    // Verify synced_at was stamped
+    const stamped = localDb.prepare('SELECT synced_at FROM interaction_log_entries WHERE id = ?').get(logId) as { synced_at: number | null };
+    expect(stamped.synced_at).not.toBeNull();
+
+    // Delete from shared to detect a re-push
+    sharedDb.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(logId);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    // Should NOT be re-pushed (synced_at is set, so it won't be pushed again)
+    expect(sharedDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Re-push after local edit
+// ---------------------------------------------------------------------------
+
+describe('syncProject — re-push after contact update', () => {
+  it('re-pushes a contact when updated_at advances past synced_at', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Re-push Test');
+
+    const contactId = insertContact(localDb, 'Re-push Alice');
+    localInsertMembership(localDb, contactId, projectId);
+
+    // First sync: push Alice
+    syncProject(localDb, sharedDb, projectId);
+
+    // Locally update Alice's name
+    localDb.prepare('UPDATE contacts SET name = ?, updated_at = ?, synced_at = NULL WHERE id = ?').run('Re-push Alice Updated', NOW + 10, contactId);
+
+    // Second sync: should push the updated name
+    syncProject(localDb, sharedDb, projectId);
+
+    const sharedRow = sharedDb.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string };
+    expect(sharedRow.name).toBe('Re-push Alice Updated');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Two-way sync: both clients converge on the same shared DB
+// ---------------------------------------------------------------------------
+
+describe('syncProject — two-way round-trip', () => {
+  it('both clients see each other\'s contacts after syncing through the shared DB', () => {
+    const sharedDb = createSharedDb();
+    const projectId = uuidv4();
+
+    // Client A
+    const localA = createTestDb();
+    localA.prepare('INSERT INTO projects (id, name, is_shared, created_at) VALUES (?, ?, 1, ?)').run(projectId, 'Shared Project', NOW);
+    const contactA = insertContact(localA, 'Alice', { emails: ['alice@example.com'] });
+    localInsertMembership(localA, contactA, projectId);
+
+    // Client B
+    const localB = createTestDb();
+    localB.prepare('INSERT INTO projects (id, name, is_shared, created_at) VALUES (?, ?, 1, ?)').run(projectId, 'Shared Project', NOW);
+    const contactB = insertContact(localB, 'Bob', { emails: ['bob@example.com'] });
+    localInsertMembership(localB, contactB, projectId);
+
+    // A syncs first: pushes Alice to shared
+    expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
+
+    // B syncs: pulls Alice, pushes Bob
+    expect(syncProject(localB, sharedDb, projectId).success).toBe(true);
+
+    // A syncs again: pulls Bob
+    expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
+
+    // Both clients should now have both contacts
+    const namesA = (localA.prepare('SELECT name FROM contacts ORDER BY name').all() as { name: string }[]).map((r) => r.name);
+    expect(namesA).toContain('Alice');
+    expect(namesA).toContain('Bob');
+
+    const namesB = (localB.prepare('SELECT name FROM contacts ORDER BY name').all() as { name: string }[]).map((r) => r.name);
+    expect(namesB).toContain('Alice');
+    expect(namesB).toContain('Bob');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Idempotency: consecutive syncs are safe
+// ---------------------------------------------------------------------------
+
+describe('syncProject — idempotency', () => {
+  it('produces the same result when called twice in a row', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Idempotency Test');
+
+    const contactId = insertContact(localDb, 'Idempotent Alice', { emails: ['idem@example.com'] });
+    localInsertMembership(localDb, contactId, projectId);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    // Snapshot state after first sync
+    const contactAfterFirst = localDb.prepare('SELECT name, synced_at FROM contacts WHERE id = ?').get(contactId) as { name: string; synced_at: number | null };
+    const sharedEmailsAfterFirst = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    // State should be identical after second sync
+    const contactAfterSecond = localDb.prepare('SELECT name, synced_at FROM contacts WHERE id = ?').get(contactId) as { name: string; synced_at: number | null };
+    const sharedEmailsAfterSecond = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+
+    expect(contactAfterSecond.name).toBe(contactAfterFirst.name);
+    expect(contactAfterSecond.synced_at).toBe(contactAfterFirst.synced_at);
+    expect(sharedEmailsAfterSecond).toEqual(sharedEmailsAfterFirst);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sub-table deletion self-healing
+//
+// When client B pushes an unrelated edit (e.g. a phone) AFTER client A has
+// added an email that B has not yet seen, B's push wipes A's email from shared
+// (pushSubTablesToShared is a full replace). This is a temporary inconsistency:
+// on A's next sync, A pulls (shared is now newer), the merge preserves A's
+// email as "local-only", and A re-pushes it back to shared. No data is
+// permanently lost; the inconsistency window is one sync cycle (~2 minutes).
+// ---------------------------------------------------------------------------
+
+describe('sub-table deletion self-healing', () => {
+  it('restores an email wiped from shared by a concurrent phone push after one extra sync cycle', () => {
+    const T1 = NOW - 20; // A adds email
+    const T2 = NOW - 10; // B adds phone (newer)
+
+    const localA = createTestDb();
+    const localB = createTestDb();
+    const sharedDb = createSharedDb();
+
+    const projectId_A = insertProject(localA, 'Project');
+    const projectId_B = insertProject(localB, 'Project');
+
+    const contactId = uuidv4();
+
+    // Both clients start with the same base contact (no sub-tables), synced_at set
+    // so the push guard fires only for their own edits.
+    for (const db of [localA, localB]) {
+      db.prepare('INSERT INTO contacts (id, name, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?)').run(contactId, 'Alice', T1 - 10, T1 - 10, T1 - 10);
+    }
+    localInsertMembership(localA, contactId, projectId_A);
+    localInsertMembership(localB, contactId, projectId_B);
+
+    sharedInsertContact(sharedDb, contactId, 'Alice', { updatedAt: T1 - 10 });
+    sharedInsertMembership(sharedDb, uuidv4(), contactId, { updatedAt: T1 - 10 });
+
+    // A adds an email at T1
+    localA.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(T1, contactId);
+    localA.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(uuidv4(), contactId, 'alice@wapo.com', T1);
+
+    // A syncs — pushes email to shared
+    syncProject(localA, sharedDb, projectId_A);
+    expect((sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email)).toContain('alice@wapo.com');
+
+    // B adds a phone at T2 (hasn't seen A's email yet)
+    localB.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(T2, contactId);
+    localB.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(uuidv4(), contactId, '+15551234567', T2);
+
+    // B syncs — B is newer, so B pushes and wipes A's email from shared
+    syncProject(localB, sharedDb, projectId_B);
+    const sharedEmailsAfterBPush = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(sharedEmailsAfterBPush).not.toContain('alice@wapo.com'); // temporarily gone
+
+    // A syncs again — shared is now newer (T2 > T1); merge preserves A's local email
+    // and A re-pushes it back to shared
+    syncProject(localA, sharedDb, projectId_A);
+    const sharedEmailsAfterHeal = (sharedDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(sharedEmailsAfterHeal).toContain('alice@wapo.com'); // restored ✓
+    expect((sharedDb.prepare('SELECT phone FROM contact_phones WHERE contact_id = ?').all(contactId) as { phone: string }[]).map((r) => r.phone)).toContain('+15551234567'); // B's phone also present ✓
+  });
+});
