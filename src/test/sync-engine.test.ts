@@ -828,6 +828,7 @@ describe('mergeSubTablesFromShared — RSS additive merge (#411)', () => {
     expect(result.success).toBe(true);
 
     const feeds = (localDb.prepare('SELECT rss_url FROM contact_alert_rss WHERE contact_id = ?').all(contactId) as { rss_url: string }[]).map((r) => r.rss_url);
+    expect(feeds).toHaveLength(2);
     expect(feeds).toContain('https://alice.com/feed.rss');   // local-only preserved
     expect(feeds).toContain('https://alice.com/news.rss');   // from shared
   });

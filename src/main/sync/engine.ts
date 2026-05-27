@@ -830,6 +830,10 @@ function pushAppendOnly(
         body: string;
         created_at: number;
       }[]) {
+        // seenEntryIds prevents double-inserting entries that appear across multiple membership
+        // chunks. The interaction_projects loop below fetches all rows for e.id (not just the
+        // current chunk), so the first encounter pushes everything valid — later encounters
+        // are safe to skip entirely.
         if (seenEntryIds.has(e.id)) continue;
         seenEntryIds.add(e.id);
         shared
