@@ -16,6 +16,7 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [joinedProject, setJoinedProject] = useState<import('@shared/types').Project | null>(null);
 
   useEffect(() => {
     setPreview(null);
@@ -51,12 +52,17 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
     setSubmitting(true);
     setError(null);
     try {
-      const project = await window.sourcerer.joinSharedProject({
+      const result = await window.sourcerer.joinSharedProject({
         encodedPayload: payload.trim(),
         localPath: selectedPath,
       });
-      if (project) {
-        onJoined(project);
+      if (result) {
+        if (result.syncError) {
+          setJoinedProject(result.project);
+          setError(`Joined, but the initial sync failed — contacts will load on the next sync. (${result.syncError})`);
+        } else {
+          onJoined(result.project);
+        }
       } else {
         setError('Could not join the project. The file may have moved or the link is invalid.');
       }
@@ -129,9 +135,15 @@ export default function JoinProjectModal({ onJoined, onCancel }: Props) {
             <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!canJoin}>
-              {submitting ? 'Joining…' : 'Join project'}
-            </Button>
+            {joinedProject ? (
+              <Button type="button" variant="primary" onClick={() => onJoined(joinedProject)}>
+                Go to project
+              </Button>
+            ) : (
+              <Button type="submit" variant="primary" disabled={!canJoin}>
+                {submitting ? 'Joining…' : 'Join project'}
+              </Button>
+            )}
           </div>
       </form>
     </Modal>

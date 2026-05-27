@@ -7,7 +7,7 @@ import { createSharedDb, openSharedDb, closeSharedDb, rekeySharedDb } from '../d
 import { encodePayload, decodePayload } from '../sync/payload';
 import { syncProject } from '../sync/engine';
 import { broadcastRemindersChanged } from './reminders';
-import type { Project, User, TimelineEntry, TimelineEntryProject } from '@shared/types';
+import type { Project, User, TimelineEntry, TimelineEntryProject, JoinSharedProjectResult } from '@shared/types';
 
 export function registerProjectHandlers(): void {
   ipcMain.handle('projects:list', (): Project[] => {
@@ -116,7 +116,7 @@ export function registerProjectHandlers(): void {
     async (
       _event,
       { encodedPayload, localPath }: { encodedPayload: string; localPath: string },
-    ): Promise<Project | null> => {
+    ): Promise<JoinSharedProjectResult | null> => {
       const decoded = decodePayload(encodedPayload);
       const { keyHex } = decoded;
       const keyBytes = Buffer.from(keyHex, 'hex');
@@ -134,7 +134,7 @@ export function registerProjectHandlers(): void {
           localPath,
           existing.id,
         );
-        return db.prepare('SELECT * FROM projects WHERE id = ?').get(existing.id) as Project;
+        return { project: db.prepare('SELECT * FROM projects WHERE id = ?').get(existing.id) as Project };
       }
 
       // Open and validate the shared DB
@@ -167,13 +167,15 @@ export function registerProjectHandlers(): void {
       })();
 
       // Initial pull from shared
+      let syncError: string | undefined;
       try {
         syncProject(db, sharedDb, id);
-      } catch {
-        // Non-fatal — project is created, sync will retry
+      } catch (err) {
+        syncError = String(err);
       }
 
-      return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
+      const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
+      return { project, syncError };
     },
   );
 
