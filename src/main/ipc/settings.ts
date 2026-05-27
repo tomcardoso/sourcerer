@@ -72,10 +72,11 @@ export function registerSettingsHandlers(): void {
   });
 
   ipcMain.handle('settings:set-idle-timeout', (_, seconds: number): void => {
+    const clamped = seconds === 0 ? 0 : Math.min(Math.max(60, seconds), 86400);
     getDatabase()
       .prepare('UPDATE users SET idle_timeout_seconds = ? WHERE id = 1')
-      .run(seconds);
-    const ms = seconds === 0 ? Number.MAX_SAFE_INTEGER : seconds * 1000;
+      .run(clamped);
+    const ms = clamped === 0 ? Number.MAX_SAFE_INTEGER : clamped * 1000;
     autoLock.setIdleThreshold(ms);
   });
 
@@ -87,7 +88,7 @@ export function registerSettingsHandlers(): void {
 
   ipcMain.handle('settings:set-staleness-threshold', (_, days: number): User => {
     const db = getDatabase();
-    db.prepare('UPDATE users SET staleness_threshold_days = ? WHERE id = 1').run(Math.max(1, days));
+    db.prepare('UPDATE users SET staleness_threshold_days = ? WHERE id = 1').run(Math.min(Math.max(1, days), 3650));
     return getSafeUser(db);
   });
 
