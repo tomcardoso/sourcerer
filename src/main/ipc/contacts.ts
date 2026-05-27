@@ -570,7 +570,7 @@ export function registerContactHandlers(): void {
     'memberships:bulk-update',
     (_, { membershipIds, status, priority }: { membershipIds: string[]; status?: string | null; priority?: string | null }): void => {
       if (!membershipIds.length) return;
-      if (membershipIds.length > 500) throw new Error('Too many membership IDs');
+      if (membershipIds.length > 5000) throw new Error('Too many membership IDs');
       const db = getDatabase();
       const now = Math.floor(Date.now() / 1000);
       db.transaction(() => {
