@@ -1,40 +1,13 @@
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { InteractionLogEntry } from '@shared/types';
+import { toDayKey, fmtDayLabel, fmtTime } from '../utils/fmtDate';
 import '../views/Timeline.css';
 
 interface Props {
   title: string;
   entries: InteractionLogEntry[];
   getSubtitle?: (entry: InteractionLogEntry) => string | null | undefined;
-}
-
-function toDayKey(ts: number): string {
-  const d = new Date(ts * 1000);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function fmtDayLabel(key: string): string {
-  const [y, m, d] = key.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  if (key === todayKey) return 'Today';
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-  if (key === yKey) return 'Yesterday';
-  return `${days[date.getDay()]}, ${months[date.getMonth()]} ${d}, ${y}`;
-}
-
-function fmtTime(ts: number): string {
-  const d = new Date(ts * 1000);
-  const h = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, '0');
-  const period = h >= 12 ? 'pm' : 'am';
-  return `${h % 12 || 12}:${min} ${period}`;
 }
 
 export default function LogPrintSheet({ title, entries, getSubtitle }: Props) {
