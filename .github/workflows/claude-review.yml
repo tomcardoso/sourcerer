@@ -25,7 +25,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           label_trigger: claude-review
-          claude_args: '--allowedTools "Bash(gh pr diff *),Bash(gh pr view *),Read" --max-turns 5'
+          claude_args: '--allowedTools Bash(gh pr *),Read --max-turns 5'
           prompt: |
             Run `gh pr diff $PR_NUMBER` to get the diff for this pull request, then review only those changes. Focus on:
             - Bugs and edge cases introduced by the diff
