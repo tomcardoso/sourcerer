@@ -21,6 +21,7 @@ import type {
   StatusOption,
   PriorityOption,
   CreateSharedProjectResult,
+  JoinSharedProjectResult,
   SyncStatusEvent,
   DecodePayloadResult,
   ContactAlertRss,
@@ -93,7 +94,7 @@ const sourcererApi = {
   joinSharedProject: (data: {
     encodedPayload: string;
     localPath: string;
-  }): Promise<Project | null> => ipcRenderer.invoke('projects:joinShared', data),
+  }): Promise<JoinSharedProjectResult | null> => ipcRenderer.invoke('projects:joinShared', data),
   getSetupPayload: (projectId: string): Promise<string | null> =>
     ipcRenderer.invoke('projects:getSetupPayload', projectId),
   relocateSharedProject: (projectId: string, newPath: string): Promise<void> =>

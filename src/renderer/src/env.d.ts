@@ -15,6 +15,7 @@ import type {
   StatusOption,
   PriorityOption,
   CreateSharedProjectResult,
+  JoinSharedProjectResult,
   SyncStatusEvent,
   DecodePayloadResult,
   ContactAlertRss,
@@ -64,7 +65,7 @@ declare global {
       joinSharedProject: (data: {
         encodedPayload: string;
         localPath: string;
-      }) => Promise<Project | null>;
+      }) => Promise<JoinSharedProjectResult | null>;
       getSetupPayload: (projectId: string) => Promise<string | null>;
       relocateSharedProject: (projectId: string, newPath: string) => Promise<void>;
       convertProjectToShared: (projectId: string) => Promise<{ project: Project; payload: string } | null>;

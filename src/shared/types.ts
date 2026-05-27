@@ -284,6 +284,11 @@ export interface CreateSharedProjectResult {
   payload: string;
 }
 
+export interface JoinSharedProjectResult {
+  project: Project;
+  syncError?: string;
+}
+
 export interface SyncStatusEvent {
   projectId: string;
   success: boolean;
