@@ -25,12 +25,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           label_trigger: claude-review
-          additional_permissions: |
-            actions: read
+          claude_args: '--allowedTools "Bash(gh pr diff *),Bash(gh pr view *),Read" --max-turns 5'
           prompt: |
-            Review the changes in this pull request. Focus on:
-            - Bugs and edge cases
-            - Anything that violates patterns already established in the codebase
+            Run `gh pr diff $PR_NUMBER` to get the diff for this pull request, then review only those changes. Focus on:
+            - Bugs and edge cases introduced by the diff
             - Security issues
-            - Overly complex code that could be simplified
-            Post your findings as a PR review comment.
+            - Code that violates patterns visible in the changed files
+            Be concise. Only flag real issues. Post your findings as a PR review comment.
