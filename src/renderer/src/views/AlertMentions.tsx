@@ -241,10 +241,19 @@ function MentionGroups({
                 </div>
               </div>
               <div className="alerts-item-actions">
+                {m.seen === 0 && (
+                  <button
+                    className="alerts-markread-btn"
+                    onClick={() => onMarkSeen(m.id)}
+                    title="Mark as read"
+                    aria-label="Mark as read"
+                  >✓</button>
+                )}
                 <button
                   className="alerts-dismiss-btn"
                   onClick={() => onDismiss(m.id)}
                   title="Dismiss permanently"
+                  aria-label="Dismiss permanently"
                 >×</button>
               </div>
             </div>

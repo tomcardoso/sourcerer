@@ -159,6 +159,14 @@
   margin-top: 5px;
 }
 
+.alerts-item-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.alerts-markread-btn,
 .alerts-dismiss-btn {
   background: none;
   border: none;
@@ -167,15 +175,21 @@
   line-height: 1;
   color: var(--color-text-dim);
   cursor: pointer;
-  margin-top: 2px;
   opacity: 0;
   transition: opacity 0.1s;
+}
+
+.alerts-markread-btn:hover {
+  color: var(--color-primary);
 }
 
 .alerts-dismiss-btn:hover {
   color: var(--color-text);
 }
 
-.alerts-item:hover .alerts-dismiss-btn {
+.alerts-item:hover .alerts-markread-btn,
+.alerts-item:hover .alerts-dismiss-btn,
+.alerts-markread-btn:focus-visible,
+.alerts-dismiss-btn:focus-visible {
   opacity: 1;
 }
