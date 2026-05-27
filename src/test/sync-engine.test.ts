@@ -406,3 +406,82 @@ describe('syncProject — last-write-wins (LWW)', () => {
     expect(localRow.name).toBe('Local Name');
   });
 });
+
+// ---------------------------------------------------------------------------
+// pullAppendOnly — skip rows whose contact_id no longer exists locally (#217)
+// ---------------------------------------------------------------------------
+
+describe('pullAppendOnly — orphan contact_id filter (#217)', () => {
+  it('skips alert mentions for a contact_id that does not exist locally', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Orphan Filter Test');
+
+    const existingId = uuidv4();
+    const orphanId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(existingId, 'Alice', NOW, NOW);
+    localInsertMembership(localDb, existingId, projectId);
+    sharedInsertContact(sharedDb, existingId, 'Alice');
+    sharedInsertContact(sharedDb, orphanId, 'Orphan');
+
+    const keptId = uuidv4();
+    const droppedId = uuidv4();
+    sharedDb.prepare('INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid, seen) VALUES (?, ?, ?, ?, ?, ?, 0)').run(keptId, existingId, 'H1', 'http://a.com', NOW, 'g1');
+    sharedDb.prepare('INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid, seen) VALUES (?, ?, ?, ?, ?, ?, 0)').run(droppedId, orphanId, 'H2', 'http://b.com', NOW, 'g2');
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+    expect(localDb.prepare('SELECT id FROM contact_alert_mentions WHERE id = ?').get(keptId)).toBeDefined();
+    expect(localDb.prepare('SELECT id FROM contact_alert_mentions WHERE id = ?').get(droppedId)).toBeUndefined();
+  });
+
+  it('skips interaction log entries for a contact_id that does not exist locally', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Orphan Filter Test 2');
+
+    const existingId = uuidv4();
+    const orphanId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(existingId, 'Bob', NOW, NOW);
+    localInsertMembership(localDb, existingId, projectId);
+    sharedInsertContact(sharedDb, existingId, 'Bob');
+    sharedInsertContact(sharedDb, orphanId, 'Orphan');
+
+    const keptId = uuidv4();
+    const droppedId = uuidv4();
+    sharedDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(keptId, existingId, 'r@r.com', 'Reporter', 'Kept', NOW);
+    sharedDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(droppedId, orphanId, 'r@r.com', 'Reporter', 'Dropped', NOW);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+    expect(localDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(keptId)).toBeDefined();
+    expect(localDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(droppedId)).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Push path: synced_at only stamped after sharedDb transaction commits (#288)
+// ---------------------------------------------------------------------------
+
+describe('syncProject — deferred synced_at stamp (#288)', () => {
+  it('does not stamp synced_at when the shared push transaction fails', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Deferred Stamp Test');
+
+    const contactId = insertContact(localDb, 'Stamp Alice', { emails: ['stamp@example.com'] });
+    localInsertMembership(localDb, contactId, projectId);
+
+    // Block the shared contacts INSERT so the push transaction rolls back
+    sharedDb.prepare(
+      'CREATE TRIGGER block_contacts_insert BEFORE INSERT ON contacts BEGIN SELECT RAISE(ABORT, \'blocked for test\'); END',
+    ).run();
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(false);
+
+    // synced_at must remain null — the push transaction rolled back before phase 4
+    const row = localDb.prepare('SELECT synced_at FROM contacts WHERE id = ?').get(contactId) as { synced_at: number | null };
+    expect(row.synced_at).toBeNull();
+  });
+});
