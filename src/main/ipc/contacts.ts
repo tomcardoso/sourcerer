@@ -570,6 +570,7 @@ export function registerContactHandlers(): void {
     'memberships:bulk-update',
     (_, { membershipIds, status, priority }: { membershipIds: string[]; status?: string | null; priority?: string | null }): void => {
       if (!membershipIds.length) return;
+      if (membershipIds.length > 5000) throw new Error('Too many membership IDs');
       const db = getDatabase();
       const now = Math.floor(Date.now() / 1000);
       db.transaction(() => {
@@ -589,6 +590,7 @@ export function registerContactHandlers(): void {
   ipcMain.handle(
     'memberships:set-reporters',
     (_, { membershipId, reporters }: { membershipId: string; reporters: Array<{ email: string; name: string }> }): void => {
+      if (reporters.length > 500) throw new Error('Too many reporters');
       const db = getDatabase();
       const deleteReporters = db.prepare('DELETE FROM membership_reporters WHERE membership_id = ?');
       const insertReporter = db.prepare(
@@ -628,7 +630,8 @@ export function registerContactHandlers(): void {
       if (!membership) throw new Error('Membership not found');
       const id = uuidv4();
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
-      if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
+      const maxTs = Math.floor(Date.now() / 1000) + 3600;
+      if (!Number.isFinite(ts) || ts <= 0 || ts > maxTs) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
       const validMid = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
       const insertProject = db.prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)');
@@ -688,7 +691,8 @@ export function registerContactHandlers(): void {
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
       const id = uuidv4();
       const ts = createdAt ?? Math.floor(Date.now() / 1000);
-      if (!Number.isFinite(ts) || ts <= 0) throw new Error('invalid created_at');
+      const maxTs = Math.floor(Date.now() / 1000) + 3600;
+      if (!Number.isFinite(ts) || ts <= 0 || ts > maxTs) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
       const insertEntry = db.prepare(
         'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -779,6 +783,8 @@ export function registerContactHandlers(): void {
       _,
       data: { id?: string; contactId: string; projectId: string; label: string; body: string },
     ): ScratchpadDraft => {
+      if (data.label.length > 500) throw new Error('label too long');
+      if (data.body.length > 100_000) throw new Error('body too long');
       const db = getDatabase();
       const now = Math.floor(Date.now() / 1000);
       if (data.id) {
@@ -826,6 +832,7 @@ export function registerContactHandlers(): void {
       _,
       { emails, phones, excludeId }: { emails: string[]; phones: string[]; excludeId?: string },
     ): { email: Record<string, string>; phone: Record<string, string> } => {
+      if (emails.length > 100 || phones.length > 100) throw new Error('Too many entries');
       const db = getDatabase();
       const { phone_country } = db.prepare('SELECT phone_country FROM users WHERE id = 1').get() as { phone_country: string };
       const result: { email: Record<string, string>; phone: Record<string, string> } = {
