@@ -810,6 +810,9 @@
 }
 
 .pt-log-modal .modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
   padding: 12px 20px;
   border-top: 1px solid var(--color-border);
   margin-top: 0;

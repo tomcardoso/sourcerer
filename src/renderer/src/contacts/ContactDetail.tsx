@@ -94,27 +94,21 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
   }, [reload]);
 
   useEffect(() => {
-    if (!contact) return;
+    if (!contact || contact.projects.length === 0) { setPrintLogs([]); return; }
     let cancelled = false;
-    function handleBeforePrint() {
-      Promise.all(
-        contact!.projects.map((p) =>
-          window.sourcerer.listInteractionLog(p.membership_id).then((entries) => ({
-            projectName: p.name,
-            entries,
-          }))
-        )
-      ).then((logs) => {
-        if (!cancelled) setPrintLogs(logs);
-      }).catch(() => {
-        if (!cancelled) setPrintLogs([]);
-      });
-    }
-    window.addEventListener('beforeprint', handleBeforePrint);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('beforeprint', handleBeforePrint);
-    };
+    Promise.all(
+      contact.projects.map((p) =>
+        window.sourcerer.listInteractionLog(p.membership_id).then((entries) => ({
+          projectName: p.name,
+          entries,
+        }))
+      )
+    ).then((logs) => {
+      if (!cancelled) setPrintLogs(logs);
+    }).catch(() => {
+      if (!cancelled) setPrintLogs([]);
+    });
+    return () => { cancelled = true; };
   }, [contact]);
 
   function handleMembershipChanged() {

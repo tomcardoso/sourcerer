@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { InteractionLogEntry, Reminder } from '@shared/types';
 import { linkifyText } from '../utils/linkify';
 import Modal from '../shell/Modal';
@@ -90,6 +90,17 @@ export function LogAllModal({
   const [query, setQuery] = useState('');
   const [printing, setPrinting] = useState(false);
 
+  useEffect(() => {
+    if (!printing) return;
+    const id = requestAnimationFrame(() => { window.print(); });
+    const onAfterPrint = () => setPrinting(false);
+    window.addEventListener('afterprint', onAfterPrint, { once: true });
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, [printing]);
+
   const reversed = [...entries].reverse();
   const visible = query
     ? reversed.filter((e) => e.body.toLowerCase().includes(query.toLowerCase()))
@@ -125,7 +136,7 @@ export function LogAllModal({
         </div>
       )}
       <div className="modal-actions">
-        <Button variant="secondary" onClick={() => { setPrinting(true); setTimeout(() => { window.print(); setPrinting(false); }, 50); }}>Print</Button>
+        <Button variant="secondary" onClick={() => setPrinting(true)}>Print</Button>
         <Button onClick={onClose}>Close</Button>
       </div>
       {printing && <LogPrintSheet title={title} entries={entries} getSubtitle={getSubtitle} />}

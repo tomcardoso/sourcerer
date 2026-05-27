@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { ContactDetail, InteractionLogEntry } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
+import { SOCIAL_META } from './contactConstants';
+import type { SocialType } from './contactConstants';
 import './ContactPrintSheet.css';
 
 interface ProjectLog {
@@ -13,14 +15,6 @@ interface Props {
   contact: ContactDetail;
   logs: ProjectLog[];
 }
-
-const SOCIAL_LABELS: Record<string, string> = {
-  linkedin: 'LinkedIn',
-  x: 'X / Twitter',
-  instagram: 'Instagram',
-  facebook: 'Facebook',
-  other: 'Other',
-};
 
 export default function ContactPrintSheet({ contact, logs }: Props) {
   const printedAt = useMemo(() => new Date(), []);
@@ -73,7 +67,7 @@ export default function ContactPrintSheet({ contact, logs }: Props) {
             {socials.map((l) => (
               <div key={l.id} className="cps-row">
                 <span className="cps-link-type">
-                  {l.type === 'other' && l.label ? l.label : SOCIAL_LABELS[l.type] ?? l.type}
+                  {l.type === 'other' && l.label ? l.label : SOCIAL_META[l.type as SocialType]?.label ?? l.type}
                 </span>
                 <span className="cps-value">{l.url}</span>
               </div>
@@ -108,14 +102,15 @@ export default function ContactPrintSheet({ contact, logs }: Props) {
         {contact.projects.length > 0 && (
           <section className="cps-section">
             <h2 className="cps-section-label">Projects</h2>
-            {contact.projects.map((p) => (
-              <div key={p.id} className="cps-project-row">
-                <span className="cps-project-name">{p.name}</span>
-                {p.priority && <><span className="cps-project-dot">·</span><span className="cps-project-meta">{p.priority}</span></>}
-                {p.status && <><span className="cps-project-dot">·</span><span className="cps-project-meta">{p.status}</span></>}
-                {p.reporter_name && <><span className="cps-project-dot">·</span><span className="cps-project-meta">{p.reporter_name}</span></>}
-              </div>
-            ))}
+            {contact.projects.map((p) => {
+              const meta = [p.priority, p.status, p.reporter_name].filter(Boolean).join(' · ');
+              return (
+                <div key={p.id} className="cps-project-row">
+                  <span className="cps-project-name">{p.name}</span>
+                  {meta && <span className="cps-project-meta">{meta}</span>}
+                </div>
+              );
+            })}
           </section>
         )}
 

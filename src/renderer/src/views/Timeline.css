@@ -9,6 +9,16 @@
   display: none;
 }
 
+@page {
+  margin: 1.5cm 2cm;
+  @bottom-right {
+    content: counter(page);
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    color: #000;
+  }
+}
+
 @media print {
   #root {
     display: none !important;
@@ -16,7 +26,7 @@
 
   .ptl-ps-root {
     display: block;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--font-serif);
     font-size: 11pt;
     color: #000;
     background: #fff;
@@ -32,7 +42,7 @@
   }
 
   .ptl-ps-meta {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 8pt;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -41,7 +51,7 @@
   }
 
   .ptl-ps-title {
-    font-size: 22pt;
+    font-size: 16pt;
     font-weight: bold;
     margin: 0 0 2pt;
     line-height: 1.1;
@@ -49,7 +59,7 @@
   }
 
   .ptl-ps-subtitle {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 9pt;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -62,7 +72,7 @@
   }
 
   .ptl-ps-day {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 7.5pt;
     font-weight: bold;
     letter-spacing: 0.14em;
@@ -84,25 +94,39 @@
 
   .ptl-ps-entry-meta {
     display: flex;
-    align-items: baseline;
-    gap: 6pt;
+    flex-direction: column;
+    gap: 2pt;
     margin-bottom: 3pt;
+  }
+
+  .ptl-ps-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8pt;
     flex-wrap: wrap;
   }
 
   .ptl-ps-contact-name {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 12pt;
+    font-family: var(--font-serif);
+    font-size: 10pt;
     font-weight: bold;
     color: #000;
   }
 
-  .ptl-ps-badge {
-    font-family: 'Courier New', monospace;
+  .ptl-ps-badge-row {
+    font-family: var(--font-mono);
     font-size: 7.5pt;
-    color: #000;
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    color: #000;
+  }
+
+  .ptl-ps-contact-org {
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #000;
   }
 
   .ptl-ps-body-text {
@@ -121,8 +145,8 @@
 
   .ptl-ps-reporter,
   .ptl-ps-time {
-    font-family: 'Courier New', monospace;
-    font-size: 8pt;
+    font-family: var(--font-mono);
+    font-size: 6.5pt;
     color: #000;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -133,6 +157,7 @@
     margin-left: 8pt;
     color: #aaa;
   }
+
   /* Page footer */
   .ptl-ps-page-footer {
     margin-top: 20pt;
@@ -140,10 +165,11 @@
     border-top: 0.75pt solid #000;
     display: flex;
     justify-content: space-between;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 7.5pt;
     color: #000;
-  }}
+  }
+}
 
 /* ── Multi-select (matches reporter selectize in ProjectTab) ── */
 

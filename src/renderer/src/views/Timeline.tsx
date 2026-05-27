@@ -77,16 +77,21 @@ function TimelinePrintSheet({
             {group.entries.map((entry) => (
               <div key={entry.id} className="ptl-ps-entry">
                 <div className="ptl-ps-entry-meta">
-                  <span className="ptl-ps-contact-name">{entry.contact_name}</span>
+                  <div className="ptl-ps-name-row">
+                    <span className="ptl-ps-contact-name">{entry.contact_name}</span>
+                    {(() => {
+                      const parts = [
+                        ...(isGlobal ? entry.projects.map((p) => p.project_name) : []),
+                        ...entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1),
+                      ].filter(Boolean) as string[];
+                      return parts.length > 0
+                        ? <span className="ptl-ps-badge-row">{parts.join(' · ')}</span>
+                        : null;
+                    })()}
+                  </div>
                   {entry.contact_organization && (
-                    <span className="ptl-ps-badge">{entry.contact_organization}</span>
+                    <div className="ptl-ps-contact-org">{entry.contact_organization}</div>
                   )}
-                  {isGlobal && entry.projects.map((p) => (
-                    <span key={p.project_id} className="ptl-ps-badge">{p.project_name}</span>
-                  ))}
-                  {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
-                    <span key={priority} className="ptl-ps-badge">{priority}</span>
-                  ))}
                 </div>
                 <p className="ptl-ps-body-text">{entry.body}</p>
                 <div className="ptl-ps-footer">
