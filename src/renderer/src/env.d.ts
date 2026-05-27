@@ -249,6 +249,7 @@ declare global {
       simulateUpdate?: () => Promise<void>;
       getUpdateState: () => Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null>;
       showUpdateError: () => Promise<void>;
+      appVersion: string;
     };
   }
 }

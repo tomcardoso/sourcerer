@@ -9,7 +9,7 @@ const IDLE_CHECK_INTERVAL_MS = 15_000;
 const DEFAULT_IDLE_THRESHOLD_MS = 15 * 60 * 1000;
 
 const AUTH_WIDTH = 560;
-const AUTH_HEIGHT = 720;
+const AUTH_HEIGHT = 520;
 
 class AutoLockManager {
   private timer: ReturnType<typeof setInterval> | null = null;
