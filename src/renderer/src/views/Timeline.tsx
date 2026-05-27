@@ -3,6 +3,7 @@ import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
 import { createPortal } from 'react-dom';
 import type { TimelineEntry, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { toDayKey, fmtDayLabel, fmtTime } from '../utils/fmtDate';
 import { CalendarPicker } from './CalendarPicker';
 import Button from '../shell/Button';
 import ContactDetail from '../contacts/ContactDetail';
@@ -14,38 +15,6 @@ interface Props {
   projectId?: string;
   projectName?: string;
   user?: User | null;
-}
-
-function dayKey(ts: number): string {
-  const d = new Date(ts * 1000);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function fmtDayLabel(key: string): string {
-  const [y, m, d] = key.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  if (key === todayKey) return 'Today';
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-  if (key === yKey) return 'Yesterday';
-  return `${days[date.getDay()]}, ${months[date.getMonth()]} ${d}, ${y}`;
-}
-
-function fmtTime(ts: number): string {
-  const d = new Date(ts * 1000);
-  const h = d.getHours();
-  const m = String(d.getMinutes()).padStart(2, '0');
-  const period = h >= 12 ? 'pm' : 'am';
-  const h12 = h % 12 || 12;
-  return `${h12}:${m} ${period}`;
 }
 
 function toggle(arr: string[], val: string): string[] {
@@ -77,16 +46,21 @@ function TimelinePrintSheet({
             {group.entries.map((entry) => (
               <div key={entry.id} className="ptl-ps-entry">
                 <div className="ptl-ps-entry-meta">
-                  <span className="ptl-ps-contact-name">{entry.contact_name}</span>
+                  <div className="ptl-ps-name-row">
+                    <span className="ptl-ps-contact-name">{entry.contact_name}</span>
+                    {(() => {
+                      const parts = [
+                        ...(isGlobal ? entry.projects.map((p) => p.project_name) : []),
+                        ...entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1),
+                      ].filter(Boolean) as string[];
+                      return parts.length > 0
+                        ? <span className="ptl-ps-badge-row">{parts.join(' · ')}</span>
+                        : null;
+                    })()}
+                  </div>
                   {entry.contact_organization && (
-                    <span className="ptl-ps-badge">{entry.contact_organization}</span>
+                    <div className="ptl-ps-contact-org">{entry.contact_organization}</div>
                   )}
-                  {isGlobal && entry.projects.map((p) => (
-                    <span key={p.project_id} className="ptl-ps-badge">{p.project_name}</span>
-                  ))}
-                  {entry.projects.map((p) => p.priority).filter(Boolean).slice(0, 1).map((priority) => (
-                    <span key={priority} className="ptl-ps-badge">{priority}</span>
-                  ))}
                 </div>
                 <p className="ptl-ps-body-text">{entry.body}</p>
                 <div className="ptl-ps-footer">
@@ -308,7 +282,7 @@ export default function Timeline({ projectId, projectName, user }: Props) {
   const groups = useMemo(() => {
     const g: Array<{ key: string; entries: TimelineEntry[] }> = [];
     for (const entry of filtered) {
-      const key = dayKey(entry.created_at);
+      const key = toDayKey(entry.created_at);
       const last = g[g.length - 1];
       if (last && last.key === key) last.entries.push(entry);
       else g.push({ key, entries: [entry] });
