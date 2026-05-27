@@ -371,11 +371,21 @@ function mergeSubTablesFromShared(
   });
 
   // ── Alert RSS ──────────────────────────────────────────────────────────────
-  local.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);
-  const rssFeeds = shared
+  // Same additive union strategy as emails/phones/links/handles: preserve local-only
+  // RSS feeds that haven't been pushed to shared yet.
+  const sharedRss = shared
     .prepare('SELECT * FROM contact_alert_rss WHERE contact_id = ?')
     .all(contactId) as { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }[];
-  for (const rss of rssFeeds) {
+  const localRss = local
+    .prepare('SELECT * FROM contact_alert_rss WHERE contact_id = ?')
+    .all(contactId) as { id: string; rss_url: string; last_polled_at: number | null; is_invalid: number }[];
+
+  const sharedRssUrls = new Set(sharedRss.map((r) => r.rss_url));
+  const localOnlyRss = localRss.filter((r) => !sharedRssUrls.has(r.rss_url));
+  const mergedRss = [...sharedRss, ...localOnlyRss];
+
+  local.prepare('DELETE FROM contact_alert_rss WHERE contact_id = ?').run(contactId);
+  for (const rss of mergedRss) {
     local
       .prepare(
         'INSERT INTO contact_alert_rss (id, contact_id, rss_url, last_polled_at, is_invalid) VALUES (?, ?, ?, ?, ?)',
@@ -761,81 +771,87 @@ function pushAppendOnly(
   contactIds: string[],
   membershipIds: string[],
 ): { mentionIds: string[]; logEntryIds: string[] } {
+  const membershipIdSet = new Set(membershipIds);
+  // SQLite's SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999. Chunk large ID lists
+  // to stay safely below that limit.
+  const CHUNK = 500;
+
   const mentionIds: string[] = [];
   const logEntryIds: string[] = [];
   if (contactIds.length > 0) {
-    const cPlaceholders = contactIds.map(() => '?').join(',');
-
     // Alert mentions
-    for (const m of local
-      .prepare(
-        `SELECT * FROM contact_alert_mentions WHERE contact_id IN (${cPlaceholders}) AND synced_at IS NULL`,
-      )
-      .all(...contactIds) as {
-      id: string;
-      contact_id: string;
-      headline: string;
-      source_url: string;
-      published_at: number | null;
-      fetched_at: number;
-      guid: string;
-      seen: number;
-    }[]) {
-      shared
+    for (let i = 0; i < contactIds.length; i += CHUNK) {
+      const chunk = contactIds.slice(i, i + CHUNK);
+      const cPlaceholders = chunk.map(() => '?').join(',');
+      for (const m of local
         .prepare(
-          `INSERT OR IGNORE INTO contact_alert_mentions
-             (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `SELECT * FROM contact_alert_mentions WHERE contact_id IN (${cPlaceholders}) AND synced_at IS NULL`,
         )
-        .run(
-          m.id,
-          m.contact_id,
-          m.headline,
-          m.source_url,
-          m.published_at,
-          m.fetched_at,
-          m.guid,
-          m.seen,
-        );
-      mentionIds.push(m.id);
+        .all(...chunk) as {
+        id: string;
+        contact_id: string;
+        headline: string;
+        source_url: string;
+        published_at: number | null;
+        fetched_at: number;
+        guid: string;
+        seen: number;
+      }[]) {
+        shared
+          .prepare(
+            `INSERT OR IGNORE INTO contact_alert_mentions
+               (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(m.id, m.contact_id, m.headline, m.source_url, m.published_at, m.fetched_at, m.guid, m.seen);
+        mentionIds.push(m.id);
+      }
     }
   }
 
   if (membershipIds.length > 0) {
-    const mPlaceholders = membershipIds.map(() => '?').join(',');
-
     // Interaction log entries (push entries not yet synced that are linked to these memberships)
-    for (const e of local
-      .prepare(
-        `SELECT DISTINCT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at
-         FROM interaction_log_entries ile
-         JOIN interaction_projects ip ON ip.interaction_id = ile.id
-         WHERE ip.membership_id IN (${mPlaceholders}) AND ile.synced_at IS NULL`,
-      )
-      .all(...membershipIds) as {
-      id: string;
-      contact_id: string;
-      reporter_email: string;
-      reporter_name: string;
-      body: string;
-      created_at: number;
-    }[]) {
-      shared
+    const seenEntryIds = new Set<string>();
+    for (let i = 0; i < membershipIds.length; i += CHUNK) {
+      const chunk = membershipIds.slice(i, i + CHUNK);
+      const mPlaceholders = chunk.map(() => '?').join(',');
+      for (const e of local
         .prepare(
-          `INSERT OR IGNORE INTO interaction_log_entries
-             (id, contact_id, reporter_email, reporter_name, body, created_at)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `SELECT DISTINCT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at
+           FROM interaction_log_entries ile
+           JOIN interaction_projects ip ON ip.interaction_id = ile.id
+           WHERE ip.membership_id IN (${mPlaceholders}) AND ile.synced_at IS NULL`,
         )
-        .run(e.id, e.contact_id, e.reporter_email, e.reporter_name, e.body, e.created_at);
-      // Push all interaction_projects rows for this entry
-      for (const ip of local
-        .prepare('SELECT interaction_id, membership_id FROM interaction_projects WHERE interaction_id = ?')
-        .all(e.id) as { interaction_id: string; membership_id: string }[]) {
+        .all(...chunk) as {
+        id: string;
+        contact_id: string;
+        reporter_email: string;
+        reporter_name: string;
+        body: string;
+        created_at: number;
+      }[]) {
+        if (seenEntryIds.has(e.id)) continue;
+        seenEntryIds.add(e.id);
         shared
-          .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
-          .run(ip.interaction_id, ip.membership_id);
+          .prepare(
+            `INSERT OR IGNORE INTO interaction_log_entries
+               (id, contact_id, reporter_email, reporter_name, body, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          )
+          .run(e.id, e.contact_id, e.reporter_email, e.reporter_name, e.body, e.created_at);
+        // Only push interaction_projects rows referencing this project's memberships.
+        // Rows pointing at other projects' memberships don't exist in this shared DB
+        // and would cause FK violations.
+        for (const ip of local
+          .prepare('SELECT interaction_id, membership_id FROM interaction_projects WHERE interaction_id = ?')
+          .all(e.id) as { interaction_id: string; membership_id: string }[]) {
+          if (!membershipIdSet.has(ip.membership_id)) continue;
+          shared
+            .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
+            .run(ip.interaction_id, ip.membership_id);
+        }
+        logEntryIds.push(e.id);
       }
-      logEntryIds.push(e.id);
     }
   }
 

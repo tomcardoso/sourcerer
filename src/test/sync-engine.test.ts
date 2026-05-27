@@ -802,3 +802,67 @@ describe('sub-table deletion self-healing', () => {
     expect((sharedDb.prepare('SELECT phone FROM contact_phones WHERE contact_id = ?').all(contactId) as { phone: string }[]).map((r) => r.phone)).toContain('+15551234567'); // B's phone also present ✓
   });
 });
+
+// ---------------------------------------------------------------------------
+// RSS sub-table additive merge (#411)
+// ---------------------------------------------------------------------------
+
+describe('mergeSubTablesFromShared — RSS additive merge (#411)', () => {
+  it('preserves a local-only RSS feed when the shared contact is newer', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'RSS Merge Test');
+
+    const contactId = uuidv4();
+    localDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Alice', NOW - 100, NOW - 100);
+    // Local has an RSS feed not yet pushed to shared
+    localDb.prepare('INSERT INTO contact_alert_rss (id, contact_id, rss_url, is_invalid) VALUES (?, ?, ?, 0)').run(uuidv4(), contactId, 'https://alice.com/feed.rss');
+    localInsertMembership(localDb, contactId, projectId);
+
+    // Shared is newer and has a different RSS feed
+    sharedInsertContact(sharedDb, contactId, 'Alice Updated', { updatedAt: NOW });
+    sharedDb.prepare('INSERT INTO contact_alert_rss (id, contact_id, rss_url, is_invalid) VALUES (?, ?, ?, 0)').run(uuidv4(), contactId, 'https://alice.com/news.rss');
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const feeds = (localDb.prepare('SELECT rss_url FROM contact_alert_rss WHERE contact_id = ?').all(contactId) as { rss_url: string }[]).map((r) => r.rss_url);
+    expect(feeds).toContain('https://alice.com/feed.rss');   // local-only preserved
+    expect(feeds).toContain('https://alice.com/news.rss');   // from shared
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pushAppendOnly — cross-project membership guard (#410)
+// ---------------------------------------------------------------------------
+
+describe('pushAppendOnly — cross-project membership guard (#410)', () => {
+  it('does not push interaction_projects rows for memberships outside the current project', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Project A');
+    const otherProjectId = insertProject(localDb, 'Project B');
+
+    const contactId = insertContact(localDb, 'Alice');
+    const membershipA = localInsertMembership(localDb, contactId, projectId);
+    const membershipB = localInsertMembership(localDb, contactId, otherProjectId);
+
+    // One log entry linked to BOTH memberships
+    const logId = uuidv4();
+    localDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(logId, contactId, 'r@r.com', 'Reporter', 'Log entry', NOW);
+    localDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipA);
+    localDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipB);
+
+    // Syncing Project A's shared DB — membershipB doesn't exist there, so pushing it would be an FK violation
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    // The log entry should be in shared, but only linked to membershipA
+    expect(sharedDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeDefined();
+    const ipRows = sharedDb.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').all(logId) as { membership_id: string }[];
+    const pushedMembershipIds = ipRows.map((r) => r.membership_id);
+    expect(pushedMembershipIds).toContain(membershipA);
+    expect(pushedMembershipIds).not.toContain(membershipB);
+  });
+});
