@@ -236,6 +236,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
   CREATE INDEX IF NOT EXISTS idx_contact_handles_contact_id           ON contact_handles(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_handles_contact_type_handle ON contact_handles(contact_id, type, handle);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_links_contact_url      ON contact_links(contact_id, url);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_alert_rss_contact_url ON contact_alert_rss(contact_id, rss_url);
   CREATE INDEX IF NOT EXISTS idx_contact_screenshots_contact_id   ON contact_screenshots(contact_id);
   CREATE INDEX IF NOT EXISTS idx_interaction_log_contact_created ON interaction_log_entries(contact_id, created_at);
   CREATE INDEX IF NOT EXISTS idx_interaction_projects_membership ON interaction_projects(membership_id);
