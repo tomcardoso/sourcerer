@@ -52,27 +52,31 @@ export function pollAll(): void {
   if (isPolling) return;
   isPolling = true;
 
-  const localDb = getDatabase();
-  const projects = localDb
-    .prepare(`SELECT id, shared_db_path, shared_db_key FROM projects WHERE is_shared = 1`)
-    .all() as { id: string; shared_db_path: string | null; shared_db_key: Buffer | null }[];
+  let rssStarted = false;
+  try {
+    const localDb = getDatabase();
+    const projects = localDb
+      .prepare(`SELECT id, shared_db_path, shared_db_key FROM projects WHERE is_shared = 1`)
+      .all() as { id: string; shared_db_path: string | null; shared_db_key: Buffer | null }[];
 
-  for (const project of projects) {
-    if (!project.shared_db_path || !project.shared_db_key) continue;
-    syncOne(project.id, project.shared_db_path, project.shared_db_key);
-  }
+    for (const project of projects) {
+      if (!project.shared_db_path || !project.shared_db_key) continue;
+      syncOne(project.id, project.shared_db_path, project.shared_db_key);
+    }
 
-  checkOutreachReminders();
-  checkReminders();
+    checkOutreachReminders();
+    checkReminders();
 
-  const now = Date.now();
-  if (now - lastRssPollAt >= rssPollIntervalMs) {
-    lastRssPollAt = now;
-    // Keep isPolling true until the async RSS fetch finishes so a slow fetch
-    // cannot overlap with the next interval tick.
-    pollAllRss().catch(() => {}).finally(() => { isPolling = false; });
-  } else {
-    isPolling = false;
+    const now = Date.now();
+    if (now - lastRssPollAt >= rssPollIntervalMs) {
+      lastRssPollAt = now;
+      rssStarted = true;
+      // Keep isPolling true until the async RSS fetch finishes so a slow fetch
+      // cannot overlap with the next interval tick.
+      pollAllRss().catch(() => {}).finally(() => { isPolling = false; });
+    }
+  } finally {
+    if (!rssStarted) isPolling = false;
   }
 }
 
