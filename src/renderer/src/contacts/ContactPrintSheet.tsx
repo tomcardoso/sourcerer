@@ -89,7 +89,7 @@ export default function ContactPrintSheet({ contact, logs }: Props) {
               <div key={l.id} className="cps-row">
                 <span className="cps-value">{l.url}</span>
                 {l.wayback_url && (
-                  <span className="cps-label">archived: {l.wayback_url}</span>
+                  <span className="cps-archived-badge">Archived</span>
                 )}
               </div>
             ))}
@@ -108,26 +108,14 @@ export default function ContactPrintSheet({ contact, logs }: Props) {
         {contact.projects.length > 0 && (
           <section className="cps-section">
             <h2 className="cps-section-label">Projects</h2>
-            <table className="cps-projects-table">
-              <thead>
-                <tr>
-                  <th>Project</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Reporter</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contact.projects.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.name}</td>
-                    <td>{p.status ?? '—'}</td>
-                    <td>{p.priority ?? '—'}</td>
-                    <td>{p.reporter_name}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {contact.projects.map((p) => (
+              <div key={p.id} className="cps-project-row">
+                <span className="cps-project-name">{p.name}</span>
+                {p.priority && <><span className="cps-project-dot">·</span><span className="cps-project-meta">{p.priority}</span></>}
+                {p.status && <><span className="cps-project-dot">·</span><span className="cps-project-meta">{p.status}</span></>}
+                {p.reporter_name && <><span className="cps-project-dot">·</span><span className="cps-project-meta">{p.reporter_name}</span></>}
+              </div>
+            ))}
           </section>
         )}
 

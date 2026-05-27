@@ -3,6 +3,7 @@ import type { InteractionLogEntry, Reminder } from '@shared/types';
 import { linkifyText } from '../utils/linkify';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
+import LogPrintSheet from './LogPrintSheet';
 import './ContactDetail.css';
 
 export function sortReminders(a: Reminder, b: Reminder): number {
@@ -87,6 +88,7 @@ export function LogAllModal({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
+  const [printing, setPrinting] = useState(false);
 
   const reversed = [...entries].reverse();
   const visible = query
@@ -122,9 +124,11 @@ export function LogAllModal({
           {visible.length} of {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
         </div>
       )}
-      <div className="form-actions">
+      <div className="modal-actions">
+        <Button variant="secondary" onClick={() => { setPrinting(true); setTimeout(() => { window.print(); setPrinting(false); }, 50); }}>Print</Button>
         <Button onClick={onClose}>Close</Button>
       </div>
+      {printing && <LogPrintSheet title={title} entries={entries} getSubtitle={getSubtitle} />}
     </Modal>
   );
 }

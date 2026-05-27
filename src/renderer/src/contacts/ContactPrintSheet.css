@@ -31,9 +31,19 @@
     display: none !important;
   }
 
+  @page {
+    margin: 1.5cm 2cm;
+    @bottom-right {
+      content: counter(page);
+      font-family: var(--font-mono);
+      font-size: 7.5pt;
+      color: #000;
+    }
+  }
+
   .cps-root {
     display: block;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--font-serif);
     font-size: 11pt;
     color: #000;
     background: #fff;
@@ -50,7 +60,7 @@
   }
 
   .cps-meta {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 8pt;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -59,7 +69,7 @@
   }
 
   .cps-name {
-    font-size: 22pt;
+    font-size: 16pt;
     font-weight: bold;
     margin: 0 0 2pt;
     line-height: 1.1;
@@ -67,7 +77,7 @@
   }
 
   .cps-org {
-    font-size: 13pt;
+    font-size: 11pt;
     color: #000;
     margin: 0;
   }
@@ -79,7 +89,7 @@
   }
 
   .cps-section-label {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 7.5pt;
     font-weight: bold;
     letter-spacing: 0.14em;
@@ -104,17 +114,25 @@
   }
 
   .cps-label {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 8pt;
     color: #000;
   }
 
   .cps-link-type {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 8pt;
     color: #000;
     min-width: 64pt;
     flex-shrink: 0;
+  }
+
+  .cps-archived-badge {
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #000;
   }
 
   /* Notes */
@@ -125,34 +143,37 @@
     color: #000;
   }
 
-  /* Projects table */
-  .cps-projects-table {
-    width: 100%;
-    border-collapse: collapse;
+  /* Projects list */
+  .cps-project-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    padding: 3pt 0;
+    border-bottom: 0.5pt solid #ccc;
     font-size: 9.5pt;
   }
 
-  .cps-projects-table th {
-    font-family: 'Courier New', monospace;
-    font-size: 7.5pt;
-    font-weight: bold;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-align: left;
-    padding: 2pt 4pt;
-    border-bottom: 0.75pt solid #000;
-    color: #000;
-  }
-
-  .cps-projects-table td {
-    padding: 3pt 4pt;
-    border-bottom: 0.5pt solid #000;
-    vertical-align: top;
-    color: #000;
-  }
-
-  .cps-projects-table tr:last-child td {
+  .cps-project-row:last-child {
     border-bottom: none;
+  }
+
+  .cps-project-name {
+    flex: 1;
+    color: #000;
+  }
+
+  .cps-project-dot {
+    font-family: var(--font-mono);
+    color: #000;
+    padding: 0 6pt;
+  }
+
+  .cps-project-meta {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #000;
   }
 
   /* Interaction log */
@@ -161,7 +182,7 @@
   }
 
   .cps-log-project-name {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 8pt;
     font-weight: bold;
     text-transform: uppercase;
@@ -180,7 +201,7 @@
   .cps-log-meta {
     display: flex;
     gap: 8pt;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 8pt;
     color: #000;
     margin-bottom: 2pt;
@@ -204,7 +225,7 @@
     border-top: 0.75pt solid #000;
     display: flex;
     justify-content: space-between;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-mono);
     font-size: 7.5pt;
     color: #000;
   }

@@ -1,0 +1,103 @@
+.lps-root {
+  display: none;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #root {
+    display: none !important;
+  }
+
+  @page {
+    margin: 1.5cm 2cm;
+    @bottom-right {
+      content: counter(page);
+      font-family: var(--font-mono);
+      font-size: 7.5pt;
+      color: #000;
+    }
+  }
+
+  .lps-root {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 11pt;
+    color: #000;
+    background: #fff;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  .lps-header {
+    border-bottom: 2pt solid #000;
+    padding-bottom: 10pt;
+    margin-bottom: 16pt;
+  }
+
+  .lps-title {
+    font-size: 16pt;
+    font-weight: bold;
+    margin: 0;
+    line-height: 1.1;
+    color: #000;
+  }
+
+  .lps-body {
+    margin-bottom: 20pt;
+  }
+
+  .lps-empty {
+    font-size: 10pt;
+    color: #000;
+  }
+
+  .lps-entry {
+    margin-bottom: 6pt;
+    break-inside: avoid;
+    padding-left: 8pt;
+    border-left: 1pt solid #000;
+  }
+
+  .lps-meta {
+    display: flex;
+    gap: 8pt;
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    color: #000;
+    margin-bottom: 2pt;
+  }
+
+  .lps-date {
+    font-weight: bold;
+  }
+
+  .lps-reporter,
+  .lps-subtitle {
+    color: #000;
+  }
+
+  .lps-body-text {
+    font-size: 10pt;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    color: #000;
+  }
+
+  .lps-footer {
+    margin-top: 20pt;
+    padding-top: 6pt;
+    border-top: 0.75pt solid #000;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 7.5pt;
+    color: #000;
+  }
+}
