@@ -506,8 +506,11 @@ function pullAppendOnly(
   // because the INSERT below uses OR IGNORE.
   const fetchedAtWatermark = Math.max(0, maxFetchedAt - 30);
 
+  // Only import append-only rows for contacts that are members of some project.
+  // Contacts pulled from shared without any membership are ignored here — they
+  // have no context in the local DB and should not accumulate orphaned data.
   const localContactIds = new Set(
-    (local.prepare('SELECT id FROM contacts').all() as { id: string }[]).map((r) => r.id),
+    (local.prepare('SELECT DISTINCT contact_id FROM project_memberships').all() as { contact_id: string }[]).map((r) => r.contact_id),
   );
 
   for (const sm of shared.prepare(
