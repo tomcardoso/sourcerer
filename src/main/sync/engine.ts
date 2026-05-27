@@ -69,19 +69,15 @@ export function syncProject(
 
     // Phase 4: stamp synced_at on all successfully-pushed local rows, plus project metadata.
     // Runs after sharedDb.transaction() commits so stamps only apply when the push succeeded.
+    const stmtContactSynced = localDb.prepare('UPDATE contacts SET synced_at = ? WHERE id = ?');
+    const stmtMembershipSynced = localDb.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?');
+    const stmtMentionSynced = localDb.prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?');
+    const stmtLogEntrySynced = localDb.prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?');
     localDb.transaction(() => {
-      for (const id of pushedContactIds!) {
-        localDb.prepare('UPDATE contacts SET synced_at = ? WHERE id = ?').run(now, id);
-      }
-      for (const id of pushedMembershipIds!) {
-        localDb.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?').run(now, id);
-      }
-      for (const id of pushedMentionIds!) {
-        localDb.prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?').run(now, id);
-      }
-      for (const id of pushedLogEntryIds!) {
-        localDb.prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?').run(now, id);
-      }
+      for (const id of pushedContactIds!) stmtContactSynced.run(now, id);
+      for (const id of pushedMembershipIds!) stmtMembershipSynced.run(now, id);
+      for (const id of pushedMentionIds!) stmtMentionSynced.run(now, id);
+      for (const id of pushedLogEntryIds!) stmtLogEntrySynced.run(now, id);
       localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
     })();
 
@@ -281,10 +277,9 @@ function mergeSubTablesFromShared(
   //   The one failure case: if another client edits the same contact after the
   //   deletion (making their updated_at newer), the deleting client will pull on
   //   next sync and the merge will restore the deleted row from shared (resurrection).
-  //   This self-heals one cycle later: the deleting client is now the newer editor
-  //   (their updated_at was overwritten by the pull, but they will push again and
-  //   the deletion lands in shared). With 2-minute polling the inconsistency window
-  //   in shared is short and no data is permanently lost.
+  //   The deleted row then exists in the deleting client's local DB, so there is no
+  //   longer any local deletion intent — the row survives. The concurrent edit wins.
+  //   No data is permanently lost, but the deletion is silently discarded.
   //
   // ── Emails ────────────────────────────────────────────────────────────────
   // Stored emails are already normalised (lowercased, trimmed) — compare directly.

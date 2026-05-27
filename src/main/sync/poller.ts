@@ -85,12 +85,11 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
   if (syncingProjects.has(projectId)) {
     return { projectId, success: false, lastSyncAt: Math.floor(Date.now() / 1000), pendingWrites: 0, error: 'sync already in progress' };
   }
-  syncingProjects.add(projectId);
-
   const localDb = getDatabase();
   const keyHex = keyBytes.toString('hex');
   const now = Math.floor(Date.now() / 1000);
 
+  syncingProjects.add(projectId);
   let result: SyncStatusEvent;
 
   try {
@@ -130,9 +129,10 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
       pendingWrites: 1,
       error: String(err),
     };
+  } finally {
+    syncingProjects.delete(projectId);
   }
 
-  syncingProjects.delete(projectId);
   emitSyncStatus(result);
   return result;
 }
