@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type {
+  ThemeMode,
   SetupFormData,
   SetupResult,
   FirstLaunchResult,
@@ -215,6 +216,8 @@ const sourcererApi = {
   getIdleTimeout: (): Promise<number> => ipcRenderer.invoke('settings:get-idle-timeout'),
   setIdleTimeout: (seconds: number): Promise<void> =>
     ipcRenderer.invoke('settings:set-idle-timeout', seconds),
+  getTheme: (): Promise<ThemeMode> => ipcRenderer.invoke('settings:get-theme'),
+  setTheme: (mode: ThemeMode): Promise<User> => ipcRenderer.invoke('settings:set-theme', mode),
 
   // Export
   exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[]): Promise<{ success: boolean; error?: string }> =>

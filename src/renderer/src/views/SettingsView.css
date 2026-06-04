@@ -490,3 +490,39 @@
 .sv-input--short {
   width: 72px;
 }
+
+/* ── Theme segmented control ─────────────────────── */
+.sv-theme-seg {
+  display: inline-flex;
+  border: 1px solid var(--color-border-strong);
+}
+
+.sv-theme-seg-btn {
+  height: 28px;
+  padding: 0 14px;
+  border: none;
+  border-right: 1px solid var(--color-border-strong);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.sv-theme-seg-btn:last-child {
+  border-right: none;
+}
+
+.sv-theme-seg-btn:hover:not(.sv-theme-seg-btn--active) {
+  color: var(--color-text);
+}
+
+.sv-theme-seg-btn--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-right-color: var(--color-primary);
+}

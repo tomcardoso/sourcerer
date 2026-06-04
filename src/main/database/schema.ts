@@ -27,7 +27,8 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     auto_backup_enabled            INTEGER NOT NULL DEFAULT 0,
     auto_backup_dest_path          TEXT,
     auto_backup_max_count          INTEGER NOT NULL DEFAULT 10,
-    dev_seeded                     INTEGER NOT NULL DEFAULT 0
+    dev_seeded                     INTEGER NOT NULL DEFAULT 0,
+    theme                          TEXT    NOT NULL DEFAULT 'light'
   );
 
   CREATE TABLE IF NOT EXISTS contacts (
