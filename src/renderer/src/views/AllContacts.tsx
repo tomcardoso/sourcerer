@@ -154,6 +154,10 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
       result = result.filter((c) => c.projects.some((p) => p.id === filters.project));
     }
 
+    if (filters.tags.length > 0) {
+      result = result.filter((c) => filters.tags.some((t) => c.tags.includes(t)));
+    }
+
     if (sort.key) {
       const dir = sort.dir === 'asc' ? 1 : -1;
       result = [...result].sort((a, b) => {
@@ -271,6 +275,12 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     setCheckedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     setDetailId(null);
   }
+
+  const tagFilterOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of contacts) for (const t of c.tags) seen.add(t);
+    return [...seen].sort().map((t) => ({ value: t, label: t }));
+  }, [contacts]);
 
   const anyFilter = isFilterActive(filters);
 
@@ -431,6 +441,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
             selectAllRef={selectAllRef}
             user={user}
             projects={projects}
+            tagFilterOptions={tagFilterOptions}
             virtualize
             scrollContainerRef={tableAreaRef}
           />

@@ -174,7 +174,8 @@ export function registerContactHandlers(): void {
                  FROM (SELECT pm.project_id AS pid, p.name AS pname
                        FROM project_memberships pm JOIN projects p ON p.id = pm.project_id
                        WHERE pm.contact_id = c.id
-                       ORDER BY p.name COLLATE NOCASE ASC)) AS projects_raw
+                       ORDER BY p.name COLLATE NOCASE ASC)) AS projects_raw,
+                (SELECT GROUP_CONCAT(tag, '\x1f') FROM (SELECT tag FROM contact_tags WHERE contact_id = c.id ORDER BY created_at)) AS tags_raw
          FROM contacts c
          ORDER BY c.name COLLATE NOCASE ASC`,
       )
@@ -192,6 +193,7 @@ export function registerContactHandlers(): void {
       date_first_contacted: number | null;
       date_last_contacted: number | null;
       projects_raw: string | null;
+      tags_raw: string | null;
     }>;
 
     return rows.map((row) => ({
@@ -210,6 +212,7 @@ export function registerContactHandlers(): void {
       projects: row.projects_raw
         ? (JSON.parse(row.projects_raw) as { id: string; name: string }[])
         : [],
+      tags: row.tags_raw ? row.tags_raw.split('\x1f') : [],
     }));
   });
 
@@ -267,7 +270,10 @@ export function registerContactHandlers(): void {
       reporters: allReporters.filter((r) => r.membership_id === p.membership_id),
     }));
 
-    return { ...contact, emails, phones, links, handles, projects: projectsWithReporters } as ContactDetail;
+    const tags = (stmt(db, 'SELECT tag FROM contact_tags WHERE contact_id = ? ORDER BY created_at')
+      .all(id) as { tag: string }[]).map((r) => r.tag);
+
+    return { ...contact, emails, phones, links, handles, projects: projectsWithReporters, tags } as ContactDetail;
   });
 
   ipcMain.handle('contacts:create', (_, data: CreateContactInput): ContactListItem => {
@@ -333,7 +339,7 @@ export function registerContactHandlers(): void {
               (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw
        FROM contacts c WHERE c.id = ?`,
     ).get(id) as { id: string; name: string; organization: string | null; title: string | null; notes: string | null; created_at: number; has_email: 0|1; has_phone: 0|1; emails_raw: string|null; phones_raw: string|null };
-    return { ...row, date_first_contacted: null, date_last_contacted: null, projects: [] };
+    return { ...row, date_first_contacted: null, date_last_contacted: null, projects: [], tags: [] };
   });
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
@@ -405,7 +411,7 @@ export function registerContactHandlers(): void {
 
   ipcMain.handle('contacts:list-for-project', (_, projectId: string): ProjectContactRow[] => {
     const db = getDatabase();
-    return stmt(db,
+    const rows = stmt(db,
       `SELECT c.id, c.name, c.organization, c.notes,
               pm.id AS membership_id, pm.created_at AS membership_created_at,
               pm.reporter_name, pm.reporter_email,
@@ -415,12 +421,14 @@ export function registerContactHandlers(): void {
               (SELECT GROUP_CONCAT(email, ' ') FROM contact_emails WHERE contact_id = c.id) AS emails_raw,
               (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
               (SELECT MIN(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_first_contacted,
-              (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted
+              (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted,
+              (SELECT GROUP_CONCAT(tag, '\x1f') FROM (SELECT tag FROM contact_tags WHERE contact_id = c.id ORDER BY created_at)) AS tags_raw
        FROM project_memberships pm
        JOIN contacts c ON c.id = pm.contact_id
        WHERE pm.project_id = ?
        ORDER BY c.name COLLATE NOCASE ASC`,
-    ).all(projectId) as ProjectContactRow[];
+    ).all(projectId) as Array<Omit<ProjectContactRow, 'tags'> & { tags_raw: string | null }>;
+    return rows.map((r) => ({ ...r, tags: r.tags_raw ? r.tags_raw.split('\x1f') : [] }));
   });
 
   ipcMain.handle('contacts:update', (_, data: UpdateContactInput): void => {
@@ -747,6 +755,34 @@ export function registerContactHandlers(): void {
     checkOutreachReminders();
     broadcastContactsChanged();
     if (membershipIds.length > 0) broadcastRemindersChanged();
+  });
+
+  ipcMain.handle('contacts:add-tag', (_, { contactId, tag }: { contactId: string; tag: string }): void => {
+    const normalized = tag.trim().toLowerCase();
+    if (!normalized || normalized.length > 50) return;
+    const db = getDatabase();
+    const now = Math.floor(Date.now() / 1000);
+    db.transaction(() => {
+      const { changes } = db.prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)')
+        .run(uuidv4(), contactId, normalized, now);
+      if (changes > 0) db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
+    })();
+    broadcastContactsChanged();
+  });
+
+  ipcMain.handle('contacts:remove-tag', (_, { contactId, tag }: { contactId: string; tag: string }): void => {
+    const normalized = tag.trim().toLowerCase();
+    const db = getDatabase();
+    const now = Math.floor(Date.now() / 1000);
+    db.transaction(() => {
+      const { changes } = db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, normalized);
+      if (changes > 0) db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
+    })();
+    broadcastContactsChanged();
+  });
+
+  ipcMain.handle('contacts:list-all-tags', (): string[] => {
+    return (getDatabase().prepare('SELECT DISTINCT tag FROM contact_tags ORDER BY tag').all() as { tag: string }[]).map((r) => r.tag);
   });
 
   ipcMain.handle('contacts:count', (): number => {
