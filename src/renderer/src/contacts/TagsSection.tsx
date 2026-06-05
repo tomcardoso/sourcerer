@@ -20,15 +20,6 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
 
   useEffect(() => {
     if (!dropdownOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDropdownOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [dropdownOpen]);
-
-  useEffect(() => {
-    if (!dropdownOpen) return;
     const onPointer = (e: PointerEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
@@ -39,9 +30,9 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
   }, [dropdownOpen]);
 
   const trimmed = input.trim().toLowerCase();
-  const suggestions = allTags.filter(
-    (t) => !tags.includes(t) && (trimmed === '' || t.includes(trimmed)),
-  );
+  const suggestions = allTags
+    .filter((t) => !tags.includes(t) && (trimmed === '' || t.includes(trimmed)))
+    .slice(0, 10);
 
   async function addTag(tag: string) {
     const normalized = tag.trim().toLowerCase();
@@ -58,7 +49,12 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
+      setDropdownOpen(false);
+      inputRef.current?.blur();
+    } else if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       if (trimmed) addTag(trimmed);
     } else if (e.key === 'Backspace' && input === '' && tags.length > 0) {
