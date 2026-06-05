@@ -16,7 +16,7 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
 
   useEffect(() => {
     window.sourcerer.listAllContactTags().then(setAllTags);
-  }, [tags]);
+  }, [contactId]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -40,6 +40,7 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
     await window.sourcerer.addContactTag(contactId, normalized);
     setInput('');
     setDropdownOpen(false);
+    setAllTags((prev) => prev.includes(normalized) ? prev : [...prev, normalized].sort());
     onChanged();
   }
 

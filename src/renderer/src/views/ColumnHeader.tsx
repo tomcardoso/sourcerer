@@ -184,13 +184,11 @@ export function MultiSelectFilter({
   const q = search.trim().toLowerCase();
 
   const selectedSet = new Set(selected);
-  const filtered = (q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options)
-    .slice(0, MULTISELECT_MAX_VISIBLE);
-
-  const checkedFirst = [
-    ...filtered.filter((o) => selectedSet.has(o.value)),
-    ...filtered.filter((o) => !selectedSet.has(o.value)),
-  ];
+  const selectedItems = options.filter((o) => selectedSet.has(o.value));
+  const unselectedVisible = (q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options)
+    .filter((o) => !selectedSet.has(o.value))
+    .slice(0, Math.max(0, MULTISELECT_MAX_VISIBLE - selectedItems.length));
+  const checkedFirst = [...selectedItems, ...unselectedVisible];
 
   return (
     <div className="col-filter-multiselect">
