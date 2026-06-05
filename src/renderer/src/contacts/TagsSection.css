@@ -57,6 +57,9 @@
 }
 
 .tags-input::placeholder {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  letter-spacing: 0;
   color: var(--color-text-dim);
 }
 
