@@ -225,18 +225,17 @@
 }
 
 .col-filter-search-wrap {
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 4px 0;
 }
 
 .col-filter-search {
   width: 100%;
-  border: 1px solid var(--color-border);
+  border: none;
   background: var(--color-bg);
   font-family: var(--font-serif);
   font-size: 13px;
   color: var(--color-text);
-  padding: 3px 6px;
+  padding: 3px 8px;
   outline: none;
   box-sizing: border-box;
 }
