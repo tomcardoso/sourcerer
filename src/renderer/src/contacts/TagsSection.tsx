@@ -90,7 +90,7 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
             value={input}
             placeholder={tags.length === 0 ? 'Add a tag…' : ''}
             onChange={(e) => {
-              setInput(e.target.value.replace(',', ''));
+              setInput(e.target.value.replace(/,/g, ''));
               setDropdownOpen(true);
             }}
             onFocus={() => setDropdownOpen(true)}
