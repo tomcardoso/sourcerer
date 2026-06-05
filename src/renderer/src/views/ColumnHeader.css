@@ -230,7 +230,7 @@
 
 .col-filter-search {
   width: 100%;
-  border: 1px solid rgba(26, 24, 21, 0.14);
+  border: 1px solid var(--color-border);
   background: var(--color-bg);
   font-family: var(--font-serif);
   font-size: 13px;
