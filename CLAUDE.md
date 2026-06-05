@@ -91,6 +91,11 @@ All design tokens are CSS custom properties defined in `src/renderer/src/global.
 - Always use `CalendarPicker` (`src/renderer/src/views/CalendarPicker.tsx`) for any date input — never use `<input type="date">` (see issue #46 for outstanding cases)
 - Always use `Modal` (`src/renderer/src/shell/Modal.tsx`) for any new modal — never reimplement the overlay/card/title/Escape scaffold by hand. Pass `title`, `onDismiss`, and optionally `className` (appended to `modal-card`); put all content including `.modal-actions` as children. Use `modal-description` for the primary intro paragraph beneath the title
 
+**Theming:**
+- The app supports light, dark, and system themes. The active theme is stored as `theme` on the `users` row (`'light' | 'dark' | 'system'`) and applied by setting `data-theme` on `<html>` from AppShell.
+- Dark tokens are defined in `[data-theme="dark"] { … }` in `global.css`. System follows the OS via `@media (prefers-color-scheme: dark) { [data-theme="system"] { … } }` — no JS logic needed.
+- Always use CSS custom properties for colours. Never hardcode hex or rgba colour values in component CSS — every colour must come from a token defined in `global.css`. The only accepted exception is box-shadow `rgba(0,0,0,…)` values, which represent ambient shadow physics and are fine as-is in both themes.
+
 **Hard rules — do not break these:**
 - All interactive elements (buttons, inputs, selects, textareas) use `border-radius: 0` — square corners everywhere, no exceptions
 - Mono type is almost always `text-transform: uppercase` — exceptions only for body-level mono (e.g. code snippets)

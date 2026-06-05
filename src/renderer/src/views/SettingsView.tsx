@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
-import type { User } from '@shared/types';
+import type { ThemeMode, User } from '@shared/types';
 import Button from '../shell/Button';
 import Toggle from './SettingsToggle';
 import ProfileSection from './ProfileSection';
@@ -23,6 +23,7 @@ const TIMEOUT_OPTIONS = [
 ];
 
 export default function SettingsView({ user, onUserUpdated }: Props) {
+  const [theme, setThemeState] = useState<ThemeMode>('light');
   const [idleTimeout, setIdleTimeout] = useState<number>(900);
   const [phoneCountry, setPhoneCountry] = useState<string>('CA');
   const [outreachRemindersEnabled, setOutreachRemindersEnabled] = useState<boolean>(true);
@@ -67,6 +68,7 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
   useEffect(() => {
     if (user) {
+      setThemeState(user.theme ?? 'light');
       setPhoneCountry(user.phone_country ?? 'CA');
       setOutreachRemindersEnabled(user.outreach_reminders_enabled !== 0);
       setOutreachRequireInteraction(user.outreach_require_interaction !== 0);
@@ -86,6 +88,16 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
       if (archiveKeysSavedTimerRef.current) clearTimeout(archiveKeysSavedTimerRef.current);
     };
   }, [user?.id]);
+
+  async function handleThemeChange(mode: ThemeMode) {
+    setThemeState(mode);
+    try {
+      const updated = await window.sourcerer.setTheme(mode);
+      onUserUpdated(updated);
+    } catch {
+      setThemeState(theme);
+    }
+  }
 
   async function handleRegenerateToken() {
     const updated = await window.sourcerer.regenerateCalendarToken();
@@ -246,6 +258,29 @@ export default function SettingsView({ user, onUserUpdated }: Props) {
 
       <div className="sv-body">
         <ProfileSection user={user} onUserUpdated={onUserUpdated} />
+
+        {/* Appearance */}
+        <div className="sv-section">
+          <div className="sv-section-title">Appearance</div>
+          <p className="sv-hint">Choose a colour scheme for the app.</p>
+          <div
+            className="sv-theme-seg"
+            role="group"
+            aria-label="Colour scheme"
+          >
+            {(['light', 'dark', 'system'] as ThemeMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`sv-theme-seg-btn${theme === mode ? ' sv-theme-seg-btn--active' : ''}`}
+                onClick={() => handleThemeChange(mode)}
+                aria-pressed={theme === mode}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Staleness */}
         <div className="sv-section">

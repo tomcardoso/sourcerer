@@ -1,3 +1,15 @@
+/* Keep the print button out of the heading flow so .view-rule-thick aligns
+   with other views (AllContacts, ProjectView) that have no extra flex child. */
+.view-header-row {
+  position: relative;
+}
+
+.view-header-row > .btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 .ptl-meta-bar {
   flex-wrap: wrap;
   gap: 4px 0;

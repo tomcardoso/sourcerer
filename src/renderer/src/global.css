@@ -99,6 +99,105 @@
 
   /* ── Chrome ───────────────────────────────────── */
   --titlebar-height: 38px;
+
+  /* ── Scrollbar ────────────────────────────────── */
+  --scrollthumb:       rgba(0, 0, 0, 0.22);
+  --scrollthumb-hover: rgba(0, 0, 0, 0.38);
+}
+
+/* ── Explicit light theme (data-theme="light") ───── */
+[data-theme="light"] {
+  --color-bg:              #faf9f5;
+  --color-surface:         #f3f1ea;
+  --color-surface-2:       #eceadf;
+  --color-text:            #1a1815;
+  --color-text-muted:      #5b5750;
+  --color-text-dim:        #8a857c;
+  --color-border:          rgba(26, 24, 21, 0.14);
+  --color-border-strong:   rgba(26, 24, 21, 0.28);
+  --color-amber:           #e8a840;
+  --color-primary:         #c87a1a;
+  --color-primary-hover:   #a8641a;
+  --color-success:         #2d8f6a;
+  --color-danger:          #b91c1c;
+  --color-danger-bg:       #fff5f5;
+  --color-danger-bg-hover: #fee2e2;
+  --color-warning-bg:      #fef3c7;
+  --color-warning-border:  #f59e0b;
+  --color-warning-text:    #92400e;
+  --sidebar-bg:            #edeae0;
+  --sidebar-text:          #1a1815;
+  --sidebar-text-muted:    #5b5750;
+  --sidebar-active-bg:     #1a1815;
+  --sidebar-active-text:   #faf9f5;
+  --sidebar-hover-bg:      #e4e1d7;
+  --sidebar-border:        rgba(26, 24, 21, 0.14);
+  --scrollthumb:           rgba(0, 0, 0, 0.22);
+  --scrollthumb-hover:     rgba(0, 0, 0, 0.38);
+}
+
+/* ── Dark theme ──────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg:              #1b1812;
+  --color-surface:         #232019;
+  --color-surface-2:       #2c2820;
+  --color-text:            #f1ede4;
+  --color-text-muted:      #b4ada0;
+  --color-text-dim:        #847d6f;
+  --color-border:          rgba(241, 237, 228, 0.12);
+  --color-border-strong:   rgba(241, 237, 228, 0.26);
+  --color-amber:           #eab44f;
+  --color-primary:         #e0973a;
+  --color-primary-hover:   #efb162;
+  --color-success:         #46b88c;
+  --color-danger:          #ee6058;
+  --color-danger-bg:       #2c1715;
+  --color-danger-bg-hover: #3a1d1a;
+  --color-warning-bg:      #2e2613;
+  --color-warning-border:  #f3a52a;
+  --color-warning-text:    #edc079;
+  --sidebar-bg:            #16130d;
+  --sidebar-text:          #f1ede4;
+  --sidebar-text-muted:    #b4ada0;
+  --sidebar-active-bg:     #efe9df;
+  --sidebar-active-text:   #1b1812;
+  --sidebar-hover-bg:      #221f17;
+  --sidebar-border:        rgba(241, 237, 228, 0.12);
+  --scrollthumb:           rgba(255, 252, 245, 0.22);
+  --scrollthumb-hover:     rgba(255, 252, 245, 0.38);
+}
+
+/* ── System theme: follow OS preference ─────────── */
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --color-bg:              #1b1812;
+    --color-surface:         #232019;
+    --color-surface-2:       #2c2820;
+    --color-text:            #f1ede4;
+    --color-text-muted:      #b4ada0;
+    --color-text-dim:        #847d6f;
+    --color-border:          rgba(241, 237, 228, 0.12);
+    --color-border-strong:   rgba(241, 237, 228, 0.26);
+    --color-amber:           #eab44f;
+    --color-primary:         #e0973a;
+    --color-primary-hover:   #efb162;
+    --color-success:         #46b88c;
+    --color-danger:          #ee6058;
+    --color-danger-bg:       #2c1715;
+    --color-danger-bg-hover: #3a1d1a;
+    --color-warning-bg:      #2e2613;
+    --color-warning-border:  #f3a52a;
+    --color-warning-text:    #edc079;
+    --sidebar-bg:            #16130d;
+    --sidebar-text:          #f1ede4;
+    --sidebar-text-muted:    #b4ada0;
+    --sidebar-active-bg:     #efe9df;
+    --sidebar-active-text:   #1b1812;
+    --sidebar-hover-bg:      #221f17;
+    --sidebar-border:        rgba(241, 237, 228, 0.12);
+    --scrollthumb:           rgba(255, 252, 245, 0.22);
+    --scrollthumb-hover:     rgba(255, 252, 245, 0.38);
+  }
 }
 
 /* Lock typefaces — only Spectral and JetBrains Mono */
@@ -157,11 +256,11 @@ body {
 
 *:hover::-webkit-scrollbar-thumb,
 *:focus::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--scrollthumb);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--scrollthumb-hover);
 }
 
 ::-webkit-scrollbar-corner {

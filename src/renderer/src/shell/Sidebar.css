@@ -19,6 +19,7 @@
   display: block;
   line-height: 0;
   padding-left: 12px;
+  color: var(--sidebar-text);
 }
 
 .sidebar-header-add {

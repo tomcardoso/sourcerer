@@ -9,7 +9,9 @@ import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultCo
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
 import { validateEmail } from '@shared/validation';
-import type { User } from '@shared/types';
+import type { ThemeMode, User } from '@shared/types';
+
+const VALID_THEMES = new Set<ThemeMode>(['light', 'dark', 'system']);
 
 const SAFE_USER_SQL = `
   SELECT id, first_name, last_name, email, created_at, idle_timeout_seconds,
@@ -17,7 +19,7 @@ const SAFE_USER_SQL = `
          staleness_enabled, staleness_threshold_days, alert_notifications_enabled,
          reminder_notifications_enabled, rss_poll_interval_hours, wayback_enabled,
          CASE WHEN archive_access_key IS NOT NULL AND archive_secret_key IS NOT NULL THEN 1 ELSE 0 END AS wayback_keys_configured,
-         auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count
+         auto_backup_enabled, auto_backup_dest_path, auto_backup_max_count, theme
   FROM users WHERE id = 1`;
 
 export function getSafeUser(db: Database.Database): User {
@@ -377,5 +379,19 @@ export function registerSettingsHandlers(): void {
       properties: ['openDirectory', 'createDirectory'],
     });
     return canceled || filePaths.length === 0 ? null : filePaths[0];
+  });
+
+  ipcMain.handle('settings:get-theme', (): ThemeMode => {
+    const row = getDatabase()
+      .prepare('SELECT theme FROM users WHERE id = 1')
+      .get() as { theme: ThemeMode } | undefined;
+    return row?.theme ?? 'light';
+  });
+
+  ipcMain.handle('settings:set-theme', (_, mode: ThemeMode): User => {
+    if (!VALID_THEMES.has(mode)) throw new Error(`Invalid theme: ${mode}`);
+    const db = getDatabase();
+    db.prepare('UPDATE users SET theme = ? WHERE id = 1').run(mode);
+    return getSafeUser(db);
   });
 }

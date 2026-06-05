@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import type {
+  ThemeMode,
   Project,
   User,
   ContactListItem,
@@ -145,6 +146,8 @@ declare global {
       regenerateCalendarToken: () => Promise<User>;
       getIdleTimeout: () => Promise<number>;
       setIdleTimeout: (seconds: number) => Promise<void>;
+      getTheme: () => Promise<ThemeMode>;
+      setTheme: (mode: ThemeMode) => Promise<User>;
 
       // Export
       exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[]) => Promise<{ success: boolean; error?: string }>;

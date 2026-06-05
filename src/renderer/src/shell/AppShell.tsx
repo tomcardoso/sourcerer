@@ -72,6 +72,10 @@ export default function AppShell() {
   }, [refreshOverdue]);
 
   useEffect(() => {
+    document.documentElement.dataset.theme = user?.theme ?? 'light';
+  }, [user?.theme]);
+
+  useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
         e.preventDefault();
