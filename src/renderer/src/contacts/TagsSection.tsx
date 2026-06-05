@@ -19,6 +19,12 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
   }, [contactId]);
 
   useEffect(() => {
+    return window.sourcerer.onContactsChanged(() => {
+      window.sourcerer.listAllContactTags().then(setAllTags);
+    });
+  }, []);
+
+  useEffect(() => {
     if (!dropdownOpen) return;
     const onPointer = (e: PointerEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
