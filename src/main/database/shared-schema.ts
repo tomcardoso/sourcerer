@@ -56,6 +56,14 @@ export const SHARED_SCHEMA_SQL = `
     created_at INTEGER NOT NULL DEFAULT 0
   );
 
+  CREATE TABLE IF NOT EXISTS contact_tags (
+    id         TEXT    PRIMARY KEY,
+    contact_id TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    tag        TEXT    NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(contact_id, tag)
+  );
+
   CREATE TABLE IF NOT EXISTS contact_alert_rss (
     id             TEXT    PRIMARY KEY,
     contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
@@ -109,6 +117,7 @@ export const SHARED_SCHEMA_SQL = `
     value TEXT NOT NULL
   );
 
+  CREATE INDEX IF NOT EXISTS idx_shared_contact_tags_contact_id ON contact_tags(contact_id);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_id     ON contact_emails(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_email ON contact_emails(contact_id, email);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_id     ON contact_phones(contact_id);

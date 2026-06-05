@@ -112,6 +112,9 @@ declare global {
       getContactCount: () => Promise<number>;
       getContactInteractionCount: (contactId: string) => Promise<number>;
       validatePhone: (raw: string) => Promise<boolean>;
+      addContactTag: (contactId: string, tag: string) => Promise<void>;
+      removeContactTag: (contactId: string, tag: string) => Promise<void>;
+      listAllContactTags: () => Promise<string[]>;
 
       // Scratchpad
       listScratchpad: (contactId: string, projectId: string) => Promise<ScratchpadDraft[]>;

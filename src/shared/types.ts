@@ -89,6 +89,7 @@ export interface ContactListItem {
   date_first_contacted: number | null;
   date_last_contacted: number | null;
   projects: Array<{ id: string; name: string }>;
+  tags: string[];
 }
 
 export interface ContactEmail {
@@ -160,6 +161,7 @@ export interface ContactDetail {
   links: ContactLink[];
   handles: ContactHandle[];
   projects: ContactProject[];
+  tags: string[];
 }
 
 export interface ContactLinkInput {
@@ -280,6 +282,7 @@ export interface ProjectContactRow {
   theme: string | null;
   priority: string | null;
   status: string | null;
+  tags: string[];
 }
 
 export interface CreateSharedProjectResult {

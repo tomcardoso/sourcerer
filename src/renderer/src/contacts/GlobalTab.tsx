@@ -7,6 +7,7 @@ import ContactEditForm, { SOCIAL_TYPES, SOCIAL_META, KNOWN_LINK_TYPES } from './
 import { isGoogleAlertUrl } from './contactValidation';
 import RssAlertPanel from './RssAlertPanel';
 import ScreenshotPanel from './ScreenshotPanel';
+import TagsSection from './TagsSection';
 import { linkifyText } from '../utils/linkify';
 import { HANDLE_TYPES, HANDLE_META } from './handleMeta';
 import type { HandleType } from './handleMeta';
@@ -253,6 +254,12 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
           <p className="detail-notes">{linkifyText(contact.notes ?? '')}</p>
         </div>
       )}
+
+      <TagsSection
+        contactId={contact.id}
+        tags={contact.tags}
+        onChanged={onRefresh}
+      />
 
       <RssAlertPanel
         editing={false}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Project, ProjectContactRow, StatusOption, PriorityOption, ImportResult, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useSortFilter } from '../hooks/useSortFilter';
@@ -341,6 +341,12 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     ...new Map(rows.map((r) => [r.reporter_name, { value: r.reporter_name, label: r.reporter_name }])).values(),
   ].sort((a, b) => a.label.localeCompare(b.label));
 
+  const tagFilterOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of rows) for (const t of r.tags) seen.add(t);
+    return [...seen].sort().map((t) => ({ value: t, label: t }));
+  }, [rows]);
+
   const hasNullStatus = rows.some((r) => r.status === null);
   const statusFilterOptions = [
     ...statusOptions.map((o) => ({ value: o.label, label: o.label })),
@@ -549,6 +555,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             statusFilterOptions={statusFilterOptions}
             priorityFilterOptions={priorityFilterOptions}
             reporterOptions={reporterOptions}
+            tagFilterOptions={tagFilterOptions}
             userEmail={user?.email}
           />
         </div>

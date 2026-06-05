@@ -88,6 +88,9 @@ export function useProjectContacts(
     if (filters.reporter.length > 0) {
       result = result.filter((r) => filters.reporter.includes(r.reporter_name));
     }
+    if (filters.tags.length > 0) {
+      result = result.filter((r) => filters.tags.some((t) => r.tags.includes(t)));
+    }
 
     if (sort.key) {
       const dir = sort.dir === 'asc' ? 1 : -1;

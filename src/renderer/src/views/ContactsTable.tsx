@@ -29,6 +29,7 @@ export interface AllContactsFilters {
   dateAddedFrom: string; // ISO date string YYYY-MM-DD
   dateAddedTo: string;   // ISO date string YYYY-MM-DD
   project: string | null;
+  tags: string[];
 }
 
 export interface ProjectFilters {
@@ -46,6 +47,7 @@ export interface ProjectFilters {
   status: string[];
   priority: string[];
   reporter: string[];
+  tags: string[];
 }
 
 export const DEFAULT_ALL_CONTACTS_FILTERS: AllContactsFilters = {
@@ -60,6 +62,7 @@ export const DEFAULT_ALL_CONTACTS_FILTERS: AllContactsFilters = {
   dateAddedFrom: '',
   dateAddedTo: '',
   project: null,
+  tags: [],
 };
 
 export const DEFAULT_PROJECT_FILTERS: ProjectFilters = {
@@ -77,6 +80,7 @@ export const DEFAULT_PROJECT_FILTERS: ProjectFilters = {
   status: [],
   priority: [],
   reporter: [],
+  tags: [],
 };
 
 export function isAllContactsFilterActive(f: AllContactsFilters): boolean {
@@ -91,7 +95,8 @@ export function isAllContactsFilterActive(f: AllContactsFilters): boolean {
     f.dateLastContacted !== null ||
     f.dateAddedFrom !== '' ||
     f.dateAddedTo !== '' ||
-    f.project !== null
+    f.project !== null ||
+    f.tags.length > 0
   );
 }
 
@@ -110,7 +115,8 @@ export function isProjectFilterActive(f: ProjectFilters): boolean {
     f.dateAddedTo !== '' ||
     f.status.length > 0 ||
     f.priority.length > 0 ||
-    f.reporter.length > 0
+    f.reporter.length > 0 ||
+    f.tags.length > 0
   );
 }
 
@@ -154,6 +160,7 @@ interface AllContactsTableProps extends BaseTableProps {
   rows: ContactListItem[];
   filters: AllContactsFilters;
   projects: Project[];
+  tagFilterOptions: Array<{ value: string; label: string }>;
 }
 
 interface ProjectTableProps extends BaseTableProps {
@@ -164,6 +171,7 @@ interface ProjectTableProps extends BaseTableProps {
   statusFilterOptions: Array<{ value: string; label: string }>;
   priorityFilterOptions: Array<{ value: string; label: string }>;
   reporterOptions: Array<{ value: string; label: string }>;
+  tagFilterOptions: Array<{ value: string; label: string }>;
   userEmail?: string;
 }
 
@@ -253,7 +261,7 @@ export default function ContactsTable(props: ContactsTableProps) {
   const rowsToRender = virtualItems ? virtualItems.map((vi) => rows[vi.index]) : rows;
 
   const sd = (key: string) => (sort.key === key ? sort.dir : null);
-  const colSpan = isProject ? 13 : 10;
+  const colSpan = isProject ? 14 : 11;
 
   return (
     <table className="contacts-table">
@@ -497,6 +505,24 @@ export default function ContactsTable(props: ContactsTableProps) {
             />
           </th>
 
+          {/* ── Shared: Tags ── */}
+          <th>
+            <ColumnHeader
+              label="Tags"
+              filterable={(isProject ? (pp?.tagFilterOptions.length ?? 0) : (ap?.tagFilterOptions.length ?? 0)) > 0}
+              filterActive={(isProject ? (pf?.tags.length ?? 0) : (af?.tags.length ?? 0)) > 0}
+              filterOpen={openFilter === 'tags'}
+              onFilterToggle={() => toggleFilter('tags')}
+              filterContent={
+                <MultiSelectFilter
+                  options={isProject ? (pp?.tagFilterOptions ?? []) : (ap?.tagFilterOptions ?? [])}
+                  selected={isProject ? (pf?.tags ?? []) : (af?.tags ?? [])}
+                  onChange={(v) => setFilter('tags', v)}
+                />
+              }
+            />
+          </th>
+
           {/* ── Shared: First Contacted ── */}
           <th>
             <ColumnHeader
@@ -680,6 +706,16 @@ export default function ContactsTable(props: ContactsTableProps) {
                       <span className="contact-cell-muted">—</span>
                     )}
                   </td>
+                  <td className="contact-tags-cell">
+                    {row.tags.length === 0 ? (
+                      <span className="contact-cell-muted">—</span>
+                    ) : (
+                      row.tags.map((t) => (
+                        <span key={t} className="contact-tag-chip">{t}</span>
+                      ))
+                    )}
+                  </td>
+
                   <td className="contact-date-cell">
                     {row.date_first_contacted === null ? (
                       <span className="contact-cell-muted">—</span>

@@ -121,6 +121,25 @@
   white-space: nowrap;
 }
 
+.contact-tags-cell {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.contact-tag-chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  padding: 1px 6px;
+  margin-right: 3px;
+  white-space: nowrap;
+}
+
 /* Compact boolean cells (email, phone, notes) */
 .contact-bool-cell {
   text-align: center;

@@ -392,6 +392,25 @@ function mergeSubTablesFromShared(
       )
       .run(rss.id, contactId, rss.rss_url, rss.last_polled_at, rss.is_invalid);
   }
+
+  // ── Tags ──────────────────────────────────────────────────────────────────
+  const sharedTags = shared
+    .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
+    .all(contactId) as { id: string; tag: string; created_at: number }[];
+  const localTags = local
+    .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
+    .all(contactId) as { id: string; tag: string; created_at: number }[];
+
+  const sharedTagValues = new Set(sharedTags.map((t) => t.tag));
+  const localOnlyTags = localTags.filter((t) => !sharedTagValues.has(t.tag));
+  const mergedTags = [...sharedTags, ...localOnlyTags];
+
+  local.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(contactId);
+  for (const t of mergedTags) {
+    local
+      .prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)')
+      .run(t.id, contactId, t.tag, t.created_at);
+  }
 }
 
 function pullMemberships(
@@ -709,6 +728,16 @@ function pushSubTablesToShared(
         'INSERT INTO contact_alert_rss (id, contact_id, rss_url, last_polled_at, is_invalid) VALUES (?, ?, ?, ?, ?)',
       )
       .run(rss.id, contactId, rss.rss_url, rss.last_polled_at, rss.is_invalid);
+  }
+
+  shared.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(contactId);
+  const tagRows = local
+    .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
+    .all(contactId) as { id: string; tag: string; created_at: number }[];
+  for (const t of tagRows) {
+    shared
+      .prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)')
+      .run(t.id, contactId, t.tag, t.created_at);
   }
 }
 

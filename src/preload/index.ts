@@ -167,6 +167,11 @@ const sourcererApi = {
   getContactInteractionCount: (contactId: string): Promise<number> =>
     ipcRenderer.invoke('contacts:interaction-count', contactId),
   validatePhone: (raw: string): Promise<boolean> => ipcRenderer.invoke('contacts:validate-phone', raw),
+  addContactTag: (contactId: string, tag: string): Promise<void> =>
+    ipcRenderer.invoke('contacts:add-tag', { contactId, tag }),
+  removeContactTag: (contactId: string, tag: string): Promise<void> =>
+    ipcRenderer.invoke('contacts:remove-tag', { contactId, tag }),
+  listAllContactTags: (): Promise<string[]> => ipcRenderer.invoke('contacts:list-all-tags'),
 
   // Scratchpad
   listScratchpad: (contactId: string, projectId: string): Promise<ScratchpadDraft[]> =>
