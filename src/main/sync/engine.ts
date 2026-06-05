@@ -394,6 +394,9 @@ function mergeSubTablesFromShared(
   }
 
   // ── Tags ──────────────────────────────────────────────────────────────────
+  // Additive-only merge: deletions do not propagate across clients. A tag
+  // removed on one client will be restored on next sync if it still exists on
+  // shared. Full deletion propagation requires a tombstone table — see #422.
   const sharedTags = shared
     .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
     .all(contactId) as { id: string; tag: string; created_at: number }[];

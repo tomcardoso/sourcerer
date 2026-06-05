@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import './ColumnHeader.css';
 
@@ -175,6 +175,8 @@ export function MultiSelectFilter({
   onChange: (v: string[]) => void;
 }) {
   const [search, setSearch] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { searchRef.current?.focus(); }, []);
 
   function toggle(val: string) {
     onChange(selected.includes(val) ? selected.filter((v) => v !== val) : [...selected, val]);
@@ -200,12 +202,12 @@ export function MultiSelectFilter({
       {showSearch && (
         <div className="col-filter-search-wrap">
           <input
+            ref={searchRef}
             className="col-filter-search"
             type="text"
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            autoFocus
           />
         </div>
       )}

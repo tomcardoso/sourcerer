@@ -763,9 +763,9 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
     db.transaction(() => {
-      db.prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)')
+      const { changes } = db.prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)')
         .run(uuidv4(), contactId, normalized, now);
-      db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
+      if (changes > 0) db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
     })();
     broadcastContactsChanged();
   });
@@ -774,8 +774,8 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
     db.transaction(() => {
-      db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, tag);
-      db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
+      const { changes } = db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, tag);
+      if (changes > 0) db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
     })();
     broadcastContactsChanged();
   });

@@ -255,21 +255,36 @@ function localInsertMembership(db: Database.Database, contactId: string, project
 describe('contacts:add-tag / contacts:remove-tag — bumps updated_at', () => {
   it('add-tag bumps contact updated_at so the sync engine will push', async () => {
     const contactId = insertContact(testDb, 'Alice');
-    const before = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
-    await new Promise((r) => setTimeout(r, 1100));
+    testDb.prepare('UPDATE contacts SET updated_at = 0 WHERE id = ?').run(contactId);
     await handlers.get('contacts:add-tag')!({}, { contactId, tag: 'source' });
-    const after = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
-    expect(after).toBeGreaterThan(before);
+    const { updated_at } = testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number };
+    expect(updated_at).toBeGreaterThan(0);
+  });
+
+  it('add-tag does not bump updated_at for a duplicate tag', async () => {
+    const contactId = insertContact(testDb, 'Alice');
+    await handlers.get('contacts:add-tag')!({}, { contactId, tag: 'source' });
+    testDb.prepare('UPDATE contacts SET updated_at = 0 WHERE id = ?').run(contactId);
+    await handlers.get('contacts:add-tag')!({}, { contactId, tag: 'source' });
+    const { updated_at } = testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number };
+    expect(updated_at).toBe(0);
   });
 
   it('remove-tag bumps contact updated_at so the sync engine will push', async () => {
     const contactId = insertContact(testDb, 'Alice');
     insertTag(testDb, contactId, 'source');
-    const before = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
-    await new Promise((r) => setTimeout(r, 1100));
+    testDb.prepare('UPDATE contacts SET updated_at = 0 WHERE id = ?').run(contactId);
     await handlers.get('contacts:remove-tag')!({}, { contactId, tag: 'source' });
-    const after = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
-    expect(after).toBeGreaterThan(before);
+    const { updated_at } = testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number };
+    expect(updated_at).toBeGreaterThan(0);
+  });
+
+  it('remove-tag does not bump updated_at when tag does not exist', async () => {
+    const contactId = insertContact(testDb, 'Alice');
+    testDb.prepare('UPDATE contacts SET updated_at = 0 WHERE id = ?').run(contactId);
+    await handlers.get('contacts:remove-tag')!({}, { contactId, tag: 'ghost' });
+    const { updated_at } = testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number };
+    expect(updated_at).toBe(0);
   });
 });
 
