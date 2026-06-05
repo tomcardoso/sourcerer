@@ -97,5 +97,5 @@
 }
 
 .btn--danger-outline:hover:not(:disabled) {
-  background: rgba(185, 28, 28, 0.06);
+  background: var(--color-danger-bg);
 }

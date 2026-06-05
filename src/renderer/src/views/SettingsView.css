@@ -113,7 +113,7 @@
 .sv-input:focus,
 .sv-select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .sv-input:disabled,
@@ -193,7 +193,7 @@
 }
 
 .sv-move-btn:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--color-surface-2);
   color: var(--color-text);
 }
 
@@ -219,8 +219,8 @@
 }
 
 .sv-delete-btn:hover {
-  background: #fef2f2;
-  border-color: #fca5a5;
+  background: var(--color-danger-bg);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
   color: var(--color-danger);
 }
 
@@ -296,7 +296,7 @@
 
 .sv-success {
   font-size: 12px;
-  color: #16a34a;
+  color: var(--color-success);
   margin: 0 0 10px;
 }
 
@@ -409,7 +409,7 @@
 
 .sv-backup-saved {
   font-size: 12px;
-  color: #16a34a;
+  color: var(--color-success);
   animation: sv-fade-out 3s ease forwards;
 }
 
