@@ -90,7 +90,7 @@ export function WordmarkLogo({ compact = false, size, className }: Props) {
         fontWeight="700"
         fontSize="56"
         letterSpacing="-1"
-        fill={INK}
+        fill="currentColor"
       >
         Sourcerer
       </text>

@@ -361,8 +361,8 @@
 }
 
 .sv-danger-inset {
-  border: 1px solid #fecaca;
-  background: #fff5f5;
+  border: 1px solid var(--color-danger-bg-hover);
+  background: var(--color-danger-bg);
   padding: 14px 16px;
 }
 
