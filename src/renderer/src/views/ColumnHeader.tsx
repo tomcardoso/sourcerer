@@ -162,6 +162,9 @@ export function PresetFilter({
   );
 }
 
+const MULTISELECT_SEARCH_THRESHOLD = 10;
+const MULTISELECT_MAX_VISIBLE = 50;
+
 export function MultiSelectFilter({
   options,
   selected,
@@ -171,9 +174,23 @@ export function MultiSelectFilter({
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
+  const [search, setSearch] = useState('');
+
   function toggle(val: string) {
     onChange(selected.includes(val) ? selected.filter((v) => v !== val) : [...selected, val]);
   }
+
+  const showSearch = options.length > MULTISELECT_SEARCH_THRESHOLD;
+  const q = search.trim().toLowerCase();
+
+  const selectedSet = new Set(selected);
+  const filtered = (q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options)
+    .slice(0, MULTISELECT_MAX_VISIBLE);
+
+  const checkedFirst = [
+    ...filtered.filter((o) => selectedSet.has(o.value)),
+    ...filtered.filter((o) => !selectedSet.has(o.value)),
+  ];
 
   return (
     <div className="col-filter-multiselect">
@@ -182,11 +199,23 @@ export function MultiSelectFilter({
           Clear all
         </button>
       )}
-      {options.map((opt) => (
+      {showSearch && (
+        <div className="col-filter-search-wrap">
+          <input
+            className="col-filter-search"
+            type="text"
+            placeholder="Search…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
+        </div>
+      )}
+      {checkedFirst.map((opt) => (
         <label key={opt.value} className="col-filter-option">
           <input
             type="checkbox"
-            checked={selected.includes(opt.value)}
+            checked={selectedSet.has(opt.value)}
             onChange={() => toggle(opt.value)}
           />
           {opt.label || '—'}

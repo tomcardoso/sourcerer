@@ -710,9 +710,14 @@ export default function ContactsTable(props: ContactsTableProps) {
                     {row.tags.length === 0 ? (
                       <span className="contact-cell-muted">—</span>
                     ) : (
-                      row.tags.map((t) => (
-                        <span key={t} className="contact-tag-chip">{t}</span>
-                      ))
+                      <>
+                        {row.tags.slice(0, 2).map((t) => (
+                          <span key={t} className="contact-tag-chip">{t}</span>
+                        ))}
+                        {row.tags.length > 2 && (
+                          <span className="contact-tag-overflow">+{row.tags.length - 2}</span>
+                        )}
+                      </>
                     )}
                   </td>
 
