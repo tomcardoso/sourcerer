@@ -771,10 +771,11 @@ export function registerContactHandlers(): void {
   });
 
   ipcMain.handle('contacts:remove-tag', (_, { contactId, tag }: { contactId: string; tag: string }): void => {
+    const normalized = tag.trim().toLowerCase();
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
     db.transaction(() => {
-      const { changes } = db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, tag);
+      const { changes } = db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, normalized);
       if (changes > 0) db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
     })();
     broadcastContactsChanged();
