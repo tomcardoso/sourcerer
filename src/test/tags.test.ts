@@ -110,6 +110,23 @@ describe('contacts:remove-tag', () => {
     await handlers.get('contacts:remove-tag')!({}, { contactId, tag: 'ghost' });
     expect(getTags(testDb, contactId)).toHaveLength(0);
   });
+
+  it('writes a tombstone for the removed tag row', async () => {
+    const contactId = insertContact(testDb, 'Bob');
+    const tagId = uuidv4();
+    testDb.prepare('INSERT INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)').run(tagId, contactId, 'source', Math.floor(Date.now() / 1000));
+    await handlers.get('contacts:remove-tag')!({}, { contactId, tag: 'source' });
+    const tombstone = testDb.prepare('SELECT * FROM sync_tombstones WHERE row_id = ?').get(tagId) as { table_name: string } | undefined;
+    expect(tombstone).toBeDefined();
+    expect(tombstone!.table_name).toBe('contact_tags');
+  });
+
+  it('does not write a tombstone when the tag does not exist', async () => {
+    const contactId = insertContact(testDb, 'Bob');
+    await handlers.get('contacts:remove-tag')!({}, { contactId, tag: 'ghost' });
+    const count = (testDb.prepare('SELECT COUNT(*) as n FROM sync_tombstones').get() as { n: number }).n;
+    expect(count).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

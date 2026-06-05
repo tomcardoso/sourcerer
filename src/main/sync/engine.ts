@@ -43,6 +43,7 @@ export function syncProject(
 
     // Phase 2: pull from shared → local
     localDb.transaction(() => {
+      pullTombstones(localDb, sharedDb);
       pullContacts(localDb, sharedDb);
       pullMemberships(localDb, sharedDb, projectId, now);
       pullAppendOnly(localDb, sharedDb);
@@ -61,6 +62,7 @@ export function syncProject(
     let pushedLogEntryIds: string[];
 
     sharedDb.transaction(() => {
+      pushTombstones(localDb, sharedDb, now);
       pushedContactIds = pushContacts(localDb, sharedDb, contactIds);
       pushedMembershipIds = pushMemberships(localDb, sharedDb, projectId);
       ({ mentionIds: pushedMentionIds, logEntryIds: pushedLogEntryIds } =
@@ -73,12 +75,14 @@ export function syncProject(
     const stmtMembershipSynced = localDb.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?');
     const stmtMentionSynced = localDb.prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?');
     const stmtLogEntrySynced = localDb.prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?');
+    const TOMBSTONE_TTL = 90 * 24 * 3600;
     localDb.transaction(() => {
       for (const id of pushedContactIds!) stmtContactSynced.run(now, id);
       for (const id of pushedMembershipIds!) stmtMembershipSynced.run(now, id);
       for (const id of pushedMentionIds!) stmtMentionSynced.run(now, id);
       for (const id of pushedLogEntryIds!) stmtLogEntrySynced.run(now, id);
       localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
+      localDb.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - TOMBSTONE_TTL);
     })();
 
     return { success: true };
@@ -90,6 +94,37 @@ export function syncProject(
     }
     return { success: false, error: String(err) };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tombstone helpers
+// ---------------------------------------------------------------------------
+
+function pullTombstones(local: Database.Database, shared: Database.Database): void {
+  const rows = shared.prepare('SELECT id, table_name, row_id, deleted_at FROM sync_tombstones').all() as {
+    id: string; table_name: string; row_id: string; deleted_at: number;
+  }[];
+  const insert = local.prepare('INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)');
+  for (const r of rows) insert.run(r.id, r.table_name, r.row_id, r.deleted_at);
+}
+
+function pushTombstones(local: Database.Database, shared: Database.Database, now: number): void {
+  const rows = local.prepare('SELECT id, table_name, row_id, deleted_at FROM sync_tombstones').all() as {
+    id: string; table_name: string; row_id: string; deleted_at: number;
+  }[];
+  const insert = shared.prepare('INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)');
+  for (const r of rows) insert.run(r.id, r.table_name, r.row_id, r.deleted_at);
+  shared.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - 90 * 24 * 3600);
+}
+
+function loadLocalTombstones(local: Database.Database): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const { table_name, row_id } of local.prepare('SELECT table_name, row_id FROM sync_tombstones').all() as { table_name: string; row_id: string }[]) {
+    let s = map.get(table_name);
+    if (!s) { s = new Set<string>(); map.set(table_name, s); }
+    s.add(row_id);
+  }
+  return map;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +169,7 @@ function adoptSharedUuid(local: Database.Database, fromId: string, toId: string)
 }
 
 function pullContacts(local: Database.Database, shared: Database.Database): void {
+  const tombstones = loadLocalTombstones(local);
   const sharedContacts = shared.prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
@@ -186,7 +222,7 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
           )
           .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
-        mergeSubTablesFromShared(local, shared, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id, tombstones);
       }
     } else {
       // No local contact with this UUID — check for an identity match by email/phone
@@ -228,7 +264,7 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
             )
             .run(sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.updated_at, 0, sc.id);
         }
-        mergeSubTablesFromShared(local, shared, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id, tombstones);
       } else {
         // Genuinely new contact (or ambiguous multi-match / already-adopted local contact)
         local
@@ -242,7 +278,7 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
           )
           .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
 
-        mergeSubTablesFromShared(local, shared, sc.id);
+        mergeSubTablesFromShared(local, shared, sc.id, tombstones);
       }
 
       // Keep identity indexes current so later iterations in this sync see updated state
@@ -264,22 +300,11 @@ function mergeSubTablesFromShared(
   local: Database.Database,
   shared: Database.Database,
   contactId: string,
+  tombstones: Map<string, Set<string>>,
 ): void {
   // Sub-table merge strategy: union of shared rows + local-only rows (rows that
-  // exist locally but not in shared). This is additive on the pull side.
-  //
-  // Deletion behaviour:
-  //   Deletions propagate through the PUSH path: when a client deletes a sub-table
-  //   row and saves (bumping updated_at), they become the newer editor and push the
-  //   trimmed sub-tables to shared on the next sync. Other clients then pull that
-  //   state from shared.
-  //
-  //   The one failure case: if another client edits the same contact after the
-  //   deletion (making their updated_at newer), the deleting client will pull on
-  //   next sync and the merge will restore the deleted row from shared (resurrection).
-  //   The deleted row then exists in the deleting client's local DB, so there is no
-  //   longer any local deletion intent — the row survives. The concurrent edit wins.
-  //   No data is permanently lost, but the deletion is silently discarded.
+  // exist locally but not in shared). Local-only rows whose IDs appear in the local
+  // tombstone table are excluded so that explicit deletions propagate across clients.
   //
   // ── Emails ────────────────────────────────────────────────────────────────
   // Stored emails are already normalised (lowercased, trimmed) — compare directly.
@@ -291,7 +316,8 @@ function mergeSubTablesFromShared(
     .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
 
   const sharedEmailValues = new Set(sharedEmails.map((e) => e.email));
-  const localOnlyEmails = localEmails.filter((e) => !sharedEmailValues.has(e.email));
+  const emailTombstones = tombstones.get('contact_emails') ?? new Set<string>();
+  const localOnlyEmails = localEmails.filter((e) => !sharedEmailValues.has(e.email) && !emailTombstones.has(e.id));
 
   // Merge and sort by insertion time so rows appear in the order they were added.
   const mergedEmails = [...sharedEmails, ...localOnlyEmails].sort((a, b) => a.created_at - b.created_at);
@@ -313,7 +339,8 @@ function mergeSubTablesFromShared(
     .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
 
   const sharedPhoneValues = new Set(sharedPhones.map((p) => p.phone));
-  const localOnlyPhones = localPhones.filter((p) => !sharedPhoneValues.has(p.phone));
+  const phoneTombstones = tombstones.get('contact_phones') ?? new Set<string>();
+  const localOnlyPhones = localPhones.filter((p) => !sharedPhoneValues.has(p.phone) && !phoneTombstones.has(p.id));
 
   const mergedPhones = [...sharedPhones, ...localOnlyPhones].sort((a, b) => a.created_at - b.created_at);
 
@@ -335,7 +362,8 @@ function mergeSubTablesFromShared(
 
   const sharedUrlValues = new Set(sharedLinks.map((l) => l.url.trim()));
   const localWaybacks = new Map(localLinks.filter((l) => l.wayback_url).map((l) => [l.url.trim(), l.wayback_url]));
-  const localOnlyLinks = localLinks.filter((l) => !sharedUrlValues.has(l.url.trim()));
+  const linkTombstones = tombstones.get('contact_links') ?? new Set<string>();
+  const localOnlyLinks = localLinks.filter((l) => !sharedUrlValues.has(l.url.trim()) && !linkTombstones.has(l.id));
 
   // Build merged set: shared rows (with wayback_url restored) + local-only rows, sorted by created_at.
   const mergedLinks = [
@@ -359,7 +387,8 @@ function mergeSubTablesFromShared(
     .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
 
   const sharedHandleKeys = new Set(sharedHandles.map((h) => `${h.type}:${h.handle}`));
-  const localOnlyHandles = localHandles.filter((h) => !sharedHandleKeys.has(`${h.type}:${h.handle}`));
+  const handleTombstones = tombstones.get('contact_handles') ?? new Set<string>();
+  const localOnlyHandles = localHandles.filter((h) => !sharedHandleKeys.has(`${h.type}:${h.handle}`) && !handleTombstones.has(h.id));
 
   const mergedHandles = [...sharedHandles, ...localOnlyHandles].sort((a, b) => a.created_at - b.created_at);
 
@@ -394,9 +423,6 @@ function mergeSubTablesFromShared(
   }
 
   // ── Tags ──────────────────────────────────────────────────────────────────
-  // Additive-only merge: deletions do not propagate across clients. A tag
-  // removed on one client will be restored on next sync if it still exists on
-  // shared. Full deletion propagation requires a tombstone table — see #422.
   const sharedTags = shared
     .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
     .all(contactId) as { id: string; tag: string; created_at: number }[];
@@ -405,7 +431,8 @@ function mergeSubTablesFromShared(
     .all(contactId) as { id: string; tag: string; created_at: number }[];
 
   const sharedTagValues = new Set(sharedTags.map((t) => t.tag));
-  const localOnlyTags = localTags.filter((t) => !sharedTagValues.has(t.tag));
+  const tagTombstones = tombstones.get('contact_tags') ?? new Set<string>();
+  const localOnlyTags = localTags.filter((t) => !sharedTagValues.has(t.tag) && !tagTombstones.has(t.id));
   const mergedTags = [...sharedTags, ...localOnlyTags];
 
   local.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(contactId);
@@ -732,17 +759,13 @@ function pushSubTablesToShared(
       .run(rss.id, contactId, rss.rss_url, rss.last_polled_at, rss.is_invalid);
   }
 
-  const sharedTagSet = new Set(
-    (shared.prepare('SELECT tag FROM contact_tags WHERE contact_id = ?').all(contactId) as { tag: string }[]).map((r) => r.tag),
-  );
+  shared.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(contactId);
   const tagRows = local
     .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
     .all(contactId) as { id: string; tag: string; created_at: number }[];
   const insertSharedTag = shared.prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)');
   for (const t of tagRows) {
-    if (!sharedTagSet.has(t.tag)) {
-      insertSharedTag.run(t.id, contactId, t.tag, t.created_at);
-    }
+    insertSharedTag.run(t.id, contactId, t.tag, t.created_at);
   }
 }
 

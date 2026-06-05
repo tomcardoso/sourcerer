@@ -64,6 +64,14 @@ export const SHARED_SCHEMA_SQL = `
     UNIQUE(contact_id, tag)
   );
 
+  CREATE TABLE IF NOT EXISTS sync_tombstones (
+    id         TEXT    PRIMARY KEY,
+    table_name TEXT    NOT NULL,
+    row_id     TEXT    NOT NULL,
+    deleted_at INTEGER NOT NULL,
+    UNIQUE(table_name, row_id)
+  );
+
   CREATE TABLE IF NOT EXISTS contact_alert_rss (
     id             TEXT    PRIMARY KEY,
     contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
@@ -118,6 +126,7 @@ export const SHARED_SCHEMA_SQL = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_shared_contact_tags_contact_id ON contact_tags(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_shared_sync_tombstones_table_row ON sync_tombstones(table_name, row_id);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_id     ON contact_emails(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_email ON contact_emails(contact_id, email);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_id     ON contact_phones(contact_id);

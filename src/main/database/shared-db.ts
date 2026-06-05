@@ -85,16 +85,6 @@ function runSharedMigrations(db: Database.Database): void {
   if (version < 1) {
     db.pragma('user_version = 1');
   }
-  // Future migration blocks go here. Example:
-  // if (version < 2) {
-  //   db.prepare('ALTER TABLE contacts ADD COLUMN foo TEXT').run();
-  //   db.prepare(
-  //     `INSERT OR REPLACE INTO shared_meta (key, value) VALUES ('min_app_version', '0.2.0')`
-  //   ).run();
-  //   // Note: always use INSERT OR REPLACE here, not ON CONFLICT ... WHERE value > ...,
-  //   // because SQLite compares TEXT lexicographically and '0.9.0' > '0.10.0' is true.
-  //   db.pragma('user_version = 2');
-  // }
 }
 
 export function createSharedDb(
