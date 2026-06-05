@@ -35,9 +35,10 @@ beforeEach(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
+let _tagTs = Math.floor(Date.now() / 1000);
 function insertTag(db: Database.Database, contactId: string, tag: string): void {
   db.prepare('INSERT INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)')
-    .run(uuidv4(), contactId, tag, Math.floor(Date.now() / 1000));
+    .run(uuidv4(), contactId, tag, _tagTs++);
 }
 
 function getTags(db: Database.Database, contactId: string): string[] {
@@ -146,12 +147,12 @@ describe('contacts:list — tags field', () => {
     expect(rows[0].tags).toEqual([]);
   });
 
-  it('returns tags sorted alphabetically', async () => {
+  it('returns tags in insertion order', async () => {
     const contactId = insertContact(testDb, 'Alice');
     insertTag(testDb, contactId, 'zebra');
     insertTag(testDb, contactId, 'alpha');
     const rows = await handlers.get('contacts:list')!({}) as { tags: string[] }[];
-    expect(rows[0].tags).toEqual(['alpha', 'zebra']);
+    expect(rows[0].tags).toEqual(['zebra', 'alpha']);
   });
 
   it('does not mix tags between contacts', async () => {
@@ -173,12 +174,12 @@ describe('contacts:list — tags field', () => {
 // ---------------------------------------------------------------------------
 
 describe('contacts:get — tags field', () => {
-  it('returns tags for a contact', async () => {
+  it('returns tags in insertion order', async () => {
     const contactId = insertContact(testDb, 'Alice');
     insertTag(testDb, contactId, 'source');
     insertTag(testDb, contactId, 'legal');
     const detail = await handlers.get('contacts:get')!({}, contactId) as { tags: string[] };
-    expect(detail.tags).toEqual(['legal', 'source']);
+    expect(detail.tags).toEqual(['source', 'legal']);
   });
 
   it('returns an empty tags array when none exist', async () => {

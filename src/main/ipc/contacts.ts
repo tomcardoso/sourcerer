@@ -175,7 +175,7 @@ export function registerContactHandlers(): void {
                        FROM project_memberships pm JOIN projects p ON p.id = pm.project_id
                        WHERE pm.contact_id = c.id
                        ORDER BY p.name COLLATE NOCASE ASC)) AS projects_raw,
-                (SELECT GROUP_CONCAT(tag, '\x1f') FROM contact_tags WHERE contact_id = c.id ORDER BY tag) AS tags_raw
+                (SELECT GROUP_CONCAT(tag, '\x1f') FROM contact_tags WHERE contact_id = c.id ORDER BY created_at) AS tags_raw
          FROM contacts c
          ORDER BY c.name COLLATE NOCASE ASC`,
       )
@@ -270,7 +270,7 @@ export function registerContactHandlers(): void {
       reporters: allReporters.filter((r) => r.membership_id === p.membership_id),
     }));
 
-    const tags = (stmt(db, 'SELECT tag FROM contact_tags WHERE contact_id = ? ORDER BY tag')
+    const tags = (stmt(db, 'SELECT tag FROM contact_tags WHERE contact_id = ? ORDER BY created_at')
       .all(id) as { tag: string }[]).map((r) => r.tag);
 
     return { ...contact, emails, phones, links, handles, projects: projectsWithReporters, tags } as ContactDetail;
@@ -422,7 +422,7 @@ export function registerContactHandlers(): void {
               (SELECT GROUP_CONCAT(phone, ' ') FROM contact_phones WHERE contact_id = c.id) AS phones_raw,
               (SELECT MIN(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_first_contacted,
               (SELECT MAX(ile.created_at) FROM interaction_log_entries ile JOIN interaction_projects ip ON ip.interaction_id = ile.id WHERE ip.membership_id = pm.id) AS date_last_contacted,
-              (SELECT GROUP_CONCAT(tag, '\x1f') FROM contact_tags WHERE contact_id = c.id ORDER BY tag) AS tags_raw
+              (SELECT GROUP_CONCAT(tag, '\x1f') FROM contact_tags WHERE contact_id = c.id ORDER BY created_at) AS tags_raw
        FROM project_memberships pm
        JOIN contacts c ON c.id = pm.contact_id
        WHERE pm.project_id = ?
