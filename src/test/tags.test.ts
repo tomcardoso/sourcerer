@@ -252,6 +252,27 @@ function localInsertMembership(db: Database.Database, contactId: string, project
   return id;
 }
 
+describe('contacts:add-tag / contacts:remove-tag — bumps updated_at', () => {
+  it('add-tag bumps contact updated_at so the sync engine will push', async () => {
+    const contactId = insertContact(testDb, 'Alice');
+    const before = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
+    await new Promise((r) => setTimeout(r, 1100));
+    await handlers.get('contacts:add-tag')!({}, { contactId, tag: 'source' });
+    const after = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it('remove-tag bumps contact updated_at so the sync engine will push', async () => {
+    const contactId = insertContact(testDb, 'Alice');
+    insertTag(testDb, contactId, 'source');
+    const before = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
+    await new Promise((r) => setTimeout(r, 1100));
+    await handlers.get('contacts:remove-tag')!({}, { contactId, tag: 'source' });
+    const after = (testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(contactId) as { updated_at: number }).updated_at;
+    expect(after).toBeGreaterThan(before);
+  });
+});
+
 describe('syncProject — tags', () => {
   it('pushes local tags to shared on sync', () => {
     const localDb = createTestDb();
