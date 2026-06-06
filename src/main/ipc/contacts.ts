@@ -446,19 +446,26 @@ export function registerContactHandlers(): void {
         .all(data.id) as { url: string; wayback_url: string | null }[];
       existingWaybacks = new Map(existingWebsites.map((r) => [r.url, r.wayback_url]));
 
-      // Snapshot created_at values keyed by normalised value so they survive the re-insert.
-      const existingEmailCreatedAt = new Map(
-        (stmt(db, 'SELECT email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { email: string; created_at: number }[])
-          .map((r) => [r.email, r.created_at])
+      // Snapshot created_at values and row IDs keyed by normalised value so they survive the re-insert.
+      // Row IDs are used to write tombstones for sub-table rows that get deleted on sync.
+      const existingEmailRows = stmt(db, 'SELECT id, email, created_at FROM contact_emails WHERE contact_id = ?').all(data.id) as { id: string; email: string; created_at: number }[];
+      const existingEmailCreatedAt = new Map(existingEmailRows.map((r) => [r.email, r.created_at]));
+      const existingEmailIdMap = new Map(existingEmailRows.map((r) => [r.email, r.id]));
+
+      const existingPhoneRows = stmt(db, 'SELECT id, phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { id: string; phone: string; created_at: number }[];
+      const existingPhoneCreatedAt = new Map(existingPhoneRows.map((r) => [r.phone, r.created_at]));
+      const existingPhoneIdMap = new Map(existingPhoneRows.map((r) => [r.phone, r.id]));
+
+      const existingLinkRows = stmt(db, 'SELECT id, url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { id: string; url: string; created_at: number }[];
+      const existingLinkCreatedAt = new Map(existingLinkRows.map((r) => [r.url.trim(), r.created_at]));
+      const existingLinkIdMap = new Map(existingLinkRows.map((r) => [r.url.trim(), r.id]));
+
+      const existingHandleIdMap = new Map(
+        (stmt(db, 'SELECT id, type, handle FROM contact_handles WHERE contact_id = ?').all(data.id) as { id: string; type: string; handle: string }[])
+          .map((r) => [`${r.type}:${r.handle}`, r.id])
       );
-      const existingPhoneCreatedAt = new Map(
-        (stmt(db, 'SELECT phone, created_at FROM contact_phones WHERE contact_id = ?').all(data.id) as { phone: string; created_at: number }[])
-          .map((r) => [r.phone, r.created_at])
-      );
-      const existingLinkCreatedAt = new Map(
-        (stmt(db, 'SELECT url, created_at FROM contact_links WHERE contact_id = ?').all(data.id) as { url: string; created_at: number }[])
-          .map((r) => [r.url.trim(), r.created_at])
-      );
+
+      const tombstone = stmt(db, 'INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)');
 
       stmt(db,
         'UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ? WHERE id = ?',
@@ -473,6 +480,10 @@ export function registerContactHandlers(): void {
           'INSERT INTO contact_emails (id, contact_id, email, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, e.email, e.label, i, existingEmailCreatedAt.get(e.email) ?? now);
       });
+      const keptEmails = new Set(emails.map((e) => e.email));
+      for (const [email, id] of existingEmailIdMap) {
+        if (!keptEmails.has(email)) tombstone.run('contact_emails', id, now);
+      }
 
       stmt(db, 'DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
       const phones = (data.phones ?? [])
@@ -484,6 +495,10 @@ export function registerContactHandlers(): void {
           'INSERT INTO contact_phones (id, contact_id, phone, label, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, p.phone, p.label, i, existingPhoneCreatedAt.get(p.phone) ?? now);
       });
+      const keptPhones = new Set(phones.map((p) => p.phone));
+      for (const [phone, id] of existingPhoneIdMap) {
+        if (!keptPhones.has(phone)) tombstone.run('contact_phones', id, now);
+      }
 
       stmt(db, 'DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
       const links = (data.links ?? []).filter((l: ContactLinkInput) => l.url.trim() && validateUrl(l.url));
@@ -492,6 +507,10 @@ export function registerContactHandlers(): void {
           'INSERT INTO contact_links (id, contact_id, type, label, url, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, link.type, link.label ?? null, link.url.trim(), i, existingLinkCreatedAt.get(link.url.trim()) ?? now);
       });
+      const keptLinks = new Set(links.map((l: ContactLinkInput) => l.url.trim()));
+      for (const [url, id] of existingLinkIdMap) {
+        if (!keptLinks.has(url)) tombstone.run('contact_links', id, now);
+      }
 
       stmt(db, 'DELETE FROM contact_handles WHERE contact_id = ?').run(data.id);
       const handles = (data.handles ?? []).filter((h: ContactHandleInput) => h.handle.trim() && h.type.trim());
@@ -500,6 +519,10 @@ export function registerContactHandlers(): void {
           'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         ).run(uuidv4(), data.id, h.type.trim(), h.handle.trim(), i, now);
       });
+      const keptHandles = new Set(handles.map((h: ContactHandleInput) => `${h.type.trim()}:${h.handle.trim()}`));
+      for (const [key, id] of existingHandleIdMap) {
+        if (!keptHandles.has(key)) tombstone.run('contact_handles', id, now);
+      }
 
       // Restore wayback_urls for previously saved website links
       for (const [url, waybackUrl] of existingWaybacks) {
@@ -775,8 +798,11 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
     db.transaction(() => {
-      const { changes } = db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, normalized);
-      if (changes > 0) db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
+      const row = db.prepare('SELECT id FROM contact_tags WHERE contact_id = ? AND tag = ?').get(contactId, normalized) as { id: string } | undefined;
+      if (!row) return;
+      db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, normalized);
+      db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
+      db.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)').run('contact_tags', row.id, now);
     })();
     broadcastContactsChanged();
   });

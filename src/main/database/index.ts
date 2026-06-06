@@ -136,11 +136,7 @@ export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= DB_VERSION) return;
 
-  // No migration blocks yet — all schema changes so far are baked into the
-  // initial schema SQL, so existing pre-production databases can be recreated.
-  // Wrap in a transaction to establish the correct pattern: when real migration
-  // DDL blocks are added, each block must stamp user_version atomically with its
-  // DDL so a mid-migration crash cannot leave the DB partially migrated (fixes #207).
+  // No migration blocks yet — new DBs receive all schema via initDatabase → LOCAL_SCHEMA_DDL_SQL.
   db.transaction(() => {
     db.pragma(`user_version = ${DB_VERSION}`);
   })();
