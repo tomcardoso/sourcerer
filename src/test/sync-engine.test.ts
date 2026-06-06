@@ -1013,4 +1013,65 @@ describe('sync_tombstones — propagation and resurrection prevention', () => {
     const emails = (localDb.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
     expect(emails).toContain('alice@example.com');
   });
+
+  it('GC removes tombstones older than 90 days from local and shared', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'GC Test');
+
+    const contactId = insertContact(localDb, 'Alice');
+    localInsertMembership(localDb, contactId, projectId);
+    sharedInsertContact(sharedDb, contactId, 'Alice');
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const NINETY_ONE_DAYS = 91 * 24 * 3600;
+    const staleRowId = uuidv4();
+    const freshRowId = uuidv4();
+
+    // Stale tombstone (> 90 days old) in both DBs
+    localDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', staleRowId, NOW - NINETY_ONE_DAYS);
+    sharedDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', staleRowId, NOW - NINETY_ONE_DAYS);
+
+    // Fresh tombstone (recent) in local — should survive
+    localDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', freshRowId, NOW);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    // Stale tombstone pruned from local (phase 4 GC)
+    expect(localDb.prepare('SELECT row_id FROM sync_tombstones WHERE row_id = ?').get(staleRowId)).toBeUndefined();
+    // Stale tombstone pruned from shared (pushTombstones GC)
+    expect(sharedDb.prepare('SELECT row_id FROM sync_tombstones WHERE row_id = ?').get(staleRowId)).toBeUndefined();
+    // Fresh tombstone survives on local
+    expect(localDb.prepare('SELECT row_id FROM sync_tombstones WHERE row_id = ?').get(freshRowId)).toBeDefined();
+  });
+
+  it('UPSERT keeps the larger deleted_at when the same row_id arrives with a newer timestamp', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'UPSERT Test');
+
+    const contactId = insertContact(localDb, 'Alice');
+    localInsertMembership(localDb, contactId, projectId);
+    sharedInsertContact(sharedDb, contactId, 'Alice');
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const rowId = uuidv4();
+    const olderTs = NOW - 100;
+    const newerTs = NOW - 10;
+
+    // Local has the older timestamp
+    localDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', rowId, olderTs);
+    // Shared has a newer timestamp for the same row_id (simulates a late-syncing client)
+    sharedDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', rowId, newerTs);
+
+    syncProject(localDb, sharedDb, projectId);
+
+    // After pullTombstones, local should have the newer deleted_at
+    const local = localDb.prepare('SELECT deleted_at FROM sync_tombstones WHERE row_id = ?').get(rowId) as { deleted_at: number } | undefined;
+    expect(local?.deleted_at).toBe(newerTs);
+
+    // After pushTombstones, shared should also have the newer deleted_at (it already did; upsert is idempotent)
+    const shared = sharedDb.prepare('SELECT deleted_at FROM sync_tombstones WHERE row_id = ?').get(rowId) as { deleted_at: number } | undefined;
+    expect(shared?.deleted_at).toBe(newerTs);
+  });
 });

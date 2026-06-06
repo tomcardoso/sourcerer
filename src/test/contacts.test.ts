@@ -229,6 +229,31 @@ describe('contacts:update', () => {
     expect(tombstoneRowIds).toContain(linkId);
     expect(tombstoneRowIds).toContain(handleId);
   });
+
+  it('does not tombstone sub-table rows that are kept on update', async () => {
+    const { v4: uuidv4 } = await import('uuid');
+    const now = Math.floor(Date.now() / 1000);
+    const id = insertContact(testDb, 'Alice Smith');
+
+    const keptEmailId = uuidv4();
+    const removedEmailId = uuidv4();
+    testDb.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(id);
+    testDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(keptEmailId, id, 'keep@example.com', now);
+    testDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 1, ?)').run(removedEmailId, id, 'remove@example.com', now);
+
+    await handlers.get('contacts:update')!({}, {
+      id,
+      name: 'Alice Smith',
+      emails: [{ email: 'keep@example.com', label: null }],
+      phones: [],
+      links: [],
+      handles: [],
+    });
+
+    const tombstoneRowIds = (testDb.prepare('SELECT row_id FROM sync_tombstones').all() as { row_id: string }[]).map((r) => r.row_id);
+    expect(tombstoneRowIds).toContain(removedEmailId);
+    expect(tombstoneRowIds).not.toContain(keptEmailId);
+  });
 });
 
 // ---------------------------------------------------------------------------
