@@ -196,6 +196,39 @@ describe('contacts:update', () => {
     const row = testDb.prepare('SELECT updated_at FROM contacts WHERE id = ?').get(id) as { updated_at: number };
     expect(row.updated_at).toBeGreaterThan(staleTs);
   });
+
+  it('writes tombstones for deleted emails, phones, links, and handles', async () => {
+    const { v4: uuidv4 } = await import('uuid');
+    const now = Math.floor(Date.now() / 1000);
+    const id = insertContact(testDb, 'Alice Smith');
+
+    // Pre-insert rows with known IDs so we can verify the tombstone references them
+    const emailId = uuidv4();
+    const phoneId = uuidv4();
+    const linkId = uuidv4();
+    const handleId = uuidv4();
+    testDb.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(id);
+    testDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(emailId, id, 'alice@example.com', now);
+    testDb.prepare('INSERT INTO contact_phones (id, contact_id, phone, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(phoneId, id, '+15550001111', now);
+    testDb.prepare('INSERT INTO contact_links (id, contact_id, type, url, sort_order, created_at) VALUES (?, ?, ?, ?, 0, ?)').run(linkId, id, 'website', 'https://alice.com', now);
+    testDb.prepare('INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, 0, ?)').run(handleId, id, 'twitter', '@alice', now);
+
+    // Update the contact, omitting all sub-table rows
+    await handlers.get('contacts:update')!({}, {
+      id,
+      name: 'Alice Smith',
+      emails: [],
+      phones: [],
+      links: [],
+      handles: [],
+    });
+
+    const tombstoneRowIds = (testDb.prepare('SELECT row_id FROM sync_tombstones').all() as { row_id: string }[]).map((r) => r.row_id);
+    expect(tombstoneRowIds).toContain(emailId);
+    expect(tombstoneRowIds).toContain(phoneId);
+    expect(tombstoneRowIds).toContain(linkId);
+    expect(tombstoneRowIds).toContain(handleId);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 
+const TOMBSTONE_TTL_SECONDS = 90 * 24 * 3600;
+
 
 export interface SyncResult {
   success: boolean;
@@ -75,14 +77,13 @@ export function syncProject(
     const stmtMembershipSynced = localDb.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?');
     const stmtMentionSynced = localDb.prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?');
     const stmtLogEntrySynced = localDb.prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?');
-    const TOMBSTONE_TTL = 90 * 24 * 3600;
     localDb.transaction(() => {
       for (const id of pushedContactIds!) stmtContactSynced.run(now, id);
       for (const id of pushedMembershipIds!) stmtMembershipSynced.run(now, id);
       for (const id of pushedMentionIds!) stmtMentionSynced.run(now, id);
       for (const id of pushedLogEntryIds!) stmtLogEntrySynced.run(now, id);
       localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
-      localDb.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - TOMBSTONE_TTL);
+      localDb.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - TOMBSTONE_TTL_SECONDS);
     })();
 
     return { success: true };
@@ -120,7 +121,7 @@ function pushTombstones(local: Database.Database, shared: Database.Database, now
     ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)
   `);
   for (const r of rows) upsert.run(r.table_name, r.row_id, r.deleted_at);
-  shared.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - 90 * 24 * 3600);
+  shared.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - TOMBSTONE_TTL_SECONDS);
 }
 
 function loadLocalTombstones(local: Database.Database): Map<string, Set<string>> {
@@ -321,12 +322,13 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
 
-  const sharedEmailValues = new Set(sharedEmails.map((e) => e.email));
   const emailTombstones = tombstones.get('contact_emails') ?? new Set<string>();
+  const filteredSharedEmails = sharedEmails.filter((e) => !emailTombstones.has(e.id));
+  const sharedEmailValues = new Set(filteredSharedEmails.map((e) => e.email));
   const localOnlyEmails = localEmails.filter((e) => !sharedEmailValues.has(e.email) && !emailTombstones.has(e.id));
 
   // Merge and sort by insertion time so rows appear in the order they were added.
-  const mergedEmails = [...sharedEmails, ...localOnlyEmails].sort((a, b) => a.created_at - b.created_at);
+  const mergedEmails = [...filteredSharedEmails, ...localOnlyEmails].sort((a, b) => a.created_at - b.created_at);
 
   local.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
   mergedEmails.forEach((e, i) => {
@@ -344,11 +346,12 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
 
-  const sharedPhoneValues = new Set(sharedPhones.map((p) => p.phone));
   const phoneTombstones = tombstones.get('contact_phones') ?? new Set<string>();
+  const filteredSharedPhones = sharedPhones.filter((p) => !phoneTombstones.has(p.id));
+  const sharedPhoneValues = new Set(filteredSharedPhones.map((p) => p.phone));
   const localOnlyPhones = localPhones.filter((p) => !sharedPhoneValues.has(p.phone) && !phoneTombstones.has(p.id));
 
-  const mergedPhones = [...sharedPhones, ...localOnlyPhones].sort((a, b) => a.created_at - b.created_at);
+  const mergedPhones = [...filteredSharedPhones, ...localOnlyPhones].sort((a, b) => a.created_at - b.created_at);
 
   local.prepare('DELETE FROM contact_phones WHERE contact_id = ?').run(contactId);
   mergedPhones.forEach((p, i) => {
@@ -366,14 +369,15 @@ function mergeSubTablesFromShared(
     .prepare('SELECT id, type, label, url, wayback_url, sort_order, created_at FROM contact_links WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; type: string; label: string | null; url: string; wayback_url: string | null; sort_order: number; created_at: number }[];
 
-  const sharedUrlValues = new Set(sharedLinks.map((l) => l.url.trim()));
   const localWaybacks = new Map(localLinks.filter((l) => l.wayback_url).map((l) => [l.url.trim(), l.wayback_url]));
   const linkTombstones = tombstones.get('contact_links') ?? new Set<string>();
+  const filteredSharedLinks = sharedLinks.filter((l) => !linkTombstones.has(l.id));
+  const sharedUrlValues = new Set(filteredSharedLinks.map((l) => l.url.trim()));
   const localOnlyLinks = localLinks.filter((l) => !sharedUrlValues.has(l.url.trim()) && !linkTombstones.has(l.id));
 
   // Build merged set: shared rows (with wayback_url restored) + local-only rows, sorted by created_at.
   const mergedLinks = [
-    ...sharedLinks.map((l) => ({ ...l, wayback_url: localWaybacks.get(l.url.trim()) ?? null })),
+    ...filteredSharedLinks.map((l) => ({ ...l, wayback_url: localWaybacks.get(l.url.trim()) ?? null })),
     ...localOnlyLinks,
   ].sort((a, b) => a.created_at - b.created_at);
 
@@ -392,11 +396,12 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
 
-  const sharedHandleKeys = new Set(sharedHandles.map((h) => `${h.type}:${h.handle}`));
   const handleTombstones = tombstones.get('contact_handles') ?? new Set<string>();
+  const filteredSharedHandles = sharedHandles.filter((h) => !handleTombstones.has(h.id));
+  const sharedHandleKeys = new Set(filteredSharedHandles.map((h) => `${h.type}:${h.handle}`));
   const localOnlyHandles = localHandles.filter((h) => !sharedHandleKeys.has(`${h.type}:${h.handle}`) && !handleTombstones.has(h.id));
 
-  const mergedHandles = [...sharedHandles, ...localOnlyHandles].sort((a, b) => a.created_at - b.created_at);
+  const mergedHandles = [...filteredSharedHandles, ...localOnlyHandles].sort((a, b) => a.created_at - b.created_at);
 
   local.prepare('DELETE FROM contact_handles WHERE contact_id = ?').run(contactId);
   mergedHandles.forEach((h, i) => {
@@ -436,10 +441,11 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
     .all(contactId) as { id: string; tag: string; created_at: number }[];
 
-  const sharedTagValues = new Set(sharedTags.map((t) => t.tag));
   const tagTombstones = tombstones.get('contact_tags') ?? new Set<string>();
+  const filteredSharedTags = sharedTags.filter((t) => !tagTombstones.has(t.id));
+  const sharedTagValues = new Set(filteredSharedTags.map((t) => t.tag));
   const localOnlyTags = localTags.filter((t) => !sharedTagValues.has(t.tag) && !tagTombstones.has(t.id));
-  const mergedTags = [...sharedTags, ...localOnlyTags];
+  const mergedTags = [...filteredSharedTags, ...localOnlyTags];
 
   local.prepare('DELETE FROM contact_tags WHERE contact_id = ?').run(contactId);
   const insertLocalTag = local.prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)');
@@ -769,7 +775,7 @@ function pushSubTablesToShared(
   const tagRows = local
     .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
     .all(contactId) as { id: string; tag: string; created_at: number }[];
-  const insertSharedTag = shared.prepare('INSERT OR IGNORE INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)');
+  const insertSharedTag = shared.prepare('INSERT INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)');
   for (const t of tagRows) {
     insertSharedTag.run(t.id, contactId, t.tag, t.created_at);
   }

@@ -125,6 +125,7 @@ export const SHARED_SCHEMA_SQL = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_shared_contact_tags_contact_id ON contact_tags(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_shared_sync_tombstones_deleted_at ON sync_tombstones(deleted_at);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_id     ON contact_emails(contact_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_shared_contact_emails_contact_email ON contact_emails(contact_id, email);
   CREATE INDEX IF NOT EXISTS idx_shared_contact_phones_contact_id     ON contact_phones(contact_id);

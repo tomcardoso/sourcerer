@@ -943,6 +943,48 @@ describe('sync_tombstones — propagation and resurrection prevention', () => {
     expect((localB.prepare('SELECT tag FROM contact_tags WHERE contact_id = ?').all(contactId) as { tag: string }[]).map((r) => r.tag)).not.toContain('source');
   });
 
+  it('shared row with a tombstoned ID is not resurrected (concurrent-edit order)', () => {
+    // Scenario: A deletes email-1, B edits name (pushing email-1 back to shared with same ID),
+    // then A syncs — email-1 must not come back from sharedEmails.
+    const sharedDb = createSharedDb();
+    const projectId = uuidv4();
+    const contactId = uuidv4();
+    const emailId = uuidv4();
+    const T0 = NOW - 200;
+
+    const localA = createTestDb();
+    const localB = createTestDb();
+    for (const db of [localA, localB]) {
+      db.prepare('INSERT INTO projects (id, name, is_shared, created_at) VALUES (?, ?, 1, ?)').run(projectId, 'Shared', T0);
+      db.prepare('INSERT INTO contacts (id, name, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?)').run(contactId, 'Alice', T0, T0, T0);
+      db.prepare('INSERT INTO project_memberships (id, contact_id, project_id, reporter_email, reporter_name, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(uuidv4(), contactId, projectId, 'r@r.com', 'Reporter', T0, T0, T0);
+      db.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(emailId, contactId, 'alice@wapo.com', T0);
+    }
+    sharedDb.prepare('INSERT INTO contacts (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(contactId, 'Alice', T0, T0);
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+    sharedDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(emailId, contactId, 'alice@wapo.com', T0);
+
+    // B edits name at T1 and syncs — B's push uses same emailId (simulating no contacts:update re-generation)
+    const T1 = NOW - 10;
+    localB.prepare('UPDATE contacts SET name = ?, updated_at = ? WHERE id = ?').run('Alice B', T1, contactId);
+    expect(syncProject(localB, sharedDb, projectId).success).toBe(true);
+    // Shared should still have email-1
+    expect(sharedDb.prepare('SELECT id FROM contact_emails WHERE id = ?').get(emailId)).toBeDefined();
+
+    // A deletes alice@wapo.com at T2 > T1 and writes tombstone
+    const T2 = NOW;
+    localA.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
+    localA.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(T2, contactId);
+    localA.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_emails', emailId, T2);
+
+    // A syncs: A is newer (T2 > T1), so A pushes. B's name update also comes in.
+    // The tombstoned emailId must not be resurrected from sharedEmails.
+    expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
+
+    const emails = (localA.prepare('SELECT email FROM contact_emails WHERE contact_id = ?').all(contactId) as { email: string }[]).map((r) => r.email);
+    expect(emails).not.toContain('alice@wapo.com');
+  });
+
   it('tombstoned row does not block a fresh re-add of the same email address', () => {
     const localDb = createTestDb();
     const sharedDb = createSharedDb();
