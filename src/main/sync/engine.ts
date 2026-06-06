@@ -101,19 +101,25 @@ export function syncProject(
 // ---------------------------------------------------------------------------
 
 function pullTombstones(local: Database.Database, shared: Database.Database): void {
-  const rows = shared.prepare('SELECT id, table_name, row_id, deleted_at FROM sync_tombstones').all() as {
-    id: string; table_name: string; row_id: string; deleted_at: number;
+  const rows = shared.prepare('SELECT table_name, row_id, deleted_at FROM sync_tombstones').all() as {
+    table_name: string; row_id: string; deleted_at: number;
   }[];
-  const insert = local.prepare('INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)');
-  for (const r of rows) insert.run(r.id, r.table_name, r.row_id, r.deleted_at);
+  const upsert = local.prepare(`
+    INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)
+    ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)
+  `);
+  for (const r of rows) upsert.run(r.table_name, r.row_id, r.deleted_at);
 }
 
 function pushTombstones(local: Database.Database, shared: Database.Database, now: number): void {
-  const rows = local.prepare('SELECT id, table_name, row_id, deleted_at FROM sync_tombstones').all() as {
-    id: string; table_name: string; row_id: string; deleted_at: number;
+  const rows = local.prepare('SELECT table_name, row_id, deleted_at FROM sync_tombstones').all() as {
+    table_name: string; row_id: string; deleted_at: number;
   }[];
-  const insert = shared.prepare('INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)');
-  for (const r of rows) insert.run(r.id, r.table_name, r.row_id, r.deleted_at);
+  const upsert = shared.prepare(`
+    INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)
+    ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)
+  `);
+  for (const r of rows) upsert.run(r.table_name, r.row_id, r.deleted_at);
   shared.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - 90 * 24 * 3600);
 }
 

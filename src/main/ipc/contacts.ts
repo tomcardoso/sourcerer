@@ -465,7 +465,7 @@ export function registerContactHandlers(): void {
           .map((r) => [`${r.type}:${r.handle}`, r.id])
       );
 
-      const tombstone = stmt(db, 'INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)');
+      const tombstone = stmt(db, 'INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)');
 
       stmt(db,
         'UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ? WHERE id = ?',
@@ -482,7 +482,7 @@ export function registerContactHandlers(): void {
       });
       const keptEmails = new Set(emails.map((e) => e.email));
       for (const [email, id] of existingEmailIdMap) {
-        if (!keptEmails.has(email)) tombstone.run(uuidv4(), 'contact_emails', id, now);
+        if (!keptEmails.has(email)) tombstone.run('contact_emails', id, now);
       }
 
       stmt(db, 'DELETE FROM contact_phones WHERE contact_id = ?').run(data.id);
@@ -497,7 +497,7 @@ export function registerContactHandlers(): void {
       });
       const keptPhones = new Set(phones.map((p) => p.phone));
       for (const [phone, id] of existingPhoneIdMap) {
-        if (!keptPhones.has(phone)) tombstone.run(uuidv4(), 'contact_phones', id, now);
+        if (!keptPhones.has(phone)) tombstone.run('contact_phones', id, now);
       }
 
       stmt(db, 'DELETE FROM contact_links WHERE contact_id = ?').run(data.id);
@@ -509,7 +509,7 @@ export function registerContactHandlers(): void {
       });
       const keptLinks = new Set(links.map((l: ContactLinkInput) => l.url.trim()));
       for (const [url, id] of existingLinkIdMap) {
-        if (!keptLinks.has(url)) tombstone.run(uuidv4(), 'contact_links', id, now);
+        if (!keptLinks.has(url)) tombstone.run('contact_links', id, now);
       }
 
       stmt(db, 'DELETE FROM contact_handles WHERE contact_id = ?').run(data.id);
@@ -521,7 +521,7 @@ export function registerContactHandlers(): void {
       });
       const keptHandles = new Set(handles.map((h: ContactHandleInput) => `${h.type.trim()}:${h.handle.trim()}`));
       for (const [key, id] of existingHandleIdMap) {
-        if (!keptHandles.has(key)) tombstone.run(uuidv4(), 'contact_handles', id, now);
+        if (!keptHandles.has(key)) tombstone.run('contact_handles', id, now);
       }
 
       // Restore wayback_urls for previously saved website links
@@ -802,7 +802,7 @@ export function registerContactHandlers(): void {
       if (!row) return;
       db.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, normalized);
       db.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(now, contactId);
-      db.prepare('INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)').run(uuidv4(), 'contact_tags', row.id, now);
+      db.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)').run('contact_tags', row.id, now);
     })();
     broadcastContactsChanged();
   });

@@ -884,7 +884,7 @@ describe('sync_tombstones — propagation and resurrection prevention', () => {
     sharedInsertMembership(sharedDb, uuidv4(), contactId);
 
     const rowId = uuidv4();
-    localDb.prepare('INSERT INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)').run(uuidv4(), 'contact_tags', rowId, NOW);
+    localDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', rowId, NOW);
 
     syncProject(localDb, sharedDb, projectId);
 
@@ -902,7 +902,7 @@ describe('sync_tombstones — propagation and resurrection prevention', () => {
     sharedInsertMembership(sharedDb, uuidv4(), contactId);
 
     const rowId = uuidv4();
-    sharedDb.prepare('INSERT INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)').run(uuidv4(), 'contact_tags', rowId, NOW);
+    sharedDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', rowId, NOW);
 
     syncProject(localDb, sharedDb, projectId);
 
@@ -932,7 +932,7 @@ describe('sync_tombstones — propagation and resurrection prevention', () => {
     // A removes the tag and writes a tombstone (simulates what contacts:remove-tag does)
     localA.prepare('DELETE FROM contact_tags WHERE contact_id = ? AND tag = ?').run(contactId, 'source');
     localA.prepare('UPDATE contacts SET updated_at = ? WHERE id = ?').run(NOW, contactId);
-    localA.prepare('INSERT OR IGNORE INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)').run(uuidv4(), 'contact_tags', tagId, NOW);
+    localA.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_tags', tagId, NOW);
 
     // A syncs: pushes tombstone + updated contact to shared
     expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
@@ -956,7 +956,7 @@ describe('sync_tombstones — propagation and resurrection prevention', () => {
     localInsertMembership(localDb, contactId, projectId);
     // Old row with known ID, then tombstoned
     localDb.prepare('INSERT INTO contact_emails (id, contact_id, email, sort_order, created_at) VALUES (?, ?, ?, 0, ?)').run(emailId, contactId, 'alice@example.com', T0);
-    localDb.prepare('INSERT INTO sync_tombstones (id, table_name, row_id, deleted_at) VALUES (?, ?, ?, ?)').run(uuidv4(), 'contact_emails', emailId, NOW - 10);
+    localDb.prepare('INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)').run('contact_emails', emailId, NOW - 10);
     // Re-added with a new UUID
     const newEmailId = uuidv4();
     localDb.prepare('DELETE FROM contact_emails WHERE contact_id = ?').run(contactId);
