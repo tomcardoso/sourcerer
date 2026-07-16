@@ -1,6 +1,9 @@
 import { app, BrowserWindow, Menu, shell, nativeImage } from 'electron';
 
-app.name = 'Sourcerer';
+// Dev builds get a distinct app name so `app.getPath('userData')` resolves to a
+// separate directory — otherwise a dev launch and a production install both
+// point at the same userData folder and their databases collide (issue #426).
+app.name = app.isPackaged ? 'Sourcerer' : 'Sourcerer (Dev)';
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { registerSetupHandlers } from './ipc/setup';
