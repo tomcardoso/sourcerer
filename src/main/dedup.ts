@@ -387,6 +387,26 @@ export function mergeContacts(
       );
     }
 
+    db.prepare('UPDATE interaction_log_entries SET contact_id = ? WHERE contact_id = ?').run(
+      winnerId,
+      loserId,
+    );
+    db.prepare('UPDATE contact_screenshots SET contact_id = ? WHERE contact_id = ?').run(
+      winnerId,
+      loserId,
+    );
+    // contact_tags has UNIQUE(contact_id, tag) — a tag the winner already has stays on
+    // the loser and cascades away, which is correct.
+    db.prepare('UPDATE OR IGNORE contact_tags SET contact_id = ? WHERE contact_id = ?').run(
+      winnerId,
+      loserId,
+    );
+    // contact_alert_mentions has a unique index on (contact_id, guid) — same treatment.
+    db.prepare('UPDATE OR IGNORE contact_alert_mentions SET contact_id = ? WHERE contact_id = ?').run(
+      winnerId,
+      loserId,
+    );
+
     db.prepare('DELETE FROM contacts WHERE id = ?').run(loserId);
   });
 

@@ -311,6 +311,142 @@ describe('mergeContacts — merge strategy', () => {
   });
 });
 
+describe('mergeContacts — preserves loser history (#428)', () => {
+  function insertLogEntry(contactId: string, membershipId: string, body: string): string {
+    const id = uuidv4();
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare(
+      `INSERT INTO interaction_log_entries
+         (id, contact_id, reporter_email, reporter_name, body, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(id, contactId, TEST_REPORTER.email, TEST_REPORTER.name, body, now);
+    db.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(
+      id,
+      membershipId,
+    );
+    return id;
+  }
+
+  it.each(['keep', 'merge'] as const)(
+    "loser's interaction log entries survive and attach to the winner (%s strategy)",
+    (strategy) => {
+      const proj = insertProject(db, 'Project Alpha');
+      const winner = insertContact(db, 'Alice Smith');
+      const loser = insertContact(db, 'Alicia Smith');
+      insertMembership(winner, proj);
+      const loserMembership = insertMembership(loser, proj);
+      const entryId = insertLogEntry(loser, loserMembership, 'Called the source about the story.');
+
+      mergeContacts(db, winner, loser, strategy);
+
+      const row = db.prepare('SELECT contact_id FROM interaction_log_entries WHERE id = ?').get(entryId) as
+        | { contact_id: string }
+        | undefined;
+      expect(row?.contact_id).toBe(winner);
+    },
+  );
+
+  it("moves the loser's tags to the winner", () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    db.prepare('INSERT INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)').run(
+      uuidv4(),
+      loser,
+      'freelancer',
+      Math.floor(Date.now() / 1000),
+    );
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const tags = (db.prepare('SELECT tag FROM contact_tags WHERE contact_id = ?').all(winner) as {
+      tag: string;
+    }[]).map((r) => r.tag);
+    expect(tags).toContain('freelancer');
+  });
+
+  it("drops a loser tag the winner already has, without breaking the merge", () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare('INSERT INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)').run(
+      uuidv4(),
+      winner,
+      'freelancer',
+      now,
+    );
+    db.prepare('INSERT INTO contact_tags (id, contact_id, tag, created_at) VALUES (?, ?, ?, ?)').run(
+      uuidv4(),
+      loser,
+      'freelancer',
+      now,
+    );
+
+    expect(() => mergeContacts(db, winner, loser, 'merge')).not.toThrow();
+
+    const tags = (db.prepare('SELECT tag FROM contact_tags WHERE contact_id = ?').all(winner) as {
+      tag: string;
+    }[]).map((r) => r.tag);
+    expect(tags.filter((t) => t === 'freelancer')).toHaveLength(1);
+    expect(db.prepare('SELECT id FROM contacts WHERE id = ?').get(loser)).toBeUndefined();
+  });
+
+  it("moves the loser's alert mentions to the winner", () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare(
+      `INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(uuidv4(), loser, 'Loser mentioned in the news', 'https://news.example.com/a', now, 'guid-a');
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const mentions = db
+      .prepare('SELECT guid FROM contact_alert_mentions WHERE contact_id = ?')
+      .all(winner) as { guid: string }[];
+    expect(mentions.map((m) => m.guid)).toContain('guid-a');
+  });
+
+  it('drops a loser alert mention whose guid the winner already has, without failing', () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare(
+      `INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(uuidv4(), winner, 'Winner mentioned in the news', 'https://news.example.com/w', now, 'shared-guid');
+    db.prepare(
+      `INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(uuidv4(), loser, 'Loser mentioned in the news', 'https://news.example.com/l', now, 'shared-guid');
+
+    expect(() => mergeContacts(db, winner, loser, 'merge')).not.toThrow();
+
+    const mentions = db
+      .prepare('SELECT guid FROM contact_alert_mentions WHERE contact_id = ?')
+      .all(winner) as { guid: string }[];
+    expect(mentions.filter((m) => m.guid === 'shared-guid')).toHaveLength(1);
+  });
+
+  it("moves the loser's screenshot rows to the winner", () => {
+    const winner = insertContact(db, 'Alice Smith');
+    const loser = insertContact(db, 'Alicia Smith');
+    const now = Math.floor(Date.now() / 1000);
+    const screenshotId = uuidv4();
+    db.prepare(
+      `INSERT INTO contact_screenshots (id, contact_id, tab_url, file_path, iv, captured_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(screenshotId, loser, 'https://example.com', '/path/to/file.enc', 'iv-value', now);
+
+    mergeContacts(db, winner, loser, 'merge');
+
+    const row = db.prepare('SELECT contact_id FROM contact_screenshots WHERE id = ?').get(screenshotId) as
+      | { contact_id: string }
+      | undefined;
+    expect(row?.contact_id).toBe(winner);
+  });
+});
+
 describe('mergeContacts — invalid IDs (#278, #305, #314)', () => {
   it('throws when winner ID does not exist', () => {
     const loser = insertContact(db, 'Loser Contact');
