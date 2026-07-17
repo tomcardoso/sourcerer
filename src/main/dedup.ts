@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import type { DedupContact, DuplicatePair } from '@shared/types';
 import { normalizeEmail } from './sanitize';
+import { writeTombstone } from './sync/engine';
 
 export function loadDedupContacts(db: Database.Database): DedupContact[] {
   const contacts = db
@@ -348,6 +349,13 @@ export function mergeContacts(
       }
     }
 
+    // Snapshot the loser's log entry and mention IDs before they're remapped to
+    // the winner below. Their shared-DB copies still hang off the loser and get
+    // cascade-deleted when the loser's tombstone is applied there, so their push
+    // records must be cleared for them to re-push under the winner's contact_id.
+    const loserLogEntryIds = (db.prepare('SELECT id FROM interaction_log_entries WHERE contact_id = ?').all(loserId) as Array<{ id: string }>).map((r) => r.id);
+    const loserMentionIds = (db.prepare('SELECT id FROM contact_alert_mentions WHERE contact_id = ?').all(loserId) as Array<{ id: string }>).map((r) => r.id);
+
     const loserMemberships = db
       .prepare('SELECT id, project_id FROM project_memberships WHERE contact_id = ?')
       .all(loserId) as Array<{ id: string; project_id: string }>;
@@ -406,6 +414,21 @@ export function mergeContacts(
       winnerId,
       loserId,
     );
+
+    // Tombstone the loser so shared-project sync deletes it (and, via CASCADE,
+    // its shared sub-rows) instead of resurrecting it on the next pull.
+    writeTombstone(db, 'contacts', loserId, now);
+
+    // Clear push records so everything absorbed by the winner re-pushes: the
+    // winner itself (wholesale, for all projects), the remapped log entries and
+    // mentions, and the loser's memberships (remapped ones re-push under the
+    // winner; deleted ones are cascade-cleaned in shared by the tombstone).
+    const clearPush = db.prepare('DELETE FROM sync_pushed WHERE table_name = ? AND row_id = ?');
+    clearPush.run('contacts', winnerId);
+    clearPush.run('contacts', loserId);
+    for (const id of loserLogEntryIds) clearPush.run('interaction_log_entries', id);
+    for (const id of loserMentionIds) clearPush.run('contact_alert_mentions', id);
+    for (const m of loserMemberships) clearPush.run('project_memberships', m.id);
 
     db.prepare('DELETE FROM contacts WHERE id = ?').run(loserId);
   });

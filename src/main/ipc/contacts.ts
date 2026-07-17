@@ -27,6 +27,7 @@ import type {
   User,
 } from '@shared/types';
 import { loadDedupContacts, findDuplicatePairs, mergeContacts as mergeContactsDb, loadDismissedPairs, dismissPair } from '../dedup';
+import { writeTombstone } from '../sync/engine';
 import type { DuplicatePair } from '@shared/types';
 
 let cachedPairs: DuplicatePair[] = [];
@@ -343,7 +344,16 @@ export function registerContactHandlers(): void {
   });
 
   ipcMain.handle('contacts:delete', (_, id: string): void => {
-    getDatabase().prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    const db = getDatabase();
+    const now = Math.floor(Date.now() / 1000);
+    // Tombstone + delete are one transaction so shared-project sync always sees
+    // the deletion; contacts never in a shared project just get a tombstone that
+    // ages out with the 90-day GC.
+    db.transaction(() => {
+      writeTombstone(db, 'contacts', id, now);
+      db.prepare("DELETE FROM sync_pushed WHERE table_name = 'contacts' AND row_id = ?").run(id);
+      db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    })();
     runDedupScan();
     broadcastContactsChanged();
   });
@@ -379,10 +389,15 @@ export function registerContactHandlers(): void {
       // Read + conditional clear + delete are in a single transaction to close
       // the TOCTOU window where another write could change default_membership_id
       // between the read and the conditional update (fixes #189).
+      const now = Math.floor(Date.now() / 1000);
       db.transaction(() => {
         const membership = db
           .prepare('SELECT id FROM project_memberships WHERE contact_id = ? AND project_id = ?')
           .get(contactId, projectId) as { id: string } | undefined;
+        if (membership) {
+          writeTombstone(db, 'project_memberships', membership.id, now);
+          db.prepare("DELETE FROM sync_pushed WHERE table_name = 'project_memberships' AND row_id = ?").run(membership.id);
+        }
         db.prepare('DELETE FROM project_memberships WHERE contact_id = ? AND project_id = ?').run(contactId, projectId);
         if (membership) {
           db.prepare(
@@ -767,10 +782,13 @@ export function registerContactHandlers(): void {
     const db = getDatabase();
     // Collect affected memberships and delete in one transaction to close the
     // TOCTOU window between the SELECT and DELETE.
+    const now = Math.floor(Date.now() / 1000);
     const membershipIds = db.transaction(() => {
       const ids = (
         db.prepare('SELECT membership_id FROM interaction_projects WHERE interaction_id = ?').all(interactionId) as Array<{ membership_id: string }>
       ).map((r) => r.membership_id);
+      writeTombstone(db, 'interaction_log_entries', interactionId, now);
+      db.prepare("DELETE FROM sync_pushed WHERE table_name = 'interaction_log_entries' AND row_id = ?").run(interactionId);
       db.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(interactionId);
       return ids;
     })();
