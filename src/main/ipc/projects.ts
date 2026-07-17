@@ -276,17 +276,9 @@ export function registerProjectHandlers(): void {
             'UPDATE projects SET is_shared = 1, shared_db_path = ?, shared_db_key = ? WHERE id = ?',
           ).run(filePath, keyBytes, projectId);
 
-          // Reset synced_at so all existing contacts/memberships are treated as
-          // unsynced and get pushed to the new shared file on the first sync.
-          const memberContactIds = (db
-            .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
-            .all(projectId) as { contact_id: string }[])
-            .map((r) => r.contact_id);
-          if (memberContactIds.length > 0) {
-            const ph = memberContactIds.map(() => '?').join(',');
-            db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
-          }
-          db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+          // Clear any stale push records so all existing contacts/memberships are
+          // treated as unsynced and get pushed to the new shared file on the first sync.
+          db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(projectId);
         })();
       } catch (localErr) {
         // Best-effort compensating action: evict the shared DB connection and
@@ -346,21 +338,13 @@ export function registerProjectHandlers(): void {
         project.description,
       );
 
-      // Update local project record and reset synced_at atomically.
+      // Update local project record and reset push state atomically — the fresh
+      // shared file starts empty, so every row must be treated as unsynced.
       db.transaction(() => {
         db.prepare(
           'UPDATE projects SET shared_db_path = ?, shared_db_key = ? WHERE id = ?',
         ).run(filePath, keyBytes, projectId);
-
-        const memberContactIds = (db
-          .prepare('SELECT contact_id FROM project_memberships WHERE project_id = ?')
-          .all(projectId) as { contact_id: string }[])
-          .map((r) => r.contact_id);
-        if (memberContactIds.length > 0) {
-          const ph = memberContactIds.map(() => '?').join(',');
-          db.prepare(`UPDATE contacts SET synced_at = NULL WHERE id IN (${ph})`).run(...memberContactIds);
-        }
-        db.prepare('UPDATE project_memberships SET synced_at = NULL WHERE project_id = ?').run(projectId);
+        db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(projectId);
       })();
 
       // Push all local project data to the fresh shared file
@@ -426,9 +410,14 @@ export function registerProjectHandlers(): void {
   ipcMain.handle('projects:unshare', (_, id: string): Project => {
     closeSharedDb(id);
     const db = getDatabase();
-    db.prepare(
-      'UPDATE projects SET is_shared = 0, shared_db_path = NULL, shared_db_key = NULL, shared_pending_writes = 0 WHERE id = ?',
-    ).run(id);
+    db.transaction(() => {
+      db.prepare(
+        'UPDATE projects SET is_shared = 0, shared_db_path = NULL, shared_db_key = NULL, shared_pending_writes = 0 WHERE id = ?',
+      ).run(id);
+      // Stale push records would wrongly mark rows as already synced if the
+      // project is ever re-shared to a fresh file.
+      db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(id);
+    })();
     return db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
   });
 
@@ -444,7 +433,12 @@ export function registerProjectHandlers(): void {
 
   ipcMain.handle('projects:delete', (_, id: string): void => {
     closeSharedDb(id);
-    getDatabase().prepare('DELETE FROM projects WHERE id = ?').run(id);
+    const db = getDatabase();
+    db.transaction(() => {
+      db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+      // sync_pushed has no FK to projects — clean up its rows explicitly.
+      db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(id);
+    })();
   });
 
   ipcMain.handle('projects:list-reporters', (_, projectId: string): Array<{ email: string; name: string }> => {

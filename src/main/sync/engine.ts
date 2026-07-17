@@ -12,17 +12,34 @@ export interface SyncResult {
 /**
  * Bidirectional sync between local and shared DBs for a single project.
  *
+ * Replication state:
+ *   - Push tracking lives in the local sync_pushed table, keyed by
+ *     (project_id, table_name, row_id). A row is pushed when it has no entry
+ *     for this project, or when its updated_at is newer than pushed_at.
+ *   - Deletions propagate through sync_tombstones. Sub-table rows
+ *     (emails/phones/links/handles/tags) are filtered during the union merge;
+ *     contacts, project_memberships, and interaction_log_entries tombstones
+ *     are applied directly: matching rows are deleted on both sides.
+ *     Conflict rule: for contacts and memberships, an edit with
+ *     updated_at > deleted_at beats the tombstone (the row survives and the
+ *     tombstone is dropped); otherwise the delete wins, including ties.
+ *     Log entries are immutable, so their tombstones always win.
+ *
  * Pull strategy:
- *   - Contacts + their sub-tables (emails/phones/links/alert_rss): LWW by contact.updated_at.
- *     When shared contact is newer, replace the contact row AND all its sub-tables.
+ *   - Contacts + their sub-tables (emails/phones/links/alert_rss): LWW by
+ *     contact.updated_at. When shared contact is newer, replace the contact row
+ *     AND all its sub-tables.
  *   - project_memberships: LWW by membership.updated_at.
- *   - contact_alert_mentions, interaction_log_entries:
- *     append-only — insert rows not yet present locally.
+ *   - contact_alert_mentions, interaction_log_entries: append-only — full-table
+ *     scan with INSERT OR IGNORE. No watermarks: rows arrive in the shared file
+ *     in sync order, not timestamp order (an offline client can upload old rows
+ *     long after newer ones exist locally), so any timestamp cutoff can skip
+ *     rows permanently.
  *
  * Push strategy:
- *   - Contacts where local.updated_at > local.synced_at: push to shared + replace sub-tables.
- *   - project_memberships where local.updated_at > local.synced_at: push to shared.
- *   - append-only tables where local.synced_at IS NULL: push to shared.
+ *   - Contacts / memberships: push when sync_pushed has no fresh record for
+ *     this project (see above), then replace sub-tables wholesale.
+ *   - Append-only tables: push rows with no sync_pushed record for this project.
  */
 export function syncProject(
   localDb: Database.Database,
@@ -35,23 +52,22 @@ export function syncProject(
   //   1. Read everything needed from both DBs (outside any transaction).
   //   2. Write pull results to localDb in one transaction.
   //   3. Write push results to sharedDb in one transaction.
-  //   4. Stamp localDb metadata (last_synced_at) in a final local transaction.
+  //   4. Stamp localDb push records (sync_pushed) in a final local transaction.
   // (fixes #224)
   try {
     const now = Math.floor(Date.now() / 1000);
 
-    // Phase 1: reads happen inside the pull/push helpers themselves; no outer
-    // transaction is needed for reads.
-
     // Phase 2: pull from shared → local
     localDb.transaction(() => {
       pullTombstones(localDb, sharedDb);
-      pullContacts(localDb, sharedDb);
-      pullMemberships(localDb, sharedDb, projectId, now);
-      pullAppendOnly(localDb, sharedDb);
+      const tombstones = loadLocalTombstones(localDb);
+      applyTombstonesLocal(localDb, tombstones);
+      pullContacts(localDb, sharedDb, tombstones);
+      pullMemberships(localDb, sharedDb, projectId, now, tombstones);
+      pullAppendOnly(localDb, sharedDb, projectId, tombstones);
     })();
 
-    // Phase 3: push from local → shared (pure sharedDb writes; synced_at stamps deferred to phase 4)
+    // Phase 3: push from local → shared (pure sharedDb writes; sync_pushed stamps deferred to phase 4)
     const memberRows = localDb
       .prepare('SELECT id, contact_id FROM project_memberships WHERE project_id = ?')
       .all(projectId) as { id: string; contact_id: string }[];
@@ -63,25 +79,29 @@ export function syncProject(
     let pushedMentionIds: string[];
     let pushedLogEntryIds: string[];
 
+    // Reload — the pull phase can add tombstones from shared and drop ones that
+    // lost to a newer edit.
+    const tombstones = loadLocalTombstones(localDb);
+
     sharedDb.transaction(() => {
       pushTombstones(localDb, sharedDb, now);
-      pushedContactIds = pushContacts(localDb, sharedDb, contactIds);
+      applyTombstonesShared(sharedDb, tombstones);
+      pushedContactIds = pushContacts(localDb, sharedDb, projectId, contactIds);
       pushedMembershipIds = pushMemberships(localDb, sharedDb, projectId);
       ({ mentionIds: pushedMentionIds, logEntryIds: pushedLogEntryIds } =
-        pushAppendOnly(localDb, sharedDb, contactIds, membershipIds));
+        pushAppendOnly(localDb, sharedDb, projectId, contactIds, membershipIds));
     })();
 
-    // Phase 4: stamp synced_at on all successfully-pushed local rows, plus project metadata.
-    // Runs after sharedDb.transaction() commits so stamps only apply when the push succeeded.
-    const stmtContactSynced = localDb.prepare('UPDATE contacts SET synced_at = ? WHERE id = ?');
-    const stmtMembershipSynced = localDb.prepare('UPDATE project_memberships SET synced_at = ? WHERE id = ?');
-    const stmtMentionSynced = localDb.prepare('UPDATE contact_alert_mentions SET synced_at = ? WHERE id = ?');
-    const stmtLogEntrySynced = localDb.prepare('UPDATE interaction_log_entries SET synced_at = ? WHERE id = ?');
+    // Phase 4: record push state for all successfully-pushed rows, plus project metadata.
+    // Runs after sharedDb.transaction() commits so records only apply when the push succeeded.
+    const stampPushed = localDb.prepare(
+      'INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, ?, ?, ?)',
+    );
     localDb.transaction(() => {
-      for (const id of pushedContactIds!) stmtContactSynced.run(now, id);
-      for (const id of pushedMembershipIds!) stmtMembershipSynced.run(now, id);
-      for (const id of pushedMentionIds!) stmtMentionSynced.run(now, id);
-      for (const id of pushedLogEntryIds!) stmtLogEntrySynced.run(now, id);
+      for (const id of pushedContactIds!) stampPushed.run(projectId, 'contacts', id, now);
+      for (const id of pushedMembershipIds!) stampPushed.run(projectId, 'project_memberships', id, now);
+      for (const id of pushedMentionIds!) stampPushed.run(projectId, 'contact_alert_mentions', id, now);
+      for (const id of pushedLogEntryIds!) stampPushed.run(projectId, 'interaction_log_entries', id, now);
       localDb.prepare('UPDATE projects SET shared_pending_writes = 0, last_synced_at = ? WHERE id = ?').run(now, projectId);
       localDb.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - TOMBSTONE_TTL_SECONDS);
     })();
@@ -100,6 +120,9 @@ export function syncProject(
 // ---------------------------------------------------------------------------
 // Tombstone helpers
 // ---------------------------------------------------------------------------
+
+// table_name → (row_id → deleted_at)
+type TombstoneMap = Map<string, Map<string, number>>;
 
 function pullTombstones(local: Database.Database, shared: Database.Database): void {
   const rows = shared.prepare('SELECT table_name, row_id, deleted_at FROM sync_tombstones').all() as {
@@ -124,14 +147,75 @@ function pushTombstones(local: Database.Database, shared: Database.Database, now
   shared.prepare('DELETE FROM sync_tombstones WHERE deleted_at < ?').run(now - TOMBSTONE_TTL_SECONDS);
 }
 
-function loadLocalTombstones(local: Database.Database): Map<string, Set<string>> {
-  const map = new Map<string, Set<string>>();
-  for (const { table_name, row_id } of local.prepare('SELECT table_name, row_id FROM sync_tombstones').all() as { table_name: string; row_id: string }[]) {
-    let s = map.get(table_name);
-    if (!s) { s = new Set<string>(); map.set(table_name, s); }
-    s.add(row_id);
+function loadLocalTombstones(local: Database.Database): TombstoneMap {
+  const map: TombstoneMap = new Map();
+  for (const { table_name, row_id, deleted_at } of local.prepare('SELECT table_name, row_id, deleted_at FROM sync_tombstones').all() as { table_name: string; row_id: string; deleted_at: number }[]) {
+    let m = map.get(table_name);
+    if (!m) { m = new Map<string, number>(); map.set(table_name, m); }
+    m.set(row_id, deleted_at);
   }
   return map;
+}
+
+/**
+ * Deletes locally-present rows that have an active tombstone. Mutates the
+ * passed map when a tombstone loses to a newer edit so later pull steps see
+ * the same view as the database.
+ */
+function applyTombstonesLocal(local: Database.Database, tombstones: TombstoneMap): void {
+  const dropTombstone = local.prepare('DELETE FROM sync_tombstones WHERE table_name = ? AND row_id = ?');
+  const dropPushRecords = local.prepare('DELETE FROM sync_pushed WHERE table_name = ? AND row_id = ?');
+
+  for (const table of ['contacts', 'project_memberships'] as const) {
+    const idCol = 'id';
+    for (const [rowId, deletedAt] of tombstones.get(table) ?? []) {
+      const row = local.prepare(`SELECT updated_at FROM "${table}" WHERE "${idCol}" = ?`).get(rowId) as
+        | { updated_at: number }
+        | undefined;
+      if (!row) continue;
+      if (row.updated_at > deletedAt) {
+        // Edit is newer than the delete — the row survives everywhere.
+        dropTombstone.run(table, rowId);
+        tombstones.get(table)!.delete(rowId);
+      } else {
+        local.prepare(`DELETE FROM "${table}" WHERE "${idCol}" = ?`).run(rowId);
+        dropPushRecords.run(table, rowId);
+      }
+    }
+  }
+
+  // Log entries are immutable — tombstones always win.
+  for (const [rowId] of tombstones.get('interaction_log_entries') ?? []) {
+    local.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(rowId);
+    dropPushRecords.run('interaction_log_entries', rowId);
+  }
+}
+
+/**
+ * Deletes shared rows covered by an active local tombstone. When the shared row
+ * is newer than the tombstone the row is left in place — the pull side resolves
+ * that case by dropping the tombstone and re-pulling the row.
+ */
+function applyTombstonesShared(shared: Database.Database, tombstones: TombstoneMap): void {
+  for (const table of ['contacts', 'project_memberships'] as const) {
+    for (const [rowId, deletedAt] of tombstones.get(table) ?? []) {
+      const row = shared.prepare(`SELECT updated_at FROM "${table}" WHERE id = ?`).get(rowId) as
+        | { updated_at: number }
+        | undefined;
+      if (!row) continue;
+      if (row.updated_at > deletedAt) continue;
+      shared.prepare(`DELETE FROM "${table}" WHERE id = ?`).run(rowId);
+    }
+  }
+  for (const [rowId] of tombstones.get('interaction_log_entries') ?? []) {
+    shared.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(rowId);
+  }
+}
+
+// Returns true when the tombstone should suppress a row with the given
+// updated_at (delete wins on ties). Mutating cleanup happens at the call sites.
+function tombstoneWins(deletedAt: number | undefined, updatedAt: number): boolean {
+  return deletedAt !== undefined && deletedAt >= updatedAt;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,13 +228,13 @@ function loadLocalTombstones(local: Database.Database): Map<string, Set<string>>
 function adoptSharedUuid(local: Database.Database, fromId: string, toId: string): void {
   const c = local.prepare('SELECT * FROM contacts WHERE id = ?').get(fromId) as {
     name: string; organization: string | null; title: string | null; dob: string | null;
-    notes: string | null; created_at: number; updated_at: number; synced_at: number | null;
+    notes: string | null; default_membership_id: string | null; created_at: number; updated_at: number;
   };
   local
     .prepare(
-      'INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO contacts (id, name, organization, title, dob, notes, default_membership_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
-    .run(toId, c.name, c.organization, c.title ?? null, c.dob ?? null, c.notes, c.created_at, c.updated_at, null);
+    .run(toId, c.name, c.organization, c.title ?? null, c.dob ?? null, c.notes, c.default_membership_id ?? null, c.created_at, c.updated_at);
   // Remap every table with a FK pointing at contacts — derived at runtime so new tables are never missed.
   const allTableNames = (local.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name);
   for (const table of allTableNames) {
@@ -172,11 +256,13 @@ function adoptSharedUuid(local: Database.Database, fromId: string, toId: string)
     const [a, b] = rawA < rawB ? [rawA, rawB] : [rawB, rawA];
     local.prepare('INSERT OR IGNORE INTO dedup_dismissed_pairs (contact_a_id, contact_b_id, dismissed_at) VALUES (?, ?, ?)').run(a, b, row.dismissed_at);
   }
+  // Push records for the abandoned UUID are meaningless; the adopted UUID's
+  // records are cleared by the caller so the merged contact re-pushes everywhere.
+  local.prepare("DELETE FROM sync_pushed WHERE table_name = 'contacts' AND row_id = ?").run(fromId);
   local.prepare('DELETE FROM contacts WHERE id = ?').run(fromId);
 }
 
-function pullContacts(local: Database.Database, shared: Database.Database): void {
-  const tombstones = loadLocalTombstones(local);
+function pullContacts(local: Database.Database, shared: Database.Database, tombstones: TombstoneMap): void {
   const sharedContacts = shared.prepare('SELECT id, name, organization, title, dob, notes, created_at, updated_at FROM contacts').all() as {
     id: string;
     name: string;
@@ -192,6 +278,12 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
     (local.prepare('SELECT id, updated_at FROM contacts').all() as { id: string; updated_at: number }[])
       .map((r) => [r.id, r.updated_at]),
   );
+
+  const contactTombstones = tombstones.get('contacts') ?? new Map<string, number>();
+  const dropTombstone = local.prepare("DELETE FROM sync_tombstones WHERE table_name = 'contacts' AND row_id = ?");
+  // Clearing a contact's push records marks it dirty for every project, so the
+  // merged union propagates everywhere (this replaces the old synced_at = 0 trick).
+  const markDirty = local.prepare("DELETE FROM sync_pushed WHERE table_name = 'contacts' AND row_id = ?");
 
   // Identity indexes: email/phone → Set of local contact_ids.
   // Using a Set per key so that if two local contacts share an identifier, both are
@@ -213,6 +305,15 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
   const adoptedIds = new Set<string>();
 
   for (const sc of sharedContacts) {
+    // Deletion vs edit: the tombstone wins unless the shared row was edited
+    // after the delete, in which case the edit revives the contact.
+    const deletedAt = contactTombstones.get(sc.id);
+    if (deletedAt !== undefined) {
+      if (tombstoneWins(deletedAt, sc.updated_at)) continue;
+      dropTombstone.run(sc.id);
+      contactTombstones.delete(sc.id);
+    }
+
     const localUpdatedAt = localMap.get(sc.id);
 
     if (localUpdatedAt !== undefined) {
@@ -220,16 +321,17 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
       if (sc.updated_at > localUpdatedAt) {
         local
           .prepare(
-            `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET
                name = excluded.name, organization = excluded.organization,
                title = excluded.title, dob = excluded.dob, notes = excluded.notes,
-               updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
+               updated_at = excluded.updated_at`,
           )
-          .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
+          .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at);
 
         mergeSubTablesFromShared(local, shared, sc.id, tombstones);
+        markDirty.run(sc.id);
       }
     } else {
       // No local contact with this UUID — check for an identity match by email/phone
@@ -266,26 +368,28 @@ function pullContacts(local: Database.Database, shared: Database.Database): void
         if (sc.updated_at > matchedUpdatedAt) {
           local
             .prepare(
-              `UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ?, synced_at = ?
+              `UPDATE contacts SET name = ?, organization = ?, title = ?, dob = ?, notes = ?, updated_at = ?
                WHERE id = ?`,
             )
-            .run(sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.updated_at, 0, sc.id);
+            .run(sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.updated_at, sc.id);
         }
         mergeSubTablesFromShared(local, shared, sc.id, tombstones);
+        markDirty.run(sc.id);
       } else {
         // Genuinely new contact (or ambiguous multi-match / already-adopted local contact)
         local
           .prepare(
-            `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at, synced_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET
                name = excluded.name, organization = excluded.organization,
                title = excluded.title, dob = excluded.dob, notes = excluded.notes,
-               updated_at = excluded.updated_at, synced_at = excluded.synced_at`,
+               updated_at = excluded.updated_at`,
           )
-          .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at, 0);
+          .run(sc.id, sc.name, sc.organization, sc.title ?? null, sc.dob ?? null, sc.notes, sc.created_at, sc.updated_at);
 
         mergeSubTablesFromShared(local, shared, sc.id, tombstones);
+        markDirty.run(sc.id);
       }
 
       // Keep identity indexes current so later iterations in this sync see updated state
@@ -307,7 +411,7 @@ function mergeSubTablesFromShared(
   local: Database.Database,
   shared: Database.Database,
   contactId: string,
-  tombstones: Map<string, Set<string>>,
+  tombstones: TombstoneMap,
 ): void {
   // Sub-table merge strategy: union of shared rows + local-only rows (rows that
   // exist locally but not in shared). Local-only rows whose IDs appear in the local
@@ -322,7 +426,7 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_emails WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; email: string; label: string | null; sort_order: number; created_at: number }[];
 
-  const emailTombstones = tombstones.get('contact_emails') ?? new Set<string>();
+  const emailTombstones = tombstones.get('contact_emails') ?? new Map<string, number>();
   const filteredSharedEmails = sharedEmails.filter((e) => !emailTombstones.has(e.id));
   const sharedEmailValues = new Set(filteredSharedEmails.map((e) => e.email));
   const localOnlyEmails = localEmails.filter((e) => !sharedEmailValues.has(e.email) && !emailTombstones.has(e.id));
@@ -346,7 +450,7 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_phones WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; phone: string; label: string | null; sort_order: number; created_at: number }[];
 
-  const phoneTombstones = tombstones.get('contact_phones') ?? new Set<string>();
+  const phoneTombstones = tombstones.get('contact_phones') ?? new Map<string, number>();
   const filteredSharedPhones = sharedPhones.filter((p) => !phoneTombstones.has(p.id));
   const sharedPhoneValues = new Set(filteredSharedPhones.map((p) => p.phone));
   const localOnlyPhones = localPhones.filter((p) => !sharedPhoneValues.has(p.phone) && !phoneTombstones.has(p.id));
@@ -370,7 +474,7 @@ function mergeSubTablesFromShared(
     .all(contactId) as { id: string; type: string; label: string | null; url: string; wayback_url: string | null; sort_order: number; created_at: number }[];
 
   const localWaybacks = new Map(localLinks.filter((l) => l.wayback_url).map((l) => [l.url.trim(), l.wayback_url]));
-  const linkTombstones = tombstones.get('contact_links') ?? new Set<string>();
+  const linkTombstones = tombstones.get('contact_links') ?? new Map<string, number>();
   const filteredSharedLinks = sharedLinks.filter((l) => !linkTombstones.has(l.id));
   const sharedUrlValues = new Set(filteredSharedLinks.map((l) => l.url.trim()));
   const localOnlyLinks = localLinks.filter((l) => !sharedUrlValues.has(l.url.trim()) && !linkTombstones.has(l.id));
@@ -396,7 +500,7 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_handles WHERE contact_id = ? ORDER BY sort_order')
     .all(contactId) as { id: string; type: string; handle: string; sort_order: number; created_at: number }[];
 
-  const handleTombstones = tombstones.get('contact_handles') ?? new Set<string>();
+  const handleTombstones = tombstones.get('contact_handles') ?? new Map<string, number>();
   const filteredSharedHandles = sharedHandles.filter((h) => !handleTombstones.has(h.id));
   const sharedHandleKeys = new Set(filteredSharedHandles.map((h) => `${h.type}:${h.handle}`));
   const localOnlyHandles = localHandles.filter((h) => !sharedHandleKeys.has(`${h.type}:${h.handle}`) && !handleTombstones.has(h.id));
@@ -441,7 +545,7 @@ function mergeSubTablesFromShared(
     .prepare('SELECT * FROM contact_tags WHERE contact_id = ?')
     .all(contactId) as { id: string; tag: string; created_at: number }[];
 
-  const tagTombstones = tombstones.get('contact_tags') ?? new Set<string>();
+  const tagTombstones = tombstones.get('contact_tags') ?? new Map<string, number>();
   const filteredSharedTags = sharedTags.filter((t) => !tagTombstones.has(t.id));
   const sharedTagValues = new Set(filteredSharedTags.map((t) => t.tag));
   const localOnlyTags = localTags.filter((t) => !sharedTagValues.has(t.tag) && !tagTombstones.has(t.id));
@@ -459,6 +563,7 @@ function pullMemberships(
   shared: Database.Database,
   projectId: string,
   now: number,
+  tombstones: TombstoneMap,
 ): void {
   const CONFLICT_WINDOW_SECS = 24 * 3600;
 
@@ -487,7 +592,30 @@ function pullMemberships(
       .map((r) => r.email),
   );
 
+  const membershipTombstones = tombstones.get('project_memberships') ?? new Map<string, number>();
+  const contactTombstones = tombstones.get('contacts') ?? new Map<string, number>();
+  const dropTombstone = local.prepare("DELETE FROM sync_tombstones WHERE table_name = 'project_memberships' AND row_id = ?");
+  // Pulled memberships are stamped as pushed so they don't echo straight back.
+  const stampPushed = local.prepare(
+    "INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, 'project_memberships', ?, ?)",
+  );
+
   for (const sm of sharedMemberships) {
+    // Membership deleted locally (or on another client): tombstone wins unless
+    // the shared membership was edited after the delete.
+    const deletedAt = membershipTombstones.get(sm.id);
+    if (deletedAt !== undefined) {
+      if (tombstoneWins(deletedAt, sm.updated_at)) continue;
+      dropTombstone.run(sm.id);
+      membershipTombstones.delete(sm.id);
+    }
+    // Never resurrect a membership whose contact is tombstoned — the FK insert
+    // would fail anyway once the contact row is gone.
+    if (tombstoneWins(contactTombstones.get(sm.contact_id), sm.updated_at)) continue;
+    // The contact may legitimately be absent locally (e.g. skipped by an active
+    // tombstone in pullContacts) — skip rather than violate the FK.
+    if (!local.prepare('SELECT 1 FROM contacts WHERE id = ?').get(sm.contact_id)) continue;
+
     const lm = localMembershipMap.get(sm.id);
 
     if (!lm || sm.updated_at > lm.updated_at) {
@@ -521,13 +649,13 @@ function pullMemberships(
         .prepare(
           `INSERT INTO project_memberships
              (id, contact_id, project_id, reporter_email, reporter_name, theme, priority,
-              status, first_outreach_at, created_at, updated_at, synced_at, reporter_conflict)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              status, first_outreach_at, created_at, updated_at, reporter_conflict)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              reporter_email = excluded.reporter_email, reporter_name = excluded.reporter_name,
              theme = excluded.theme, priority = excluded.priority, status = excluded.status,
              first_outreach_at = excluded.first_outreach_at,
-             updated_at = excluded.updated_at, synced_at = excluded.synced_at,
+             updated_at = excluded.updated_at,
              reporter_conflict = CASE WHEN excluded.reporter_conflict = 1 THEN 1 ELSE reporter_conflict END`,
         )
         .run(
@@ -542,9 +670,9 @@ function pullMemberships(
           sm.first_outreach_at,
           sm.created_at,
           sm.updated_at,
-          now,
           hasConflict,
         );
+      stampPushed.run(projectId, sm.id, now);
 
       // Re-attach children that were cascade-deleted with conflicting membership
       if (conflicting) {
@@ -574,19 +702,14 @@ function pullMemberships(
 function pullAppendOnly(
   local: Database.Database,
   shared: Database.Database,
+  projectId: string,
+  tombstones: TombstoneMap,
 ): void {
-  // Use high-watermarks to avoid loading entire shared tables on every sync.
-  // INSERT OR IGNORE is idempotent so re-fetching rows we already have is safe;
-  // the watermark merely avoids the memory cost of loading them all upfront.
-
-  const maxFetchedAt = (local
-    .prepare('SELECT COALESCE(MAX(fetched_at), 0) AS m FROM contact_alert_mentions')
-    .get() as { m: number }).m;
-
-  // Subtract a 30-second overlap window so rows that arrive late (due to clock
-  // skew between clients) are always eventually reconciled. Duplicates are safe
-  // because the INSERT below uses OR IGNORE.
-  const fetchedAtWatermark = Math.max(0, maxFetchedAt - 30);
+  // Full-table scan with INSERT OR IGNORE — no watermarks. Rows land in the
+  // shared file in sync order, not timestamp order (an offline client can
+  // upload old rows long after newer ones exist locally), so any timestamp
+  // cutoff can skip rows permanently. The scan is O(shared rows) per sync,
+  // which is fine at this application's scale.
 
   // Only import append-only rows for contacts that are members of some project.
   // Contacts pulled from shared without any membership are ignored here — they
@@ -595,9 +718,20 @@ function pullAppendOnly(
     (local.prepare('SELECT DISTINCT contact_id FROM project_memberships').all() as { contact_id: string }[]).map((r) => r.contact_id),
   );
 
-  for (const sm of shared.prepare(
-    'SELECT * FROM contact_alert_mentions WHERE fetched_at >= ?',
-  ).all(fetchedAtWatermark) as {
+  const logTombstones = tombstones.get('interaction_log_entries') ?? new Map<string, number>();
+
+  // Rows we pulled are stamped as pushed for this project so they don't echo
+  // straight back on the next push. Stamp only on actual insert (changes > 0):
+  // rows we already had keep whatever push state they carry.
+  const stampMention = local.prepare(
+    "INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, 'contact_alert_mentions', ?, ?)",
+  );
+  const stampLogEntry = local.prepare(
+    "INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, 'interaction_log_entries', ?, ?)",
+  );
+  const now = Math.floor(Date.now() / 1000);
+
+  for (const sm of shared.prepare('SELECT * FROM contact_alert_mentions').all() as {
     id: string;
     contact_id: string;
     headline: string;
@@ -608,25 +742,17 @@ function pullAppendOnly(
     seen: number;
   }[]) {
     if (!localContactIds.has(sm.contact_id)) continue;
-    local
+    const { changes } = local
       .prepare(
         `INSERT OR IGNORE INTO contact_alert_mentions
            (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(sm.id, sm.contact_id, sm.headline, sm.source_url, sm.published_at, sm.fetched_at, sm.guid, sm.seen);
+    if (changes > 0) stampMention.run(projectId, sm.id, now);
   }
 
-  const maxCreatedAt = (local
-    .prepare('SELECT COALESCE(MAX(created_at), 0) AS m FROM interaction_log_entries')
-    .get() as { m: number }).m;
-
-  // Same 30-second overlap window as above.
-  const createdAtWatermark = Math.max(0, maxCreatedAt - 30);
-
-  for (const se of shared.prepare(
-    'SELECT * FROM interaction_log_entries WHERE created_at >= ?',
-  ).all(createdAtWatermark) as {
+  for (const se of shared.prepare('SELECT * FROM interaction_log_entries').all() as {
     id: string;
     contact_id: string;
     reporter_email: string;
@@ -635,26 +761,30 @@ function pullAppendOnly(
     created_at: number;
   }[]) {
     if (!localContactIds.has(se.contact_id)) continue;
-    local
+    if (logTombstones.has(se.id)) continue;
+    const { changes } = local
       .prepare(
         `INSERT OR IGNORE INTO interaction_log_entries
            (id, contact_id, reporter_email, reporter_name, body, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .run(se.id, se.contact_id, se.reporter_email, se.reporter_name, se.body, se.created_at);
+    if (changes > 0) stampLogEntry.run(projectId, se.id, now);
   }
 
-  for (const sip of shared.prepare(
-    `SELECT ip.* FROM interaction_projects ip
-     JOIN interaction_log_entries ile ON ile.id = ip.interaction_id
-     WHERE ile.created_at >= ?`,
-  ).all(createdAtWatermark) as {
+  // Guard both FK targets: the entry may have been skipped above (non-member
+  // contact or tombstoned) and the membership may be tombstoned/absent locally.
+  const insertIp = local.prepare(
+    `INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id)
+     SELECT ?, ?
+     WHERE EXISTS (SELECT 1 FROM interaction_log_entries WHERE id = ?)
+       AND EXISTS (SELECT 1 FROM project_memberships WHERE id = ?)`,
+  );
+  for (const sip of shared.prepare('SELECT interaction_id, membership_id FROM interaction_projects').all() as {
     interaction_id: string;
     membership_id: string;
   }[]) {
-    local
-      .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
-      .run(sip.interaction_id, sip.membership_id);
+    insertIp.run(sip.interaction_id, sip.membership_id, sip.interaction_id, sip.membership_id);
   }
 }
 
@@ -665,9 +795,13 @@ function pullAppendOnly(
 function pushContacts(
   local: Database.Database,
   shared: Database.Database,
+  projectId: string,
   contactIds: string[],
 ): string[] {
   const pushed: string[] = [];
+  const getPushRecord = local.prepare(
+    "SELECT pushed_at FROM sync_pushed WHERE project_id = ? AND table_name = 'contacts' AND row_id = ?",
+  );
   for (const contactId of contactIds) {
     const lc = local.prepare('SELECT * FROM contacts WHERE id = ?').get(contactId) as
       | {
@@ -679,12 +813,12 @@ function pushContacts(
           notes: string | null;
           created_at: number;
           updated_at: number;
-          synced_at: number | null;
         }
       | undefined;
     if (!lc) continue;
 
-    if (!lc.synced_at || lc.updated_at > lc.synced_at) {
+    const rec = getPushRecord.get(projectId, contactId) as { pushed_at: number } | undefined;
+    if (!rec || lc.updated_at > rec.pushed_at) {
       shared
         .prepare(
           `INSERT INTO contacts (id, name, organization, title, dob, notes, created_at, updated_at)
@@ -787,6 +921,9 @@ function pushMemberships(
   projectId: string,
 ): string[] {
   const pushed: string[] = [];
+  const getPushRecord = local.prepare(
+    "SELECT pushed_at FROM sync_pushed WHERE project_id = ? AND table_name = 'project_memberships' AND row_id = ?",
+  );
   const memberships = local
     .prepare('SELECT * FROM project_memberships WHERE project_id = ?')
     .all(projectId) as {
@@ -800,11 +937,11 @@ function pushMemberships(
     first_outreach_at: number | null;
     created_at: number;
     updated_at: number;
-    synced_at: number | null;
   }[];
 
   for (const m of memberships) {
-    if (!m.synced_at || m.updated_at > m.synced_at) {
+    const rec = getPushRecord.get(projectId, m.id) as { pushed_at: number } | undefined;
+    if (!rec || m.updated_at > rec.pushed_at) {
       shared
         .prepare(
           `INSERT INTO project_memberships
@@ -837,6 +974,7 @@ function pushMemberships(
 function pushAppendOnly(
   local: Database.Database,
   shared: Database.Database,
+  projectId: string,
   contactIds: string[],
   membershipIds: string[],
 ): { mentionIds: string[]; logEntryIds: string[] } {
@@ -848,15 +986,20 @@ function pushAppendOnly(
   const mentionIds: string[] = [];
   const logEntryIds: string[] = [];
   if (contactIds.length > 0) {
-    // Alert mentions
+    // Alert mentions: rows with no push record for this project.
     for (let i = 0; i < contactIds.length; i += CHUNK) {
       const chunk = contactIds.slice(i, i + CHUNK);
       const cPlaceholders = chunk.map(() => '?').join(',');
       for (const m of local
         .prepare(
-          `SELECT * FROM contact_alert_mentions WHERE contact_id IN (${cPlaceholders}) AND synced_at IS NULL`,
+          `SELECT m.* FROM contact_alert_mentions m
+           WHERE m.contact_id IN (${cPlaceholders})
+             AND NOT EXISTS (
+               SELECT 1 FROM sync_pushed sp
+               WHERE sp.project_id = ? AND sp.table_name = 'contact_alert_mentions' AND sp.row_id = m.id
+             )`,
         )
-        .all(...chunk) as {
+        .all(...chunk, projectId) as {
         id: string;
         contact_id: string;
         headline: string;
@@ -879,7 +1022,8 @@ function pushAppendOnly(
   }
 
   if (membershipIds.length > 0) {
-    // Interaction log entries (push entries not yet synced that are linked to these memberships)
+    // Interaction log entries: entries linked to this project's memberships with
+    // no push record for this project.
     const seenEntryIds = new Set<string>();
     for (let i = 0; i < membershipIds.length; i += CHUNK) {
       const chunk = membershipIds.slice(i, i + CHUNK);
@@ -889,9 +1033,13 @@ function pushAppendOnly(
           `SELECT DISTINCT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at
            FROM interaction_log_entries ile
            JOIN interaction_projects ip ON ip.interaction_id = ile.id
-           WHERE ip.membership_id IN (${mPlaceholders}) AND ile.synced_at IS NULL`,
+           WHERE ip.membership_id IN (${mPlaceholders})
+             AND NOT EXISTS (
+               SELECT 1 FROM sync_pushed sp
+               WHERE sp.project_id = ? AND sp.table_name = 'interaction_log_entries' AND sp.row_id = ile.id
+             )`,
         )
-        .all(...chunk) as {
+        .all(...chunk, projectId) as {
         id: string;
         contact_id: string;
         reporter_email: string;
@@ -949,4 +1097,13 @@ export function getMembershipIds(local: Database.Database, projectId: string): s
       .prepare('SELECT id FROM project_memberships WHERE project_id = ?')
       .all(projectId) as { id: string }[]
   ).map((r) => r.id);
+}
+
+/** Writes a deletion tombstone. Callers must run this inside the same
+ *  transaction as the DELETE itself so the two can never diverge. */
+export function writeTombstone(db: Database.Database, tableName: string, rowId: string, deletedAt: number): void {
+  db.prepare(
+    `INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?)
+     ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)`,
+  ).run(tableName, rowId, deletedAt);
 }

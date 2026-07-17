@@ -40,8 +40,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     notes        TEXT,
     default_membership_id TEXT REFERENCES project_memberships(id) ON DELETE SET NULL,
     created_at   INTEGER NOT NULL,
-    updated_at   INTEGER NOT NULL,
-    synced_at    INTEGER
+    updated_at   INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS dedup_dismissed_pairs (
@@ -58,8 +57,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     email      TEXT    NOT NULL,
     label      TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT 0,
-    synced_at  INTEGER
+    created_at INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS contact_phones (
@@ -68,8 +66,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     phone      TEXT    NOT NULL,
     label      TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT 0,
-    synced_at  INTEGER
+    created_at INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS contact_links (
@@ -80,8 +77,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     url        TEXT    NOT NULL,
     wayback_url TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT 0,
-    synced_at  INTEGER
+    created_at INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS contact_handles (
@@ -90,8 +86,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     type       TEXT    NOT NULL,
     handle     TEXT    NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT 0,
-    synced_at  INTEGER
+    created_at INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS contact_alert_rss (
@@ -99,8 +94,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     contact_id     TEXT    NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
     rss_url        TEXT    NOT NULL,
     last_polled_at INTEGER,
-    is_invalid     INTEGER NOT NULL DEFAULT 0,
-    synced_at      INTEGER
+    is_invalid     INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS contact_alert_mentions (
@@ -112,8 +106,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     fetched_at  INTEGER NOT NULL,
     guid        TEXT    NOT NULL,
     seen        INTEGER NOT NULL DEFAULT 0,
-    dismissed   INTEGER NOT NULL DEFAULT 0,
-    synced_at   INTEGER
+    dismissed   INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS projects (
@@ -154,7 +147,6 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     reporter_conflict           INTEGER NOT NULL DEFAULT 0,
     created_at                  INTEGER NOT NULL,
     updated_at                  INTEGER NOT NULL,
-    synced_at                   INTEGER,
     UNIQUE(contact_id, project_id)
   );
 
@@ -172,8 +164,7 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     reporter_email TEXT    NOT NULL,
     reporter_name  TEXT    NOT NULL,
     body           TEXT    NOT NULL,
-    created_at     INTEGER NOT NULL,
-    synced_at      INTEGER
+    created_at     INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS interaction_projects (
@@ -242,6 +233,17 @@ export const LOCAL_SCHEMA_DDL_SQL = `
     row_id     TEXT    NOT NULL,
     deleted_at INTEGER NOT NULL,
     PRIMARY KEY (table_name, row_id)
+  );
+
+  -- Per-(project, row) push tracking for shared-project sync. A row is pushed to a
+  -- project's shared DB when it has no entry here, or when updated_at > pushed_at.
+  -- Keyed by project so a row can be synced to project A but not yet project B.
+  CREATE TABLE IF NOT EXISTS sync_pushed (
+    project_id TEXT    NOT NULL,
+    table_name TEXT    NOT NULL,
+    row_id     TEXT    NOT NULL,
+    pushed_at  INTEGER NOT NULL,
+    PRIMARY KEY (project_id, table_name, row_id)
   );
 
   CREATE INDEX IF NOT EXISTS idx_contact_tags_contact_id ON contact_tags(contact_id);
