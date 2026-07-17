@@ -89,8 +89,6 @@ vi.mock('electron', () => ({
   dialog: { showOpenDialog: vi.fn() },
 }));
 
-let testDb: ReturnType<typeof import('./vitest.setup').createTestDb>;
-vi.mock('../main/database', () => ({ getDatabase: () => testDb }));
 vi.mock('../main/sync/poller', () => ({ syncOne: vi.fn(), pollAll: vi.fn() }));
 
 import { ipcMain } from 'electron';

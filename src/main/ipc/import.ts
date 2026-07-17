@@ -156,7 +156,7 @@ export function parseVcf(text: string): VcfContact[] {
         const schemeColon = value.indexOf(':');
         if (schemeColon < 0) break;
         const scheme = value.slice(0, schemeColon).toLowerCase();
-        let handle = '';
+        let handle: string;
         try { handle = decodeURIComponent(value.slice(schemeColon + 1)).trim(); } catch { handle = value.slice(schemeColon + 1).trim(); }
         if (!handle) break;
         const typeMap: Record<string, ContactHandleType> = { signal: 'signal', whatsapp: 'whatsapp', telegram: 'telegram' };

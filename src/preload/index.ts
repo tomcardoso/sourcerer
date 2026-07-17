@@ -408,7 +408,7 @@ const sourcererApi = {
   getUpdateState: (): Promise<{ event: 'available' | 'downloading' | 'downloaded'; version: string; percent?: number } | null> =>
     ipcRenderer.invoke('update:get-state'),
   showUpdateError: (): Promise<void> => ipcRenderer.invoke('update:show-error'),
-  appVersion: process.env.npm_package_version ?? '',
+  appVersion: ipcRenderer.sendSync('app:get-version') as string,
 };
 
 contextBridge.exposeInMainWorld('sourcerer', sourcererApi);

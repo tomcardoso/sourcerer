@@ -4,6 +4,7 @@ import { app, BrowserWindow } from 'electron';
 import { isDatabaseOpen, getDatabase } from './database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl, detectLinkType, isBlockedHost } from './sanitize';
 import { triggerWaybackSave } from './ipc/contacts';
+import { foldLine } from './utils';
 
 const MAX_SCREENSHOT_BYTES = 50 * 1024 * 1024;
 const MAX_PENDING_SCREENSHOTS = 20;
@@ -380,7 +381,7 @@ function generateIcal(db: ReturnType<typeof getDatabase>): string {
   }
 
   lines.push('END:VCALENDAR');
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(foldLine).join('\r\n') + '\r\n';
 }
 
 function toIcalDate(unixSeconds: number): string {

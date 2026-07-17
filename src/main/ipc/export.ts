@@ -5,7 +5,7 @@ import { rename, unlink } from 'fs/promises';
 import ExcelJS from 'exceljs';
 import path from 'path';
 import { getDatabase } from '../database';
-import { filenameDateStamp } from '../utils';
+import { filenameDateStamp, foldLine } from '../utils';
 
 // rename() on Windows throws EEXIST when the destination already exists.
 // This helper handles that by unlinking the destination and retrying once.
@@ -504,7 +504,8 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
   if (contact.title) lines.push(`TITLE:${escapeVCard(contact.title)}`);
   if (contact.dob) lines.push(`BDAY:${contact.dob}`);
   emails.forEach((e) => {
-    const typeParam = e.label ? `;TYPE=${e.label.toUpperCase()}` : ';TYPE=INTERNET';
+    const sanitizedLabel = e.label ? e.label.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+    const typeParam = sanitizedLabel ? `;TYPE=${sanitizedLabel}` : ';TYPE=INTERNET';
     lines.push(`EMAIL${typeParam}:${e.email}`);
   });
   phones.forEach((p) => lines.push(`TEL:${p}`));
@@ -520,5 +521,5 @@ function buildVCard(db: import('better-sqlite3-multiple-ciphers').Database, cont
   });
   lines.push('END:VCARD');
 
-  return lines.join('\r\n');
+  return lines.map(foldLine).join('\r\n');
 }

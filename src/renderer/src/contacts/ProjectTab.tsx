@@ -665,6 +665,20 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     escapeKey: false,
   });
 
+  const filteredReporterOptions = projectReporters.filter(
+    (r) =>
+      !localReporters.some((lr) => lr.email === r.email) &&
+      r.name.toLowerCase().includes(reporterQuery.toLowerCase()),
+  );
+
+  const listboxPt = useListboxKeyboard({
+    isOpen: reporterDropdownOpen,
+    optionCount: filteredReporterOptions.length,
+    onSelect: (i) => addReporter(filteredReporterOptions[i]),
+    onClose: () => { setReporterDropdownOpen(false); setReporterQuery(''); },
+    onOpen: () => setReporterDropdownOpen(true),
+  });
+
   if (!membership) return null;
 
   function membershipUpdate(overrides: {
@@ -735,20 +749,6 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     await window.sourcerer.setMembershipReporters(membership.membership_id, next);
     onMembershipUpdated();
   }
-
-  const filteredReporterOptions = projectReporters.filter(
-    (r) =>
-      !localReporters.some((lr) => lr.email === r.email) &&
-      r.name.toLowerCase().includes(reporterQuery.toLowerCase()),
-  );
-
-  const listboxPt = useListboxKeyboard({
-    isOpen: reporterDropdownOpen,
-    optionCount: filteredReporterOptions.length,
-    onSelect: (i) => addReporter(filteredReporterOptions[i]),
-    onClose: () => { setReporterDropdownOpen(false); setReporterQuery(''); },
-    onOpen: () => setReporterDropdownOpen(true),
-  });
 
   async function handleDismissConflict() {
     await window.sourcerer.updateMembership({

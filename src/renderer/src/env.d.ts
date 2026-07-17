@@ -27,8 +27,6 @@ import type {
   ContactScreenshot,
   SearchResult,
   TimelineEntry,
-  ContactHandle,
-  ContactHandleInput,
 } from '@shared/types';
 
 declare global {
