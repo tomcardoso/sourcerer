@@ -9,6 +9,42 @@ import { syncProject } from '../sync/engine';
 import { broadcastRemindersChanged } from './reminders';
 import type { Project, User, TimelineEntry, TimelineEntryProject, JoinSharedProjectResult } from '@shared/types';
 
+// True cross-DB atomicity is not possible with two separate SQLite files.
+// Writes to the shared DB first (harder to undo), then runs `writeLocal` for the
+// local-DB half of the flow. If either step fails, evicts the shared DB connection
+// and removes the on-disk file so no handle or orphaned file is left behind, then
+// re-throws (fixes #176; the compensating cleanup on `writeLocal` failure was
+// previously missing from projects:regenerateShared — fixes #442).
+function createSharedProjectFile(
+  filePath: string,
+  keyHex: string,
+  projectId: string,
+  name: string,
+  description: string | null,
+  writeLocal: () => void,
+): ReturnType<typeof createSharedDb> {
+  let sharedDb: ReturnType<typeof createSharedDb>;
+  try {
+    sharedDb = createSharedDb(filePath, keyHex, projectId);
+    sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(name, description);
+  } catch (sharedErr) {
+    try { closeSharedDb(projectId); } catch { /* ignore */ }
+    try { unlinkSync(filePath); } catch { /* ignore */ }
+    throw sharedErr;
+  }
+
+  try {
+    writeLocal();
+  } catch (localErr) {
+    try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
+    try { closeSharedDb(projectId); } catch { /* ignore */ }
+    try { unlinkSync(filePath); } catch { /* ignore */ }
+    throw localErr;
+  }
+
+  return sharedDb;
+}
+
 export function registerProjectHandlers(): void {
   ipcMain.handle('projects:list', (): Project[] => {
     return getDatabase()
@@ -56,28 +92,9 @@ export function registerProjectHandlers(): void {
       const trimmedName = name.trim();
       const trimmedDesc = description?.trim() || null;
 
-      // True cross-DB atomicity is not possible with two separate SQLite files.
-      // To minimise inconsistency we write to the shared DB first (harder to undo)
-      // and to the local DB second.  If the local write fails we attempt a
-      // compensating delete on the shared DB and re-throw (fixes #176).
-
-      // 2. Create the shared DB file and write project metadata.
-      // Guard shared-DB creation separately so a failure here also cleans up.
-      let sharedDb: ReturnType<typeof createSharedDb>;
-      try {
-        sharedDb = createSharedDb(filePath, keyHex, id);
-        sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-          trimmedName,
-          trimmedDesc,
-        );
-      } catch (sharedErr) {
-        try { closeSharedDb(id); } catch { /* ignore */ }
-        try { unlinkSync(filePath); } catch { /* ignore */ }
-        throw sharedErr;
-      }
-
-      // 3. Create the local project record + reporter row in a single transaction.
-      try {
+      // 2 & 3. Create the shared DB file + project metadata, then the local
+      // project record + reporter row, with compensating cleanup on either failure.
+      createSharedProjectFile(filePath, keyHex, id, trimmedName, trimmedDesc, () => {
         db.transaction(() => {
           db.prepare(
             `INSERT INTO projects (id, name, description, is_shared, shared_db_path, shared_db_key, created_at)
@@ -94,15 +111,7 @@ export function registerProjectHandlers(): void {
             user.email,
           );
         })();
-      } catch (localErr) {
-        // Best-effort compensating action: evict the shared DB connection and
-        // remove both the in-file record and the on-disk file so no handle or
-        // orphaned file is left behind.
-        try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
-        try { closeSharedDb(id); } catch { /* ignore */ }
-        try { unlinkSync(filePath); } catch { /* ignore */ }
-        throw localErr;
-      }
+      });
 
       const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Project;
       const payload = encodePayload(trimmedName, trimmedDesc, filePath, keyBytes);
@@ -239,27 +248,9 @@ export function registerProjectHandlers(): void {
       const keyHex = keyBytes.toString('hex');
       const user = db.prepare('SELECT * FROM users WHERE id = 1').get() as User;
 
-      // True cross-DB atomicity is not possible with two separate SQLite files.
-      // Write to the shared DB first (harder to undo), then update the local DB.
-      // If the local write fails, attempt a compensating delete on the shared DB
-      // and re-throw (fixes #176).
-
-      // Create shared DB and write project metadata.
-      // Guard shared-DB creation separately so a failure here also cleans up.
-      let sharedDb: ReturnType<typeof createSharedDb>;
-      try {
-        sharedDb = createSharedDb(filePath, keyHex, projectId);
-        sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-          project.name,
-          project.description,
-        );
-      } catch (sharedErr) {
-        try { closeSharedDb(projectId); } catch { /* ignore */ }
-        try { unlinkSync(filePath); } catch { /* ignore */ }
-        throw sharedErr;
-      }
-
-      try {
+      // Create shared DB + project metadata, then upgrade the local project record,
+      // with compensating cleanup on either failure.
+      const sharedDb = createSharedProjectFile(filePath, keyHex, projectId, project.name, project.description, () => {
         db.transaction(() => {
           // Add self as a reporter (local projects don't have this row yet)
           db.prepare(
@@ -280,15 +271,7 @@ export function registerProjectHandlers(): void {
           // treated as unsynced and get pushed to the new shared file on the first sync.
           db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(projectId);
         })();
-      } catch (localErr) {
-        // Best-effort compensating action: evict the shared DB connection and
-        // remove both the in-file record and the on-disk file so no handle or
-        // orphaned file is left behind.
-        try { sharedDb.prepare('DELETE FROM project_meta').run(); } catch { /* ignore */ }
-        try { closeSharedDb(projectId); } catch { /* ignore */ }
-        try { unlinkSync(filePath); } catch { /* ignore */ }
-        throw localErr;
-      }
+      });
 
       // Push all existing local data to the shared file
       try {
@@ -331,21 +314,17 @@ export function registerProjectHandlers(): void {
       // Close old shared connection
       closeSharedDb(projectId);
 
-      // Create new shared DB and write project metadata
-      const sharedDb = createSharedDb(filePath, keyHex, projectId);
-      sharedDb.prepare('INSERT INTO project_meta (name, description) VALUES (?, ?)').run(
-        project.name,
-        project.description,
-      );
-
-      // Update local project record and reset push state atomically — the fresh
-      // shared file starts empty, so every row must be treated as unsynced.
-      db.transaction(() => {
-        db.prepare(
-          'UPDATE projects SET shared_db_path = ?, shared_db_key = ? WHERE id = ?',
-        ).run(filePath, keyBytes, projectId);
-        db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(projectId);
-      })();
+      // Create the new shared DB + project metadata, then update the local project
+      // record and reset push state atomically — the fresh shared file starts empty,
+      // so every row must be treated as unsynced. Compensating cleanup on either failure.
+      const sharedDb = createSharedProjectFile(filePath, keyHex, projectId, project.name, project.description, () => {
+        db.transaction(() => {
+          db.prepare(
+            'UPDATE projects SET shared_db_path = ?, shared_db_key = ? WHERE id = ?',
+          ).run(filePath, keyBytes, projectId);
+          db.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(projectId);
+        })();
+      });
 
       // Push all local project data to the fresh shared file
       try {

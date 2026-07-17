@@ -63,6 +63,83 @@ interface AllContactsRow {
   'Interaction log': string;
 }
 
+// SQLite's SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999. Chunk IN-clause lookups
+// to stay safely below that limit; concatenates results across chunks.
+const SQLITE_IN_CHUNK_SIZE = 500;
+
+function chunkedIn<T>(ids: string[], runQuery: (chunk: string[]) => T[]): T[] {
+  const results: T[] = [];
+  for (let i = 0; i < ids.length; i += SQLITE_IN_CHUNK_SIZE) {
+    results.push(...runQuery(ids.slice(i, i + SQLITE_IN_CHUNK_SIZE)));
+  }
+  return results;
+}
+
+function groupByContactId<Row extends { contact_id: string }, V>(rows: Row[], pick: (r: Row) => V): Map<string, V[]> {
+  const map = new Map<string, V[]>();
+  for (const r of rows) {
+    const arr = map.get(r.contact_id) ?? [];
+    arr.push(pick(r));
+    map.set(r.contact_id, arr);
+  }
+  return map;
+}
+
+interface ContactSubTables {
+  emails: Map<string, string[]>;
+  phones: Map<string, string[]>;
+  links: Map<string, { type: string; url: string }[]>;
+  handles: Map<string, { type: string; handle: string }[]>;
+}
+
+function fetchContactSubTables(db: import('better-sqlite3-multiple-ciphers').Database, contactIds: string[]): ContactSubTables {
+  const ph = (chunk: string[]) => chunk.map(() => '?').join(',');
+
+  const emailRows = chunkedIn(contactIds, (chunk) =>
+    db.prepare(`SELECT contact_id, email FROM contact_emails WHERE contact_id IN (${ph(chunk)}) ORDER BY sort_order`).all(...chunk) as { contact_id: string; email: string }[],
+  );
+  const phoneRows = chunkedIn(contactIds, (chunk) =>
+    db.prepare(`SELECT contact_id, phone FROM contact_phones WHERE contact_id IN (${ph(chunk)}) ORDER BY sort_order`).all(...chunk) as { contact_id: string; phone: string }[],
+  );
+  const linkRows = chunkedIn(contactIds, (chunk) =>
+    db.prepare(`SELECT contact_id, type, url FROM contact_links WHERE contact_id IN (${ph(chunk)}) ORDER BY sort_order`).all(...chunk) as { contact_id: string; type: string; url: string }[],
+  );
+  const handleRows = chunkedIn(contactIds, (chunk) =>
+    db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph(chunk)}) ORDER BY sort_order`).all(...chunk) as { contact_id: string; type: string; handle: string }[],
+  );
+
+  return {
+    emails: groupByContactId(emailRows, (r) => r.email),
+    phones: groupByContactId(phoneRows, (r) => r.phone),
+    links: groupByContactId(linkRows, (r) => ({ type: r.type, url: r.url })),
+    handles: groupByContactId(handleRows, (r) => ({ type: r.type, handle: r.handle })),
+  };
+}
+
+// Writes rows to a temp file next to the target path, then atomically renames it
+// into place. Shared by every "export contacts to a spreadsheet" handler.
+async function writeExportRows<T extends object>(rows: T[], filePath: string, isXlsx: boolean): Promise<{ success: boolean; error?: string }> {
+  const tmpPath = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Contacts');
+    if (rows.length > 0) {
+      ws.columns = (Object.keys(rows[0]) as (keyof T)[]).map((k) => ({ header: String(k), key: String(k) }));
+    }
+    ws.addRows(rows);
+    if (isXlsx) {
+      await wb.xlsx.writeFile(tmpPath);
+    } else {
+      await wb.csv.writeFile(tmpPath);
+    }
+    await atomicRename(tmpPath, filePath);
+    return { success: true };
+  } catch (err) {
+    await unlink(tmpPath).catch(() => {});
+    return { success: false, error: String(err) };
+  }
+}
+
 function fetchProjectsByInteraction(
   db: import('better-sqlite3-multiple-ciphers').Database,
   interactionIds: string[],
@@ -128,10 +205,10 @@ export function registerExportHandlers(): void {
       const filePath = saveResult.filePath;
       const isXlsx = filePath.endsWith('.xlsx');
 
-      const selectionClause = filterIds?.length
-        ? `AND c.id IN (${filterIds.map(() => '?').join(',')})`
-        : '';
-      const memberships = db
+      // filterIds can be arbitrarily large (e.g. "export all selected" over a big
+      // table), so it isn't safe to fold into a SQL IN clause — filter in JS instead.
+      const filterSet = filterIds?.length ? new Set(filterIds) : null;
+      let memberships = db
         .prepare(
           `SELECT pm.id AS membership_id, pm.reporter_name, pm.theme, pm.priority, pm.status,
                   (SELECT MIN(ile.created_at) FROM interaction_log_entries ile
@@ -140,10 +217,10 @@ export function registerExportHandlers(): void {
                   c.id AS contact_id, c.name, c.organization, c.title, c.dob, c.notes
            FROM project_memberships pm
            JOIN contacts c ON c.id = pm.contact_id
-           WHERE pm.project_id = ? ${selectionClause}
+           WHERE pm.project_id = ?
            ORDER BY c.name COLLATE NOCASE ASC`,
         )
-        .all(projectId, ...(filterIds ?? [])) as {
+        .all(projectId) as {
         membership_id: string;
         reporter_name: string;
         theme: string | null;
@@ -157,33 +234,11 @@ export function registerExportHandlers(): void {
         dob: string | null;
         notes: string | null;
       }[];
+      if (filterSet) memberships = memberships.filter((m) => filterSet.has(m.contact_id));
 
       const contactIds = memberships.map((m) => m.contact_id);
       const ph = (arr: unknown[]) => arr.map(() => '?').join(',');
-
-      const bulkEmails = contactIds.length
-        ? (db.prepare(`SELECT contact_id, email FROM contact_emails WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; email: string }[])
-        : [];
-      const emailsByContact = new Map<string, string[]>();
-      for (const r of bulkEmails) { const a = emailsByContact.get(r.contact_id) ?? []; a.push(r.email); emailsByContact.set(r.contact_id, a); }
-
-      const bulkPhones = contactIds.length
-        ? (db.prepare(`SELECT contact_id, phone FROM contact_phones WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; phone: string }[])
-        : [];
-      const phonesByContact = new Map<string, string[]>();
-      for (const r of bulkPhones) { const a = phonesByContact.get(r.contact_id) ?? []; a.push(r.phone); phonesByContact.set(r.contact_id, a); }
-
-      const bulkLinks = contactIds.length
-        ? (db.prepare(`SELECT contact_id, type, url FROM contact_links WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; type: string; url: string }[])
-        : [];
-      const linksByContact = new Map<string, { type: string; url: string }[]>();
-      for (const r of bulkLinks) { const a = linksByContact.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksByContact.set(r.contact_id, a); }
-
-      const bulkHandles = contactIds.length
-        ? (db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph(contactIds)}) ORDER BY sort_order`).all(...contactIds) as { contact_id: string; type: string; handle: string }[])
-        : [];
-      const handlesByContact = new Map<string, { type: string; handle: string }[]>();
-      for (const r of bulkHandles) { const a = handlesByContact.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesByContact.set(r.contact_id, a); }
+      const { emails: emailsByContact, phones: phonesByContact, links: linksByContact, handles: handlesByContact } = fetchContactSubTables(db, contactIds);
 
       type LogRow = { id: string; membership_id: string; reporter_name: string; body: string; created_at: number };
       const rows: ExportRow[] = [];
@@ -254,25 +309,7 @@ export function registerExportHandlers(): void {
         }
       }
 
-      const tmpPath = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
-      try {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Contacts');
-        if (rows.length > 0) {
-          ws.columns = (Object.keys(rows[0]) as (keyof ExportRow)[]).map((k) => ({ header: k, key: k }));
-        }
-        ws.addRows(rows);
-        if (isXlsx) {
-          await wb.xlsx.writeFile(tmpPath);
-        } else {
-          await wb.csv.writeFile(tmpPath);
-        }
-        await atomicRename(tmpPath, filePath);
-        return { success: true };
-      } catch (err) {
-        await unlink(tmpPath).catch(() => {});
-        return { success: false, error: String(err) };
-      }
+      return writeExportRows(rows, filePath, isXlsx);
     },
   );
 
@@ -295,39 +332,17 @@ export function registerExportHandlers(): void {
       const filePath = saveResult.filePath;
       const isXlsx = filePath.endsWith('.xlsx');
 
-      const selectionClause2 = filterIds?.length
-        ? `WHERE id IN (${filterIds.map(() => '?').join(',')})`
-        : '';
-      const contacts = db
-        .prepare(`SELECT id, name, organization, title, dob, notes FROM contacts ${selectionClause2} ORDER BY name COLLATE NOCASE`)
-        .all(...(filterIds ?? [])) as { id: string; name: string; organization: string | null; title: string | null; dob: string | null; notes: string | null }[];
+      // filterIds can be arbitrarily large (e.g. "export all selected" over a big
+      // table), so it isn't safe to fold into a SQL IN clause — filter in JS instead.
+      const filterSet2 = filterIds?.length ? new Set(filterIds) : null;
+      let contacts = db
+        .prepare('SELECT id, name, organization, title, dob, notes FROM contacts ORDER BY name COLLATE NOCASE')
+        .all() as { id: string; name: string; organization: string | null; title: string | null; dob: string | null; notes: string | null }[];
+      if (filterSet2) contacts = contacts.filter((c) => filterSet2.has(c.id));
 
       const allContactIds = contacts.map((c) => c.id);
       const ph2 = (arr: unknown[]) => arr.map(() => '?').join(',');
-
-      const allEmails2 = allContactIds.length
-        ? (db.prepare(`SELECT contact_id, email FROM contact_emails WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; email: string }[])
-        : [];
-      const emailsById = new Map<string, string[]>();
-      for (const r of allEmails2) { const a = emailsById.get(r.contact_id) ?? []; a.push(r.email); emailsById.set(r.contact_id, a); }
-
-      const allPhones2 = allContactIds.length
-        ? (db.prepare(`SELECT contact_id, phone FROM contact_phones WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; phone: string }[])
-        : [];
-      const phonesById = new Map<string, string[]>();
-      for (const r of allPhones2) { const a = phonesById.get(r.contact_id) ?? []; a.push(r.phone); phonesById.set(r.contact_id, a); }
-
-      const allLinks2 = allContactIds.length
-        ? (db.prepare(`SELECT contact_id, type, url FROM contact_links WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; type: string; url: string }[])
-        : [];
-      const linksById = new Map<string, { type: string; url: string }[]>();
-      for (const r of allLinks2) { const a = linksById.get(r.contact_id) ?? []; a.push({ type: r.type, url: r.url }); linksById.set(r.contact_id, a); }
-
-      const allHandles2 = allContactIds.length
-        ? (db.prepare(`SELECT contact_id, type, handle FROM contact_handles WHERE contact_id IN (${ph2(allContactIds)}) ORDER BY sort_order`).all(...allContactIds) as { contact_id: string; type: string; handle: string }[])
-        : [];
-      const handlesById = new Map<string, { type: string; handle: string }[]>();
-      for (const r of allHandles2) { const a = handlesById.get(r.contact_id) ?? []; a.push({ type: r.type, handle: r.handle }); handlesById.set(r.contact_id, a); }
+      const { emails: emailsById, phones: phonesById, links: linksById, handles: handlesById } = fetchContactSubTables(db, allContactIds);
 
       type LogRow2 = { id: string; contact_id: string; reporter_name: string; body: string; created_at: number };
       const rows: AllContactsRow[] = [];
@@ -385,25 +400,7 @@ export function registerExportHandlers(): void {
         }
       }
 
-      const tmpPath2 = path.join(path.dirname(filePath), `.tmp-export-${randomUUID()}`);
-      try {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Contacts');
-        if (rows.length > 0) {
-          ws.columns = (Object.keys(rows[0]) as (keyof AllContactsRow)[]).map((k) => ({ header: k, key: k }));
-        }
-        ws.addRows(rows);
-        if (isXlsx) {
-          await wb.xlsx.writeFile(tmpPath2);
-        } else {
-          await wb.csv.writeFile(tmpPath2);
-        }
-        await atomicRename(tmpPath2, filePath);
-        return { success: true };
-      } catch (err) {
-        await unlink(tmpPath2).catch(() => {});
-        return { success: false, error: String(err) };
-      }
+      return writeExportRows(rows, filePath, isXlsx);
     },
   );
 
@@ -450,12 +447,12 @@ export function registerExportHandlers(): void {
   ipcMain.handle('export:vcard-all-contacts', async (event, { contactIds: filterIds }: { contactIds?: string[] } = {}): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const db = getDatabase();
-    const selectionClause = filterIds?.length
-      ? `WHERE id IN (${filterIds.map(() => '?').join(',')})`
-      : '';
-    const contactIds = (
-      db.prepare(`SELECT id FROM contacts ${selectionClause} ORDER BY name COLLATE NOCASE`).all(...(filterIds ?? [])) as { id: string }[]
+    // filterIds can be arbitrarily large, so it isn't safe to fold into a SQL IN clause.
+    const filterSet = filterIds?.length ? new Set(filterIds) : null;
+    let contactIds = (
+      db.prepare('SELECT id FROM contacts ORDER BY name COLLATE NOCASE').all() as { id: string }[]
     ).map((r) => r.id);
+    if (filterSet) contactIds = contactIds.filter((id) => filterSet.has(id));
 
     const cards = contactIds.map((id) => buildVCard(db, id)).filter(Boolean).join('\r\n');
     if (!cards) return;
