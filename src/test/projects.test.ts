@@ -4,9 +4,14 @@ import { createTestDb, insertContact, insertProject, TEST_REPORTER } from './vit
 
 vi.mock('electron', () => ({
   ipcMain: { handle: vi.fn(), on: vi.fn() },
-  BrowserWindow: { getAllWindows: vi.fn(() => []) },
+  BrowserWindow: {
+    getAllWindows: vi.fn(() => []),
+    fromWebContents: vi.fn(() => null),
+    getFocusedWindow: vi.fn(() => ({})),
+  },
   dialog: { showSaveDialog: vi.fn() },
 }));
+vi.mock('fs', () => ({ unlinkSync: vi.fn() }));
 
 let testDb: ReturnType<typeof createTestDb>;
 vi.mock('../main/database', () => ({ getDatabase: () => testDb }));
@@ -23,12 +28,15 @@ vi.mock('../main/sync/payload', () => ({
 }));
 vi.mock('../main/ipc/reminders', () => ({ broadcastRemindersChanged: vi.fn() }));
 
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
+import { unlinkSync } from 'fs';
+import { createSharedDb, closeSharedDb } from '../main/database/shared-db';
 import { registerProjectHandlers } from '../main/ipc/projects';
 
 const handlers = new Map<string, (...args: unknown[]) => unknown>();
 
 beforeEach(() => {
+  vi.clearAllMocks();
   testDb = createTestDb();
   handlers.clear();
   vi.mocked(ipcMain.handle).mockImplementation((channel: string, fn) => {
@@ -57,6 +65,107 @@ describe('projects:create', () => {
   it('stores null description when description is empty', async () => {
     const result = await handlers.get('projects:create')!({}, { name: 'No Desc', description: '' }) as { description: string | null };
     expect(result.description).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// projects:createShared / convertToShared / regenerateShared (#442)
+// ---------------------------------------------------------------------------
+
+function mockFakeSharedDb(): void {
+  const fakeSharedDb = { prepare: vi.fn(() => ({ run: vi.fn() })) };
+  vi.mocked(createSharedDb).mockReturnValue(fakeSharedDb as unknown as ReturnType<typeof createSharedDb>);
+}
+
+function mockSaveDialog(filePath: string): void {
+  vi.mocked(dialog.showSaveDialog).mockResolvedValue(
+    { canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>,
+  );
+}
+
+describe('projects:createShared', () => {
+  it('creates a shared project and returns a payload', async () => {
+    mockFakeSharedDb();
+    mockSaveDialog('/tmp/new.sourcerer');
+
+    const result = await handlers.get('projects:createShared')!({}, { name: 'New Shared', description: 'desc' }) as
+      | { project: { id: string; is_shared: number }; payload: string }
+      | null;
+
+    expect(result?.project.is_shared).toBe(1);
+    expect(result?.payload).toBe('encoded-payload');
+  });
+
+  it('cleans up the shared file when the local write fails', async () => {
+    mockFakeSharedDb();
+    mockSaveDialog('/tmp/fail.sourcerer');
+    vi.spyOn(testDb, 'transaction').mockImplementation(() => { throw new Error('boom'); });
+
+    await expect(handlers.get('projects:createShared')!({}, { name: 'Fails', description: '' })).rejects.toThrow('boom');
+
+    expect(vi.mocked(closeSharedDb)).toHaveBeenCalled();
+    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith('/tmp/fail.sourcerer');
+  });
+});
+
+describe('projects:convertToShared', () => {
+  it('upgrades a local project to shared and clears sync_pushed', async () => {
+    const projId = insertProject(testDb, 'Local Project');
+    testDb.prepare(
+      'INSERT INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, ?, ?, ?)',
+    ).run(projId, 'contacts', uuidv4(), Math.floor(Date.now() / 1000));
+    mockFakeSharedDb();
+    mockSaveDialog('/tmp/conv.sourcerer');
+
+    const result = await handlers.get('projects:convertToShared')!({}, projId) as { project: { is_shared: number } } | null;
+
+    expect(result?.project.is_shared).toBe(1);
+    const remaining = testDb.prepare('SELECT * FROM sync_pushed WHERE project_id = ?').all(projId);
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('cleans up the shared file when the local write fails', async () => {
+    const projId = insertProject(testDb, 'Local Project 2');
+    mockFakeSharedDb();
+    mockSaveDialog('/tmp/conv-fail.sourcerer');
+    vi.spyOn(testDb, 'transaction').mockImplementation(() => { throw new Error('boom'); });
+
+    await expect(handlers.get('projects:convertToShared')!({}, projId)).rejects.toThrow('boom');
+
+    expect(vi.mocked(closeSharedDb)).toHaveBeenCalledWith(projId);
+    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith('/tmp/conv-fail.sourcerer');
+  });
+});
+
+describe('projects:regenerateShared', () => {
+  it('creates a fresh shared file and clears sync_pushed for the project', async () => {
+    const projId = insertProject(testDb, 'Regen Project');
+    testDb.prepare(
+      'UPDATE projects SET is_shared = 1, shared_db_path = ?, shared_db_key = ? WHERE id = ?',
+    ).run('/old/path', Buffer.from('oldkey'), projId);
+    testDb.prepare(
+      'INSERT INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, ?, ?, ?)',
+    ).run(projId, 'contacts', uuidv4(), Math.floor(Date.now() / 1000));
+    mockFakeSharedDb();
+    mockSaveDialog('/tmp/regen.sourcerer');
+
+    const result = await handlers.get('projects:regenerateShared')!({}, projId) as { payload: string } | null;
+
+    expect(result?.payload).toBe('encoded-payload');
+    const remaining = testDb.prepare('SELECT * FROM sync_pushed WHERE project_id = ?').all(projId);
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('cleans up the new shared file when the local write fails (#442 — previously missing)', async () => {
+    const projId = insertProject(testDb, 'Regen Project 2');
+    mockFakeSharedDb();
+    mockSaveDialog('/tmp/regen-fail.sourcerer');
+    vi.spyOn(testDb, 'transaction').mockImplementation(() => { throw new Error('boom'); });
+
+    await expect(handlers.get('projects:regenerateShared')!({}, projId)).rejects.toThrow('boom');
+
+    expect(vi.mocked(closeSharedDb)).toHaveBeenCalledWith(projId);
+    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith('/tmp/regen-fail.sourcerer');
   });
 });
 
