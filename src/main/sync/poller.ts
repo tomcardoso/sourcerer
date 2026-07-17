@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
+import Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { openSharedDb, closeSharedDb } from '../database/shared-db';
 import { syncProject } from './engine';
@@ -98,7 +99,7 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
     // Close after each sync so the file handle is released and Dropbox/OneDrive
     // can detect the change and upload it promptly.
     closeSharedDb(projectId);
-    deleteConflictCopies(filePath).catch(() => {});
+    deleteConflictCopies(localDb, projectId, filePath).catch(() => {});
 
     const project = localDb
       .prepare('SELECT shared_pending_writes FROM projects WHERE id = ?')
@@ -137,21 +138,28 @@ export function syncOne(projectId: string, filePath: string, keyBytes: Buffer): 
   return result;
 }
 
-async function deleteConflictCopies(filePath: string): Promise<void> {
+export async function deleteConflictCopies(localDb: Database.Database, projectId: string, filePath: string): Promise<void> {
   const dir = path.dirname(filePath);
   const ext = path.extname(filePath);
   const base = path.basename(filePath, ext);
   try {
     const files = await fs.readdir(dir);
-    for (const file of files) {
-      if (
+    const conflictFiles = files.filter(
+      (file) =>
         file !== path.basename(filePath) &&
         file.startsWith(base) &&
         file.endsWith(ext) &&
-        /conflicted copy/i.test(file)
-      ) {
-        try { await fs.unlink(path.join(dir, file)); } catch { /* best-effort */ }
-      }
+        /conflicted copy/i.test(file),
+    );
+    if (conflictFiles.length > 0) {
+      // A conflict copy may contain pushes from another client that this client's
+      // local sync_pushed rows claim are already synced. Clear them so the next
+      // sync re-pushes everything (all push paths are idempotent upserts) rather
+      // than silently losing rows that only ever landed in the deleted copy.
+      try { localDb.prepare('DELETE FROM sync_pushed WHERE project_id = ?').run(projectId); } catch { /* best-effort */ }
+    }
+    for (const file of conflictFiles) {
+      try { await fs.unlink(path.join(dir, file)); } catch { /* best-effort */ }
     }
   } catch { /* best-effort */ }
 }
