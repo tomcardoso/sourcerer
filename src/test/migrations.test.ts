@@ -3,6 +3,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { LOCAL_SCHEMA_SQL } from '../main/database/schema';
 import { seedDefaults } from '../main/database/seeds';
 import { runMigrations, DB_VERSION } from '../main/database';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept in scope for the per-migration test template below
 import { createDbAtVersion } from './vitest.setup';
 
 function createBaseDb(): Database.Database {

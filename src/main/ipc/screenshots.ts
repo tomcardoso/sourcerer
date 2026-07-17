@@ -143,7 +143,7 @@ export function registerScreenshotHandlers(): void {
         const ext = detectMimeType(decrypted) === 'image/png' ? 'png' : 'jpg';
         const d = new Date(row.captured_at * 1000);
         const dateStr = d.toISOString().replace('T', '-').replace(/:/g, '-').slice(0, 19);
-        const safeName = row.contact_name.replace(/[^a-zA-Z0-9 \-]/g, '').trim().replace(/\s+/g, '-');
+        const safeName = row.contact_name.replace(/[^a-zA-Z0-9 -]/g, '').trim().replace(/\s+/g, '-');
 
         const { BrowserWindow } = await import('electron');
         const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;

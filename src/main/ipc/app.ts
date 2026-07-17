@@ -1,9 +1,13 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { app, ipcMain, BrowserWindow } from 'electron';
 import { getDatabase } from '../database';
 import { autoLock } from '../auto-lock';
 import { getSafeUser } from './settings';
 
 export function registerAppHandlers(): void {
+  ipcMain.on('app:get-version', (event): void => {
+    event.returnValue = app.getVersion();
+  });
+
   ipcMain.handle('app:expand-for-setup', (event): void => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.setSize(560, 820, true);

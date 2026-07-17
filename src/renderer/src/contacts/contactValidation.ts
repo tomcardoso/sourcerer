@@ -19,7 +19,8 @@ export function sanitizeOtherLabel(raw: string): string {
   return raw
     .trim()
     .replace(/\s+/g, ' ')            // collapse whitespace runs
-    .replace(/[\x00-\x1f\x7f]/g, '') // strip control characters
+    // eslint-disable-next-line no-control-regex -- intentionally stripping control characters
+    .replace(/[\x00-\x1f\x7f]/g, '')
     .slice(0, OTHER_LABEL_MAX);
 }
 

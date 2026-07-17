@@ -109,7 +109,7 @@ export async function writeBackupFile(
     fileHeader.writeUInt32LE(CHUNK_SIZE, 48);
     await writeAll(fh, fileHeader);
 
-    let accumBuf = Buffer.allocUnsafe(CHUNK_SIZE);
+    const accumBuf = Buffer.allocUnsafe(CHUNK_SIZE);
     let accumLen = 0;
     let chunkIndex = 0;
 

@@ -9,6 +9,26 @@ export function filenameDateStamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
+// RFC 5545 (iCalendar) / RFC 6350 (vCard) content lines must be folded at 75
+// octets, with continuation lines prefixed by a single space. Splits must not
+// land inside a multi-byte UTF-8 sequence.
+export function foldLine(line: string): string {
+  const bytes = Buffer.from(line, 'utf8');
+  if (bytes.length <= 75) return line;
+
+  const chunks: string[] = [];
+  let start = 0;
+  let limit = 75;
+  while (start < bytes.length) {
+    let end = Math.min(start + limit, bytes.length);
+    while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--;
+    chunks.push(bytes.subarray(start, end).toString('utf8'));
+    start = end;
+    limit = 74; // continuation lines lose one octet to the leading space
+  }
+  return chunks.join('\r\n ');
+}
+
 type VaultConfig = { bundlePath: string };
 
 function vaultConfigPath(): string {
