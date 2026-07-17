@@ -475,10 +475,10 @@ export function registerContactHandlers(): void {
       const existingLinkCreatedAt = new Map(existingLinkRows.map((r) => [r.url.trim(), r.created_at]));
       const existingLinkIdMap = new Map(existingLinkRows.map((r) => [r.url.trim(), r.id]));
 
-      const existingHandleIdMap = new Map(
-        (stmt(db, 'SELECT id, type, handle FROM contact_handles WHERE contact_id = ?').all(data.id) as { id: string; type: string; handle: string }[])
-          .map((r) => [`${r.type}:${r.handle}`, r.id])
-      );
+      const existingHandleRows = stmt(db, 'SELECT id, type, handle, created_at FROM contact_handles WHERE contact_id = ?')
+        .all(data.id) as { id: string; type: string; handle: string; created_at: number }[];
+      const existingHandleCreatedAt = new Map(existingHandleRows.map((r) => [`${r.type}:${r.handle}`, r.created_at]));
+      const existingHandleIdMap = new Map(existingHandleRows.map((r) => [`${r.type}:${r.handle}`, r.id]));
 
       const tombstone = stmt(db, 'INSERT INTO sync_tombstones (table_name, row_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(table_name, row_id) DO UPDATE SET deleted_at = MAX(deleted_at, excluded.deleted_at)');
 
@@ -532,7 +532,7 @@ export function registerContactHandlers(): void {
       handles.forEach((h: ContactHandleInput, i: number) => {
         stmt(db,
           'INSERT INTO contact_handles (id, contact_id, type, handle, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        ).run(uuidv4(), data.id, h.type.trim(), h.handle.trim(), i, now);
+        ).run(uuidv4(), data.id, h.type.trim(), h.handle.trim(), i, existingHandleCreatedAt.get(`${h.type.trim()}:${h.handle.trim()}`) ?? now);
       });
       const keptHandles = new Set(handles.map((h: ContactHandleInput) => `${h.type.trim()}:${h.handle.trim()}`));
       for (const [key, id] of existingHandleIdMap) {

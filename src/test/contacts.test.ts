@@ -179,6 +179,24 @@ describe('contacts:update', () => {
     expect(updatedCreatedAt).toBe(originalCreatedAt);
   });
 
+  it('preserves handle created_at across update', async () => {
+    const id = insertContact(testDb, 'Alice Smith', { handles: [{ type: 'twitter', handle: '@alice' }] });
+    const staleCreatedAt = Math.floor(Date.now() / 1000) - 100;
+    testDb.prepare('UPDATE contact_handles SET created_at = ? WHERE contact_id = ?').run(staleCreatedAt, id);
+
+    await handlers.get('contacts:update')!({}, {
+      id,
+      name: 'Alice Smith',
+      emails: [],
+      phones: [],
+      links: [],
+      handles: [{ type: 'twitter', handle: '@alice' }],
+    });
+
+    const updatedCreatedAt = (testDb.prepare('SELECT created_at FROM contact_handles WHERE contact_id = ?').get(id) as { created_at: number }).created_at;
+    expect(updatedCreatedAt).toBe(staleCreatedAt);
+  });
+
   it('advances updated_at after update (timestamp advancement)', async () => {
     const id = insertContact(testDb, 'Alice Smith');
     const staleTs = Math.floor(Date.now() / 1000) - 100;
