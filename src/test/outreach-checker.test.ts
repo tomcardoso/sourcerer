@@ -177,6 +177,21 @@ describe('checkOutreachReminders — first run', () => {
     expect(broadcast).toHaveBeenCalledOnce();
   });
 
+  it('calls broadcastRemindersChanged once even when multiple memberships get new reminders in one run (#438)', () => {
+    insertUser();
+    const { projId, contactId: contactA } = insertProjectAndContact();
+    const contactB = insertContact(testDb, 'Second Contact');
+    const now = Math.floor(Date.now() / 1000);
+    const membA = insertMembership(contactA, projId, 14);
+    const membB = insertMembership(contactB, projId, 14);
+    insertInteractionLog(membA, now - 3 * 86400);
+    insertInteractionLog(membB, now - 3 * 86400);
+
+    checkOutreachReminders();
+
+    expect(broadcast).toHaveBeenCalledOnce();
+  });
+
   it('due_date equals last_contacted + interval_days * 86400 (adjusted for weekends)', () => {
     insertUser();
     const { projId, contactId } = insertProjectAndContact();

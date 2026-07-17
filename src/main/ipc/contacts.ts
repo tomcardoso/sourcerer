@@ -1,10 +1,12 @@
 import { ipcMain, BrowserWindow, net } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
 import type Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, isDatabaseOpen } from '../database';
 import { normalizeEmail, normalizePhone, validateEmail, validateUrl } from '../sanitize';
 import { broadcastRemindersChanged } from './reminders';
 import { checkOutreachReminders } from '../sync/outreach-checker';
+import { safeScreenshotPath } from './screenshots';
 import type {
   ContactListItem,
   ContactDetail,
@@ -343,17 +345,25 @@ export function registerContactHandlers(): void {
     return { ...row, date_first_contacted: null, date_last_contacted: null, projects: [], tags: [] };
   });
 
-  ipcMain.handle('contacts:delete', (_, id: string): void => {
+  ipcMain.handle('contacts:delete', async (_, id: string): Promise<void> => {
     const db = getDatabase();
     const now = Math.floor(Date.now() / 1000);
+    const screenshotPaths = (
+      db.prepare('SELECT file_path FROM contact_screenshots WHERE contact_id = ?').all(id) as { file_path: string }[]
+    ).map((r) => r.file_path);
     // Tombstone + delete are one transaction so shared-project sync always sees
     // the deletion; contacts never in a shared project just get a tombstone that
-    // ages out with the 90-day GC.
+    // ages out with the 90-day GC. contact_screenshots rows cascade with the contact.
     db.transaction(() => {
       writeTombstone(db, 'contacts', id, now);
       db.prepare("DELETE FROM sync_pushed WHERE table_name = 'contacts' AND row_id = ?").run(id);
       db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
     })();
+    for (const filePath of screenshotPaths) {
+      await fs.unlink(safeScreenshotPath(filePath)).catch((err) => {
+        if (err.code !== 'ENOENT') console.error('Failed to delete screenshot file for contact', id, err);
+      });
+    }
     runDedupScan();
     broadcastContactsChanged();
   });

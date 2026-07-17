@@ -60,6 +60,8 @@ export function checkOutreachReminders(): void {
     )
     .all() as OutreachRow[];
 
+  let remindersChanged = false;
+
   for (const row of rows) {
     if (user.outreach_require_interaction && row.last_contacted === null) continue;
 
@@ -81,10 +83,10 @@ export function checkOutreachReminders(): void {
            (id, contact_id, project_id, membership_id, due_date, note, is_auto_outreach, created_at)
          VALUES (?, ?, ?, ?, ?, NULL, 1, ?)`,
       ).run(uuidv4(), row.contact_id, row.project_id, row.membership_id, dueDate, now);
-      broadcastRemindersChanged();
+      remindersChanged = true;
     } else if (existing.due_date !== dueDate) {
       db.prepare('UPDATE reminders SET due_date = ? WHERE id = ?').run(dueDate, existing.id);
-      broadcastRemindersChanged();
+      remindersChanged = true;
     }
 
     // OS notification: only when overdue, once per session.
@@ -104,6 +106,8 @@ export function checkOutreachReminders(): void {
     const notif = new Notification({ title: `Reach out to ${row.contact_name}`, body });
     notif.show();
   }
+
+  if (remindersChanged) broadcastRemindersChanged();
 }
 
 export function clearOutreachNotificationCache(): void {

@@ -40,9 +40,8 @@ export function checkReminders(): void {
 
   for (const row of rows) {
     if (notifiedThisSession.has(row.id)) continue;
-    notifiedThisSession.add(row.id);
-
     if (!notificationsEnabled) continue;
+    notifiedThisSession.add(row.id);
 
     stamp.run(now, row.id);
 

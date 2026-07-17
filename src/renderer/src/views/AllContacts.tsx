@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ContactListItem, DuplicatePair, Project, User } from '@shared/types';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useSortFilter } from '../hooks/useSortFilter';
+import { localDayBounds } from '../utils/fmtDate';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
 import Button from '../shell/Button';
@@ -139,12 +140,11 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
     }
 
     if (filters.dateAddedFrom) {
-      const from = Math.floor(new Date(filters.dateAddedFrom).getTime() / 1000);
+      const { start: from } = localDayBounds(filters.dateAddedFrom);
       result = result.filter((c) => c.created_at >= from);
     }
     if (filters.dateAddedTo) {
-      // include the full "to" day by adding 86399 seconds
-      const to = Math.floor(new Date(filters.dateAddedTo).getTime() / 1000) + 86399;
+      const { end: to } = localDayBounds(filters.dateAddedTo);
       result = result.filter((c) => c.created_at <= to);
     }
 

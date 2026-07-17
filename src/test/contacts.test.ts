@@ -1,5 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises';
+import path from 'path';
 import { createTestDb, insertContact, insertProject, TEST_REPORTER } from './vitest.setup';
 
 vi.mock('electron', () => ({
@@ -306,6 +308,27 @@ describe('contacts:delete', () => {
     expect(testDb.prepare('SELECT id FROM contact_phones WHERE contact_id = ?').all(id)).toHaveLength(0);
     expect(testDb.prepare('SELECT id FROM contact_handles WHERE contact_id = ?').all(id)).toHaveLength(0);
     expect(testDb.prepare('SELECT id FROM project_memberships WHERE contact_id = ?').all(id)).toHaveLength(0);
+  });
+
+  it('deletes the encrypted screenshot file on disk (#434)', async () => {
+    const id = insertContact(testDb, 'Screenshot Owner');
+    const screenshotsDir = path.join('/tmp', 'screenshots');
+    await fs.mkdir(screenshotsDir, { recursive: true });
+    const fileName = `${uuidv4()}.enc`;
+    const filePath = path.join(screenshotsDir, fileName);
+    await fs.writeFile(filePath, 'fake-encrypted-bytes');
+    testDb.prepare(
+      'INSERT INTO contact_screenshots (id, contact_id, tab_url, file_path, iv, captured_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(uuidv4(), id, 'https://example.com', fileName, 'abcd', Math.floor(Date.now() / 1000));
+
+    await handlers.get('contacts:delete')!({}, id);
+
+    await expect(fs.access(filePath)).rejects.toThrow();
+  });
+
+  it('does not throw when the deleted contact has no screenshots', async () => {
+    const id = insertContact(testDb, 'No Screenshots');
+    await expect(handlers.get('contacts:delete')!({}, id)).resolves.toBeUndefined();
   });
 });
 

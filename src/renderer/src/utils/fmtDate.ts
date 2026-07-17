@@ -78,6 +78,17 @@ export function dateStrToUnix(dateStr: string): number {
 }
 
 /**
+ * Convert a YYYY-MM-DD date string to inclusive local-day Unix timestamp (seconds) bounds.
+ * Parses the parts directly rather than via `new Date(dateStr)`, which the JS spec
+ * parses as UTC midnight and would shift day boundaries by the local UTC offset.
+ */
+export function localDayBounds(dateStr: string): { start: number; end: number } {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const start = Math.floor(new Date(y, m - 1, d).getTime() / 1000);
+  return { start, end: start + 86399 };
+}
+
+/**
  * Format a Unix timestamp (seconds) as a full date always including the year.
  * Returns '—' when ts is null.
  *

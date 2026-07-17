@@ -102,6 +102,20 @@ describe('checkReminders', () => {
     expect(row.last_notified_at).toBeNull();
   });
 
+  it('surfaces a reminder once notifications are re-enabled, even if it came due while disabled (#438)', () => {
+    insertUser({ reminder_notifications_enabled: 0 });
+    const cid = insertContact(testDb, 'Mona Lisa');
+    const pid = insertProject(testDb, 'Mu');
+    insertReminder(cid, pid);
+
+    checkReminders(); // due while disabled — must not be marked as handled
+
+    insertUser({ reminder_notifications_enabled: 1 });
+    checkReminders();
+
+    expect(MockNotification).toHaveBeenCalledOnce();
+  });
+
   it('does not fire for a completed reminder', () => {
     insertUser();
     const cid = insertContact(testDb, 'Carol White');
