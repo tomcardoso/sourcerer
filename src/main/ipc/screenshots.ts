@@ -12,7 +12,7 @@ function screenshotsDir(): string {
   return getPaths().screenshotsPath;
 }
 
-function safeScreenshotPath(fileName: string): string {
+export function safeScreenshotPath(fileName: string): string {
   const dir = path.resolve(screenshotsDir());
   const resolved = path.resolve(path.join(dir, fileName));
   if (!resolved.startsWith(dir + path.sep)) throw new Error('Invalid screenshot path.');

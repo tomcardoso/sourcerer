@@ -3,6 +3,7 @@ import type { ProjectContactRow, StatusOption, PriorityOption } from '@shared/ty
 import type { ProjectFilters as Filters } from '../views/ContactsTable';
 import { buildOrderMap } from '../views/ContactsTable';
 import type { SortState } from './useSortFilter';
+import { localDayBounds } from '../utils/fmtDate';
 
 type SortKey =
   | 'name'
@@ -72,11 +73,11 @@ export function useProjectContacts(
       );
     }
     if (filters.dateAddedFrom) {
-      const from = Math.floor(new Date(filters.dateAddedFrom).getTime() / 1000);
+      const { start: from } = localDayBounds(filters.dateAddedFrom);
       result = result.filter((r) => r.membership_created_at >= from);
     }
     if (filters.dateAddedTo) {
-      const to = Math.floor(new Date(filters.dateAddedTo).getTime() / 1000) + 86399;
+      const { end: to } = localDayBounds(filters.dateAddedTo);
       result = result.filter((r) => r.membership_created_at <= to);
     }
     if (filters.status.length > 0) {
