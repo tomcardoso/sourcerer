@@ -30,13 +30,14 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
   const destPath = user.auto_backup_dest_path;
   const maxCount = user.auto_backup_max_count ?? 10;
 
-  const tmpSnapDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sourcerer-snap-'));
-  const tmpSnapPath = path.join(tmpSnapDir, 'snapshot.db');
+  let tmpSnapDir: string | undefined;
   try {
     // Ensure the destination folder exists (user may have moved it)
     await fs.mkdir(destPath, { recursive: true });
 
     const { saltPath, screenshotsPath } = getPaths();
+    tmpSnapDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sourcerer-snap-'));
+    const tmpSnapPath = path.join(tmpSnapDir, 'snapshot.db');
     snapshotDatabase(tmpSnapPath);
     const outPath = path.join(destPath, timestampedName());
     const tmpPath = path.join(destPath, `.tmp-${randomBytes(8).toString('hex')}`);
@@ -62,7 +63,7 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
   } catch (err) {
     return { success: false, error: String(err) };
   } finally {
-    await fs.rm(tmpSnapDir, { recursive: true, force: true }).catch(() => {});
+    if (tmpSnapDir) await fs.rm(tmpSnapDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
