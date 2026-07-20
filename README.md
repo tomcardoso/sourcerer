@@ -85,6 +85,16 @@ Sourcerer is an Electron + React + TypeScript application built with [electron-v
 
 All data lives in a self-contained `.sourcerer` vault bundle — a directory containing the encrypted database, the Argon2 salt file, and any screenshots captured by the browser extension. The vault can be placed anywhere: a local folder, an external drive, or a cloud-synced folder. On macOS, Finder presents the bundle as a single opaque file.
 
+### Shared projects and their consistency model
+
+Collaboration works by putting a second SQLCipher database in a cloud-synced folder. There is no server, and no third party ever holds a key — which is the point, but it bounds what sync can guarantee.
+
+Shared projects are **eventually consistent, provided collaborators don't write within the same cloud-sync upload window.** Cloud providers replicate whole files and fork on concurrent writes; they never merge. Two simultaneous saves produce a provider-level "conflicted copy" next to the real file, and the losing side's changes are not in the file Sourcerer goes on to read.
+
+Conflicts that do get reconciled resolve last-write-wins by wall-clock timestamp at second granularity. Those clocks belong to the collaborators' machines and nothing arbitrates between them, so a badly skewed clock can resolve a conflict backwards.
+
+This is a limitation of the substrate, not of the merge logic, and it is permanent for as long as the design stays serverless. In practice: work a few minutes apart, and don't treat a shared project as the only copy of something you can't lose.
+
 ---
 
 ## Installation

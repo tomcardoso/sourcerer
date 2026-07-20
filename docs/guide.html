@@ -340,10 +340,19 @@
             <p>Sourcerer polls the shared file every two minutes. Changes are merged on a last-write-wins basis using <code>updated_at</code> timestamps — if two people update the same contact record at almost the same time, whichever save happened last will win.</p>
             <p>Because sync is file-based, it only works when both users are online and the shared folder is in sync. If the cloud folder is paused or offline, changes will not propagate until connectivity is restored.</p>
 
+            <h3>What "sync" does and doesn't promise</h3>
+            <p>Shared projects work by putting one database file in a folder your cloud provider keeps in step across machines. That is what makes collaboration possible without any Sourcerer server ever seeing your data — but it is worth being precise about what it can and cannot do.</p>
+            <p><strong>The practical rule: avoid two people editing the same project at the same moment.</strong> Work a few minutes apart and everything merges cleanly. Changes normally appear on the other person's machine within a couple of minutes.</p>
+            <p>The reason for that rule is that cloud providers sync whole files. They do not merge two versions of a file — when two people save inside the same upload window, the provider keeps one version and sets the other aside.</p>
+            <div class="note">
+              <strong>If you see a "conflicted copy":</strong> Dropbox (and the equivalent in OneDrive, iCloud Drive and Google Drive) will sometimes leave a second file next to your <code>.sourcerer</code> project with a name like <em>"project (Tom's conflicted copy 2026-07-20).sourcerer"</em>. That means two people wrote at once and the changes in that copy never made it into the main file. Don't delete it — it holds someone's work. Open it as a separate shared project to see what's inside and re-enter anything that's missing.
+            </div>
+            <p>One more caveat: because there is no server, deciding "which save was last" relies on the clocks of the machines involved. If someone's computer clock is significantly wrong, their older change can beat a newer one. This is rare, but it is the reason the app can't promise perfect ordering.</p>
+
             <h3>What is and isn't synced</h3>
             <p>All project data is synced: contact memberships, status, priority, reporter attribution, themes, interaction logs, and reminders.</p>
             <div class="note">
-              <strong>Not synced:</strong> The per-contact notes scratchpad (global notes on a contact, outside of project context) is local to each installation and is never written to the shared file.
+              <strong>Not synced:</strong> The per-contact notes scratchpad (global notes on a contact, outside of project context) is local to each installation and is never written to the shared file. Whether you've seen or dismissed a news alert is also personal to your own installation — marking an alert as read doesn't clear it for your collaborators.
             </div>
 
             <h3>Caveats</h3>

@@ -127,38 +127,48 @@ export function findDuplicatePairs(contacts: DedupContact[], dismissedPairs?: Se
   const pairedIds = new Set<string>();
   const contactById = new Map<string, DedupContact>(contacts.map((c) => [c.id, c]));
 
-  const emailIndex = new Map<string, string>();
+  // Identity indexes: identifier → Set of contact IDs that carry it. Every co-owner
+  // of an identifier must be indexed, even ones that were skipped as a match partner
+  // (dismissed pair, or already paired elsewhere) — otherwise later contacts sharing
+  // the same identifier can miss a valid pairing (issue #441).
+  const emailIndex = new Map<string, Set<string>>();
   for (const c of contacts) {
     for (const email of c.emails) {
       const key = normalizeEmail(email);
-      const existing = emailIndex.get(key);
-      if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
-        if (!isDismissed(existing, c.id)) {
+      const seen = emailIndex.get(key) ?? new Set<string>();
+      if (!pairedIds.has(c.id)) {
+        for (const existing of seen) {
+          if (existing === c.id || pairedIds.has(existing)) continue;
+          if (isDismissed(existing, c.id)) continue;
           pairs.push({ a: contactById.get(existing)!, b: c, reason: 'email' });
           pairedIds.add(existing);
           pairedIds.add(c.id);
+          break;
         }
-      } else if (!existing) {
-        emailIndex.set(key, c.id);
       }
+      seen.add(c.id);
+      emailIndex.set(key, seen);
     }
   }
 
-  const phoneIndex = new Map<string, string>();
+  const phoneIndex = new Map<string, Set<string>>();
   for (const c of contacts) {
     for (const phone of c.phones) {
       const key = digitsOnly(phone);
       if (!key) continue;
-      const existing = phoneIndex.get(key);
-      if (existing && existing !== c.id && !pairedIds.has(existing) && !pairedIds.has(c.id)) {
-        if (!isDismissed(existing, c.id)) {
+      const seen = phoneIndex.get(key) ?? new Set<string>();
+      if (!pairedIds.has(c.id)) {
+        for (const existing of seen) {
+          if (existing === c.id || pairedIds.has(existing)) continue;
+          if (isDismissed(existing, c.id)) continue;
           pairs.push({ a: contactById.get(existing)!, b: c, reason: 'phone' });
           pairedIds.add(existing);
           pairedIds.add(c.id);
+          break;
         }
-      } else if (!existing) {
-        phoneIndex.set(key, c.id);
       }
+      seen.add(c.id);
+      phoneIndex.set(key, seen);
     }
   }
 
