@@ -44,7 +44,10 @@ function tryOpen(filePath: string, keyHex: string): void {
   }
 }
 
-describe('rekeySharedDb', () => {
+// Rekeying re-encrypts every page and re-runs the PBKDF2-HMAC-SHA512 KDF, which
+// is genuinely slow — ~3s for this file on Windows CI runners even before other
+// suites compete for the same cores. The 5s default is not enough headroom there.
+describe('rekeySharedDb', { timeout: 30_000 }, () => {
   it('re-encrypts the file so the new key opens it and the old key does not', () => {
     const oldKeyHex = randomBytes(32).toString('hex');
     const newKeyHex = randomBytes(32).toString('hex');

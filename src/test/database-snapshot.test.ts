@@ -9,7 +9,9 @@ import { initDatabase, closeDatabase, snapshotDatabase, applyCipherPragmas, getD
 // Guards against a future change silently producing an unencrypted backup.
 const SECRET = 'SNAPSHOT_TEST_SECRET_MARKER_9f3a';
 
-describe('snapshotDatabase', () => {
+// Each test builds a real file-backed encrypted database (KDF + migrations) and
+// snapshots it, so this suite is I/O and crypto heavy — ~4.4s on Windows CI.
+describe('snapshotDatabase', { timeout: 30_000 }, () => {
   let tmpDir: string;
   let keyHex: string;
 
