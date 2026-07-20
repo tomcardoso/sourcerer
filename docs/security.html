@@ -123,6 +123,10 @@
             <h3>Backups in insecure locations</h3>
             <p>Backup files exported from Sourcerer are encrypted with the same password as the original database. However, if you copy a backup to an unencrypted cloud drive, USB stick, or email attachment, the encrypted file could be exfiltrated and subjected to offline password attacks. Store backups carefully.</p>
 
+            <h3>Independent security review</h3>
+            <p>Sourcerer has <strong>not yet undergone an independent third-party security audit</strong>. The cryptographic design relies on standard, well-reviewed primitives rather than anything custom — SQLCipher for encryption at rest, Argon2id for key derivation — and the complete source is open for inspection. But no external reviewer has examined the implementation to date, and the claims on this page rest on the code itself rather than on anyone else's verification of it.</p>
+            <p>An external review has been applied for. This section will be updated when that status changes. If your work carries a threat model where an unaudited tool is unacceptable, treat that as the current state of affairs rather than an oversight.</p>
+
             <h3>What Sourcerer is not</h3>
             <p>Sourcerer is not a communications tool. It does not provide secure messaging, end-to-end encrypted email, or any kind of anonymity network. It protects data at rest on your local machine — nothing more.</p>
           </section>

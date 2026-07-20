@@ -162,6 +162,7 @@ The exported file is a standard unencrypted SQLite database. Delete it when you'
 - No network requests are made except: user-configured RSS feeds, optional Wayback Machine saves (requires Archive.org S3 API keys configured in Settings), and the local HTTP server that receives screenshots from the browser extension (localhost only, one-time token auth).
 - The master password cannot be recovered. Use a passphrase — four random words are easier to remember and just as strong as a complex string.
 - The browser extension communicates only with localhost and requires explicit one-time approval in the app.
+- **Sourcerer has not yet had an independent third-party security audit.** The encryption relies on standard, well-reviewed primitives (SQLCipher, Argon2id) rather than anything custom, and the source is open for inspection — but no external reviewer has examined the implementation. An external review has been applied for. See [security.html](https://tomcardoso.github.io/sourcerer/security.html) for the full picture.
 
 ---
 
