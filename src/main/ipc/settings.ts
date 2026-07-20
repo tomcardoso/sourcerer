@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
-import { getDatabase, closeDatabase, getKeyHex, updateActiveKeyHex, setActivePassword } from '../database';
+import { getDatabase, closeDatabase, getKeyHex, updateActiveKeyHex, setActivePassword, snapshotDatabase } from '../database';
 import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig, detectSyncProvider } from '../utils';
 import { autoLock } from '../auto-lock';
 import { setRssPollIntervalHours } from '../sync/poller';
@@ -271,9 +271,11 @@ export function registerSettingsHandlers(): void {
     try {
       await fs.mkdir(newBundlePath, { recursive: true });
 
-      // Safe to copy while the DB is open: DELETE journal mode keeps the file
-      // in a consistent committed state at all times (no -wal/-shm sidecars).
-      await fs.cp(dbPath, path.join(newBundlePath, 'db.sqlite'), { force: true });
+      // Snapshot via VACUUM INTO rather than copying the live file: a plain
+      // copy can catch the DB mid-write (e.g. a hot rollback journal) and
+      // capture a torn database. VACUUM INTO goes through the open connection
+      // and always produces a consistent, still-encrypted copy.
+      snapshotDatabase(path.join(newBundlePath, 'db.sqlite'));
       await fs.cp(saltPath, path.join(newBundlePath, 'salt'), { force: true });
 
       // Copy screenshots directory if it exists

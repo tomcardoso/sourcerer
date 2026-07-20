@@ -3,8 +3,9 @@ import fs from 'fs/promises';
 import { rename, unlink } from 'fs/promises';
 import { randomBytes } from 'crypto';
 import path from 'path';
+import os from 'os';
 import { getPaths } from '../utils';
-import { getDatabase, isDatabaseOpen, getPassword } from '../database';
+import { getDatabase, isDatabaseOpen, getPassword, snapshotDatabase } from '../database';
 import { writeBackupFile, createBackupEntries } from './backup-format';
 
 const BACKUP_PREFIX = 'sourcerer-auto-backup-';
@@ -29,15 +30,18 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
   const destPath = user.auto_backup_dest_path;
   const maxCount = user.auto_backup_max_count ?? 10;
 
+  const tmpSnapDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sourcerer-snap-'));
+  const tmpSnapPath = path.join(tmpSnapDir, 'snapshot.db');
   try {
     // Ensure the destination folder exists (user may have moved it)
     await fs.mkdir(destPath, { recursive: true });
 
-    const { dbPath, saltPath, screenshotsPath } = getPaths();
+    const { saltPath, screenshotsPath } = getPaths();
+    snapshotDatabase(tmpSnapPath);
     const outPath = path.join(destPath, timestampedName());
     const tmpPath = path.join(destPath, `.tmp-${randomBytes(8).toString('hex')}`);
     try {
-      await writeBackupFile(createBackupEntries(dbPath, saltPath, screenshotsPath), tmpPath, getPassword());
+      await writeBackupFile(createBackupEntries(tmpSnapPath, saltPath, screenshotsPath), tmpPath, getPassword());
       await rename(tmpPath, outPath);
     } catch (err) {
       await unlink(tmpPath).catch(() => {});
@@ -57,6 +61,8 @@ export async function runAutoBackup(): Promise<{ success: boolean; error?: strin
     return { success: true };
   } catch (err) {
     return { success: false, error: String(err) };
+  } finally {
+    await fs.rm(tmpSnapDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 

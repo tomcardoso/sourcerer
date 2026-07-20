@@ -116,6 +116,12 @@ export function isDatabaseOpen(): boolean {
   return activeDb !== null;
 }
 
+/** Writes a consistent snapshot of the active database to destPath via VACUUM INTO.
+ *  destPath must not already exist. Still fully encrypted with the active key. */
+export function snapshotDatabase(destPath: string): void {
+  getDatabase().prepare('VACUUM INTO ?').run(destPath);
+}
+
 // Increment when adding a new migration block below.
 // Exported for test instrumentation only.
 export const DB_VERSION = 1;
