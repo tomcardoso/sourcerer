@@ -342,18 +342,29 @@ function pullContacts(local: Database.Database, shared: Database.Database, tombs
         .prepare('SELECT phone FROM contact_phones WHERE contact_id = ?')
         .all(sc.id) as { phone: string }[];
 
-      // Collect all candidate local IDs matching any shared email/phone.
-      // Only adopt when signals converge on exactly one local contact.
+      // Collect all candidate local IDs matching any shared email/phone, plus a
+      // separate set for email matches only. Phone numbers aren't personal identifiers
+      // (office landline, family phone), so a phone-only match must never trigger
+      // adoption on its own — but it still counts toward the ambiguity check below,
+      // so a phone match against a *different* contact than the email match still
+      // blocks adoption instead of being silently dropped.
       const candidateIds = new Set<string>();
+      const emailMatchedIds = new Set<string>();
       for (const { email } of sharedEmails) {
         const found = localEmailToId.get(email);
-        if (found) for (const id of found) candidateIds.add(id);
+        if (found) for (const id of found) {
+          candidateIds.add(id);
+          emailMatchedIds.add(id);
+        }
       }
       for (const { phone } of sharedPhones) {
         const found = localPhoneToId.get(phone);
         if (found) for (const id of found) candidateIds.add(id);
       }
-      const matchedLocalId = candidateIds.size === 1 ? [...candidateIds][0] : undefined;
+      // Only adopt when signals converge on exactly one local contact AND that
+      // contact was matched by email (a phone-only match is never sufficient).
+      const soleCandidate = candidateIds.size === 1 ? [...candidateIds][0] : undefined;
+      const matchedLocalId = soleCandidate && emailMatchedIds.has(soleCandidate) ? soleCandidate : undefined;
 
       if (matchedLocalId && !adoptedIds.has(matchedLocalId)) {
         // Adopt the shared UUID so both sides agree on one primary key.
@@ -739,16 +750,18 @@ function pullAppendOnly(
     published_at: number | null;
     fetched_at: number;
     guid: string;
-    seen: number;
   }[]) {
     if (!localContactIds.has(sm.contact_id)) continue;
+    // seen/dismissed are per-user read state (issue #448) — never synced, so
+    // pulled mentions always land locally as unseen regardless of the shared
+    // row's state.
     const { changes } = local
       .prepare(
         `INSERT OR IGNORE INTO contact_alert_mentions
-           (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, contact_id, headline, source_url, published_at, fetched_at, guid)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(sm.id, sm.contact_id, sm.headline, sm.source_url, sm.published_at, sm.fetched_at, sm.guid, sm.seen);
+      .run(sm.id, sm.contact_id, sm.headline, sm.source_url, sm.published_at, sm.fetched_at, sm.guid);
     if (changes > 0) stampMention.run(projectId, sm.id, now);
   }
 
@@ -1007,15 +1020,16 @@ function pushAppendOnly(
         published_at: number | null;
         fetched_at: number;
         guid: string;
-        seen: number;
       }[]) {
+        // seen/dismissed are per-user read state (issue #448) — never pushed, so
+        // the shared row always lands as unseen regardless of the local state.
         shared
           .prepare(
             `INSERT OR IGNORE INTO contact_alert_mentions
-               (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               (id, contact_id, headline, source_url, published_at, fetched_at, guid)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
           )
-          .run(m.id, m.contact_id, m.headline, m.source_url, m.published_at, m.fetched_at, m.guid, m.seen);
+          .run(m.id, m.contact_id, m.headline, m.source_url, m.published_at, m.fetched_at, m.guid);
         mentionIds.push(m.id);
       }
     }

@@ -79,7 +79,9 @@ describe('syncProject — contact identity matching', () => {
     expect(contacts[0].id).toBe(sharedContactId);
   });
 
-  it('adopts shared UUID when local contact matches by phone, no duplicate', () => {
+  it('does not adopt shared UUID on a phone-only match, even with distinct names (#447)', () => {
+    // A phone number is not a personal identifier (office landline, family phone),
+    // so a phone-only match must never trigger automatic adoption on its own.
     const localDb = createTestDb();
     const sharedDb = createSharedDb();
     const projectId = insertProject(localDb, 'Test Project');
@@ -88,15 +90,69 @@ describe('syncProject — contact identity matching', () => {
     localInsertMembership(localDb, localContactId, projectId);
 
     const sharedContactId = uuidv4();
-    sharedInsertContact(sharedDb, sharedContactId, 'Bob', { phones: ['+15551234567'], updatedAt: NOW });
+    sharedInsertContact(sharedDb, sharedContactId, 'Someone Else', { phones: ['+15551234567'], updatedAt: NOW });
     sharedInsertMembership(sharedDb, uuidv4(), sharedContactId);
 
     const result = syncProject(localDb, sharedDb, projectId);
     expect(result.success).toBe(true);
 
-    const contacts = localDb.prepare('SELECT id FROM contacts WHERE name = ?').all('Bob') as { id: string }[];
+    // Both contacts should exist as distinct rows — no adoption/merge occurred.
+    const all = localDb.prepare('SELECT id FROM contacts').all() as { id: string }[];
+    expect(all.map((r) => r.id)).toContain(localContactId);
+    expect(all.map((r) => r.id)).toContain(sharedContactId);
+    expect(all).toHaveLength(2);
+  });
+
+  it('still adopts shared UUID on an email match (#447 guard against over-correcting)', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Test Project');
+
+    const localContactId = insertContact(localDb, 'Carol', { emails: ['carol-adopt@example.com'] });
+    localInsertMembership(localDb, localContactId, projectId);
+
+    const sharedContactId = uuidv4();
+    sharedInsertContact(sharedDb, sharedContactId, 'Carol', { emails: ['carol-adopt@example.com'], updatedAt: NOW });
+    sharedInsertMembership(sharedDb, uuidv4(), sharedContactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const contacts = localDb.prepare('SELECT id FROM contacts WHERE name = ?').all('Carol') as { id: string }[];
     expect(contacts).toHaveLength(1);
     expect(contacts[0].id).toBe(sharedContactId);
+  });
+
+  it('blocks adoption when the shared email matches one local contact and the shared phone matches a different one (#447)', () => {
+    // Regression guard: if phones were dropped from the candidate set entirely
+    // instead of just from the adoption check, this case would collapse from
+    // candidateIds.size === 2 to size === 1 and incorrectly adopt.
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Test Project');
+
+    const localA = insertContact(localDb, 'Alice', { emails: ['alice-ambig@example.com'] });
+    const localB = insertContact(localDb, 'Bob', { phones: ['+15559876543'] });
+    localInsertMembership(localDb, localA, projectId);
+    localInsertMembership(localDb, localB, projectId);
+
+    const sharedContactId = uuidv4();
+    sharedInsertContact(sharedDb, sharedContactId, 'Ambiguous', {
+      emails: ['alice-ambig@example.com'],
+      phones: ['+15559876543'],
+      updatedAt: NOW,
+    });
+    sharedInsertMembership(sharedDb, uuidv4(), sharedContactId);
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    // No adoption: all three contacts (Alice, Bob, and the new shared "Ambiguous") exist.
+    const all = localDb.prepare('SELECT id FROM contacts').all() as { id: string }[];
+    expect(all).toHaveLength(3);
+    expect(all.map((r) => r.id)).toContain(localA);
+    expect(all.map((r) => r.id)).toContain(localB);
+    expect(all.map((r) => r.id)).toContain(sharedContactId);
   });
 
   it('adopts correct UUIDs when two shared contacts each match a different local contact', () => {
@@ -1340,5 +1396,53 @@ describe('per-project push tracking (#431)', () => {
     expect(syncProject(localDb, sharedA, projectA).success).toBe(true);
     const inA = sharedA.prepare('SELECT name FROM contacts WHERE id = ?').get(contactId) as { name: string };
     expect(inA.name).toBe('Edit Emma II');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Alert-mention read state is per-user, not synced (#448)
+// ---------------------------------------------------------------------------
+
+describe('contact_alert_mentions — seen is per-user, not synced (#448)', () => {
+  it('a mention marked seen=1 in the shared DB arrives locally as seen=0', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Seen Pull Test');
+
+    const contactId = insertContact(localDb, 'Alice', { emails: ['alice@example.com'] });
+    localInsertMembership(localDb, contactId, projectId);
+    sharedInsertContact(sharedDb, contactId, 'Alice', { emails: ['alice@example.com'] });
+    sharedInsertMembership(sharedDb, uuidv4(), contactId);
+
+    const mentionId = uuidv4();
+    sharedDb
+      .prepare('INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid, seen) VALUES (?, ?, ?, ?, ?, ?, 1)')
+      .run(mentionId, contactId, 'Headline', 'http://x.com', NOW, 'guid-seen');
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const local = localDb.prepare('SELECT seen FROM contact_alert_mentions WHERE id = ?').get(mentionId) as { seen: number } | undefined;
+    expect(local?.seen).toBe(0);
+  });
+
+  it('a local mention marked seen=1 does not carry seen=1 across when pushed to shared', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Seen Push Test');
+
+    const contactId = insertContact(localDb, 'Bob', { emails: ['bob@example.com'] });
+    localInsertMembership(localDb, contactId, projectId);
+
+    const mentionId = uuidv4();
+    localDb
+      .prepare('INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, fetched_at, guid, seen) VALUES (?, ?, ?, ?, ?, ?, 1)')
+      .run(mentionId, contactId, 'Headline', 'http://y.com', NOW, 'guid-push-seen');
+
+    const result = syncProject(localDb, sharedDb, projectId);
+    expect(result.success).toBe(true);
+
+    const shared = sharedDb.prepare('SELECT seen FROM contact_alert_mentions WHERE id = ?').get(mentionId) as { seen: number } | undefined;
+    expect(shared?.seen).toBe(0);
   });
 });
