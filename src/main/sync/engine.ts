@@ -363,10 +363,8 @@ function pullContacts(local: Database.Database, shared: Database.Database, tombs
       }
       // Only adopt when signals converge on exactly one local contact AND that
       // contact was matched by email (a phone-only match is never sufficient).
-      const matchedLocalId =
-        candidateIds.size === 1 && emailMatchedIds.has([...candidateIds][0])
-          ? [...candidateIds][0]
-          : undefined;
+      const soleCandidate = candidateIds.size === 1 ? [...candidateIds][0] : undefined;
+      const matchedLocalId = soleCandidate && emailMatchedIds.has(soleCandidate) ? soleCandidate : undefined;
 
       if (matchedLocalId && !adoptedIds.has(matchedLocalId)) {
         // Adopt the shared UUID so both sides agree on one primary key.
