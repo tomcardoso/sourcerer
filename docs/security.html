@@ -52,6 +52,7 @@
             <li><a href="#network">Network traffic</a></li>
             <li><a href="#http-server">Local HTTP server</a></li>
             <li><a href="#panic-wipe">Panic wipe</a></li>
+            <li><a href="#shared-projects">Shared projects</a></li>
             <li><a href="#backups">Backups</a></li>
             <li><a href="#source-code">Open source</a></li>
           </ol>
@@ -168,6 +169,14 @@
             <div class="warn">
               <strong>Panic wipe has no undo.</strong> Once you confirm by typing WIPE, data is gone immediately. Backups stored elsewhere are not affected — the backup file is self-contained and can be restored using only your password.
             </div>
+          </section>
+
+          <section id="shared-projects">
+            <h2>Shared projects</h2>
+            <p>A shared project is a second SQLCipher database placed in a folder that a cloud provider replicates between machines. The encryption properties are the same as the main vault: the provider stores ciphertext and never holds your password, so Dropbox, OneDrive, iCloud Drive and Google Drive cannot read the contents of a shared project.</p>
+            <p>The consistency properties are weaker, and worth stating plainly. Sourcerer's shared projects are <strong>eventually consistent, provided collaborators do not write within the same cloud-sync upload window</strong>. Cloud providers replicate whole files and fork on concurrent writes — they never merge. When two people save at once, the provider preserves one version and leaves the other beside it as a "conflicted copy", and the changes in that copy are not present in the file Sourcerer subsequently reads.</p>
+            <p>Where changes do need reconciling, conflict resolution is last-write-wins by wall-clock timestamp at one-second granularity. Those timestamps come from the collaborators' own machines, and there is no server to arbitrate: a client with a materially skewed clock can resolve a conflict backwards, letting an older edit overwrite a newer one.</p>
+            <p>This is a property of the substrate rather than a defect in the implementation. It is the cost of collaboration with no server and no third party holding a key, and it is the correct tradeoff for this tool — but it means shared projects should not be relied upon as the sole copy of anything critical. Take backups, and prefer working a few minutes apart over editing the same project simultaneously.</p>
           </section>
 
           <section id="backups">

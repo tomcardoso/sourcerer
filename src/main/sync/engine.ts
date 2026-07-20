@@ -1,3 +1,42 @@
+/**
+ * CONSISTENCY MODEL — read this before changing sync behaviour.
+ *
+ * Shared projects sync through a SQLite file sitting in a cloud-synced folder
+ * (Dropbox, OneDrive, iCloud Drive, …). There is no server and no coordination
+ * point, which is the right tradeoff for a no-server, end-to-end-encrypted
+ * tool — but it caps what this engine can guarantee. The actual contract is:
+ *
+ *   Eventually consistent, PROVIDED collaborators don't write within the same
+ *   cloud-sync upload window. Conflict resolution is last-write-wins by
+ *   wall-clock timestamp at second granularity.
+ *
+ * The assumptions behind that, none of which this engine can enforce:
+ *
+ *   1. The substrate replicates whole files and FORKS on concurrent writes —
+ *      it never merges. Two people writing inside one upload window produce a
+ *      provider-level "conflicted copy" sitting next to the real file, and the
+ *      losing side's writes are not in the file this engine later reads.
+ *      See #436 for conflicted-copy handling.
+ *   2. LWW compares wall-clock timestamps from DIFFERENT machines. A client
+ *      with a skewed clock resolves conflicts "backwards" — its stale write
+ *      beats a genuinely newer one. Second granularity also means ties are
+ *      possible and resolved arbitrarily.
+ *   3. The engine sees whatever the provider last finished downloading. It
+ *      cannot distinguish "no remote changes" from "provider is paused,
+ *      offline, or mid-upload".
+ *
+ * These are properties of the substrate, not bugs to be fixed here. #445 may
+ * change how well the engine approximates the model; the limits above survive
+ * that work. Anything relying on stronger guarantees — atomic cross-client
+ * operations, read-your-writes across machines, ordered delivery — cannot be
+ * built on this foundation without a coordination point that doesn't exist.
+ *
+ * Two things are deliberately NOT shared, and should stay that way:
+ *   - Alert-mention read state (`seen`/`dismissed`): per-user, because the
+ *     unseen badge drives *your* attention, not the team's (#448).
+ *   - The per-contact notes scratchpad: local-only by design.
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3-multiple-ciphers';
 
