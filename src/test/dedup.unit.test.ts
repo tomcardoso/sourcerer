@@ -185,6 +185,59 @@ describe('findDuplicatePairs — empty and single-contact inputs', () => {
   });
 });
 
+describe('findDuplicatePairs — identity index skips later contacts (#441)', () => {
+  it('still detects a pair involving C when three contacts share an email and (A,B) is dismissed', () => {
+    const contacts = [
+      makeContact('a', 'Alice One', { emails: ['shared@example.com'] }),
+      makeContact('b', 'Bob Two', { emails: ['shared@example.com'] }),
+      makeContact('c', 'Carol Three', { emails: ['shared@example.com'] }),
+    ];
+    const dismissed = new Set(['a|b']);
+    const pairs = findDuplicatePairs(contacts, dismissed);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].reason).toBe('email');
+    // C must not be left unpaired.
+    expect([pairs[0].a.id, pairs[0].b.id]).toContain('c');
+  });
+
+  it('detects (B,C) by email when both (A,B) and (A,C) are dismissed', () => {
+    const contacts = [
+      makeContact('a', 'Alice One', { emails: ['shared@example.com'] }),
+      makeContact('b', 'Bob Two', { emails: ['shared@example.com'] }),
+      makeContact('c', 'Carol Three', { emails: ['shared@example.com'] }),
+    ];
+    const dismissed = new Set(['a|b', 'a|c']);
+    const pairs = findDuplicatePairs(contacts, dismissed);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].reason).toBe('email');
+    expect(new Set([pairs[0].a.id, pairs[0].b.id])).toEqual(new Set(['b', 'c']));
+  });
+
+  it('detects (B,C) by phone when both (A,B) and (A,C) are dismissed', () => {
+    const contacts = [
+      makeContact('a', 'Alice One', { phones: ['202-456-1111'] }),
+      makeContact('b', 'Bob Two', { phones: ['202-456-1111'] }),
+      makeContact('c', 'Carol Three', { phones: ['202-456-1111'] }),
+    ];
+    const dismissed = new Set(['a|b', 'a|c']);
+    const pairs = findDuplicatePairs(contacts, dismissed);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].reason).toBe('phone');
+    expect(new Set([pairs[0].a.id, pairs[0].b.id])).toEqual(new Set(['b', 'c']));
+  });
+
+  it('unaffected baseline: two contacts sharing an email with nothing dismissed still produce exactly one pair', () => {
+    const contacts = [
+      makeContact('a', 'Alice One', { emails: ['shared@example.com'] }),
+      makeContact('b', 'Bob Two', { emails: ['shared@example.com'] }),
+    ];
+    const pairs = findDuplicatePairs(contacts);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].reason).toBe('email');
+    expect(new Set([pairs[0].a.id, pairs[0].b.id])).toEqual(new Set(['a', 'b']));
+  });
+});
+
 describe('findDuplicatePairs — empty-digit phone string (#291 / dedup edge case)', () => {
   it('does not crash when a phone contains only non-digit characters', () => {
     const contacts = [
