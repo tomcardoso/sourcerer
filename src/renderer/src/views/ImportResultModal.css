@@ -69,3 +69,10 @@
   color: var(--color-danger);
   margin: 0 0 10px;
 }
+
+.ir-dropped-note {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  margin: 0;
+}

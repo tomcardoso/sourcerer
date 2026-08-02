@@ -67,7 +67,7 @@ type ExportFormat = 'sourcerer' | 'gmail' | 'outlook';
 
 // Fields common to every contact row, independent of export format. Link
 // columns keep raw per-type URL arrays (rather than a pre-joined string) so
-// gmail/outlook mapping can cap them to a fixed number of slots.
+// the gmail/outlook builders can slot them into per-format URL columns.
 interface NormalizedContactCore {
   name: string;
   organization: string;
@@ -85,36 +85,6 @@ interface NormalizedContactCore {
   other: string[];
 }
 
-interface GmailCsvRow {
-  Name: string;
-  'Given Name': string;
-  'Family Name': string;
-  'E-mail 1 - Value': string;
-  'E-mail 2 - Value': string;
-  'Phone 1 - Value': string;
-  'Phone 2 - Value': string;
-  'Organization 1 - Name': string;
-  'Organization 1 - Title': string;
-  'Website 1 - Value': string;
-  'Website 2 - Value': string;
-  Birthday: string;
-  Notes: string;
-}
-
-interface OutlookCsvRow {
-  'First Name': string;
-  'Last Name': string;
-  'E-mail Address': string;
-  'E-mail 2 Address': string;
-  'Business Phone': string;
-  'Mobile Phone': string;
-  Company: string;
-  'Job Title': string;
-  'Web Page': string;
-  Birthday: string;
-  Notes: string;
-}
-
 // Gmail/Outlook only have one free-text "name" field split into given/family
 // (or first/last) parts, unlike Sourcerer's single display name — split on
 // the first space as a best effort.
@@ -125,45 +95,58 @@ function splitName(name: string): { first: string; last: string } {
 }
 
 // Sourcerer's LinkedIn/Facebook/Instagram/X/Website/Other link types have no
-// equivalent in Gmail/Outlook's schemas, which each expose only 1-2 generic
-// URL slots. Flatten every link into that fixed slot count, prioritizing
-// LinkedIn and X since those are the profiles reporters look up most.
-function toGmailCsvRow(c: NormalizedContactCore): GmailCsvRow {
-  const { first, last } = splitName(c.name);
-  const websites = [...c.linkedin, ...c.x, ...c.website, ...c.facebook, ...c.instagram, ...c.other];
-  return {
-    Name: c.name,
-    'Given Name': first,
-    'Family Name': last,
-    'E-mail 1 - Value': c.emails[0] ?? '',
-    'E-mail 2 - Value': c.emails[1] ?? '',
-    'Phone 1 - Value': c.phones[0] ?? '',
-    'Phone 2 - Value': c.phones[1] ?? '',
-    'Organization 1 - Name': c.organization,
-    'Organization 1 - Title': c.title,
-    'Website 1 - Value': websites[0] ?? '',
-    'Website 2 - Value': websites[1] ?? '',
-    Birthday: c.dob,
-    Notes: c.notes,
-  };
+// equivalent in Gmail/Outlook's schemas, which each expose only generic URL
+// slots. Flatten every link into that slot list, prioritizing LinkedIn and X
+// since those are the profiles reporters look up most.
+function combinedWebsites(c: NormalizedContactCore): string[] {
+  return [...c.linkedin, ...c.x, ...c.website, ...c.facebook, ...c.instagram, ...c.other];
 }
 
-function toOutlookCsvRow(c: NormalizedContactCore): OutlookCsvRow {
-  const { first, last } = splitName(c.name);
-  const websites = [...c.linkedin, ...c.x, ...c.website, ...c.facebook, ...c.instagram, ...c.other];
-  return {
-    'First Name': first,
-    'Last Name': last,
-    'E-mail Address': c.emails[0] ?? '',
-    'E-mail 2 Address': c.emails[1] ?? '',
-    'Business Phone': c.phones[0] ?? '',
-    'Mobile Phone': c.phones[1] ?? '',
-    Company: c.organization,
-    'Job Title': c.title,
-    'Web Page': websites[0] ?? '',
-    Birthday: c.dob,
-    Notes: c.notes,
-  };
+// Google's contacts CSV supports an arbitrary number of "E-mail N - Value" /
+// "Phone N - Value" / "Website N - Value" columns, so widen to however many
+// slots the widest contact in this export actually needs, rather than a
+// fixed cap that would silently drop data.
+function buildGmailCsvRows(contacts: NormalizedContactCore[]): Record<string, string>[] {
+  const emailCount = Math.max(1, ...contacts.map((c) => c.emails.length));
+  const phoneCount = Math.max(1, ...contacts.map((c) => c.phones.length));
+  const websiteCount = Math.max(1, ...contacts.map((c) => combinedWebsites(c).length));
+
+  return contacts.map((c) => {
+    const { first, last } = splitName(c.name);
+    const websites = combinedWebsites(c);
+    const row: Record<string, string> = { Name: c.name, 'Given Name': first, 'Family Name': last };
+    for (let i = 0; i < emailCount; i++) row[`E-mail ${i + 1} - Value`] = c.emails[i] ?? '';
+    for (let i = 0; i < phoneCount; i++) row[`Phone ${i + 1} - Value`] = c.phones[i] ?? '';
+    row['Organization Name'] = c.organization;
+    row['Organization Title'] = c.title;
+    for (let i = 0; i < websiteCount; i++) row[`Website ${i + 1} - Value`] = websites[i] ?? '';
+    row['Birthday'] = c.dob;
+    row['Notes'] = c.notes;
+    return row;
+  });
+}
+
+// Unlike Gmail, Outlook's contact schema is a fixed set of named fields, not
+// a numbered/expandable one — it has no way to represent a 4th email or a
+// 7th phone number, so those columns are simply all the slots it has.
+const OUTLOOK_PHONE_HEADERS = ['Business Phone', 'Business Phone 2', 'Home Phone', 'Home Phone 2', 'Mobile Phone', 'Other Phone'];
+const OUTLOOK_EMAIL_HEADERS = ['E-mail Address', 'E-mail 2 Address', 'E-mail 3 Address'];
+const OUTLOOK_WEB_HEADERS = ['Web Page', 'Personal Web Page'];
+
+function buildOutlookCsvRows(contacts: NormalizedContactCore[]): Record<string, string>[] {
+  return contacts.map((c) => {
+    const { first, last } = splitName(c.name);
+    const websites = combinedWebsites(c);
+    const row: Record<string, string> = { 'First Name': first, 'Last Name': last };
+    OUTLOOK_EMAIL_HEADERS.forEach((header, i) => { row[header] = c.emails[i] ?? ''; });
+    OUTLOOK_PHONE_HEADERS.forEach((header, i) => { row[header] = c.phones[i] ?? ''; });
+    row['Company'] = c.organization;
+    row['Job Title'] = c.title;
+    OUTLOOK_WEB_HEADERS.forEach((header, i) => { row[header] = websites[i] ?? ''; });
+    row['Birthday'] = c.dob;
+    row['Notes'] = c.notes;
+    return row;
+  });
 }
 
 // SQLite's SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999. Chunk IN-clause lookups
@@ -422,8 +405,8 @@ export function registerExportHandlers(): void {
         }
       }
 
-      if (format === 'gmail') return writeExportRows(normalizedRows.map(toGmailCsvRow), filePath, false);
-      if (format === 'outlook') return writeExportRows(normalizedRows.map(toOutlookCsvRow), filePath, false);
+      if (format === 'gmail') return writeExportRows(buildGmailCsvRows(normalizedRows), filePath, false);
+      if (format === 'outlook') return writeExportRows(buildOutlookCsvRows(normalizedRows), filePath, false);
 
       const rows: ExportRow[] = normalizedRows.map((r) => ({
         Name: r.name,
@@ -547,8 +530,8 @@ export function registerExportHandlers(): void {
         }
       }
 
-      if (format === 'gmail') return writeExportRows(normalizedRows.map(toGmailCsvRow), filePath, false);
-      if (format === 'outlook') return writeExportRows(normalizedRows.map(toOutlookCsvRow), filePath, false);
+      if (format === 'gmail') return writeExportRows(buildGmailCsvRows(normalizedRows), filePath, false);
+      if (format === 'outlook') return writeExportRows(buildOutlookCsvRows(normalizedRows), filePath, false);
 
       const rows: AllContactsRow[] = normalizedRows.map((r) => ({
         Name: r.name,
