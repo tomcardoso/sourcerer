@@ -65,6 +65,129 @@ export function parseCsv(text: string): string[][] {
   return result;
 }
 
+const REMAPPED_HEADERS = ['Name', 'Organization', 'Title', 'DOB', 'Notes', 'Email', 'Phone', 'LinkedIn', 'X', 'Website'];
+
+// Google/Outlook birthdays show up as ISO dates, Google's "year unknown" form
+// (--MM-DD), or Outlook's locale date (M/D/YYYY). Anything else is discarded,
+// same as a malformed DOB in a native Sourcerer CSV.
+function normalizeBirthday(value: string): string {
+  const v = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const mdy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    const [, m, d, y] = mdy;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return '';
+}
+
+// Google/Outlook exports lump social profile URLs in with generic "website"
+// fields. Route LinkedIn/X URLs to their own columns so they land in the
+// contact_links rows processImportRows already knows how to type correctly.
+function splitSocialLinks(urls: string[]): { linkedin: string; x: string; websites: string[] } {
+  let linkedin = '';
+  let x = '';
+  const websites: string[] = [];
+  for (const url of urls) {
+    const lower = url.toLowerCase();
+    if (!linkedin && lower.includes('linkedin.com')) linkedin = url;
+    else if (!x && (lower.includes('twitter.com') || lower.includes('x.com'))) x = url;
+    else websites.push(url);
+  }
+  return { linkedin, x, websites };
+}
+
+function colsMatching(headerRow: string[], pattern: RegExp): number[] {
+  const idxs: number[] = [];
+  headerRow.forEach((h, i) => { if (pattern.test(h.trim().toLowerCase())) idxs.push(i); });
+  return idxs;
+}
+
+type CsvSource = 'gmail' | 'outlook' | 'generic';
+
+function detectCsvSource(headerRow: string[]): CsvSource {
+  const set = new Set(headerRow.map((h) => h.trim().toLowerCase()));
+  if (set.has('e-mail 1 - value')) return 'gmail';
+  if (set.has('e-mail address') && set.has('first name') && set.has('last name')) return 'outlook';
+  return 'generic';
+}
+
+function remapGmailRows(rows: string[][]): string[][] {
+  const headerRow = rows[0];
+  const header = headerRow.map((h) => h.trim().toLowerCase());
+  const idx = (name: string) => header.indexOf(name);
+  const emailIdxs = colsMatching(headerRow, /^e-mail \d+ - value$/);
+  const phoneIdxs = colsMatching(headerRow, /^phone \d+ - value$/);
+  const websiteIdxs = colsMatching(headerRow, /^website \d+ - value$/);
+
+  const nameIdx = idx('name');
+  const givenIdx = idx('given name');
+  const familyIdx = idx('family name');
+  const orgIdx = idx('organization 1 - name');
+  const titleIdx = idx('organization 1 - title');
+  const notesIdx = idx('notes');
+  const bdayIdx = idx('birthday');
+
+  const out: string[][] = [REMAPPED_HEADERS];
+  for (const row of rows.slice(1)) {
+    const get = (i: number) => (i >= 0 ? (row[i] ?? '').trim() : '');
+    const name = get(nameIdx) || [get(givenIdx), get(familyIdx)].filter(Boolean).join(' ').trim();
+    const emails = emailIdxs.map(get).filter(Boolean);
+    const phones = phoneIdxs.map(get).filter(Boolean);
+    const { linkedin, x, websites } = splitSocialLinks(websiteIdxs.map(get).filter(Boolean));
+
+    out.push([
+      name, get(orgIdx), get(titleIdx), normalizeBirthday(get(bdayIdx)), get(notesIdx),
+      emails.join(';'), phones.join(';'), linkedin, x, websites.join(';'),
+    ]);
+  }
+  return out;
+}
+
+function remapOutlookRows(rows: string[][]): string[][] {
+  const headerRow = rows[0];
+  const header = headerRow.map((h) => h.trim().toLowerCase());
+  const idx = (name: string) => header.indexOf(name);
+
+  const firstIdx = idx('first name');
+  const lastIdx = idx('last name');
+  const companyIdx = idx('company');
+  const jobTitleIdx = idx('job title');
+  const notesIdx = idx('notes');
+  const bdayIdx = idx('birthday');
+  const webIdx = idx('web page');
+  const emailIdxs = ['e-mail address', 'e-mail 2 address', 'e-mail 3 address'].map(idx).filter((i) => i >= 0);
+  const phoneIdxs = ['business phone', 'business phone 2', 'home phone', 'home phone 2', 'mobile phone', 'other phone']
+    .map(idx)
+    .filter((i) => i >= 0);
+
+  const out: string[][] = [REMAPPED_HEADERS];
+  for (const row of rows.slice(1)) {
+    const get = (i: number) => (i >= 0 ? (row[i] ?? '').trim() : '');
+    const name = [get(firstIdx), get(lastIdx)].filter(Boolean).join(' ').trim();
+    const emails = emailIdxs.map(get).filter(Boolean);
+    const phones = phoneIdxs.map(get).filter(Boolean);
+    const { linkedin, x, websites } = splitSocialLinks(webIdx >= 0 && get(webIdx) ? [get(webIdx)] : []);
+
+    out.push([
+      name, get(companyIdx), get(jobTitleIdx), normalizeBirthday(get(bdayIdx)), get(notesIdx),
+      emails.join(';'), phones.join(';'), linkedin, x, websites.join(';'),
+    ]);
+  }
+  return out;
+}
+
+// Detects Gmail's and Outlook's contact-export CSV header shapes and remaps
+// them onto Sourcerer's own column vocabulary so processImportRows doesn't
+// need to know about either format. Anything else passes through unchanged.
+export function remapKnownCsvFormat(rows: string[][]): string[][] {
+  if (rows.length === 0) return rows;
+  const source = detectCsvSource(rows[0]);
+  if (source === 'gmail') return remapGmailRows(rows);
+  if (source === 'outlook') return remapOutlookRows(rows);
+  return rows;
+}
+
 export interface VcfContact {
   name: string;
   organization: string | null;
@@ -424,7 +547,7 @@ export function registerImportHandlers(): void {
       if (stat.size > 50 * 1024 * 1024) return { imported: 0, skipped: [], cancelled: false, error: 'File too large (max 50 MB).' };
 
       const content = await fs.readFile(filePaths[0], 'utf-8');
-      const rows = parseCsv(content);
+      const rows = remapKnownCsvFormat(parseCsv(content));
       const db = getDatabase();
 
       const { phone_country } = db

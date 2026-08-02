@@ -151,7 +151,7 @@ declare global {
       setTheme: (mode: ThemeMode) => Promise<User>;
 
       // Export
-      exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[]) => Promise<{ success: boolean; error?: string }>;
+      exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[], format?: 'sourcerer' | 'gmail' | 'outlook') => Promise<{ success: boolean; error?: string }>;
 
       // Sync
       triggerSync: (projectId: string) => Promise<SyncStatusEvent>;
@@ -195,7 +195,7 @@ declare global {
       exportVCardContact: (contactId: string) => Promise<void>;
       exportVCardProject: (projectId: string, contactIds?: string[]) => Promise<void>;
       exportVCardAllContacts: (contactIds?: string[]) => Promise<void>;
-      exportAllContacts: (contactIds?: string[]) => Promise<{ success: boolean; error?: string }>;
+      exportAllContacts: (contactIds?: string[], format?: 'sourcerer' | 'gmail' | 'outlook') => Promise<{ success: boolean; error?: string }>;
 
       // CSV / vCard import
       importCsv: (data: { projectId?: string }) => Promise<ImportResult>;

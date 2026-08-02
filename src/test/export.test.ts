@@ -151,3 +151,45 @@ describe('export:all-contacts — sub-table data (#442 refactor)', () => {
     expect(content).toContain('signal: @alice');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Gmail / Outlook CSV export formats (#463)
+// ---------------------------------------------------------------------------
+
+describe('export:all-contacts — gmail/outlook formats', () => {
+  it('writes Gmail-shaped headers and splits the name into Given/Family Name', async () => {
+    insertContact(testDb, 'Alice Smith', { org: 'Acme Corp', title: 'Reporter', emails: ['alice@example.com'], phones: ['+12025550100'] });
+    const filePath = join(dir, 'gmail.csv');
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>);
+
+    const result = await handlers.get('export:all-contacts')!({ sender: {} }, { format: 'gmail' }) as { success: boolean };
+
+    expect(result.success).toBe(true);
+    const [header, row] = readFileSync(filePath, 'utf-8').trim().split('\n');
+    expect(header).toContain('Given Name');
+    expect(header).toContain('E-mail 1 - Value');
+    expect(header).toContain('Organization 1 - Name');
+    expect(row).toContain('Alice');
+    expect(row).toContain('Smith');
+    expect(row).toContain('alice@example.com');
+    expect(row).toContain('Acme Corp');
+  });
+
+  it('writes Outlook-shaped headers and splits the name into First/Last Name', async () => {
+    insertContact(testDb, 'Bob Jones', { org: 'Globe Media', title: 'Editor', emails: ['bob@example.com'], phones: ['+12025550100'] });
+    const filePath = join(dir, 'outlook.csv');
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>);
+
+    const result = await handlers.get('export:all-contacts')!({ sender: {} }, { format: 'outlook' }) as { success: boolean };
+
+    expect(result.success).toBe(true);
+    const [header, row] = readFileSync(filePath, 'utf-8').trim().split('\n');
+    expect(header).toContain('First Name');
+    expect(header).toContain('E-mail Address');
+    expect(header).toContain('Company');
+    expect(row).toContain('Bob');
+    expect(row).toContain('Jones');
+    expect(row).toContain('bob@example.com');
+    expect(row).toContain('Globe Media');
+  });
+});

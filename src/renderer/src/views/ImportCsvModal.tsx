@@ -57,8 +57,9 @@ export default function ImportCsvModal({ projects, preselectedProjectId, onCompl
         {format === 'csv' ? (
           <>
             <p className="form-description">
-              Import a spreadsheet of contacts. Your file must use the following column headers
-              (extra columns are ignored):
+              Import a spreadsheet of contacts. CSV files exported from Gmail or Outlook contacts
+              are detected automatically. Otherwise, your file must use the following column
+              headers (extra columns are ignored):
             </p>
 
             <div className="icm-columns">

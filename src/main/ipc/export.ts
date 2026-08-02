@@ -63,6 +63,109 @@ interface AllContactsRow {
   'Interaction log': string;
 }
 
+type ExportFormat = 'sourcerer' | 'gmail' | 'outlook';
+
+// Fields common to every contact row, independent of export format. Link
+// columns keep raw per-type URL arrays (rather than a pre-joined string) so
+// gmail/outlook mapping can cap them to a fixed number of slots.
+interface NormalizedContactCore {
+  name: string;
+  organization: string;
+  title: string;
+  dob: string;
+  notes: string;
+  emails: string[];
+  phones: string[];
+  handles: string;
+  linkedin: string[];
+  facebook: string[];
+  instagram: string[];
+  x: string[];
+  website: string[];
+  other: string[];
+}
+
+interface GmailCsvRow {
+  Name: string;
+  'Given Name': string;
+  'Family Name': string;
+  'E-mail 1 - Value': string;
+  'E-mail 2 - Value': string;
+  'Phone 1 - Value': string;
+  'Phone 2 - Value': string;
+  'Organization 1 - Name': string;
+  'Organization 1 - Title': string;
+  'Website 1 - Value': string;
+  'Website 2 - Value': string;
+  Birthday: string;
+  Notes: string;
+}
+
+interface OutlookCsvRow {
+  'First Name': string;
+  'Last Name': string;
+  'E-mail Address': string;
+  'E-mail 2 Address': string;
+  'Business Phone': string;
+  'Mobile Phone': string;
+  Company: string;
+  'Job Title': string;
+  'Web Page': string;
+  Birthday: string;
+  Notes: string;
+}
+
+// Gmail/Outlook only have one free-text "name" field split into given/family
+// (or first/last) parts, unlike Sourcerer's single display name — split on
+// the first space as a best effort.
+function splitName(name: string): { first: string; last: string } {
+  const spaceIdx = name.indexOf(' ');
+  if (spaceIdx < 0) return { first: name, last: '' };
+  return { first: name.slice(0, spaceIdx), last: name.slice(spaceIdx + 1) };
+}
+
+// Sourcerer's LinkedIn/Facebook/Instagram/X/Website/Other link types have no
+// equivalent in Gmail/Outlook's schemas, which each expose only 1-2 generic
+// URL slots. Flatten every link into that fixed slot count, prioritizing
+// LinkedIn and X since those are the profiles reporters look up most.
+function toGmailCsvRow(c: NormalizedContactCore): GmailCsvRow {
+  const { first, last } = splitName(c.name);
+  const websites = [...c.linkedin, ...c.x, ...c.website, ...c.facebook, ...c.instagram, ...c.other];
+  return {
+    Name: c.name,
+    'Given Name': first,
+    'Family Name': last,
+    'E-mail 1 - Value': c.emails[0] ?? '',
+    'E-mail 2 - Value': c.emails[1] ?? '',
+    'Phone 1 - Value': c.phones[0] ?? '',
+    'Phone 2 - Value': c.phones[1] ?? '',
+    'Organization 1 - Name': c.organization,
+    'Organization 1 - Title': c.title,
+    'Website 1 - Value': websites[0] ?? '',
+    'Website 2 - Value': websites[1] ?? '',
+    Birthday: c.dob,
+    Notes: c.notes,
+  };
+}
+
+function toOutlookCsvRow(c: NormalizedContactCore): OutlookCsvRow {
+  const { first, last } = splitName(c.name);
+  const websites = [...c.linkedin, ...c.x, ...c.website, ...c.facebook, ...c.instagram, ...c.other];
+  return {
+    'First Name': first,
+    'Last Name': last,
+    'E-mail Address': c.emails[0] ?? '',
+    'E-mail 2 Address': c.emails[1] ?? '',
+    'Business Phone': c.phones[0] ?? '',
+    'Mobile Phone': c.phones[1] ?? '',
+    Company: c.organization,
+    'Job Title': c.title,
+    'Web Page': websites[0] ?? '',
+    Birthday: c.dob,
+    Notes: c.notes,
+  };
+}
+
 // SQLite's SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999. Chunk IN-clause lookups
 // to stay safely below that limit; concatenates results across chunks.
 const SQLITE_IN_CHUNK_SIZE = 500;
@@ -182,7 +285,7 @@ export function registerExportHandlers(): void {
     'export:project',
     async (
       event,
-      { projectId, mode, contactIds: filterIds }: { projectId: string; mode: ExportMode; contactIds?: string[] },
+      { projectId, mode, contactIds: filterIds, format = 'sourcerer' }: { projectId: string; mode: ExportMode; contactIds?: string[]; format?: ExportFormat },
     ): Promise<{ success: boolean; error?: string }> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const db = getDatabase();
@@ -192,14 +295,22 @@ export function registerExportHandlers(): void {
         | undefined;
       if (!project) return { success: false, error: 'Project not found.' };
 
-      const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
-        title: 'Export project contacts',
-        defaultPath: `${project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-contacts-${filenameDateStamp()}`,
-        filters: [
-          { name: 'CSV', extensions: ['csv'] },
-          { name: 'Excel', extensions: ['xlsx'] },
-        ],
-      });
+      const safeProjectName = project.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      // Gmail/Outlook only import from CSV, not XLSX, so skip the format choice.
+      const saveResult = format === 'sourcerer'
+        ? await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+            title: 'Export project contacts',
+            defaultPath: `${safeProjectName}-contacts-${filenameDateStamp()}`,
+            filters: [
+              { name: 'CSV', extensions: ['csv'] },
+              { name: 'Excel', extensions: ['xlsx'] },
+            ],
+          })
+        : await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+            title: `Export project contacts (${format === 'gmail' ? 'Gmail' : 'Outlook'} CSV)`,
+            defaultPath: `${safeProjectName}-contacts-${format}-${filenameDateStamp()}.csv`,
+            filters: [{ name: 'CSV', extensions: ['csv'] }],
+          });
       if (saveResult.canceled || !saveResult.filePath) return { success: false };
 
       const filePath = saveResult.filePath;
@@ -241,7 +352,9 @@ export function registerExportHandlers(): void {
       const { emails: emailsByContact, phones: phonesByContact, links: linksByContact, handles: handlesByContact } = fetchContactSubTables(db, contactIds);
 
       type LogRow = { id: string; membership_id: string; reporter_name: string; body: string; created_at: number };
-      const rows: ExportRow[] = [];
+      const normalizedRows: (NormalizedContactCore & {
+        reporter: string; theme: string; priority: string; status: string; firstOutreach: string; interactionLog: string;
+      })[] = [];
 
       for (let ci = 0; ci < memberships.length; ci += EXPORT_CHUNK_SIZE) {
         const chunk = memberships.slice(ci, ci + EXPORT_CHUNK_SIZE);
@@ -274,40 +387,66 @@ export function registerExportHandlers(): void {
         }
 
         for (const m of chunk) {
-          const emails = (emailsByContact.get(m.contact_id) ?? []).join('; ');
-          const phones = (phonesByContact.get(m.contact_id) ?? []).join('; ');
+          const emails = emailsByContact.get(m.contact_id) ?? [];
+          const phones = phonesByContact.get(m.contact_id) ?? [];
           const handles = (handlesByContact.get(m.contact_id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; ');
           const links = linksByContact.get(m.contact_id) ?? [];
-          const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+          const byType = (type: string) => links.filter((l) => l.type === type).map((l) => l.url);
           const logStrings = logsByMembership.get(m.membership_id) ?? [];
           const interactionLog = mode === 'full' ? logStrings.join('\n') : '';
           logsByMembership.delete(m.membership_id);
-          rows.push({
-            Name: m.name,
-            Organization: m.organization ?? '',
-            Title: m.title ?? '',
-            DOB: m.dob ?? '',
-            Emails: emails,
-            Phones: phones,
-            Handles: handles,
-            LinkedIn: byType('linkedin'),
-            Facebook: byType('facebook'),
-            Instagram: byType('instagram'),
-            X: byType('x'),
-            Website: byType('website'),
-            'Other links': byType('other'),
-            Notes: mode === 'full' ? (m.notes ?? '') : '',
-            Reporter: m.reporter_name,
-            Theme: m.theme ?? '',
-            Priority: m.priority ?? '',
-            Status: m.status ?? '',
-            'First outreach': m.first_log_at
+          normalizedRows.push({
+            name: m.name,
+            organization: m.organization ?? '',
+            title: m.title ?? '',
+            dob: m.dob ?? '',
+            emails,
+            phones,
+            handles,
+            linkedin: byType('linkedin'),
+            facebook: byType('facebook'),
+            instagram: byType('instagram'),
+            x: byType('x'),
+            website: byType('website'),
+            other: byType('other'),
+            notes: mode === 'full' ? (m.notes ?? '') : '',
+            reporter: m.reporter_name,
+            theme: m.theme ?? '',
+            priority: m.priority ?? '',
+            status: m.status ?? '',
+            firstOutreach: m.first_log_at
               ? new Date(m.first_log_at * 1000).toLocaleDateString()
               : '',
-            'Interaction log': interactionLog,
+            interactionLog,
           });
         }
       }
+
+      if (format === 'gmail') return writeExportRows(normalizedRows.map(toGmailCsvRow), filePath, false);
+      if (format === 'outlook') return writeExportRows(normalizedRows.map(toOutlookCsvRow), filePath, false);
+
+      const rows: ExportRow[] = normalizedRows.map((r) => ({
+        Name: r.name,
+        Organization: r.organization,
+        Title: r.title,
+        DOB: r.dob,
+        Emails: r.emails.join('; '),
+        Phones: r.phones.join('; '),
+        Handles: r.handles,
+        LinkedIn: r.linkedin.join('; '),
+        Facebook: r.facebook.join('; '),
+        Instagram: r.instagram.join('; '),
+        X: r.x.join('; '),
+        Website: r.website.join('; '),
+        'Other links': r.other.join('; '),
+        Notes: r.notes,
+        Reporter: r.reporter,
+        Theme: r.theme,
+        Priority: r.priority,
+        Status: r.status,
+        'First outreach': r.firstOutreach,
+        'Interaction log': r.interactionLog,
+      }));
 
       return writeExportRows(rows, filePath, isXlsx);
     },
@@ -315,18 +454,26 @@ export function registerExportHandlers(): void {
 
   ipcMain.handle(
     'export:all-contacts',
-    async (event, { contactIds: filterIds }: { contactIds?: string[] } = {}): Promise<{ success: boolean; error?: string }> => {
+    async (event, { contactIds: filterIds, format = 'sourcerer' }: { contactIds?: string[]; format?: ExportFormat } = {}): Promise<{ success: boolean; error?: string }> => {
       const win = BrowserWindow.fromWebContents(event.sender);
       const db = getDatabase();
 
-      const saveResult = await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
-        title: 'Export contacts',
-        defaultPath: filterIds?.length ? `selected-contacts-${filenameDateStamp()}` : `all-contacts-${filenameDateStamp()}`,
-        filters: [
-          { name: 'CSV', extensions: ['csv'] },
-          { name: 'Excel', extensions: ['xlsx'] },
-        ],
-      });
+      const baseName = filterIds?.length ? 'selected-contacts' : 'all-contacts';
+      // Gmail/Outlook only import from CSV, not XLSX, so skip the format choice.
+      const saveResult = format === 'sourcerer'
+        ? await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+            title: 'Export contacts',
+            defaultPath: `${baseName}-${filenameDateStamp()}`,
+            filters: [
+              { name: 'CSV', extensions: ['csv'] },
+              { name: 'Excel', extensions: ['xlsx'] },
+            ],
+          })
+        : await dialog.showSaveDialog(win ?? BrowserWindow.getFocusedWindow()!, {
+            title: `Export contacts (${format === 'gmail' ? 'Gmail' : 'Outlook'} CSV)`,
+            defaultPath: `${baseName}-${format}-${filenameDateStamp()}.csv`,
+            filters: [{ name: 'CSV', extensions: ['csv'] }],
+          });
       if (saveResult.canceled || !saveResult.filePath) return { success: false };
 
       const filePath = saveResult.filePath;
@@ -345,7 +492,7 @@ export function registerExportHandlers(): void {
       const { emails: emailsById, phones: phonesById, links: linksById, handles: handlesById } = fetchContactSubTables(db, allContactIds);
 
       type LogRow2 = { id: string; contact_id: string; reporter_name: string; body: string; created_at: number };
-      const rows: AllContactsRow[] = [];
+      const normalizedRows: (NormalizedContactCore & { interactionLog: string })[] = [];
 
       for (let ci2 = 0; ci2 < contacts.length; ci2 += EXPORT_CHUNK_SIZE) {
         const chunk2 = contacts.slice(ci2, ci2 + EXPORT_CHUNK_SIZE);
@@ -377,28 +524,49 @@ export function registerExportHandlers(): void {
 
         for (const c of chunk2) {
           const links = linksById.get(c.id) ?? [];
-          const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url).join('; ');
+          const byType2 = (type: string) => links.filter((l) => l.type === type).map((l) => l.url);
           const interactionLog = (logsByContactId.get(c.id) ?? []).join('\n');
           logsByContactId.delete(c.id);
-          rows.push({
-            Name: c.name,
-            Organization: c.organization ?? '',
-            Title: c.title ?? '',
-            DOB: c.dob ?? '',
-            Emails: (emailsById.get(c.id) ?? []).join('; '),
-            Phones: (phonesById.get(c.id) ?? []).join('; '),
-            Handles: (handlesById.get(c.id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; '),
-            LinkedIn: byType2('linkedin'),
-            Facebook: byType2('facebook'),
-            Instagram: byType2('instagram'),
-            X: byType2('x'),
-            Website: byType2('website'),
-            'Other links': byType2('other'),
-            Notes: c.notes ?? '',
-            'Interaction log': interactionLog,
+          normalizedRows.push({
+            name: c.name,
+            organization: c.organization ?? '',
+            title: c.title ?? '',
+            dob: c.dob ?? '',
+            emails: emailsById.get(c.id) ?? [],
+            phones: phonesById.get(c.id) ?? [],
+            handles: (handlesById.get(c.id) ?? []).map((h) => `${h.type}: ${h.handle}`).join('; '),
+            linkedin: byType2('linkedin'),
+            facebook: byType2('facebook'),
+            instagram: byType2('instagram'),
+            x: byType2('x'),
+            website: byType2('website'),
+            other: byType2('other'),
+            notes: c.notes ?? '',
+            interactionLog,
           });
         }
       }
+
+      if (format === 'gmail') return writeExportRows(normalizedRows.map(toGmailCsvRow), filePath, false);
+      if (format === 'outlook') return writeExportRows(normalizedRows.map(toOutlookCsvRow), filePath, false);
+
+      const rows: AllContactsRow[] = normalizedRows.map((r) => ({
+        Name: r.name,
+        Organization: r.organization,
+        Title: r.title,
+        DOB: r.dob,
+        Emails: r.emails.join('; '),
+        Phones: r.phones.join('; '),
+        Handles: r.handles,
+        LinkedIn: r.linkedin.join('; '),
+        Facebook: r.facebook.join('; '),
+        Instagram: r.instagram.join('; '),
+        X: r.x.join('; '),
+        Website: r.website.join('; '),
+        'Other links': r.other.join('; '),
+        Notes: r.notes,
+        'Interaction log': r.interactionLog,
+      }));
 
       return writeExportRows(rows, filePath, isXlsx);
     },
