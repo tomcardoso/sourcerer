@@ -339,6 +339,7 @@ export interface ImportResult {
   skipped: Array<{ name: string; reason: 'name' | 'email' | 'missing-name' }>;
   cancelled: boolean;
   error?: string;
+  droppedFields?: string[];
 }
 
 export interface ContactAlertRss {

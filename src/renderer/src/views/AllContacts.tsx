@@ -84,10 +84,10 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
   useClickOutside(bulkProjectMenuRef, handleCloseBulkProjectMenu, { isOpen: bulkProjectMenuOpen });
   useClickOutside(exportMenuRef, handleCloseExportMenu, { isOpen: showExportMenu });
 
-  async function handleExportAll() {
+  async function handleExportAll(format?: 'gmail' | 'outlook') {
     setShowExportMenu(false);
     setExporting(true);
-    await window.sourcerer.exportAllContacts(checkedIds.size > 0 ? [...checkedIds] : undefined);
+    await window.sourcerer.exportAllContacts(checkedIds.size > 0 ? [...checkedIds] : undefined, format);
     setExporting(false);
   }
 
@@ -330,7 +330,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
               </button>
               {showExportMenu && (
                 <div className="export-menu">
-                  <button className="export-menu-item" onClick={handleExportAll}>
+                  <button className="export-menu-item" onClick={() => handleExportAll()}>
                     <span className="export-menu-label">Export as CSV / Excel</span>
                     <span className="export-menu-desc">Name, organization, emails, phones, notes</span>
                   </button>
@@ -340,6 +340,14 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
                   >
                     <span className="export-menu-label">Export as vCard</span>
                     <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
+                  </button>
+                  <button className="export-menu-item" onClick={() => handleExportAll('gmail')}>
+                    <span className="export-menu-label">Export as Gmail CSV</span>
+                    <span className="export-menu-desc">Ready to re-import into Google Contacts</span>
+                  </button>
+                  <button className="export-menu-item" onClick={() => handleExportAll('outlook')}>
+                    <span className="export-menu-label">Export as Outlook CSV</span>
+                    <span className="export-menu-desc">Ready to re-import into Outlook contacts</span>
                   </button>
                 </div>
               )}

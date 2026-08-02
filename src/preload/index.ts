@@ -225,8 +225,8 @@ const sourcererApi = {
   setTheme: (mode: ThemeMode): Promise<User> => ipcRenderer.invoke('settings:set-theme', mode),
 
   // Export
-  exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[]): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('export:project', { projectId, mode, contactIds }),
+  exportProject: (projectId: string, mode: 'full' | 'sanitized', contactIds?: string[], format?: 'sourcerer' | 'gmail' | 'outlook'): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('export:project', { projectId, mode, contactIds, format }),
   exportBackup: (password: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('backup:export', { password }),
   restoreBackup: (password: string): Promise<{ success: boolean; canceled?: boolean; error?: string }> =>
@@ -342,8 +342,8 @@ const sourcererApi = {
     ipcRenderer.invoke('export:vcard-project', { projectId, contactIds }),
   exportVCardAllContacts: (contactIds?: string[]): Promise<void> =>
     ipcRenderer.invoke('export:vcard-all-contacts', { contactIds }),
-  exportAllContacts: (contactIds?: string[]): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('export:all-contacts', { contactIds }),
+  exportAllContacts: (contactIds?: string[], format?: 'sourcerer' | 'gmail' | 'outlook'): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('export:all-contacts', { contactIds, format }),
 
   // CSV / vCard import
   importCsv: (data: { projectId?: string }): Promise<ImportResult> =>

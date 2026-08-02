@@ -151,3 +151,84 @@ describe('export:all-contacts — sub-table data (#442 refactor)', () => {
     expect(content).toContain('signal: @alice');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Gmail / Outlook CSV export formats (#463)
+// ---------------------------------------------------------------------------
+
+describe('export:all-contacts — gmail/outlook formats', () => {
+  it('writes Gmail-shaped headers and splits the name into Given/Family Name', async () => {
+    insertContact(testDb, 'Alice Smith', { org: 'Acme Corp', title: 'Reporter', emails: ['alice@example.com'], phones: ['+12025550100'] });
+    const filePath = join(dir, 'gmail.csv');
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>);
+
+    const result = await handlers.get('export:all-contacts')!({ sender: {} }, { format: 'gmail' }) as { success: boolean };
+
+    expect(result.success).toBe(true);
+    const [header, row] = readFileSync(filePath, 'utf-8').trim().split('\n');
+    expect(header).toContain('Given Name');
+    expect(header).toContain('E-mail 1 - Value');
+    expect(header).toContain('Organization Name');
+    expect(row).toContain('Alice');
+    expect(row).toContain('Smith');
+    expect(row).toContain('alice@example.com');
+    expect(row).toContain('Acme Corp');
+  });
+
+  it('widens E-mail/Phone/Website columns to fit the contact with the most of each', async () => {
+    insertContact(testDb, 'Carol Diaz', {
+      emails: ['carol@work.com', 'carol@home.com', 'carol@other.com'],
+      phones: ['+12025550101', '+12025550102'],
+    });
+    insertContact(testDb, 'Dan Lee', { emails: ['dan@example.com'] });
+    const filePath = join(dir, 'gmail-wide.csv');
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>);
+
+    const result = await handlers.get('export:all-contacts')!({ sender: {} }, { format: 'gmail' }) as { success: boolean };
+
+    expect(result.success).toBe(true);
+    const lines = readFileSync(filePath, 'utf-8').trim().split('\n');
+    expect(lines[0]).toContain('E-mail 3 - Value');
+    expect(lines[0]).toContain('Phone 2 - Value');
+    const carolRow = lines.find((l) => l.includes('Carol'))!;
+    expect(carolRow).toContain('carol@work.com');
+    expect(carolRow).toContain('carol@home.com');
+    expect(carolRow).toContain('carol@other.com');
+  });
+
+  it('writes Outlook-shaped headers and splits the name into First/Last Name', async () => {
+    insertContact(testDb, 'Bob Jones', { org: 'Globe Media', title: 'Editor', emails: ['bob@example.com'], phones: ['+12025550100'] });
+    const filePath = join(dir, 'outlook.csv');
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>);
+
+    const result = await handlers.get('export:all-contacts')!({ sender: {} }, { format: 'outlook' }) as { success: boolean };
+
+    expect(result.success).toBe(true);
+    const [header, row] = readFileSync(filePath, 'utf-8').trim().split('\n');
+    expect(header).toContain('First Name');
+    expect(header).toContain('E-mail Address');
+    expect(header).toContain('Company');
+    expect(row).toContain('Bob');
+    expect(row).toContain('Jones');
+    expect(row).toContain('bob@example.com');
+    expect(row).toContain('Globe Media');
+  });
+
+  it('fills all fixed Outlook email/phone slots for a contact with several of each', async () => {
+    insertContact(testDb, 'Erin Park', {
+      emails: ['erin@work.com', 'erin@home.com', 'erin@other.com'],
+      phones: ['+12025550111', '+12025550112', '+12025550113'],
+    });
+    const filePath = join(dir, 'outlook-wide.csv');
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath } as unknown as Awaited<ReturnType<typeof dialog.showSaveDialog>>);
+
+    const result = await handlers.get('export:all-contacts')!({ sender: {} }, { format: 'outlook' }) as { success: boolean };
+
+    expect(result.success).toBe(true);
+    const content = readFileSync(filePath, 'utf-8');
+    expect(content).toContain('E-mail 3 Address');
+    expect(content).toContain('erin@work.com');
+    expect(content).toContain('erin@home.com');
+    expect(content).toContain('erin@other.com');
+  });
+});

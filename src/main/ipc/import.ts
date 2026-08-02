@@ -65,6 +65,169 @@ export function parseCsv(text: string): string[][] {
   return result;
 }
 
+const REMAPPED_HEADERS = ['Name', 'Organization', 'Title', 'DOB', 'Notes', 'Email', 'Phone', 'LinkedIn', 'X', 'Website'];
+
+// Google/Outlook birthdays show up as ISO dates, Google's "year unknown" form
+// (--MM-DD), or Outlook's locale date (M/D/YYYY). Anything else is discarded,
+// same as a malformed DOB in a native Sourcerer CSV.
+function normalizeBirthday(value: string): string {
+  const v = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const mdy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    const [, m, d, y] = mdy;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  return '';
+}
+
+// Google/Outlook exports lump social profile URLs in with generic "website"
+// fields. Route LinkedIn/X URLs to their own columns so they land in the
+// contact_links rows processImportRows already knows how to type correctly.
+function splitSocialLinks(urls: string[]): { linkedin: string; x: string; websites: string[] } {
+  let linkedin = '';
+  let x = '';
+  const websites: string[] = [];
+  for (const url of urls) {
+    const lower = url.toLowerCase();
+    if (!linkedin && lower.includes('linkedin.com')) linkedin = url;
+    else if (!x && (lower.includes('twitter.com') || lower.includes('x.com'))) x = url;
+    else websites.push(url);
+  }
+  return { linkedin, x, websites };
+}
+
+function colsMatching(headerRow: string[], pattern: RegExp): number[] {
+  const idxs: number[] = [];
+  headerRow.forEach((h, i) => { if (pattern.test(h.trim().toLowerCase())) idxs.push(i); });
+  return idxs;
+}
+
+// Returns the index of the first header name (lowercase) found among candidates.
+function firstIdx(header: string[], names: string[]): number {
+  for (const name of names) {
+    const i = header.indexOf(name);
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+type CsvSource = 'gmail' | 'outlook' | 'generic';
+
+function detectCsvSource(headerRow: string[]): CsvSource {
+  const set = new Set(headerRow.map((h) => h.trim().toLowerCase()));
+  if (set.has('e-mail 1 - value')) return 'gmail';
+  if (set.has('e-mail address') && set.has('first name') && set.has('last name')) return 'outlook';
+  return 'generic';
+}
+
+export interface CsvRemapResult {
+  rows: string[][];
+  droppedFields: string[];
+}
+
+// Source columns that carried no data anywhere in the file don't need
+// flagging — only report columns Sourcerer actually had to throw away.
+// "- Type"/"- Label" companion columns (e.g. "Phone 1 - Type": "Mobile") are
+// excluded too: they're just a qualifier on data that *was* imported, not a
+// distinct chunk of information worth calling out on its own.
+function unusedColumnsWithData(headerRow: string[], dataRows: string[][], consumedIdxs: number[]): string[] {
+  const consumed = new Set(consumedIdxs);
+  return headerRow
+    .map((h, i) => ({ h, i }))
+    .filter(({ i }) => !consumed.has(i))
+    .filter(({ h }) => !/ - (type|label)$/i.test(h.trim()))
+    .filter(({ i }) => dataRows.some((row) => (row[i] ?? '').trim() !== ''))
+    .map(({ h }) => h.trim());
+}
+
+function remapGmailRows(rows: string[][]): CsvRemapResult {
+  const headerRow = rows[0];
+  const header = headerRow.map((h) => h.trim().toLowerCase());
+  const emailIdxs = colsMatching(headerRow, /^e-mail \d+ - value$/);
+  const phoneIdxs = colsMatching(headerRow, /^phone \d+ - value$/);
+  const websiteIdxs = colsMatching(headerRow, /^website \d+ - value$/);
+
+  // Google's current contacts CSV (both its own import template and export)
+  // uses "First Name"/"Last Name" and unprefixed "Organization Name"/"Title";
+  // an older export variant used "Given Name"/"Family Name" and
+  // "Organization 1 - Name"/"Title". Support both.
+  const nameIdx = firstIdx(header, ['name']);
+  const givenIdx = firstIdx(header, ['given name', 'first name']);
+  const familyIdx = firstIdx(header, ['family name', 'last name']);
+  const orgIdx = firstIdx(header, ['organization name', 'organization 1 - name']);
+  const titleIdx = firstIdx(header, ['organization title', 'organization 1 - title']);
+  const notesIdx = firstIdx(header, ['notes']);
+  const bdayIdx = firstIdx(header, ['birthday']);
+
+  const out: string[][] = [REMAPPED_HEADERS];
+  for (const row of rows.slice(1)) {
+    const get = (i: number) => (i >= 0 ? (row[i] ?? '').trim() : '');
+    const name = get(nameIdx) || [get(givenIdx), get(familyIdx)].filter(Boolean).join(' ').trim();
+    const emails = emailIdxs.map(get).filter(Boolean);
+    const phones = phoneIdxs.map(get).filter(Boolean);
+    const { linkedin, x, websites } = splitSocialLinks(websiteIdxs.map(get).filter(Boolean));
+
+    out.push([
+      name, get(orgIdx), get(titleIdx), normalizeBirthday(get(bdayIdx)), get(notesIdx),
+      emails.join(';'), phones.join(';'), linkedin, x, websites.join(';'),
+    ]);
+  }
+
+  const consumedIdxs = [nameIdx, givenIdx, familyIdx, orgIdx, titleIdx, notesIdx, bdayIdx, ...emailIdxs, ...phoneIdxs, ...websiteIdxs];
+  const droppedFields = unusedColumnsWithData(headerRow, rows.slice(1), consumedIdxs);
+  return { rows: out, droppedFields };
+}
+
+function remapOutlookRows(rows: string[][]): CsvRemapResult {
+  const headerRow = rows[0];
+  const header = headerRow.map((h) => h.trim().toLowerCase());
+  const idx = (name: string) => header.indexOf(name);
+
+  const firstNameIdx = idx('first name');
+  const lastIdx = idx('last name');
+  const companyIdx = idx('company');
+  const jobTitleIdx = idx('job title');
+  const notesIdx = idx('notes');
+  const bdayIdx = idx('birthday');
+  const webIdxs = [idx('web page'), idx('personal web page')].filter((i) => i >= 0);
+  const emailIdxs = ['e-mail address', 'e-mail 2 address', 'e-mail 3 address'].map(idx).filter((i) => i >= 0);
+  const phoneIdxs = ['business phone', 'business phone 2', 'home phone', 'home phone 2', 'mobile phone', 'other phone']
+    .map(idx)
+    .filter((i) => i >= 0);
+
+  const out: string[][] = [REMAPPED_HEADERS];
+  for (const row of rows.slice(1)) {
+    const get = (i: number) => (i >= 0 ? (row[i] ?? '').trim() : '');
+    const name = [get(firstNameIdx), get(lastIdx)].filter(Boolean).join(' ').trim();
+    const emails = emailIdxs.map(get).filter(Boolean);
+    const phones = phoneIdxs.map(get).filter(Boolean);
+    const { linkedin, x, websites } = splitSocialLinks(webIdxs.map(get).filter(Boolean));
+
+    out.push([
+      name, get(companyIdx), get(jobTitleIdx), normalizeBirthday(get(bdayIdx)), get(notesIdx),
+      emails.join(';'), phones.join(';'), linkedin, x, websites.join(';'),
+    ]);
+  }
+
+  const consumedIdxs = [firstNameIdx, lastIdx, companyIdx, jobTitleIdx, notesIdx, bdayIdx, ...webIdxs, ...emailIdxs, ...phoneIdxs];
+  const droppedFields = unusedColumnsWithData(headerRow, rows.slice(1), consumedIdxs);
+  return { rows: out, droppedFields };
+}
+
+// Detects Gmail's and Outlook's contact-export CSV header shapes and remaps
+// them onto Sourcerer's own column vocabulary so processImportRows doesn't
+// need to know about either format. Anything else passes through unchanged.
+// droppedFields lists source columns that carried data but have no home in
+// Sourcerer's contact model (addresses, spouse, custom fields, etc.).
+export function remapKnownCsvFormat(rows: string[][]): CsvRemapResult {
+  if (rows.length === 0) return { rows, droppedFields: [] };
+  const source = detectCsvSource(rows[0]);
+  if (source === 'gmail') return remapGmailRows(rows);
+  if (source === 'outlook') return remapOutlookRows(rows);
+  return { rows, droppedFields: [] };
+}
+
 export interface VcfContact {
   name: string;
   organization: string | null;
@@ -424,7 +587,7 @@ export function registerImportHandlers(): void {
       if (stat.size > 50 * 1024 * 1024) return { imported: 0, skipped: [], cancelled: false, error: 'File too large (max 50 MB).' };
 
       const content = await fs.readFile(filePaths[0], 'utf-8');
-      const rows = parseCsv(content);
+      const { rows, droppedFields } = remapKnownCsvFormat(parseCsv(content));
       const db = getDatabase();
 
       const { phone_country } = db
@@ -448,7 +611,8 @@ export function registerImportHandlers(): void {
         }
       }
 
-      return processImportRows(rows, db, { projectId, phoneCountry: phone_country, reporterEmail, reporterName });
+      const result = processImportRows(rows, db, { projectId, phoneCountry: phone_country, reporterEmail, reporterName });
+      return droppedFields.length ? { ...result, droppedFields } : result;
     },
   );
 

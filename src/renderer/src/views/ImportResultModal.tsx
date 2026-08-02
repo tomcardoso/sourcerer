@@ -62,6 +62,14 @@ export default function ImportResultModal({ result, onClose }: Props) {
               )}
             </div>
           )}
+
+          {!!result.droppedFields?.length && (
+            <p className="ir-dropped-note">
+              Your file included {result.droppedFields.length === 1 ? 'a field' : 'fields'} Sourcerer
+              doesn&apos;t track, so {result.droppedFields.length === 1 ? 'it wasn\'t' : 'they weren\'t'} imported:{' '}
+              {result.droppedFields.join(', ')}.
+            </p>
+          )}
         </>
       )}
 

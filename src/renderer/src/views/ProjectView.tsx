@@ -199,11 +199,11 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
     handleSyncNow();
   }
 
-  async function handleExport(mode: 'full' | 'sanitized') {
+  async function handleExport(mode: 'full' | 'sanitized', format?: 'gmail' | 'outlook') {
     if (!project) return;
     setShowExportMenu(false);
     setExporting(true);
-    await window.sourcerer.exportProject(project.id, mode, checkedIds.size > 0 ? [...checkedIds] : undefined);
+    await window.sourcerer.exportProject(project.id, mode, checkedIds.size > 0 ? [...checkedIds] : undefined, format);
     setExporting(false);
   }
 
@@ -465,6 +465,14 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
                 >
                   <span className="export-menu-label">Export as vCard</span>
                   <span className="export-menu-desc">All contacts as a .vcf file for address books</span>
+                </button>
+                <button className="export-menu-item" onClick={() => handleExport('full', 'gmail')}>
+                  <span className="export-menu-label">Export as Gmail CSV</span>
+                  <span className="export-menu-desc">Ready to re-import into Google Contacts</span>
+                </button>
+                <button className="export-menu-item" onClick={() => handleExport('full', 'outlook')}>
+                  <span className="export-menu-label">Export as Outlook CSV</span>
+                  <span className="export-menu-desc">Ready to re-import into Outlook contacts</span>
                 </button>
               </div>
             )}
