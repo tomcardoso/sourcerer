@@ -684,6 +684,37 @@
   color: var(--color-danger);
 }
 
+.pt-log-row-edit {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.pt-log-row:hover .pt-log-row-edit {
+  opacity: 1;
+}
+
+.pt-log-row-edit:hover {
+  color: var(--color-primary);
+}
+
+.pt-log-row-error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-danger);
+  margin: 4px 0 0;
+}
+
 .pt-log-row-confirm-yes,
 .pt-log-row-confirm-no {
   height: 20px;
@@ -697,6 +728,12 @@
   cursor: pointer;
   background: none;
   white-space: nowrap;
+}
+
+.pt-log-row-confirm-yes:disabled,
+.pt-log-row-confirm-no:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .pt-log-row-confirm-yes {

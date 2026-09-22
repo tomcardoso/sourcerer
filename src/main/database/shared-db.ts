@@ -19,7 +19,7 @@ function semverGte(a: string, b: string): boolean {
 
 // Bump this whenever you add a new migration block in runSharedMigrations,
 // and update SHARED_SCHEMA_SQL to include the change for new files.
-const SHARED_DB_VERSION = 1;
+const SHARED_DB_VERSION = 2;
 
 const connections = new Map<string, Database.Database>();
 
@@ -84,6 +84,17 @@ function runSharedMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version < 1) {
     db.pragma('user_version = 1');
+  }
+  if (version < 2) {
+    // Editable interactions (local DB_VERSION 2): add updated_at so edits can be
+    // resolved LWW like contacts/memberships. Nullable-with-default per the policy
+    // above — older clients omitting the column in their INSERTs still work.
+    const cols = db.prepare('PRAGMA table_info(interaction_log_entries)').all() as { name: string }[];
+    if (!cols.some((c) => c.name === 'updated_at')) {
+      db.exec('ALTER TABLE interaction_log_entries ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0');
+      db.exec('UPDATE interaction_log_entries SET updated_at = created_at');
+    }
+    db.pragma('user_version = 2');
   }
 }
 

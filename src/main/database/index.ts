@@ -124,7 +124,7 @@ export function snapshotDatabase(destPath: string): void {
 
 // Increment when adding a new migration block below.
 // Exported for test instrumentation only.
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /**
  * Runs schema migrations against an existing database using user_version as
@@ -142,9 +142,35 @@ export function runMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
   if (version >= DB_VERSION) return;
 
-  // No migration blocks yet — new DBs receive all schema via initDatabase → LOCAL_SCHEMA_DDL_SQL.
-  db.transaction(() => {
-    db.pragma(`user_version = ${DB_VERSION}`);
-  })();
+  if (version < 2) {
+    db.transaction(() => {
+      // Historically, schema.ts additions (e.g. sync_tombstones/sync_pushed, added
+      // after this table) were never retroactively applied to existing databases —
+      // this block only ever stamped user_version, so a DB created before some
+      // table/index/trigger was added to schema.ts would silently never get it.
+      // That broke any code path writing a tombstone (including
+      // interaction-log:delete) on old databases with "no such table:
+      // sync_tombstones". All schema.ts statements are CREATE ... IF NOT EXISTS,
+      // so re-running the full DDL here is safe on a populated database.
+      db.exec(LOCAL_SCHEMA_DDL_SQL);
+
+      // Backfill FTS5 content for indexes that may have just been created for the
+      // first time above — CREATE VIRTUAL TABLE IF NOT EXISTS makes an empty index,
+      // it doesn't retroactively index pre-existing rows.
+      db.exec('INSERT OR IGNORE INTO interaction_log_fts(rowid, body) SELECT rowid, body FROM interaction_log_entries');
+      db.exec('INSERT OR IGNORE INTO contacts_fts(rowid, name, organization, title, notes) SELECT rowid, name, organization, title, notes FROM contacts');
+
+      // interaction_log_entries gained updated_at so edits can be resolved LWW
+      // like contacts/memberships. CREATE TABLE IF NOT EXISTS above can't add a
+      // column to an already-existing table, so do it explicitly.
+      const cols = db.prepare('PRAGMA table_info(interaction_log_entries)').all() as { name: string }[];
+      if (!cols.some((c) => c.name === 'updated_at')) {
+        db.exec('ALTER TABLE interaction_log_entries ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0');
+        db.exec('UPDATE interaction_log_entries SET updated_at = created_at');
+      }
+
+      db.pragma('user_version = 2');
+    })();
+  }
 }
 

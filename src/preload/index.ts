@@ -157,6 +157,8 @@ const sourcererApi = {
     ipcRenderer.invoke('interaction-log:add', { membershipId, body, createdAt, extraMembershipIds }),
   listContactLog: (contactId: string): Promise<ContactLogEntry[]> =>
     ipcRenderer.invoke('interaction-log:list-for-contact', contactId),
+  updateInteractionLogEntry: (id: string, body: string, createdAt?: number): Promise<InteractionLogEntry> =>
+    ipcRenderer.invoke('interaction-log:update', { id, body, createdAt }),
   deleteInteractionLogEntry: (interactionId: string): Promise<void> =>
     ipcRenderer.invoke('interaction-log:delete', interactionId),
   addGlobalLogEntry: (contactId: string, body: string, createdAt?: number, membershipIds?: string[]): Promise<ContactLogEntry> =>

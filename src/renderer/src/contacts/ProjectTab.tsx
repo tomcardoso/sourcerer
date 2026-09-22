@@ -83,6 +83,12 @@ function LogSection({
     onEntryAdded?.();
   }
 
+  async function handleEdit(id: string, body: string, createdAt: number) {
+    const updated = await window.sourcerer.updateInteractionLogEntry(id, body, createdAt);
+    setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)).sort((a, b) => a.created_at - b.created_at));
+    onEntryAdded?.();
+  }
+
   async function handleSubmit() {
     const body = text.trim();
     if (!body || !logDate) return;
@@ -149,7 +155,7 @@ function LogSection({
         <p className="pt-reminders-empty">No entries yet.</p>
       )}
 
-      {preview.map((e) => <LogRow key={e.id} entry={e} onDelete={handleDelete} />)}
+      {preview.map((e) => <LogRow key={e.id} entry={e} onDelete={handleDelete} onEdit={handleEdit} />)}
 
       {showStatusPrompt && (
         <div className="pt-status-prompt">
@@ -219,7 +225,7 @@ function LogSection({
         </div>
       )}
 
-      {showAll && <LogAllModal title={`Interaction Log — ${contactName}`} entries={entries} onDelete={handleDelete} onClose={() => setShowAll(false)} />}
+      {showAll && <LogAllModal title={`Interaction Log — ${contactName}`} entries={entries} onDelete={handleDelete} onEdit={handleEdit} onClose={() => setShowAll(false)} />}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { linkifyText } from '../utils/linkify';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import LogPrintSheet from './LogPrintSheet';
+import { CalendarPicker } from '../views/CalendarPicker';
+import { toDayKey } from '../utils/fmtDate';
 import './ContactDetail.css';
 
 export function sortReminders(a: Reminder, b: Reminder): number {
@@ -45,8 +47,89 @@ export function fmtLogDate(ts: number): string {
   return `${mm}.${dd}`;
 }
 
-export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEntry; subtitle?: string | null; onDelete?: (id: string) => void }) {
+export function LogRow({
+  entry,
+  subtitle,
+  onDelete,
+  onEdit,
+}: {
+  entry: InteractionLogEntry;
+  subtitle?: string | null;
+  onDelete?: (id: string) => Promise<void> | void;
+  onEdit?: (id: string, body: string, createdAt: number) => Promise<void>;
+}) {
   const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(entry.body);
+  const [editDate, setEditDate] = useState(() => toDayKey(entry.created_at));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+
+  const today = toDayKey(Math.floor(Date.now() / 1000));
+
+  async function handleConfirmDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError(false);
+    try {
+      await onDelete(entry.id);
+    } catch {
+      setDeleteError(true);
+      setDeleting(false);
+    }
+  }
+
+  function startEditing() {
+    setEditBody(entry.body);
+    setEditDate(toDayKey(entry.created_at));
+    setSaveError(false);
+    setEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!onEdit || !editBody.trim() || !editDate) return;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      const [y, m, d] = editDate.split('-').map(Number);
+      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+      await onEdit(entry.id, editBody.trim(), createdAt);
+      setEditing(false);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="pt-log-compose">
+        <div className="pt-log-date-row">
+          <CalendarPicker label="Select date" value={editDate} onChange={setEditDate} showYear maxDate={today} />
+        </div>
+        <textarea
+          className="pt-log-input"
+          value={editBody}
+          onChange={(e) => setEditBody(e.target.value)}
+          rows={3}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && editBody.trim() && editDate && !saving) handleSaveEdit();
+          }}
+        />
+        {saveError && <p className="pt-log-row-error">Failed to save changes. Try again.</p>}
+        <div className="pt-reminder-form-actions">
+          <button className="pt-log-submit" onClick={handleSaveEdit} disabled={!editBody.trim() || !editDate || saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button className="pt-reminder-cancel" onClick={() => setEditing(false)} disabled={saving}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-log-row">
@@ -57,16 +140,41 @@ export function LogRow({ entry, subtitle, onDelete }: { entry: InteractionLogEnt
           <span className="pt-log-row-reporter">{entry.reporter_name}</span>
           {subtitle && <span className="pt-log-row-project-badge">{subtitle}</span>}
         </div>
+        {deleteError && <p className="pt-log-row-error">Failed to delete. Try again.</p>}
       </div>
-      {onDelete && (
+      {(onEdit || onDelete) && (
         <div className="pt-log-row-actions">
           {confirming ? (
             <>
-              <button className="pt-log-row-confirm-yes" onClick={() => onDelete(entry.id)}>Delete</button>
-              <button className="pt-log-row-confirm-no" onClick={() => setConfirming(false)}>Cancel</button>
+              <button className="pt-log-row-confirm-yes" onClick={handleConfirmDelete} disabled={deleting}>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+              <button
+                className="pt-log-row-confirm-no"
+                onClick={() => { setConfirming(false); setDeleteError(false); }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
             </>
           ) : (
-            <button className="pt-log-row-delete" onClick={() => setConfirming(true)} title="Delete entry" aria-label="Delete entry">×</button>
+            <>
+              {onEdit && (
+                <button className="pt-log-row-edit" onClick={startEditing} title="Edit entry" aria-label="Edit entry">
+                  Edit
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  className="pt-log-row-delete"
+                  onClick={() => { setConfirming(true); setDeleteError(false); }}
+                  title="Delete entry"
+                  aria-label="Delete entry"
+                >
+                  ×
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -79,12 +187,14 @@ export function LogAllModal({
   entries,
   getSubtitle,
   onDelete,
+  onEdit,
   onClose,
 }: {
   title: string;
   entries: InteractionLogEntry[];
   getSubtitle?: (entry: InteractionLogEntry) => string | null | undefined;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => Promise<void> | void;
+  onEdit?: (id: string, body: string, createdAt: number) => Promise<void>;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -127,7 +237,7 @@ export function LogAllModal({
       <div className="pt-log-modal-body">
         {visible.length === 0
           ? <p className="pt-reminders-empty">{query ? 'No entries match.' : 'No entries yet.'}</p>
-          : visible.map((e) => <LogRow key={e.id} entry={e} subtitle={getSubtitle?.(e)} onDelete={onDelete} />)
+          : visible.map((e) => <LogRow key={e.id} entry={e} subtitle={getSubtitle?.(e)} onDelete={onDelete} onEdit={onEdit} />)
         }
       </div>
       {query && entries.length > 0 && (
