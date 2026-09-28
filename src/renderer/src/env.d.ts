@@ -104,6 +104,7 @@ declare global {
       listInteractionLog: (membershipId: string) => Promise<InteractionLogEntry[]>;
       addInteractionLogEntry: (membershipId: string, body: string, createdAt?: number, extraMembershipIds?: string[]) => Promise<InteractionLogEntry>;
       listContactLog: (contactId: string) => Promise<ContactLogEntry[]>;
+      updateInteractionLogEntry: (id: string, body: string, createdAt?: number) => Promise<InteractionLogEntry>;
       deleteInteractionLogEntry: (interactionId: string) => Promise<void>;
       addGlobalLogEntry: (contactId: string, body: string, createdAt?: number, membershipIds?: string[]) => Promise<ContactLogEntry>;
       setContactDefaultProject: (contactId: string, membershipId: string | null) => Promise<void>;

@@ -59,26 +59,31 @@ export interface SyncResult {
  *     (emails/phones/links/handles/tags) are filtered during the union merge;
  *     contacts, project_memberships, and interaction_log_entries tombstones
  *     are applied directly: matching rows are deleted on both sides.
- *     Conflict rule: for contacts and memberships, an edit with
- *     updated_at > deleted_at beats the tombstone (the row survives and the
- *     tombstone is dropped); otherwise the delete wins, including ties.
- *     Log entries are immutable, so their tombstones always win.
+ *     Conflict rule: an edit with updated_at > deleted_at beats the tombstone
+ *     (the row survives and the tombstone is dropped); otherwise the delete
+ *     wins, including ties. This applies uniformly to contacts, memberships,
+ *     and interaction log entries now that log entries carry an updated_at
+ *     (added alongside interaction editing — entries are no longer immutable).
  *
  * Pull strategy:
  *   - Contacts + their sub-tables (emails/phones/links/alert_rss): LWW by
  *     contact.updated_at. When shared contact is newer, replace the contact row
  *     AND all its sub-tables.
- *   - project_memberships: LWW by membership.updated_at.
- *   - contact_alert_mentions, interaction_log_entries: append-only — full-table
- *     scan with INSERT OR IGNORE. No watermarks: rows arrive in the shared file
- *     in sync order, not timestamp order (an offline client can upload old rows
- *     long after newer ones exist locally), so any timestamp cutoff can skip
- *     rows permanently.
+ *   - project_memberships, interaction_log_entries: LWW by updated_at.
+ *   - contact_alert_mentions: append-only — full-table scan with INSERT OR
+ *     IGNORE. No watermarks: rows arrive in the shared file in sync order, not
+ *     timestamp order (an offline client can upload old rows long after newer
+ *     ones exist locally), so any timestamp cutoff can skip rows permanently.
+ *     interaction_log_entries used to live in this bucket too (creation order
+ *     only, never edited) — the offline-client full-scan pull still applies to
+ *     it via the LWW path above (any entry not yet known locally is pulled
+ *     unconditionally, regardless of its updated_at), so #430 still holds.
  *
  * Push strategy:
- *   - Contacts / memberships: push when sync_pushed has no fresh record for
- *     this project (see above), then replace sub-tables wholesale.
- *   - Append-only tables: push rows with no sync_pushed record for this project.
+ *   - Contacts / memberships / interaction log entries: push when sync_pushed
+ *     has no fresh record for this project (row.updated_at > pushed_at);
+ *     contacts additionally replace sub-tables wholesale.
+ *   - contact_alert_mentions: push rows with no sync_pushed record for this project.
  */
 export function syncProject(
   localDb: Database.Database,
@@ -103,7 +108,8 @@ export function syncProject(
       applyTombstonesLocal(localDb, tombstones);
       pullContacts(localDb, sharedDb, tombstones);
       pullMemberships(localDb, sharedDb, projectId, now, tombstones);
-      pullAppendOnly(localDb, sharedDb, projectId, tombstones);
+      pullInteractionLogEntries(localDb, sharedDb, projectId, now, tombstones);
+      pullAppendOnly(localDb, sharedDb, projectId);
     })();
 
     // Phase 3: push from local → shared (pure sharedDb writes; sync_pushed stamps deferred to phase 4)
@@ -127,8 +133,8 @@ export function syncProject(
       applyTombstonesShared(sharedDb, tombstones);
       pushedContactIds = pushContacts(localDb, sharedDb, projectId, contactIds);
       pushedMembershipIds = pushMemberships(localDb, sharedDb, projectId);
-      ({ mentionIds: pushedMentionIds, logEntryIds: pushedLogEntryIds } =
-        pushAppendOnly(localDb, sharedDb, projectId, contactIds, membershipIds));
+      pushedLogEntryIds = pushInteractionLogEntries(localDb, sharedDb, projectId, membershipIds);
+      pushedMentionIds = pushAppendOnly(localDb, sharedDb, projectId, contactIds);
     })();
 
     // Phase 4: record push state for all successfully-pushed rows, plus project metadata.
@@ -205,7 +211,7 @@ function applyTombstonesLocal(local: Database.Database, tombstones: TombstoneMap
   const dropTombstone = local.prepare('DELETE FROM sync_tombstones WHERE table_name = ? AND row_id = ?');
   const dropPushRecords = local.prepare('DELETE FROM sync_pushed WHERE table_name = ? AND row_id = ?');
 
-  for (const table of ['contacts', 'project_memberships'] as const) {
+  for (const table of ['contacts', 'project_memberships', 'interaction_log_entries'] as const) {
     const idCol = 'id';
     for (const [rowId, deletedAt] of tombstones.get(table) ?? []) {
       const row = local.prepare(`SELECT updated_at FROM "${table}" WHERE "${idCol}" = ?`).get(rowId) as
@@ -222,12 +228,6 @@ function applyTombstonesLocal(local: Database.Database, tombstones: TombstoneMap
       }
     }
   }
-
-  // Log entries are immutable — tombstones always win.
-  for (const [rowId] of tombstones.get('interaction_log_entries') ?? []) {
-    local.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(rowId);
-    dropPushRecords.run('interaction_log_entries', rowId);
-  }
 }
 
 /**
@@ -236,7 +236,7 @@ function applyTombstonesLocal(local: Database.Database, tombstones: TombstoneMap
  * that case by dropping the tombstone and re-pulling the row.
  */
 function applyTombstonesShared(shared: Database.Database, tombstones: TombstoneMap): void {
-  for (const table of ['contacts', 'project_memberships'] as const) {
+  for (const table of ['contacts', 'project_memberships', 'interaction_log_entries'] as const) {
     for (const [rowId, deletedAt] of tombstones.get(table) ?? []) {
       const row = shared.prepare(`SELECT updated_at FROM "${table}" WHERE id = ?`).get(rowId) as
         | { updated_at: number }
@@ -245,9 +245,6 @@ function applyTombstonesShared(shared: Database.Database, tombstones: TombstoneM
       if (row.updated_at > deletedAt) continue;
       shared.prepare(`DELETE FROM "${table}" WHERE id = ?`).run(rowId);
     }
-  }
-  for (const [rowId] of tombstones.get('interaction_log_entries') ?? []) {
-    shared.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(rowId);
   }
 }
 
@@ -753,7 +750,6 @@ function pullAppendOnly(
   local: Database.Database,
   shared: Database.Database,
   projectId: string,
-  tombstones: TombstoneMap,
 ): void {
   // Full-table scan with INSERT OR IGNORE — no watermarks. Rows land in the
   // shared file in sync order, not timestamp order (an offline client can
@@ -761,23 +757,18 @@ function pullAppendOnly(
   // cutoff can skip rows permanently. The scan is O(shared rows) per sync,
   // which is fine at this application's scale.
 
-  // Only import append-only rows for contacts that are members of some project.
+  // Only import mentions for contacts that are members of some project.
   // Contacts pulled from shared without any membership are ignored here — they
   // have no context in the local DB and should not accumulate orphaned data.
   const localContactIds = new Set(
     (local.prepare('SELECT DISTINCT contact_id FROM project_memberships').all() as { contact_id: string }[]).map((r) => r.contact_id),
   );
 
-  const logTombstones = tombstones.get('interaction_log_entries') ?? new Map<string, number>();
-
   // Rows we pulled are stamped as pushed for this project so they don't echo
   // straight back on the next push. Stamp only on actual insert (changes > 0):
   // rows we already had keep whatever push state they carry.
   const stampMention = local.prepare(
     "INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, 'contact_alert_mentions', ?, ?)",
-  );
-  const stampLogEntry = local.prepare(
-    "INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, 'interaction_log_entries', ?, ?)",
   );
   const now = Math.floor(Date.now() / 1000);
 
@@ -803,27 +794,74 @@ function pullAppendOnly(
       .run(sm.id, sm.contact_id, sm.headline, sm.source_url, sm.published_at, sm.fetched_at, sm.guid);
     if (changes > 0) stampMention.run(projectId, sm.id, now);
   }
+}
 
-  for (const se of shared.prepare('SELECT * FROM interaction_log_entries').all() as {
-    id: string;
-    contact_id: string;
-    reporter_email: string;
-    reporter_name: string;
-    body: string;
-    created_at: number;
-  }[]) {
+/**
+ * Pulls interaction_log_entries LWW by updated_at, mirroring pullMemberships.
+ * Entries are no longer immutable (editing added updated_at) — this replaces
+ * the old full-scan INSERT OR IGNORE pull. The full-scan property that makes
+ * an offline client's old rows unskippable (#430) still holds: any entry not
+ * yet known locally (localUpdatedAt === undefined) is pulled unconditionally,
+ * regardless of its updated_at or how it compares to other rows.
+ */
+function pullInteractionLogEntries(
+  local: Database.Database,
+  shared: Database.Database,
+  projectId: string,
+  now: number,
+  tombstones: TombstoneMap,
+): void {
+  const localContactIds = new Set(
+    (local.prepare('SELECT DISTINCT contact_id FROM project_memberships').all() as { contact_id: string }[]).map((r) => r.contact_id),
+  );
+
+  const sharedEntries = shared
+    .prepare('SELECT id, contact_id, reporter_email, reporter_name, body, created_at, updated_at FROM interaction_log_entries')
+    .all() as {
+    id: string; contact_id: string; reporter_email: string; reporter_name: string;
+    body: string; created_at: number; updated_at: number;
+  }[];
+
+  const localMap = new Map<string, number>(
+    (local.prepare('SELECT id, updated_at FROM interaction_log_entries').all() as { id: string; updated_at: number }[])
+      .map((r) => [r.id, r.updated_at]),
+  );
+
+  const logTombstones = tombstones.get('interaction_log_entries') ?? new Map<string, number>();
+  const dropTombstone = local.prepare("DELETE FROM sync_tombstones WHERE table_name = 'interaction_log_entries' AND row_id = ?");
+  const stampPushed = local.prepare(
+    "INSERT OR REPLACE INTO sync_pushed (project_id, table_name, row_id, pushed_at) VALUES (?, 'interaction_log_entries', ?, ?)",
+  );
+
+  for (const se of sharedEntries) {
     if (!localContactIds.has(se.contact_id)) continue;
-    if (logTombstones.has(se.id)) continue;
-    const { changes } = local
-      .prepare(
-        `INSERT OR IGNORE INTO interaction_log_entries
-           (id, contact_id, reporter_email, reporter_name, body, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(se.id, se.contact_id, se.reporter_email, se.reporter_name, se.body, se.created_at);
-    if (changes > 0) stampLogEntry.run(projectId, se.id, now);
+
+    // Deletion vs edit: the tombstone wins unless the shared row was edited
+    // after the delete, in which case the edit revives the entry.
+    const deletedAt = logTombstones.get(se.id);
+    if (deletedAt !== undefined) {
+      if (tombstoneWins(deletedAt, se.updated_at)) continue;
+      dropTombstone.run(se.id);
+      logTombstones.delete(se.id);
+    }
+
+    const localUpdatedAt = localMap.get(se.id);
+    if (localUpdatedAt === undefined || se.updated_at > localUpdatedAt) {
+      local
+        .prepare(
+          `INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             body = excluded.body, created_at = excluded.created_at, updated_at = excluded.updated_at`,
+        )
+        .run(se.id, se.contact_id, se.reporter_email, se.reporter_name, se.body, se.created_at, se.updated_at);
+      stampPushed.run(projectId, se.id, now);
+    }
   }
 
+  // interaction_projects associations: still additive-only (a link is never
+  // removed except via cascading delete of its interaction or membership), so
+  // keep the simple guarded full-scan INSERT OR IGNORE.
   // Guard both FK targets: the entry may have been skipped above (non-member
   // contact or tombstoned) and the membership may be tombstoned/absent locally.
   const insertIp = local.prepare(
@@ -1028,15 +1066,12 @@ function pushAppendOnly(
   shared: Database.Database,
   projectId: string,
   contactIds: string[],
-  membershipIds: string[],
-): { mentionIds: string[]; logEntryIds: string[] } {
-  const membershipIdSet = new Set(membershipIds);
+): string[] {
   // SQLite's SQLITE_LIMIT_VARIABLE_NUMBER defaults to 999. Chunk large ID lists
   // to stay safely below that limit.
   const CHUNK = 500;
 
   const mentionIds: string[] = [];
-  const logEntryIds: string[] = [];
   if (contactIds.length > 0) {
     // Alert mentions: rows with no push record for this project.
     for (let i = 0; i < contactIds.length; i += CHUNK) {
@@ -1074,62 +1109,83 @@ function pushAppendOnly(
     }
   }
 
-  if (membershipIds.length > 0) {
-    // Interaction log entries: entries linked to this project's memberships with
-    // no push record for this project.
-    const seenEntryIds = new Set<string>();
-    for (let i = 0; i < membershipIds.length; i += CHUNK) {
-      const chunk = membershipIds.slice(i, i + CHUNK);
-      const mPlaceholders = chunk.map(() => '?').join(',');
-      for (const e of local
+  return mentionIds;
+}
+
+/**
+ * Pushes interaction_log_entries LWW by updated_at, mirroring pushMemberships.
+ * Entries linked to this project's memberships are pushed when they have no
+ * push record for this project, or their updated_at has advanced past it.
+ */
+function pushInteractionLogEntries(
+  local: Database.Database,
+  shared: Database.Database,
+  projectId: string,
+  membershipIds: string[],
+): string[] {
+  const membershipIdSet = new Set(membershipIds);
+  const CHUNK = 500;
+  const logEntryIds: string[] = [];
+
+  if (membershipIds.length === 0) return logEntryIds;
+
+  const getPushRecord = local.prepare(
+    "SELECT pushed_at FROM sync_pushed WHERE project_id = ? AND table_name = 'interaction_log_entries' AND row_id = ?",
+  );
+  const seenEntryIds = new Set<string>();
+  for (let i = 0; i < membershipIds.length; i += CHUNK) {
+    const chunk = membershipIds.slice(i, i + CHUNK);
+    const mPlaceholders = chunk.map(() => '?').join(',');
+    for (const e of local
+      .prepare(
+        `SELECT DISTINCT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at, ile.updated_at
+         FROM interaction_log_entries ile
+         JOIN interaction_projects ip ON ip.interaction_id = ile.id
+         WHERE ip.membership_id IN (${mPlaceholders})`,
+      )
+      .all(...chunk) as {
+      id: string;
+      contact_id: string;
+      reporter_email: string;
+      reporter_name: string;
+      body: string;
+      created_at: number;
+      updated_at: number;
+    }[]) {
+      // seenEntryIds prevents double-processing entries that appear across multiple
+      // membership chunks. The interaction_projects loop below fetches all rows for
+      // e.id (not just the current chunk), so the first encounter pushes everything
+      // valid — later encounters are safe to skip entirely.
+      if (seenEntryIds.has(e.id)) continue;
+      seenEntryIds.add(e.id);
+
+      const rec = getPushRecord.get(projectId, e.id) as { pushed_at: number } | undefined;
+      if (rec && e.updated_at <= rec.pushed_at) continue;
+
+      shared
         .prepare(
-          `SELECT DISTINCT ile.id, ile.contact_id, ile.reporter_email, ile.reporter_name, ile.body, ile.created_at
-           FROM interaction_log_entries ile
-           JOIN interaction_projects ip ON ip.interaction_id = ile.id
-           WHERE ip.membership_id IN (${mPlaceholders})
-             AND NOT EXISTS (
-               SELECT 1 FROM sync_pushed sp
-               WHERE sp.project_id = ? AND sp.table_name = 'interaction_log_entries' AND sp.row_id = ile.id
-             )`,
+          `INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             body = excluded.body, created_at = excluded.created_at, updated_at = excluded.updated_at`,
         )
-        .all(...chunk, projectId) as {
-        id: string;
-        contact_id: string;
-        reporter_email: string;
-        reporter_name: string;
-        body: string;
-        created_at: number;
-      }[]) {
-        // seenEntryIds prevents double-inserting entries that appear across multiple membership
-        // chunks. The interaction_projects loop below fetches all rows for e.id (not just the
-        // current chunk), so the first encounter pushes everything valid — later encounters
-        // are safe to skip entirely.
-        if (seenEntryIds.has(e.id)) continue;
-        seenEntryIds.add(e.id);
+        .run(e.id, e.contact_id, e.reporter_email, e.reporter_name, e.body, e.created_at, e.updated_at);
+      // Only push interaction_projects rows referencing this project's memberships.
+      // Rows pointing at other projects' memberships don't exist in this shared DB
+      // and would cause FK violations.
+      for (const ip of local
+        .prepare('SELECT interaction_id, membership_id FROM interaction_projects WHERE interaction_id = ?')
+        .all(e.id) as { interaction_id: string; membership_id: string }[]) {
+        if (!membershipIdSet.has(ip.membership_id)) continue;
         shared
-          .prepare(
-            `INSERT OR IGNORE INTO interaction_log_entries
-               (id, contact_id, reporter_email, reporter_name, body, created_at)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-          )
-          .run(e.id, e.contact_id, e.reporter_email, e.reporter_name, e.body, e.created_at);
-        // Only push interaction_projects rows referencing this project's memberships.
-        // Rows pointing at other projects' memberships don't exist in this shared DB
-        // and would cause FK violations.
-        for (const ip of local
-          .prepare('SELECT interaction_id, membership_id FROM interaction_projects WHERE interaction_id = ?')
-          .all(e.id) as { interaction_id: string; membership_id: string }[]) {
-          if (!membershipIdSet.has(ip.membership_id)) continue;
-          shared
-            .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
-            .run(ip.interaction_id, ip.membership_id);
-        }
-        logEntryIds.push(e.id);
+          .prepare('INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)')
+          .run(ip.interaction_id, ip.membership_id);
       }
+      logEntryIds.push(e.id);
     }
   }
 
-  return { mentionIds, logEntryIds };
+  return logEntryIds;
 }
 
 // ---------------------------------------------------------------------------

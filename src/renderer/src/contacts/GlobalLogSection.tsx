@@ -48,10 +48,16 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
   }, [contact.id]);
 
   async function handleLogDelete(id: string) {
-    try {
-      await window.sourcerer.deleteInteractionLogEntry(id);
-      setLogEntries((prev) => prev.filter((e) => e.id !== id));
-    } catch { /* entry stays in list */ }
+    await window.sourcerer.deleteInteractionLogEntry(id);
+    setLogEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  async function handleLogEdit(id: string, body: string, createdAt: number) {
+    const updated = await window.sourcerer.updateInteractionLogEntry(id, body, createdAt);
+    setLogEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, body: updated.body, created_at: updated.created_at } : e)).sort((a, b) => a.created_at - b.created_at),
+    );
+    onUpdated?.();
   }
 
   function cancelLog() {
@@ -112,7 +118,7 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
       )}
 
       {[...logEntries].reverse().slice(0, LOG_PREVIEW).map((e) => (
-        <LogRow key={e.id} entry={e} subtitle={e.project_name} onDelete={handleLogDelete} />
+        <LogRow key={e.id} entry={e} subtitle={e.project_name} onDelete={handleLogDelete} onEdit={handleLogEdit} />
       ))}
 
       {logAdding && (
@@ -167,6 +173,7 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
           entries={logEntries}
           getSubtitle={(e) => (e as ContactLogEntry).project_name}
           onDelete={handleLogDelete}
+          onEdit={handleLogEdit}
           onClose={() => setLogShowAll(false)}
         />
       )}

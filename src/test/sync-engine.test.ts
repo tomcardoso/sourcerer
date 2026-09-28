@@ -1272,6 +1272,117 @@ describe('deletion propagation (#429)', () => {
     expect(syncProject(localB, sharedDb, projectId).success).toBe(true);
     expect(localB.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeUndefined();
   });
+
+  it('an edit newer than the delete revives the log entry everywhere (LWW)', () => {
+    const { sharedDb, projectId, localA, localB } = twoClientSetup();
+    const contactId = insertContact(localA, 'Log Lazarus', { emails: ['lazlog@example.com'] });
+    const membershipId = localInsertMembership(localA, contactId, projectId);
+    const logId = uuidv4();
+    localA.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(logId, contactId, 'r@r.com', 'Reporter', 'Original note', NOW, NOW);
+    localA.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipId);
+
+    expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
+    expect(syncProject(localB, sharedDb, projectId).success).toBe(true);
+    expect(localB.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeDefined();
+
+    // A deletes at T1; B edits at T2 > T1 before seeing the tombstone
+    const T1 = NOW + 5;
+    const T2 = NOW + 10;
+    localA.transaction(() => {
+      writeTombstone(localA, 'interaction_log_entries', logId, T1);
+      localA.prepare("DELETE FROM sync_pushed WHERE table_name = 'interaction_log_entries' AND row_id = ?").run(logId);
+      localA.prepare('DELETE FROM interaction_log_entries WHERE id = ?').run(logId);
+    })();
+    expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
+    localB.prepare('UPDATE interaction_log_entries SET body = ?, updated_at = ? WHERE id = ?').run('Corrected note', T2, logId);
+
+    // B syncs: its newer edit beats the tombstone; B keeps and re-pushes the entry
+    expect(syncProject(localB, sharedDb, projectId).success).toBe(true);
+    expect(localB.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeDefined();
+    expect(sharedDb.prepare('SELECT id FROM interaction_log_entries WHERE id = ?').get(logId)).toBeDefined();
+
+    // A syncs: the revived, edited entry comes back
+    expect(syncProject(localA, sharedDb, projectId).success).toBe(true);
+    const revived = localA.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string } | undefined;
+    expect(revived?.body).toBe('Corrected note');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Interaction log entries are now editable — LWW propagation of edits (#210 edit)
+// ---------------------------------------------------------------------------
+
+describe('syncProject — interaction log entry edits propagate LWW', () => {
+  it('pushes an edited interaction body/date to shared and does not re-push it unchanged', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Edit Push Test');
+
+    const contactId = insertContact(localDb, 'Edit Alice');
+    const membershipId = localInsertMembership(localDb, contactId, projectId);
+
+    const logId = uuidv4();
+    localDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(logId, contactId, 'r@r.com', 'Reporter', 'Original text', NOW, NOW);
+    localDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipId);
+
+    syncProject(localDb, sharedDb, projectId);
+    expect((sharedDb.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string }).body).toBe('Original text');
+
+    // Edit locally: bump updated_at past the push record
+    localDb.prepare('UPDATE interaction_log_entries SET body = ?, updated_at = ? WHERE id = ?').run('Edited text', NOW + 10, logId);
+    syncProject(localDb, sharedDb, projectId);
+    expect((sharedDb.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string }).body).toBe('Edited text');
+
+    // Push record advances too — same edit re-synced without another change is a no-op
+    // (already reflected in shared), so the shared row stays as-is.
+    syncProject(localDb, sharedDb, projectId);
+    expect((sharedDb.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string }).body).toBe('Edited text');
+  });
+
+  it('pulls a shared edit into local when the shared row is newer', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Edit Pull Test');
+
+    const contactId = insertContact(localDb, 'Edit Bob');
+    const membershipId = localInsertMembership(localDb, contactId, projectId);
+
+    const logId = uuidv4();
+    localDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(logId, contactId, 'r@r.com', 'Reporter', 'Original text', NOW, NOW);
+    localDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipId);
+    syncProject(localDb, sharedDb, projectId);
+
+    // A teammate edits the shared copy directly (simulating another client's push)
+    sharedDb.prepare('UPDATE interaction_log_entries SET body = ?, updated_at = ? WHERE id = ?').run('Teammate edit', NOW + 20, logId);
+
+    syncProject(localDb, sharedDb, projectId);
+    const row = localDb.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string };
+    expect(row.body).toBe('Teammate edit');
+  });
+
+  it('does not overwrite a newer local edit with a stale shared row', () => {
+    const localDb = createTestDb();
+    const sharedDb = createSharedDb();
+    const projectId = insertProject(localDb, 'Edit Conflict Test');
+
+    const contactId = insertContact(localDb, 'Edit Carol');
+    const membershipId = localInsertMembership(localDb, contactId, projectId);
+
+    const logId = uuidv4();
+    localDb.prepare('INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(logId, contactId, 'r@r.com', 'Reporter', 'Original text', NOW, NOW);
+    localDb.prepare('INSERT INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)').run(logId, membershipId);
+    syncProject(localDb, sharedDb, projectId);
+
+    // Stale shared edit (older than the next local edit below)
+    sharedDb.prepare('UPDATE interaction_log_entries SET body = ?, updated_at = ? WHERE id = ?').run('Stale shared edit', NOW + 5, logId);
+    localDb.prepare('UPDATE interaction_log_entries SET body = ?, updated_at = ? WHERE id = ?').run('Newer local edit', NOW + 15, logId);
+
+    syncProject(localDb, sharedDb, projectId);
+    const localRow = localDb.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string };
+    const sharedRow = sharedDb.prepare('SELECT body FROM interaction_log_entries WHERE id = ?').get(logId) as { body: string };
+    expect(localRow.body).toBe('Newer local edit');
+    expect(sharedRow.body).toBe('Newer local edit');
+  });
 });
 
 // ---------------------------------------------------------------------------

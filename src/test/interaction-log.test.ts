@@ -181,6 +181,84 @@ describe('interaction-log:list-for-contact', () => {
 });
 
 // ---------------------------------------------------------------------------
+// interaction-log:update
+// ---------------------------------------------------------------------------
+
+describe('interaction-log:update', () => {
+  it('updates the body and created_at of an entry', async () => {
+    const contactId = insertContact(testDb, 'Alice Smith');
+    const projId = insertProject(testDb, 'Project Alpha');
+    const membershipId = insertMembership(contactId, projId);
+    const entry = await handlers.get('interaction-log:add')!({}, { membershipId, body: 'Original text' }) as InteractionLogEntry;
+
+    const newCreatedAt = entry.created_at - 3600;
+    const result = await handlers.get('interaction-log:update')!({}, {
+      id: entry.id,
+      body: 'Corrected text',
+      createdAt: newCreatedAt,
+    }) as InteractionLogEntry;
+
+    expect(result.body).toBe('Corrected text');
+    expect(result.created_at).toBe(newCreatedAt);
+
+    const row = testDb.prepare('SELECT body, created_at, updated_at FROM interaction_log_entries WHERE id = ?').get(entry.id) as { body: string; created_at: number; updated_at: number };
+    expect(row.body).toBe('Corrected text');
+    expect(row.created_at).toBe(newCreatedAt);
+    expect(row.updated_at).toBeGreaterThanOrEqual(entry.created_at);
+  });
+
+  it('keeps the existing created_at when none is provided', async () => {
+    const contactId = insertContact(testDb, 'Bob Jones');
+    const projId = insertProject(testDb, 'Project Beta');
+    const membershipId = insertMembership(contactId, projId);
+    const entry = await handlers.get('interaction-log:add')!({}, { membershipId, body: 'Original' }) as InteractionLogEntry;
+
+    const result = await handlers.get('interaction-log:update')!({}, { id: entry.id, body: 'Edited' }) as InteractionLogEntry;
+
+    expect(result.created_at).toBe(entry.created_at);
+  });
+
+  it('trims body whitespace', async () => {
+    const contactId = insertContact(testDb, 'Carol Davis');
+    const projId = insertProject(testDb, 'Project Gamma');
+    const membershipId = insertMembership(contactId, projId);
+    const entry = await handlers.get('interaction-log:add')!({}, { membershipId, body: 'Original' }) as InteractionLogEntry;
+
+    const result = await handlers.get('interaction-log:update')!({}, { id: entry.id, body: '  spaced out  ' }) as InteractionLogEntry;
+
+    expect(result.body).toBe('spaced out');
+  });
+
+  it('throws when body is empty', async () => {
+    const contactId = insertContact(testDb, 'Dave Evans');
+    const projId = insertProject(testDb, 'Project Delta');
+    const membershipId = insertMembership(contactId, projId);
+    const entry = await handlers.get('interaction-log:add')!({}, { membershipId, body: 'Original' }) as InteractionLogEntry;
+
+    expect(() =>
+      handlers.get('interaction-log:update')!({}, { id: entry.id, body: '   ' }),
+    ).toThrow(/body is required/);
+  });
+
+  it('throws when the entry does not exist', () => {
+    expect(() =>
+      handlers.get('interaction-log:update')!({}, { id: 'nonexistent-id', body: 'Edited' }),
+    ).toThrow(/Interaction not found/);
+  });
+
+  it('throws when createdAt is invalid', async () => {
+    const contactId = insertContact(testDb, 'Eve Frank');
+    const projId = insertProject(testDb, 'Project Epsilon');
+    const membershipId = insertMembership(contactId, projId);
+    const entry = await handlers.get('interaction-log:add')!({}, { membershipId, body: 'Original' }) as InteractionLogEntry;
+
+    expect(() =>
+      handlers.get('interaction-log:update')!({}, { id: entry.id, body: 'Edited', createdAt: 0 }),
+    ).toThrow(/invalid created_at/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // interaction-log:delete (#210)
 // ---------------------------------------------------------------------------
 

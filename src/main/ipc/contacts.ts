@@ -698,8 +698,8 @@ export function registerContactHandlers(): void {
       // reminders still in place (fixes #186).
       db.transaction(() => {
         db.prepare(
-          'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        ).run(id, membership.contact_id, user.email, reporterName, body.trim(), ts);
+          'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        ).run(id, membership.contact_id, user.email, reporterName, body.trim(), ts, ts);
         insertProject.run(id, membershipId);
         for (const mid of extraMembershipIds ?? []) {
           if (mid !== membershipId && validMid.get(mid, membership.contact_id)) {
@@ -751,7 +751,7 @@ export function registerContactHandlers(): void {
       if (!Number.isFinite(ts) || ts <= 0 || ts > maxTs) throw new Error('invalid created_at');
       const reporterName = `${user.first_name} ${user.last_name}`;
       const insertEntry = db.prepare(
-        'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO interaction_log_entries (id, contact_id, reporter_email, reporter_name, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       );
       const insertProject = db.prepare(
         'INSERT OR IGNORE INTO interaction_projects (interaction_id, membership_id) VALUES (?, ?)',
@@ -759,7 +759,7 @@ export function registerContactHandlers(): void {
       const validMidGlobal = db.prepare('SELECT 1 FROM project_memberships WHERE id = ? AND contact_id = ?');
       const clearReminder = db.prepare('DELETE FROM reminders WHERE membership_id = ? AND is_auto_outreach = 1');
       db.transaction(() => {
-        insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts);
+        insertEntry.run(id, contactId, user.email, reporterName, body.trim(), ts, ts);
         const validatedMids: string[] = [];
         for (const mid of membershipIds ?? []) {
           if (validMidGlobal.get(mid, contactId)) {
@@ -784,6 +784,35 @@ export function registerContactHandlers(): void {
         body: body.trim(),
         created_at: ts,
         project_name: firstProject,
+      };
+    },
+  );
+
+  ipcMain.handle(
+    'interaction-log:update',
+    (_, { id, body, createdAt }: { id: string; body: string; createdAt?: number }): InteractionLogEntry => {
+      if (!body.trim()) throw new Error('body is required');
+      const db = getDatabase();
+      const existing = db.prepare('SELECT * FROM interaction_log_entries WHERE id = ?').get(id) as
+        | { id: string; contact_id: string; reporter_email: string; reporter_name: string; body: string; created_at: number }
+        | undefined;
+      if (!existing) throw new Error('Interaction not found');
+      const ts = createdAt ?? existing.created_at;
+      const maxTs = Math.floor(Date.now() / 1000) + 3600;
+      if (!Number.isFinite(ts) || ts <= 0 || ts > maxTs) throw new Error('invalid created_at');
+      const now = Math.floor(Date.now() / 1000);
+      db.prepare('UPDATE interaction_log_entries SET body = ?, created_at = ?, updated_at = ? WHERE id = ?')
+        .run(body.trim(), ts, now, id);
+      checkOutreachReminders();
+      broadcastRemindersChanged();
+      broadcastContactsChanged();
+      return {
+        id,
+        contact_id: existing.contact_id,
+        reporter_email: existing.reporter_email,
+        reporter_name: existing.reporter_name,
+        body: body.trim(),
+        created_at: ts,
       };
     },
   );

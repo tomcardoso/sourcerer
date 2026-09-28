@@ -110,7 +110,8 @@ export const SHARED_SCHEMA_SQL = `
     reporter_email TEXT    NOT NULL,
     reporter_name  TEXT    NOT NULL,
     body           TEXT    NOT NULL,
-    created_at     INTEGER NOT NULL
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS interaction_projects (

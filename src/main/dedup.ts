@@ -405,8 +405,12 @@ export function mergeContacts(
       );
     }
 
-    db.prepare('UPDATE interaction_log_entries SET contact_id = ? WHERE contact_id = ?').run(
+    // Bump updated_at alongside the reassignment so LWW pull correctly propagates
+    // the new contact_id to any other client that already synced these entries
+    // under the loser's id before this merge.
+    db.prepare('UPDATE interaction_log_entries SET contact_id = ?, updated_at = ? WHERE contact_id = ?').run(
       winnerId,
+      now,
       loserId,
     );
     db.prepare('UPDATE contact_screenshots SET contact_id = ? WHERE contact_id = ?').run(
