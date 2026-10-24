@@ -151,17 +151,19 @@ The interaction log is also used to calculate the _last contacted_ date, which d
 
 In addition to automatic priority-based reminders, you can set a manual reminder on any contact in any project. A manual reminder has a due date and an optional note. Manual reminders appear in the Reminders view alongside automatic ones.
 
-## Alerts
+## Mentions
 
-### RSS feed monitoring
+### Google Alerts feeds
 
-You can attach one or more RSS feeds to any contact. Sourcerer polls these feeds in the background while the app is open and surfaces new articles in the **Alerts** view, linked to the corresponding contact. This is useful for tracking press coverage of sources — for example, a Google News alert RSS feed for a person's name.
+You can attach one or more [Google Alerts](https://www.google.com/alerts) or Google News RSS feeds to any contact — for example, an alert for a person's name. While the app is unlocked, Sourcerer checks these feeds in the background and lists new articles in the **Mentions** view, under the contact they belong to. Other kinds of RSS feed are not accepted.
 
-To add a feed, open a contact's detail panel and add a feed URL in the Alerts section.
+To get a feed URL, create an alert at google.com/alerts, click **Show options**, set **Deliver to** to **RSS feed**, create the alert and copy the feed's URL. Then edit the contact and paste the URL under **Alert RSS Feeds**.
 
-### The Alerts view
+Feeds are checked every 6 hours by default; you can change how often in Settings. To check straight away, click **Fetch now** in the Mentions view.
 
-The Alerts view shows all recent mentions across all your contacts, sorted by recency. Each item shows the article title, publication date, the source it is linked to, and the feed it came from.
+### The Mentions view
+
+The Mentions view lists every article found for your contacts, grouped by contact, with unread articles first. Each item shows the headline, the website it was published on, and when it was published. You can mark items as read or dismiss them.
 
 ### Wayback Machine snapshots
 

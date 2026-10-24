@@ -23,7 +23,7 @@ The salt is stored as a file named `salt` inside the `.sourcerer` vault bundle, 
 
 ## Your master password
 
-The master password is **never stored, hashed for storage, or transmitted anywhere**. It exists only in memory during the unlock process, long enough to derive the key. After that it is gone.
+The master password is **never stored, hashed for storage, or transmitted anywhere**. It is never written to disk. While the app is unlocked it is kept in memory, so that automatic backups can be encrypted with it, and it is discarded when the app locks (see [Memory](#memory)).
 
 There is no password reset, recovery code, or backdoor. If you forget your password, your data is permanently inaccessible. This is by design — any recovery mechanism would be a potential attack surface.
 
@@ -62,7 +62,7 @@ The operating system can see that the database file exists, its size, and its mo
 
 ### Memory
 
-While the app is unlocked, decrypted data is held in memory. This is unavoidable for any application. Modern OS memory management means sensitive data may remain in swap or memory dumps after the app is closed. Auto-lock clears the key from memory on idle.
+While the app is unlocked, decrypted data is held in memory. This is unavoidable for any application. Modern OS memory management means sensitive data may remain in swap or memory dumps after the app is closed. Your master password is also kept in memory while the app is unlocked, so that automatic backups can be encrypted with it. Locking the app — by hand or through auto-lock — discards the password and the key. Because of how memory is managed, copies may remain in memory until the system overwrites them.
 
 ### Backups in insecure locations
 
@@ -84,7 +84,7 @@ Sourcerer makes **no telemetry or analytics requests of any kind**. There are no
 
 The only outbound network connections the app initiates are:
 
-- **RSS feeds** — only for feeds you have explicitly attached to a contact. Sourcerer fetches these feeds from wherever they are hosted.
+- **Google Alerts feeds** — only for the Google Alerts or Google News RSS feeds you have attached to a contact. Sourcerer fetches them from Google while the app is unlocked.
 - **Wayback Machine API** — only when you add or update a contact's website URL and the Wayback Machine setting is enabled.
 - **Update checks** — about 10 seconds after launch, and whenever you choose **Help → Check for Updates…**, an installed copy of the app asks GitHub whether a newer release of Sourcerer exists. The check sends no data about you or your contacts, and an update is downloaded only if you choose to.
 

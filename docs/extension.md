@@ -45,7 +45,7 @@ Notes are appended to the contact's existing notes with a blank line separator, 
 
 Click **New contact** in the popup. Fill in the name (required), organisation, title/role, email, phone, and source URL, then click **Add contact**. The contact is created in your encrypted local database immediately.
 
-The **Source URL** field pre-fills with the current tab's URL automatically. If you have [Wayback Machine archiving](guide.html#alerts) enabled and configured in Sourcerer, saving a website URL will submit it to the Internet Archive in the background — the snapshot URL is then saved to the contact record.
+The **Source URL** field pre-fills with the current tab's URL automatically. If you have [Wayback Machine archiving](guide.md#wayback-machine-snapshots) enabled and configured in Sourcerer, saving a website URL will submit it to the Internet Archive in the background — the snapshot URL is then saved to the contact record.
 
 You can then open the app to add more details, link to a project, or take a screenshot.
 

@@ -34,7 +34,7 @@ const FIREFOX = 'https://addons.mozilla.org/en-CA/firefox/addon/sourcerer-for-jo
 const PAGES = [
   {
     file: 'guide.md', nav: 'User guide', blurb: 'Every feature, from first launch to shared projects.',
-    aliases: { contacts: 'your-contacts', 'import-export': 'import--export', extension: 'browser-extension' },
+    aliases: { contacts: 'your-contacts', 'import-export': 'import--export', extension: 'browser-extension', alerts: 'mentions' },
   },
   {
     file: 'extension.md', nav: 'Browser extension', blurb: 'Capture pages, save selected text and add contacts from your browser.',
