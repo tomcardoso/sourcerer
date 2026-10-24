@@ -32,6 +32,16 @@ npm run db:export     # prompts for app password, writes sourcerer-plain.db
 # delete the file when done — it contains all data in plaintext
 ```
 
+## Website and docs
+
+The website (https://tomcardoso.github.io/sourcerer/) is built from `site/` and `docs/`:
+
+- `docs/guide.md`, `docs/extension.md`, `docs/security.md` are the documentation — Markdown that GitHub shows as-is and `site/build.mjs` renders into `guide.html`, `extension.html` and `security.html` (the app's Help menu links to the first two, so keep those names). A new page must be added to `PAGES` in `site/build.mjs`, or the build fails. When a change affects something user-facing, update the relevant page in the same PR
+- `site/src/index.html` is the landing page; its styles and scripts are in `site/src/assets/`. The site uses the app's own tokens, fonts (copied from `src/renderer/src/assets/fonts`) and hard design rules
+- Preview with `cd site && npm ci && npm run dev` (http://localhost:4321)
+- App screenshots live in `docs/images/` as `app-<name>.png` and `app-<name>-dark.png`. `npm run screenshots` (after `npm run rebuild && npm run build`; under `xvfb-run -a` on headless Linux) launches the built app in a throwaway home folder, creates a vault filled with the fictional dev seeds, and captures every screen in both themes. `scripts/screenshots.mjs` drives the UI by its visible labels and class names, so renaming one of those can break the capture
+- `.github/workflows/pages.yml` takes the screenshots again before every deploy, so the site always shows the current app; it runs on pushes to `main` that touch `docs/` or `site/`, after each release (started by `build.yml`), and by hand. The images it takes aren't committed: refresh `docs/images/` by running `npm run screenshots` locally when the README's screenshot should change
+
 ## Git / PR rules
 
 - `main` is protected — all changes must go through a pull request

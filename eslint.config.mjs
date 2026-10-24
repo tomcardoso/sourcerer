@@ -12,6 +12,7 @@ export default tseslint.config(
       'dist-extension/**',
       'extension/**',
       'scripts/**',
+      'site/**',
       'build/**',
       'electron-builder.config.js',
     ],

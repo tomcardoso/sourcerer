@@ -23,7 +23,8 @@
     "pretest": "npm run rebuild:node",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preversion": "npm run typecheck && npm run lint && npm test"
+    "preversion": "npm run typecheck && npm run lint && npm test",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@electron-toolkit/preload": "3.0.2",
@@ -53,6 +54,7 @@
     "eslint": "^10.7.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.7.0",
+    "playwright-core": "1.63.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "typescript": "5.9.3",

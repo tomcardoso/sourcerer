@@ -1,38 +1,89 @@
-name: Deploy Docs to GitHub Pages
+name: Website
+
+# Builds the website (site/, from the landing page and docs/) and publishes it to GitHub Pages:
+# https://tomcardoso.github.io/sourcerer/
+#
+# Before every build it takes the app screenshots again (`npm run screenshots`: the app is built
+# from this commit, run under xvfb with the fictional dev seeds, and captured in light and dark),
+# so the website always shows the app as it is. The fresh images are used for this deploy only and
+# are not committed; docs/images/ keeps the copies GitHub shows, refreshed with the same command.
+#
+# It runs when docs/ or site/ change on main, after each release (build.yml starts it,
+# since a release made with a workflow's token triggers nothing), and by hand. On a pull request
+# it only builds, so a broken page or an unreachable screen fails the check before it merges.
 
 on:
   push:
     branches: [main]
-    paths: ['docs/**']
+    paths: ['docs/**', 'site/**', 'scripts/screenshots.mjs', '.github/workflows/pages.yml']
+  pull_request:
+    paths: ['docs/**', 'site/**', 'scripts/screenshots.mjs', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            site/package-lock.json
 
-      - name: Upload artifact
+      - name: Install the app's dependencies
+        run: npm ci
+
+      - name: Build the app
+        run: npm run rebuild && npm run build
+
+      - name: Take the screenshots
+        run: xvfb-run -a npm run screenshots
+
+      - name: Keep the screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/images/app-*.png
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Build the website
+        working-directory: site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm ci && npm run build
+
+      - name: Upload the website
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/
+          path: site/dist
 
-      - name: Deploy to GitHub Pages
-        id: deployment
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deployment
         uses: actions/deploy-pages@v4

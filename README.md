@@ -7,7 +7,7 @@ Source and contact management for journalists and researchers — local-first, e
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-4b5563)](LICENSE)
 [![Sponsor](https://img.shields.io/github/sponsors/tomcardoso?label=sponsor&logo=github&color=ea4aaa)](https://github.com/sponsors/tomcardoso)
 
-![screenshot](docs/img/contact-details-2.png)
+![Sourcerer showing a source's details beside the contact list](docs/images/app-contact.png)
 
 _All names and details in the screenshot are fictional and generated for demonstration purposes only._
 
