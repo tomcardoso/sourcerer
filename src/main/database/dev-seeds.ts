@@ -505,6 +505,28 @@ export function seedDevData(db: Database.Database, email: string, name: string):
     addReminder('Theresa Ouellet-Gauvin', healthId, 10,
       'Complete cross-reference of falsified staffing records against her redacted report.');
 
+    // ── Mentions ─────────────────────────────────────────────────────────────
+    // Alert hits without a feed behind them, so nothing is ever fetched for
+    // them; example.com is reserved and resolves to nothing real.
+    const insertMention = db.prepare(
+      `INSERT INTO contact_alert_mentions (id, contact_id, headline, source_url, published_at, fetched_at, guid, seen)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const MENTIONS: [string, string, number, number][] = [
+      ['Alderman Frank Sorrentino', 'Council votes 7–4 to remove Millgate marsh parcels from protected lands', 0, 0],
+      ['Alderman Frank Sorrentino', 'Sorrentino defends rezoning timeline after closed-door committee session', 2, 0],
+      ['Catherine Mwangi', 'Wetland advocates file for judicial review of Millgate approval', 1, 0],
+      ['Sen. (ret.) Gérald Marquette', 'Former senator calls for independent audit of Clearwater pension fund', 3, 0],
+      ['Deputy Commissioner Harlan Bryce', 'Regulator says pension oversight review will report by spring', 5, 1],
+      ['Dr. Ananya Krishnamurthy', 'Drug-approval delays draw scrutiny at health committee hearing', 6, 1],
+      ['Councillor Diane Ferreira', 'Ferreira tables motion to publish Millgate appraisal documents', 8, 1],
+    ];
+    for (const [contactName, headline, daysAgo, seen] of MENTIONS) {
+      const id = uuidv4();
+      insertMention.run(id, cid(contactName), headline, `https://example.com/news/${id}`,
+        NOW - daysAgo * DAY - 3600, NOW - daysAgo * DAY, id, seen);
+    }
+
     // ── Default project per contact ───────────────────────────────────────────
     const updateDefault = db.prepare('UPDATE contacts SET default_membership_id = ? WHERE id = ?');
     for (const [contactName, membershipId] of firstMembByContact) {

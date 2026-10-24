@@ -1,0 +1,335 @@
+{{HEAD}}
+<body class="home">
+{{HEADER}}
+<main id="main">
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow label reveal"><span class="eyebrow-dot"></span>Free and open source · Version {{VERSION}}</p>
+      <h1 class="hero-title reveal">Your sources,<br><span class="hl">encrypted<svg class="hl-swash" viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path d="M3 14 C 60 6, 140 4, 297 9"/></svg></span> on<br>your own machine.</h1>
+      <p class="hero-lead reveal">Sourcerer is a desktop app for journalists and researchers. It keeps your contacts, outreach history and source relationships in one encrypted database on your computer: never in a cloud, never on a server, never seen by anyone else.</p>
+      <div class="hero-cta reveal">
+        <a class="btn btn-primary download-primary" href="#download" data-mac="{{MAC}}" data-windows="{{WINDOWS}}" data-linux="{{LINUX}}">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></svg>
+          <span class="download-label">Download Sourcerer</span>
+        </a>
+        <a class="btn btn-secondary" href="#tour">Take the tour</a>
+      </div>
+      <p class="hero-meta reveal"><span class="download-note">For Mac (Apple silicon), Windows and Linux.</span> No account, no subscription.</p>
+    </div>
+
+    <div class="hero-visual reveal" aria-hidden="true">
+      <div class="hexdump"><div class="hexdump-bar">db.sqlite · as stored</div><pre class="hexdump-body"></pre></div>
+      <div class="vault">
+        <div class="vault-bar">
+          <span class="vault-where"><span class="vault-lock"></span><span class="vault-state">On disk · Vault.sourcerer</span></span>
+          <span class="vault-alg">AES-256</span>
+        </div>
+        <div class="vault-body">
+          <p class="v-kicker"><span class="cx" data-text="Millgate Land Deal · Critical"></span></p>
+          <p class="v-name"><span class="cx" data-text="Catherine Mwangi"></span></p>
+          <p class="v-org"><span class="cx" data-text="National Export Finance Corporation · Risk Analyst"></span></p>
+          <div class="v-rule"></div>
+          <div class="v-row"><span class="v-label">Email</span><span class="cx" data-text="c.mwangi@nefc.example"></span></div>
+          <div class="v-row"><span class="v-label">Signal</span><span class="cx" data-text="+1 582 555 1244"></span></div>
+          <div class="v-row"><span class="v-label">Status</span><span class="v-status"><span class="cx" data-text="Not yet contacted"></span></span></div>
+          <div class="v-log">
+            <p class="v-label">Interaction log</p>
+            <p class="v-entry" data-i="0"><span class="v-date">Oct 6</span>Sent secure form link. She confirmed receipt.</p>
+            <p class="v-entry" data-i="1"><span class="v-date">Oct 15</span>Brief call. Nervous about exposure; will think about it.</p>
+          </div>
+          <div class="v-reminder"><span class="v-bell"></span>Follow up in 7 days · Critical</div>
+        </div>
+      </div>
+      <p class="vault-caption label"><span class="vc-locked">What anyone who takes your laptop sees</span><span class="vc-open">What you see, after your password</span></p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <ul class="proof reveal">
+      <li><b>Encrypted at rest</b><span>AES-256 with SQLCipher, on every page of the database</span></li>
+      <li><b>Your key, nowhere else</b><span>Derived from your password with Argon2id at every unlock</span></li>
+      <li><b>No server, no account</b><span>Sourcerer runs no service that sees your data, and has no telemetry</span></li>
+      <li><b>Open source</b><span>Every line is public, under the AGPL-3.0 licence</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── Tour ─────────────────────────────────────────────────────────────────────────────── -->
+<section class="section tour" id="tour">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <p class="kicker label">The app</p>
+      <h2>A look inside.</h2>
+      <p>These screens are taken automatically from the current version of the app, filled with a sample newsroom's three investigations. Every person, organization and phone number in them is invented.</p>
+    </header>
+
+    <div class="tour-tabs reveal" role="tablist" aria-label="Screens of the app">
+      <button role="tab" aria-selected="true" data-shot="contacts">Contacts</button>
+      <button role="tab" aria-selected="false" data-shot="contact">A source</button>
+      <button role="tab" aria-selected="false" data-shot="project">Projects</button>
+      <button role="tab" aria-selected="false" data-shot="timeline">Timeline</button>
+      <button role="tab" aria-selected="false" data-shot="reminders">Reminders</button>
+      <button role="tab" aria-selected="false" data-shot="mentions">Mentions</button>
+      <button role="tab" aria-selected="false" data-shot="search">Search</button>
+      <button role="tab" aria-selected="false" data-shot="duplicates">Duplicates</button>
+    </div>
+
+    <div class="tour-stage reveal">
+      <div class="window">
+        <div class="window-bar"><span></span><span></span><span></span><em>Sourcerer</em></div>
+        <div class="window-screens">
+          <figure class="screen active" data-shot="contacts"><img class="only-light" src="images/app-contacts.png" width="1600" height="1000" alt="All contacts: a hundred sources with their organizations, contact details and when each was last contacted."><img class="only-dark" src="images/app-contacts-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="contact"><img class="only-light" src="images/app-contact.png" width="1600" height="1000" alt="A source's detail panel: email, Signal number, notes, interaction log, reminders and projects." loading="lazy"><img class="only-dark" src="images/app-contact-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="project"><img class="only-light" src="images/app-project.png" width="1600" height="1000" alt="A project's sources, each with a theme, status, priority and reporter." loading="lazy"><img class="only-dark" src="images/app-project-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="timeline"><img class="only-light" src="images/app-timeline.png" width="1600" height="1000" alt="A project's timeline of every logged interaction, newest first." loading="lazy"><img class="only-dark" src="images/app-timeline-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="reminders"><img class="only-light" src="images/app-reminders.png" width="1600" height="1000" alt="Reminders: overdue and upcoming follow-ups across every project." loading="lazy"><img class="only-dark" src="images/app-reminders-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="mentions"><img class="only-light" src="images/app-mentions.png" width="1600" height="1000" alt="Mentions: news alerts about sources, grouped by contact." loading="lazy"><img class="only-dark" src="images/app-mentions-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="search"><img class="only-light" src="images/app-search.png" width="1600" height="1000" alt="Search, open over the contact list, finding two sources by name." loading="lazy"><img class="only-dark" src="images/app-search-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+          <figure class="screen" data-shot="duplicates"><img class="only-light" src="images/app-duplicates.png" width="1600" height="1000" alt="Two contacts with similar names side by side, ready to merge or keep apart." loading="lazy"><img class="only-dark" src="images/app-duplicates-dark.png" width="1600" height="1000" alt="" loading="lazy"></figure>
+        </div>
+      </div>
+      <div class="tour-captions">
+        <p class="caption active" data-shot="contacts"><b>Contacts.</b> One address book for every story, sortable and filterable, with a flag on anyone you haven't touched in months. <a href="guide.html#your-contacts">Your contacts</a></p>
+        <p class="caption" data-shot="contact"><b>A source.</b> Emails, phones, Signal and other handles, notes, tags, screenshots, and every interaction, reminder and project in one panel. <a href="guide.html#contact-fields">Contact fields</a></p>
+        <p class="caption" data-shot="project"><b>Projects.</b> One per investigation or beat. Each source gets its own status, priority, theme and reporter in each project. <a href="guide.html#projects">Projects</a></p>
+        <p class="caption" data-shot="timeline"><b>Timeline.</b> Every logged interaction across a project, newest first, filterable and printable for a team briefing. <a href="guide.html#logging-interactions">Logging interactions</a></p>
+        <p class="caption" data-shot="reminders"><b>Reminders.</b> Follow-ups scheduled by priority, plus your own, with a desktop notification when one comes due. <a href="guide.html#priority-and-reminder-intervals">Reminders</a></p>
+        <p class="caption" data-shot="mentions"><b>Mentions.</b> Attach a Google Alerts feed to a source and new articles about them turn up here. <a href="guide.html#mentions">Mentions</a></p>
+        <p class="caption" data-shot="search"><b>Search.</b> Press ⌘K or Ctrl+K to find any contact or project from anywhere in the app.</p>
+        <p class="caption" data-shot="duplicates"><b>Duplicates.</b> Likely duplicates are found by name, email and phone, then shown side by side to merge or keep apart. <a href="guide.html#duplicate-detection">Duplicate detection</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── On disk ──────────────────────────────────────────────────────────────────────────── -->
+<section class="section disk band" id="encryption">
+  <pre class="cipher-wall" aria-hidden="true"></pre>
+  <div class="wrap disk-grid">
+    <header class="section-head reveal">
+      <p class="kicker label">Encryption</p>
+      <h2>Useless to anyone without your password.</h2>
+      <p>Everything lives in one vault on your computer: the database, its salt file and any screenshots. Every page of the database is encrypted. The key that unlocks it is worked out from your password each time you open the app, and is never written down anywhere.</p>
+      <p>That also means there is no reset link. Forget the password and the data is gone, by design.</p>
+      <p><a class="more" href="security.html">How Sourcerer protects your data, and what it doesn't <span aria-hidden="true">→</span></a></p>
+    </header>
+    <div class="spec reveal">
+      <dl>
+        <div><dt>Database encryption</dt><dd>AES-256-CBC, SQLCipher 4</dd></div>
+        <div><dt>Key derivation</dt><dd>Argon2id · 64 MB · 3 passes</dd></div>
+        <div><dt>Password storage</dt><dd>None. Not stored, not sent</dd></div>
+        <div><dt>Screenshots</dt><dd>Encrypted with the same key</dd></div>
+        <div><dt>Auto-lock</dt><dd>After the idle time you choose</dd></div>
+        <div><dt>Panic wipe</dt><dd>Destroys the database, salt and screenshots</dd></div>
+      </dl>
+      <div class="unlock-shot">
+        <img class="only-light" src="images/app-unlock.png" width="560" height="520" alt="Sourcerer's unlock screen, asking for the master password." loading="lazy">
+        <img class="only-dark" src="images/app-unlock-dark.png" width="560" height="520" alt="" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Outreach ─────────────────────────────────────────────────────────────────────────── -->
+<section class="section orn outreach" id="outreach">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <p class="kicker label">Outreach</p>
+      <h2>From first approach to on the record.</h2>
+      <p>Every source in every project carries a status. When one goes quiet, the priority you gave them decides when Sourcerer reminds you to try again, and the interaction log keeps the whole arc: who reached out, when, and what was said.</p>
+    </header>
+
+    <div class="flow reveal" aria-label="The outreach statuses">
+      <ol class="flow-path">
+        <li data-s="0">Not yet contacted</li>
+        <li data-s="1">Contacted, no reply</li>
+        <li data-s="2">In dialogue</li>
+        <li data-s="3">Interview arranged</li>
+        <li data-s="4">Interviewed, on-record</li>
+      </ol>
+      <div class="flow-cursor" aria-hidden="true"></div>
+      <ul class="flow-off">
+        <li>Interviewed, off-record</li>
+        <li>Declined</li>
+        <li>Declined, door open</li>
+        <li>Referred to comms</li>
+        <li>Ghosted</li>
+        <li>Do not contact</li>
+      </ul>
+    </div>
+
+    <div class="cadence reveal">
+      <div class="cadence-head">
+        <p class="label">Follow-up reminders, by priority</p>
+        <p>Measured from the last logged interaction.</p>
+      </div>
+      <ol class="bars">
+        <li style="--v:7"><span class="bar-label">Critical</span><span class="bar"><i></i></span><span class="bar-val">every 7 days</span></li>
+        <li style="--v:14"><span class="bar-label">High</span><span class="bar"><i></i></span><span class="bar-val">every 14 days</span></li>
+        <li style="--v:28"><span class="bar-label">Medium</span><span class="bar"><i></i></span><span class="bar-val">every 28 days</span></li>
+        <li style="--v:60"><span class="bar-label">Low</span><span class="bar"><i></i></span><span class="bar-val">every 60 days</span></li>
+        <li style="--v:0"><span class="bar-label">Monitor-only</span><span class="bar"><i></i></span><span class="bar-val">no reminder</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ── Redaction ────────────────────────────────────────────────────────────────────────── -->
+<section class="section orn redact" id="redaction">
+  <div class="wrap redact-grid">
+    <header class="section-head reveal">
+      <p class="kicker label">Redaction mode</p>
+      <h2>Working in public? Blur it.</h2>
+      <p>One shortcut blurs every name, organization, email, phone number, handle, link and note on screen, so you can work in a café or share your screen without showing who you talk to. The same shortcut brings it all back.</p>
+      <p class="redact-try"><button type="button" class="btn btn-secondary redact-toggle" aria-pressed="false"><kbd class="k-mod">Ctrl</kbd><kbd>Shift</kbd><kbd>R</kbd><span class="redact-word">Try it</span></button></p>
+    </header>
+    <div class="redact-demo reveal" data-redacted="false">
+      <div class="window">
+        <div class="window-bar"><span></span><span></span><span></span><em>Sourcerer</em></div>
+        <div class="redact-screens">
+          <img class="only-light r-clear" src="images/app-contact.png" width="1600" height="1000" alt="A source's details, readable." loading="lazy">
+          <img class="only-dark r-clear" src="images/app-contact-dark.png" width="1600" height="1000" alt="" loading="lazy">
+          <img class="only-light r-blur" src="images/app-redacted.png" width="1600" height="1000" alt="The same screen in redaction mode, with names and details blurred." loading="lazy">
+          <img class="only-dark r-blur" src="images/app-redacted-dark.png" width="1600" height="1000" alt="" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Collaboration ────────────────────────────────────────────────────────────────────── -->
+<section class="section orn share" id="collaboration">
+  <div class="wrap share-grid">
+    <header class="section-head reveal">
+      <p class="kicker label">Shared projects</p>
+      <h2>Work a story together, with no server in the middle.</h2>
+      <p>A shared project is a second encrypted database in a folder your team already syncs: Dropbox, OneDrive, Google Drive or a network drive. Each Sourcerer reads and writes it every two minutes. The sync service only ever holds an encrypted file.</p>
+      <p class="note">Cloud folders copy whole files and never merge them, so two people saving at the same moment can leave a “conflicted copy”. Work a few minutes apart. <a href="guide.html#what-sync-does-and-doesnt-promise">What sync does and doesn't promise</a></p>
+    </header>
+    <div class="share-visual reveal" aria-hidden="true">
+      <div class="node node-a"><span class="node-who">Your laptop</span><span class="node-db">Sourcerer</span></div>
+      <div class="node node-cloud"><span class="node-who">Shared folder</span><span class="node-file">Millgate.sourcerer</span><span class="node-cipher"></span></div>
+      <div class="node node-b"><span class="node-who">A colleague's laptop</span><span class="node-db">Sourcerer</span></div>
+      <svg class="share-lines" viewBox="0 0 600 300"><path id="ln-a" d="M120 215 C 200 215, 220 80, 300 80"/><path id="ln-b" d="M480 215 C 400 215, 380 80, 300 80"/><rect class="packet" x="-4.5" y="-4.5" width="9" height="9"><animateMotion dur="4s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.45;1" calcMode="linear"><mpath href="#ln-a"/></animateMotion></rect><rect class="packet" x="-4.5" y="-4.5" width="9" height="9"><animateMotion dur="4s" begin="2s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;0.45;1" calcMode="linear"><mpath href="#ln-b"/></animateMotion></rect></svg>
+      <span class="share-clock label">Every 2 minutes</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── Extension ────────────────────────────────────────────────────────────────────────── -->
+<section class="section orn ext" id="extension">
+  <div class="wrap ext-grid">
+    <div class="ext-shot reveal">
+      <img src="images/extension.png" width="360" height="281" alt="The Sourcerer browser extension: connected, with buttons to save a screenshot, save a selection to a contact, or add a new contact." loading="lazy">
+    </div>
+    <header class="section-head reveal">
+      <p class="kicker label">Browser extension</p>
+      <h2>Capture the page before it disappears.</h2>
+      <p>Save a full-page screenshot of any tab to a source's record, file a selected email address or phone number on an existing contact, or add a new contact from the page you're reading. Everything goes straight into your encrypted vault through the app on your own computer; nothing passes through anyone else's server.</p>
+      <div class="ext-cta">
+        <a class="btn btn-secondary" href="{{CHROME}}">Chrome Web Store</a>
+        <a class="btn btn-secondary" href="{{FIREFOX}}">Firefox Add-ons</a>
+      </div>
+      <p class="note">Works in Chrome, Edge, Brave, Arc and Firefox. <a href="extension.html">Extension guide</a></p>
+    </header>
+  </div>
+</section>
+
+<!-- ── Everything else ──────────────────────────────────────────────────────────────────── -->
+<section class="section orn more-features" id="features">
+  <div class="wrap">
+    <header class="section-head reveal">
+      <p class="kicker label">And</p>
+      <h2>The rest of the toolkit.</h2>
+    </header>
+    <ul class="feature-grid">
+      <li class="reveal"><svg class="f-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M4 17v3h16v-3"/></svg><h3>Import</h3><p>Bring contacts in from CSV or vCard, including exports from Apple Contacts and Google Contacts.</p></li>
+      <li class="reveal"><svg class="f-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14V3m0 0L8 7m4-4 4 4M4 17v3h16v-3"/></svg><h3>Export, or sanitise</h3><p>Export to CSV, Excel or vCard. A sanitised export strips notes and interaction logs before you share a list.</p></li>
+      <li class="reveal"><svg class="f-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v4H4zM5 10v10h14V10M10 14h4"/></svg><h3>Backups</h3><p>Encrypted backups, by hand or once a day, to a folder you choose, keeping as many as you like.</p></li>
+      <li class="reveal"><svg class="f-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5"/></svg><h3>Calendar feed</h3><p>Subscribe to upcoming reminders from Apple Calendar, Outlook or Thunderbird, served only on your computer.</p></li>
+      <li class="reveal"><svg class="f-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M5 5v15h14V5M9 9h6M9 13h6"/></svg><h3>Website archiving</h3><p>Optionally send a source's website to the Wayback Machine when you save it, so you keep a copy if it vanishes.</p></li>
+      <li class="reveal"><svg class="f-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M5 9h14v8H5zM8 14h8v7H8z"/></svg><h3>Print</h3><p>Print a contact sheet, or a project's timeline, on a clean black-and-white page.</p></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── Download ─────────────────────────────────────────────────────────────────────────── -->
+<section class="section download band" id="download">
+  <div class="download-glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="section-head center reveal">
+      <p class="kicker label">Download</p>
+      <h2>Get Sourcerer {{VERSION}}.</h2>
+      <p>It's free, and installed copies update themselves.</p>
+    </header>
+    <div class="platforms reveal">
+      <a class="platform" data-os="mac" href="{{MAC}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.8ZM14.1 5.8c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3Z"/></svg>
+        <span class="platform-name">Mac with Apple silicon</span>
+        <span class="platform-file">{{MAC_FILE}}</span>
+      </a>
+      <a class="platform" data-os="windows" href="{{WINDOWS}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.4 10.4 4.4v7H3Zm8.3-1.1L21 3v8.4h-9.7ZM3 12.5h7.4v7.1L3 18.6Zm8.3 0H21V21l-9.7-1.3Z"/></svg>
+        <span class="platform-name">Windows</span>
+        <span class="platform-file">{{WINDOWS_FILE}}</span>
+      </a>
+      <a class="platform" data-os="linux" href="{{LINUX}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5c-2 0-3.3 1.7-3.3 4 0 1.2.3 2 .1 2.8-.3 1.1-1.9 2.6-2.8 4.4-.8 1.6-.9 3.2-.4 4.2-.7.5-1.3 1.2-1 1.9.4.9 2.1.6 3.4 1.2 1.2.6 2.3.6 2.9-.2.9.1 1.8.1 2.6 0 .6.8 1.7.8 2.9.2 1.3-.6 3-.3 3.4-1.2.3-.7-.3-1.4-1-1.9.5-1 .4-2.6-.4-4.2-.9-1.8-2.5-3.3-2.8-4.4-.2-.8.1-1.6.1-2.8 0-2.3-1.3-4-3.3-4Zm-1.3 3.4c.4 0 .7.5.7 1.1 0 .5-.3 1-.7 1-.4 0-.7-.5-.7-1 0-.6.3-1.1.7-1.1Zm2.6 0c.4 0 .7.5.7 1.1 0 .5-.3 1-.7 1-.4 0-.7-.5-.7-1 0-.6.3-1.1.7-1.1ZM12 8.6c.8 0 1.9.5 1.9.9 0 .3-1.1.9-1.9.9s-1.9-.6-1.9-.9c0-.4 1.1-.9 1.9-.9Z"/></svg>
+        <span class="platform-name">Linux</span>
+        <span class="platform-file">{{LINUX_FILE}}</span>
+      </a>
+    </div>
+    <ol class="steps reveal">
+      <li><b>Install it</b><span>Open the file and install it like any other app. <a href="guide.html#installation">If your computer warns you</a></span></li>
+      <li><b>Create your vault</b><span>Pick where it lives, then choose a master password you won't forget. <a href="guide.html#first-launch">First launch</a></span></li>
+      <li><b>Add your sources</b><span>Type them in, or import a CSV or vCard file from your address book. <a href="guide.html#import--export">Import and export</a></span></li>
+    </ol>
+    <p class="section-more center reveal">All files and earlier versions are on <a href="{{RELEASE_PAGE}}">the release page</a>.</p>
+  </div>
+</section>
+
+<!-- ── Questions ────────────────────────────────────────────────────────────────────────── -->
+<section class="section orn faq" id="faq">
+  <div class="wrap faq-grid">
+    <header class="section-head reveal">
+      <p class="kicker label">Questions</p>
+      <h2>Before you start.</h2>
+      <p>Anything else is in the <a href="guide.html">user guide</a>, or ask on <a href="{{REPO}}/issues">GitHub</a>.</p>
+    </header>
+    <div class="faq-list reveal">
+      <details>
+        <summary>What does it cost?</summary>
+        <p>Nothing. Sourcerer is free and open source, with no paid tier and no subscription. If it helps your work, you can <a href="https://github.com/sponsors/tomcardoso">sponsor its development</a>.</p>
+      </details>
+      <details>
+        <summary>Can I get my data back if I forget my password?</summary>
+        <p>No. There is no reset, recovery code or back door, because any of those would also be a way in for someone else. Use a passphrase you'll remember, and keep a backup. <a href="security.html#your-master-password">Your master password</a></p>
+      </details>
+      <details>
+        <summary>Does it send my contacts anywhere?</summary>
+        <p>No. Your data stays in the vault on your computer, or in a shared folder you choose for a shared project. The app connects to the internet only to fetch the Google Alerts feeds you've added, to send a website to the Wayback Machine if you turn that on, and to check GitHub for a new version. <a href="security.html#network-traffic">Network traffic</a></p>
+      </details>
+      <details>
+        <summary>Can I use it on more than one computer?</summary>
+        <p>Your vault can live in a folder you carry or sync, such as an external drive or Dropbox, but open it on only one computer at a time. To work alongside colleagues, use a shared project instead. <a href="guide.html#vault-location">Vault location</a></p>
+      </details>
+      <details>
+        <summary>Can I bring my existing contacts?</summary>
+        <p>Yes. Import a CSV file, or a vCard file exported from Apple Contacts, Google Contacts or any other address book. <a href="guide.html#import--export">Import and export</a></p>
+      </details>
+      <details>
+        <summary>Is it a secure messaging tool?</summary>
+        <p>No. Sourcerer keeps records of your sources safe on your computer. It doesn't send messages or hide your communications; use a tool built for that, such as Signal. <a href="security.html#what-sourcerer-is-not">What Sourcerer is not</a></p>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+{{FOOTER}}
+</body>
+</html>

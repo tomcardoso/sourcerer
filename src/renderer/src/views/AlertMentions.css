@@ -92,7 +92,7 @@
 }
 
 .alerts-item-unread {
-  background: #fffbeb;
+  background: var(--color-warning-bg-subtle);
 }
 
 .alerts-item-unread:hover {

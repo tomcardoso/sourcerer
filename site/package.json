@@ -1,0 +1,14 @@
+{
+  "name": "sourcerer-site",
+  "private": true,
+  "description": "The Sourcerer website: the landing page and the docs/ pages, built into dist/ for GitHub Pages.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "node serve.mjs",
+    "dev": "node build.mjs && node serve.mjs"
+  },
+  "devDependencies": {
+    "marked": "18.0.14"
+  }
+}

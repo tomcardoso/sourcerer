@@ -7,7 +7,7 @@ Source and contact management for journalists and researchers — local-first, e
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-4b5563)](LICENSE)
 [![Sponsor](https://img.shields.io/github/sponsors/tomcardoso?label=sponsor&logo=github&color=ea4aaa)](https://github.com/sponsors/tomcardoso)
 
-![screenshot](docs/img/contact-details-2.png)
+![Sourcerer showing a source's details beside the contact list](docs/images/app-contact.png)
 
 _All names and details in the screenshot are fictional and generated for demonstration purposes only._
 
@@ -55,7 +55,7 @@ A browser extension (Chrome and Firefox) captures full-page screenshots from any
 - Automatic reminder notifications per priority level; manual reminders with due dates and notes
 
 **Alerts**
-- RSS feed monitoring per contact; new mentions surfaced in a notification centre
+- Google Alerts monitoring per contact; new mentions surfaced in the Mentions view
 - Optional Wayback Machine snapshot on link save (requires free Archive.org S3 API keys)
 
 **Security**
@@ -159,7 +159,7 @@ The exported file is a standard unencrypted SQLite database. Delete it when you'
 
 ## Security notes
 
-- No network requests are made except: user-configured RSS feeds, optional Wayback Machine saves (requires Archive.org S3 API keys configured in Settings), and the local HTTP server that receives screenshots from the browser extension (localhost only, one-time token auth).
+- No network requests are made except: user-configured Google Alerts feeds, update checks against GitHub releases (installed builds only), optional Wayback Machine saves (requires Archive.org S3 API keys configured in Settings), and the local HTTP server that receives screenshots from the browser extension (localhost only, one-time token auth).
 - The master password cannot be recovered. Use a passphrase — four random words are easier to remember and just as strong as a complex string.
 - The browser extension communicates only with localhost and requires explicit one-time approval in the app.
 - **Sourcerer has not yet had an independent third-party security audit.** The encryption relies on standard, well-reviewed primitives (SQLCipher, Argon2id) rather than anything custom, and the source is open for inspection — but no external reviewer has examined the implementation. An external review has been applied for. See [security.html](https://tomcardoso.github.io/sourcerer/security.html) for the full picture.

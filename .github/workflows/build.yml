@@ -196,3 +196,18 @@ jobs:
               --notes-file /tmp/release-notes.md \
               "${assets[@]}"
           fi
+
+  website:
+    # Rebuild the website so its download buttons name the new release and its screenshots show the
+    # new version. A release published with this workflow's token starts no other workflow, so
+    # pages.yml is started here instead.
+    needs: finalize-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      actions: write
+    steps:
+      - name: Start the website build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
