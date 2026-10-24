@@ -162,7 +162,7 @@
 }
 
 .reminders-item-overdue-outreach {
-  background: #fffbeb;
+  background: var(--color-warning-bg-subtle);
 }
 
 .reminders-item-overdue-outreach:hover {
