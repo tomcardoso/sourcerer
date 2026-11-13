@@ -52,7 +52,7 @@ The website (https://tomcardoso.github.io/sourcerer/) is built from `site/` and 
 
 ## Cutting a release
 
-Releases are triggered by pushing a version tag (`v*`). Because `main` is protected, the version bump goes through a PR first, then the tag is pushed separately after merge.
+Releases are built by `.github/workflows/build.yml`, started either by pushing a version tag (`v*`) or by running the workflow by hand on `main` with **release** ticked. Because `main` is protected, the version bump goes through a PR first; the release is started after merge.
 
 1. Create a version bump branch: `git checkout -b chore/v{VERSION}`
 2. Bump the version (updates `package.json` and creates a local git tag):
@@ -68,12 +68,15 @@ Releases are triggered by pushing a version tag (`v*`). Because `main` is protec
    gh pr create ...
    ```
 4. Add a `## What's new` section to the PR body — plain English, written for a lay audience (not a developer changelog). This becomes the public release notes, so it should cover **all meaningful changes since the previous version tag**: new features, significant fixes, removals, and anything a user would notice. Run `git log v{PREV_VERSION}..HEAD --oneline` to get the full list of commits to draw from. The release workflow will prepend it to the auto-generated PR list (which appears in a collapsible Details block below).
-5. Once the PR is merged, push the tag to trigger the build:
-   ```bash
-   git checkout main && git pull
-   git push origin v{VERSION}
-   ```
-6. The `build.yml` workflow builds on macOS, Windows, and Linux, then creates a GitHub Release with all artifacts automatically
+5. Once the PR is merged, start the release in one of two ways:
+   - **Run the workflow by hand** (Actions → Build and Release → Run workflow, on `main`, with **release** ticked). It releases `package.json`'s version and creates the tag `v{VERSION}` itself, only after every build and test has passed. A cloud session can't push tags (the push is refused with HTTP 403), so this is its way to release, and it works from a phone.
+   - **Or push the tag** from a local clone:
+     ```bash
+     git checkout main && git pull
+     git push origin v{VERSION}
+     ```
+     The tag must match `package.json`'s version, or the workflow stops before building.
+6. The `build.yml` workflow builds on macOS, Windows, and Linux, then creates a GitHub Release with all artifacts automatically. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published
 
 ## UI design system
 

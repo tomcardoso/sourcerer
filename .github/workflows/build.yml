@@ -1,11 +1,71 @@
 name: Build and Release
 
+# Releases the desktop app. Two ways to start one:
+#   - Push a tag v<version> on a commit whose package.json has that version.
+#   - Run this workflow by hand on main (Actions → Build and Release → Run workflow) with
+#     "release" ticked. It releases package.json's version and creates the tag v<version> only
+#     once every build and test has passed. A cloud session can't push tags, so this is its way
+#     to release; it also works from a phone.
+# Run by hand without "release" ticked (on any branch), it is a test build: every platform is
+# built and tested, the installers are kept as the run's artifacts, and nothing is published.
+
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release package.json's version (run on main)"
+        type: boolean
+        default: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - id: v
+        name: Work out what this run releases
+        shell: bash
+        env:
+          RELEASE_INPUT: ${{ inputs.release }}
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            TAG="$GITHUB_REF_NAME"
+            if [ "${TAG#v}" != "$PKG" ]; then
+              echo "::error::package.json's version is $PKG; bump it to ${TAG#v} before tagging $TAG"
+              exit 1
+            fi
+          elif [ "$RELEASE_INPUT" = true ]; then
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::A release runs on main; this run is on $GITHUB_REF_NAME"
+              exit 1
+            fi
+            TAG="v$PKG"
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+              echo "::error::$TAG already exists; bump package.json's version first (npm version patch)"
+              exit 1
+            fi
+          else
+            echo "A test build of $PKG: nothing will be published."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -91,7 +151,7 @@ jobs:
         run: npm run dist:linux -- --publish never
 
       - name: Upload build artifacts (macOS)
-        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS'
+        if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
@@ -104,7 +164,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload build artifacts (Windows)
-        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Windows'
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
@@ -116,7 +176,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload build artifacts (Linux)
-        if: startsWith(github.ref, 'refs/tags/v') && runner.os == 'Linux'
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
@@ -128,9 +188,9 @@ jobs:
           if-no-files-found: error
 
   finalize-release:
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.version.outputs.release == 'true'
     permissions:
       contents: write
 
@@ -143,12 +203,24 @@ jobs:
         with:
           path: artifacts/
 
+      - name: Tag the commit (a release started by hand)
+        if: github.ref_type != 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          # Made now, once every build and test has passed. A tag made with this job's token
+          # starts no other workflow, so this run is the only release run. Fails if the tag
+          # was created since the version job checked.
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST \
+            -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
+
       - name: Create release with assets and generated notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
 
           # Ask GitHub to generate a changelog from merged PRs since the previous tag
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
@@ -201,9 +273,9 @@ jobs:
     # Rebuild the website so its download buttons name the new release and its screenshots show the
     # new version. A release published with this workflow's token starts no other workflow, so
     # pages.yml is started here instead.
-    needs: finalize-release
+    needs: [version, finalize-release]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.version.outputs.release == 'true'
     permissions:
       actions: write
     steps:
