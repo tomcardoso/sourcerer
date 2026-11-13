@@ -35,6 +35,19 @@ export interface MoveVaultResult {
 export interface UnlockResult {
   success: boolean;
   error?: string;
+  /** Why unlocking failed. 'failed' means something other than the password
+   *  went wrong; the unlock screen then offers the diagnostics report. */
+  reason?: 'wrong-password' | 'vault-files' | 'failed';
+}
+
+export interface DiagnosticsReport {
+  /** The whole report as Markdown, exactly as it will be saved. */
+  text: string;
+}
+
+export interface SaveDiagnosticsResult {
+  saved: boolean;
+  error?: string;
 }
 
 export interface Project {

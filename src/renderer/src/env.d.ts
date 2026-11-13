@@ -27,6 +27,9 @@ import type {
   ContactScreenshot,
   SearchResult,
   TimelineEntry,
+  UnlockResult,
+  DiagnosticsReport,
+  SaveDiagnosticsResult,
 } from '@shared/types';
 
 declare global {
@@ -43,7 +46,10 @@ declare global {
       useDefaultVault: () => Promise<{ error: string } | null>;
       pickVaultLocation: () => Promise<{ path?: string; error?: string } | null>;
       openExistingVault: () => Promise<{ success: boolean; error?: string } | null>;
-      unlock: (password: string) => Promise<{ success: boolean; error?: string }>;
+      unlock: (password: string) => Promise<UnlockResult>;
+      buildDiagnosticsReport: () => Promise<DiagnosticsReport>;
+      saveDiagnosticsReport: () => Promise<SaveDiagnosticsResult>;
+      onOpenDiagnostics: (callback: () => void) => () => void;
       lock: () => Promise<void>;
       expandForSetup: () => Promise<void>;
       onLocked: (callback: () => void) => () => void;

@@ -24,6 +24,8 @@ import { stopAutoBackupTimer } from './auto-backup-timer';
 import { registerScreenshotHandlers } from './ipc/screenshots';
 import { registerSearchHandlers } from './ipc/search';
 import { registerUpdaterHandlers, triggerUpdateCheck } from './ipc/updater';
+import { registerDiagnosticsHandlers, openDiagnosticsDialog } from './ipc/diagnostics';
+import { recordEvent } from './diagnostics/trace';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -178,6 +180,10 @@ function buildMenu(): void {
           label: 'Report an issue',
           click: () => shell.openExternal('https://github.com/tomcardoso/sourcerer/issues'),
         },
+        {
+          label: 'Export Diagnostics Report\u2026',
+          click: openDiagnosticsDialog,
+        },
         { type: 'separator' as const },
         {
           label: 'Check for Updates\u2026',
@@ -196,7 +202,20 @@ function buildMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// Diagnostics trace (src/main/diagnostics/trace.ts). The monitor form only
+// observes: Electron's own handling of an uncaught exception is unchanged.
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+  recordEvent('uncaught-exception', { detail: origin, error: err });
+});
+app.on('render-process-gone', (_event, _contents, details) => {
+  recordEvent('renderer-gone', { detail: details.reason });
+});
+app.on('child-process-gone', (_event, details) => {
+  recordEvent('child-process-gone', { detail: details.type });
+});
+
 app.whenReady().then(() => {
+  recordEvent('app-started', { version: app.getVersion(), build: app.isPackaged ? 'installed' : 'development' });
   buildMenu();
   registerSetupHandlers();
   registerUnlockHandlers();
@@ -215,6 +234,7 @@ app.whenReady().then(() => {
   registerScreenshotHandlers();
   registerSearchHandlers();
   registerUpdaterHandlers();
+  registerDiagnosticsHandlers();
   startHttpServer();
   createWindow();
 

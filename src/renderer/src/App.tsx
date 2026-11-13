@@ -6,6 +6,7 @@ import AppShell from './shell/AppShell';
 import ScreenshotPickerModal from './contacts/ScreenshotPickerModal';
 import Button from './shell/Button';
 import Modal from './shell/Modal';
+import DiagnosticsModal from './shell/DiagnosticsModal';
 
 type AppScreen = 'loading' | 'setup' | 'locked' | 'unlocked';
 
@@ -13,6 +14,7 @@ export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
   const [showExtensionApproval, setShowExtensionApproval] = useState(false);
   const [pendingScreenshotTempId, setPendingScreenshotTempId] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   useEffect(() => {
     window.sourcerer.checkFirstLaunch().then(({ isFirstLaunch }) => {
@@ -26,10 +28,13 @@ export default function App() {
     const removeScreenshot = window.sourcerer.onScreenshotReceived((tempId) =>
       setPendingScreenshotTempId(tempId),
     );
+    // Help > Export Diagnostics Report… works on every screen, locked or not.
+    const removeDiagnostics = window.sourcerer.onOpenDiagnostics(() => setShowDiagnostics(true));
     return () => {
       removeLocked();
       removeAccess();
       removeScreenshot();
+      removeDiagnostics();
     };
   }, []);
 
@@ -60,6 +65,10 @@ export default function App() {
     </Modal>
   ) : null;
 
+  const diagnosticsModal = showDiagnostics ? (
+    <DiagnosticsModal onClose={() => setShowDiagnostics(false)} />
+  ) : null;
+
   if (screen === 'loading') {
     return (
       <div className="app-loading">
@@ -75,7 +84,16 @@ export default function App() {
     />
   ) : null;
 
-  if (screen === 'setup') return <>{extensionModal}{screenshotModal}<Setup onComplete={() => setScreen('locked')} /></>;
-  if (screen === 'locked') return <>{extensionModal}{screenshotModal}<Unlock onUnlocked={() => setScreen('unlocked')} /></>;
-  return <>{extensionModal}{screenshotModal}<AppShell /></>;
+  if (screen === 'setup') return <>{extensionModal}{screenshotModal}{diagnosticsModal}<Setup onComplete={() => setScreen('locked')} /></>;
+  if (screen === 'locked') {
+    return (
+      <>
+        {extensionModal}
+        {screenshotModal}
+        {diagnosticsModal}
+        <Unlock onUnlocked={() => setScreen('unlocked')} onOpenDiagnostics={() => setShowDiagnostics(true)} />
+      </>
+    );
+  }
+  return <>{extensionModal}{screenshotModal}{diagnosticsModal}<AppShell /></>;
 }

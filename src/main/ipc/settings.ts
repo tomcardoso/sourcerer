@@ -7,6 +7,7 @@ import Database from 'better-sqlite3-multiple-ciphers';
 import { getDatabase, closeDatabase, getKeyHex, updateActiveKeyHex, setActivePassword, snapshotDatabase } from '../database';
 import { getPaths, deriveKey, getVaultBundlePath, writeVaultConfig, clearVaultConfig, detectSyncProvider } from '../utils';
 import { autoLock } from '../auto-lock';
+import { clearTrace } from '../diagnostics/trace';
 import { setRssPollIntervalHours } from '../sync/poller';
 import { validateEmail } from '@shared/validation';
 import type { ThemeMode, User } from '@shared/types';
@@ -343,6 +344,9 @@ export function registerSettingsHandlers(): void {
     if (bundlePath) await fs.rm(bundlePath, { recursive: true, force: true }).catch(() => {});
 
     clearVaultConfig();
+    // The diagnostics trace holds no vault content, but it does record when the
+    // app was used, so it goes too.
+    clearTrace();
     app.quit();
   });
 

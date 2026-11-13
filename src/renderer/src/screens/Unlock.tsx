@@ -5,17 +5,21 @@ import './Unlock.css';
 
 interface Props {
   onUnlocked: () => void;
+  onOpenDiagnostics: () => void;
 }
 
-export default function Unlock({ onUnlocked }: Props) {
+export default function Unlock({ onUnlocked, onOpenDiagnostics }: Props) {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True when unlocking failed for a reason other than the password.
+  const [appProblem, setAppProblem] = useState(false);
   const [attempts, setAttempts] = useState(0);
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     setPassword(e.target.value);
     setError(null);
+    setAppProblem(false);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -30,8 +34,8 @@ export default function Unlock({ onUnlocked }: Props) {
     if (result.success) {
       onUnlocked();
     } else {
-      const next = attempts + 1;
-      setAttempts(next);
+      if (result.reason === 'wrong-password') setAttempts(attempts + 1);
+      setAppProblem(result.reason === 'failed');
       setError(result.error ?? 'Incorrect password.');
       setPassword('');
       setSubmitting(false);
@@ -62,9 +66,17 @@ export default function Unlock({ onUnlocked }: Props) {
           {error && (
             <div className="unlock-error">
               {error}
-              {attempts >= 3 && (
+              {!appProblem && attempts >= 3 && (
                 <div className="unlock-error-hint">
                   Remember: there is no password recovery mechanism.
+                </div>
+              )}
+              {appProblem && (
+                <div className="unlock-error-hint">
+                  To report this, export a diagnostics report and attach it to the issue.
+                  <button type="button" className="unlock-error-link" onClick={onOpenDiagnostics}>
+                    Export diagnostics report
+                  </button>
                 </div>
               )}
             </div>
