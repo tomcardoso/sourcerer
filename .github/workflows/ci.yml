@@ -3,9 +3,13 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  # Started by build.yml's `screenshots` job on the pull request it opens: a pull request opened
+  # with a workflow's token starts no workflow, but a dispatch does, and the `test` check it
+  # reports on the branch's commit is what main's branch protection requires.
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

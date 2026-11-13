@@ -7,7 +7,10 @@ name: Build and Release
 #     once every build and test has passed. A cloud session can't push tags, so this is its way
 #     to release; it also works from a phone.
 # Run by hand without "release" ticked (on any branch), it is a test build: every platform is
-# built and tested, the installers are kept as the run's artifacts, and nothing is published.
+# built and tested, the installers and screenshots are kept as the run's artifacts, and nothing
+# is published.
+# After a release, the `screenshots` job retakes the committed app screenshots and merges them
+# into main through a pull request of its own.
 
 on:
   push:
@@ -60,9 +63,11 @@ jobs:
             echo "release=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "release=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "tag=$TAG"
+            echo "version=${TAG#v}"
+            echo "release=true"
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
@@ -268,6 +273,137 @@ jobs:
               --notes-file /tmp/release-notes.md \
               "${assets[@]}"
           fi
+
+  screenshots:
+    # After a release, the committed app screenshots (docs/images/app-*.png, which the README and
+    # the docs on GitHub show) are taken again and merged into main, so they never fall behind the
+    # app. The website takes its own fresh copies on every deploy (pages.yml), so this is only for
+    # the committed ones. It runs after the release is published, so a failed capture never holds
+    # one up.
+    #
+    # main takes changes only through a pull request whose `test` check has passed. A pull request
+    # opened with this job's token starts no workflow, so the job starts CI on the branch by
+    # dispatch (which that token can do), waits for it, and then merges the pull request itself.
+    # Needs Settings → Actions → General → "Allow GitHub Actions to create and approve pull
+    # requests" (only the create part is used). If anything is refused, the pull request stays
+    # open to merge by hand and the job fails, so the run shows it.
+    #
+    # A test build (run by hand without "release") takes the screenshots too and keeps them as the
+    # run's artifact instead, so the job can be tried without publishing anything.
+    needs: [version, finalize-release]
+    if: >-
+      !cancelled() && (
+        needs.finalize-release.result == 'success' ||
+        needs.version.outputs.release != 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write       # push the screenshots branch, merge
+      pull-requests: write  # open the pull request
+      actions: write        # start CI on the branch and read its run
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.version.outputs.tag }}
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the app
+        run: npm run rebuild && npm run build
+
+      - name: Take the screenshots
+        run: xvfb-run -a npm run screenshots
+
+      - name: Keep the screenshots (a test build)
+        if: needs.version.outputs.release != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/images/app-*.png
+          retention-days: 5
+          if-no-files-found: error
+
+      - name: Open a pull request with them
+        id: pr
+        if: needs.version.outputs.release == 'true'
+        run: |
+          if git diff --quiet -- docs/images && [ -z "$(git ls-files --others --exclude-standard docs/images)" ]; then
+            echo "The screenshots are unchanged."
+            exit 0
+          fi
+          # Taken from the released commit, offered on top of main as it is now.
+          cp docs/images/app-*.png "$RUNNER_TEMP/"
+          git checkout -- docs/images
+          git clean -fdq -- docs/images
+          git fetch --depth=1 origin main
+          BRANCH="screenshots/$TAG"
+          git switch -C "$BRANCH" FETCH_HEAD
+          cp "$RUNNER_TEMP"/app-*.png docs/images/
+          if git diff --quiet -- docs/images && [ -z "$(git ls-files --others --exclude-standard docs/images)" ]; then
+            echo "main already has these screenshots."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images
+          git commit -q -m "Docs: retake the app screenshots for $VERSION"
+          git push --force origin "$BRANCH"
+          PR=$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url // empty')
+          if [ -z "$PR" ]; then
+            PR=$(gh pr create --base main --head "$BRANCH" \
+              --title "Docs: app screenshots for $VERSION" \
+              --body "The committed app screenshots, taken again after the $TAG release by Build and Release's \`screenshots\` job, which runs CI on this branch and merges this pull request itself. Only images change.")
+          fi
+          {
+            echo "url=$PR"
+            echo "branch=$BRANCH"
+            echo "sha=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run CI on it and merge it
+        if: steps.pr.outputs.url != ''
+        env:
+          PR: ${{ steps.pr.outputs.url }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          gh workflow run ci.yml --ref "$BRANCH"
+          RUN_ID=""
+          for _ in $(seq 1 30); do
+            RUN_ID=$(gh run list --workflow ci.yml --branch "$BRANCH" --event workflow_dispatch \
+              --json databaseId,headSha --jq "map(select(.headSha == \"$SHA\")) | .[0].databaseId // empty")
+            [ -n "$RUN_ID" ] && break
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::CI didn't start on $BRANCH; $PR is open to merge by hand."
+            exit 1
+          fi
+          if ! gh run watch "$RUN_ID" --exit-status --interval 20; then
+            echo "::error::CI failed on $BRANCH; $PR is open to look at."
+            exit 1
+          fi
+          # GitHub can take a moment to count the finished check towards the pull request.
+          for _ in $(seq 1 6); do
+            if gh pr merge "$PR" --squash --delete-branch; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Couldn't merge $PR; it's open to merge by hand."
+          exit 1
 
   website:
     # Rebuild the website so its download buttons name the new release and its screenshots show the
