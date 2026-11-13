@@ -20,16 +20,48 @@ export function applyCipherPragmas(db: Database.Database, keyHex: string): void 
   db.pragma(`key="x'${keyHex}'"`);
 }
 
-function openRaw(dbPath: string, keyHex: string): Database.Database {
-  const db = new Database(dbPath);
-  applyCipherPragmas(db, keyHex);
+/** Thrown when SQLCipher rejects the key: the password is wrong (or the file is
+ *  not a Sourcerer database at all — the two can't be told apart). Every other
+ *  failure while opening keeps its own error, so the unlock screen never reports
+ *  a broken install or a failed migration as a wrong password. */
+export class WrongKeyError extends Error {
+  constructor() {
+    super('Incorrect password or corrupted database.');
+    this.name = 'WrongKeyError';
+  }
+}
 
-  // Verify the key is correct — wrong key throws "file is not a database"
+/** A migration failed after the key was accepted. `original` is the error the migration threw. */
+export class MigrationError extends Error {
+  constructor(readonly original: unknown) {
+    super('The database could not be updated to the current version.');
+    this.name = 'MigrationError';
+  }
+}
+
+export function isWrongKeyError(err: unknown): err is WrongKeyError {
+  return err instanceof WrongKeyError;
+}
+
+function openRaw(dbPath: string, keyHex: string): Database.Database {
+  // Can throw before any key is checked, e.g. when the native module was built
+  // for a different Node/Electron version (ERR_DLOPEN_FAILED) — let it propagate.
+  const db = new Database(dbPath);
+  try {
+    applyCipherPragmas(db, keyHex);
+  } catch (err) {
+    db.close();
+    throw err;
+  }
+
+  // Verify the key: a wrong key makes the first read fail with SQLITE_NOTADB
+  // ("file is not a database"). Anything else (busy, I/O error) is not a key problem.
   try {
     db.pragma('user_version');
-  } catch {
+  } catch (err) {
     db.close();
-    throw new Error('Incorrect password or corrupted database.');
+    if ((err as { code?: unknown })?.code === 'SQLITE_NOTADB') throw new WrongKeyError();
+    throw err;
   }
 
   // Must be set per-connection — not persisted in the file
@@ -74,7 +106,12 @@ export function maybeRunDevSeeds(db: Database.Database): void {
 /** Subsequent unlocks: open existing encrypted DB + set active connection. */
 export function unlockDatabase(dbPath: string, keyHex: string): Database.Database {
   const db = openRaw(dbPath, keyHex);
-  runMigrations(db);
+  try {
+    runMigrations(db);
+  } catch (err) {
+    db.close();
+    throw new MigrationError(err);
+  }
   activeDb = db;
   activeKeyHex = keyHex;
   return db;

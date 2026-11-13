@@ -8,6 +8,8 @@ import type {
   OpenExistingVaultResult,
   MoveVaultResult,
   UnlockResult,
+  DiagnosticsReport,
+  SaveDiagnosticsResult,
   Project,
   User,
   ContactListItem,
@@ -48,6 +50,18 @@ const sourcererApi = {
     ipcRenderer.invoke('setup:open-existing-vault'),
   unlock: (password: string): Promise<UnlockResult> =>
     ipcRenderer.invoke('unlock:attempt', password),
+  // Diagnostics (available locked or unlocked)
+  buildDiagnosticsReport: (): Promise<DiagnosticsReport> =>
+    ipcRenderer.invoke('diagnostics:build'),
+  saveDiagnosticsReport: (): Promise<SaveDiagnosticsResult> =>
+    ipcRenderer.invoke('diagnostics:save'),
+  takePendingDiagnostics: (): Promise<boolean> =>
+    ipcRenderer.invoke('diagnostics:take-pending'),
+  onOpenDiagnostics: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('diagnostics:open', handler);
+    return () => ipcRenderer.removeListener('diagnostics:open', handler);
+  },
   lock: (): Promise<void> =>
     ipcRenderer.invoke('app:lock'),
   expandForSetup: (): Promise<void> =>

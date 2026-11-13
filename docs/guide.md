@@ -43,6 +43,8 @@ The first time you open Sourcerer, setup happens in two steps.
 
 Every time you open Sourcerer, you will be prompted for your master password. The app derives the encryption key fresh each time — the key is never stored anywhere. If the password is wrong, the database cannot be opened.
 
+Sourcerer says **Incorrect password** only when the vault rejected the key. If something else goes wrong while unlocking (for example, a damaged installation, or a problem updating your vault for a new version of the app), it says so instead, and offers to export a [diagnostics report](#diagnostics-report) for reporting the problem.
+
 The app can be set to lock automatically after a period of inactivity. See [Settings](#settings) for details.
 
 ## Your contacts
@@ -261,6 +263,7 @@ The panic wipe button irreversibly destroys:
 - The encrypted database
 - The salt file
 - All stored screenshots
+- The diagnostics event list (see [Diagnostics report](#diagnostics-report))
 
 Clicking the button reveals a confirmation step that requires you to type **WIPE** before destruction begins. If you have a backup, it will not be affected — and unlike the live database, the backup embeds its own salt so it can be restored with just your password.
 
@@ -327,3 +330,23 @@ All project data is synced: contact memberships, status, priority, reporter attr
 - There is no live conflict resolution UI — last-write-wins is silent.
 - Deleting a contact or project in one installation will propagate to others on the next sync cycle.
 - The shared database file is encrypted with SQLCipher — anyone who gains access to the file still needs the password to read it.
+
+## Reporting a problem
+
+### Diagnostics report
+
+**Help → Export Diagnostics Report…** builds a short text report to attach to a [bug report](https://github.com/tomcardoso/sourcerer/issues). It works whether the app is locked or unlocked, so you can use it when the vault won't open. The unlock screen also offers it when unlocking fails for a reason other than the password.
+
+The report holds:
+
+- the Sourcerer version, whether it is an installed or development build, and whether the vault is locked
+- your operating system and its version, the CPU architecture, and the versions of the components Sourcerer is built on
+- whether the database engine and the password hashing component load and work
+- facts about the vault files: whether each is present, its size as a range (such as "1 to 10 MB"), whether the vault is in the default location, which sync service it is in (iCloud Drive, Dropbox and so on), and, while unlocked, the database's version number
+- the last 100 recorded events, such as app starts, unlocks, refused passwords and errors, each with its time to the minute in UTC. An error is recorded as its kind (for example, "a native module was built for a different Node/Electron version"), its error code, and the places in Sourcerer's own code where it happened
+
+It never holds your password or keys, anything stored in your vault (names, email addresses, notes, projects), the name of any file or folder, or the text of an error message. Error messages can include your account name and file paths, so the report records only what kind of error it was. The report is built from a fixed list of facts, so a field added to Sourcerer later can't end up in it by accident.
+
+The dialog shows the whole report before you save or copy it. Read it before you share it: it still says roughly when you used the app, and which sync service your vault is in.
+
+The event list is kept in a small file named `diagnostics-trace.json` in Sourcerer's own data folder, outside your vault, and holds only what the report shows.

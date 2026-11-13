@@ -1,0 +1,53 @@
+/* The lock-screen window is 560 × 520 and not resizable, so the modal has to
+   fit inside it as well as inside the full app window. */
+.diagnostics-modal {
+  width: 500px;
+  max-width: calc(100vw - 32px);
+}
+
+.diagnostics-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin: 0 0 12px;
+}
+
+.diagnostics-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  padding: 10px 12px;
+  margin: 0 0 12px;
+  max-height: min(260px, calc(100vh - 300px));
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diagnostics-loading {
+  font-size: 13px;
+  color: var(--color-text-dim);
+  margin: 0 0 12px;
+}
+
+.diagnostics-error {
+  font-size: 13px;
+  color: var(--color-danger);
+  margin: 0 0 12px;
+}
+
+.diagnostics-actions {
+  align-items: center;
+}
+
+.diagnostics-status {
+  margin-right: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

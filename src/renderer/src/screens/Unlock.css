@@ -83,3 +83,24 @@
 .unlock-card .btn {
   height: 40px;
 }
+
+.unlock-error-link {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-danger);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.unlock-error-link:hover {
+  opacity: 0.8;
+}
