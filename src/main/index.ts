@@ -25,7 +25,7 @@ import { registerScreenshotHandlers } from './ipc/screenshots';
 import { registerSearchHandlers } from './ipc/search';
 import { registerUpdaterHandlers, triggerUpdateCheck } from './ipc/updater';
 import { registerDiagnosticsHandlers, openDiagnosticsDialog } from './ipc/diagnostics';
-import { recordEvent } from './diagnostics/trace';
+import { recordEvent, buildKind } from './diagnostics/trace';
 import { autoLock } from './auto-lock';
 import { closeDatabase } from './database';
 import { closeAllSharedDbs } from './database/shared-db';
@@ -182,7 +182,7 @@ function buildMenu(): void {
         },
         {
           label: 'Export Diagnostics Report\u2026',
-          click: openDiagnosticsDialog,
+          click: () => openDiagnosticsDialog(createWindow),
         },
         { type: 'separator' as const },
         {
@@ -215,7 +215,7 @@ app.on('child-process-gone', (_event, details) => {
 });
 
 app.whenReady().then(() => {
-  recordEvent('app-started', { version: app.getVersion(), build: app.isPackaged ? 'installed' : 'development' });
+  recordEvent('app-started', { version: app.getVersion(), build: buildKind() });
   buildMenu();
   registerSetupHandlers();
   registerUnlockHandlers();

@@ -42,7 +42,21 @@ vi.mock('../main/database', async (importOriginal) => {
   return { ...actual, unlockDatabase: (dbPath: string, keyHex: string) => h.open(dbPath, keyHex) };
 });
 
+// What runs after the database opens. Each test can make one step throw.
+const post = vi.hoisted(() => ({ dedupThrows: false }));
+vi.mock('../main/sync/poller', () => ({ startPoller: () => {}, stopPoller: () => {} }));
+vi.mock('../main/auto-backup-timer', () => ({ startAutoBackupTimer: () => {}, stopAutoBackupTimer: () => {} }));
+vi.mock('../main/sync/outreach-checker', () => ({ checkOutreachReminders: () => {}, clearOutreachNotificationCache: () => {} }));
+vi.mock('../main/sync/reminder-checker', () => ({ checkReminders: () => {}, clearReminderNotificationCache: () => {} }));
+vi.mock('../main/ipc/contacts', () => ({
+  runDedupScan: () => { if (post.dedupThrows) throw new Error('dedup broke'); },
+}));
+
+/** Stands in for an opened database: the one query unlock runs returns no row. */
+const fakeDb = { prepare: () => ({ get: () => undefined }) };
+
 import { registerUnlockHandlers } from '../main/ipc/unlock';
+import { autoLock } from '../main/auto-lock';
 import { WrongKeyError, MigrationError } from '../main/database';
 import { readTrace, setTraceFilePath } from '../main/diagnostics/trace';
 
@@ -60,9 +74,11 @@ describe('unlock:attempt', () => {
     fs.writeFileSync(path.join(h.dir, 'db.sqlite'), Buffer.alloc(8192));
     fs.writeFileSync(path.join(h.dir, 'salt'), Buffer.alloc(32));
     setTraceFilePath(path.join(h.dir, 'trace.json'));
+    post.dedupThrows = false;
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     setTraceFilePath(null);
     await fsp.rm(h.dir, { recursive: true, force: true });
   });
@@ -114,5 +130,35 @@ describe('unlock:attempt', () => {
     h.open = () => { throw new Error('should not be called'); };
     expect(await attempt()).toMatchObject({ success: false, reason: 'vault-files' });
     expect(readTrace()[0]).toMatchObject({ event: 'unlock-vault-files-problem', detail: 'database-placeholder' });
+  });
+
+  it('unlocks when the database opens', async () => {
+    h.open = () => fakeDb;
+    expect(await attempt()).toEqual({ success: true });
+    expect(readTrace().map((e) => e.event)).toEqual(['unlock-succeeded']);
+  });
+
+  it('locks again when a step after the database opened fails', async () => {
+    const lock = vi.spyOn(autoLock, 'lock').mockImplementation(() => {});
+    h.open = () => fakeDb;
+    post.dedupThrows = true;
+    const result = await attempt();
+    expect(result).toMatchObject({ success: false, reason: 'failed' });
+    expect(result.error).toContain('Your password is correct');
+    expect(lock).toHaveBeenCalledOnce();
+    expect(readTrace()[0]).toMatchObject({ event: 'unlock-failed', stage: 'start-session' });
+  });
+
+  it('still unlocks with the leftover key file when it cannot be renamed into place', async () => {
+    fs.writeFileSync(path.join(h.dir, 'salt.tmp'), Buffer.alloc(32));
+    let calls = 0;
+    h.open = () => {
+      calls += 1;
+      if (calls === 1) throw new WrongKeyError();
+      return fakeDb;
+    };
+    vi.spyOn(fsp, 'rename').mockRejectedValue(Object.assign(new Error('denied'), { code: 'EPERM' }));
+    expect(await attempt()).toEqual({ success: true });
+    expect(fs.existsSync(path.join(h.dir, 'salt.tmp'))).toBe(true);
   });
 });

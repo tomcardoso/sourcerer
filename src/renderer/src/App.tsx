@@ -30,6 +30,8 @@ export default function App() {
     );
     // Help > Export Diagnostics Report… works on every screen, locked or not.
     const removeDiagnostics = window.sourcerer.onOpenDiagnostics(() => setShowDiagnostics(true));
+    // Chosen from the menu while no window was open (macOS): this window was opened for it.
+    window.sourcerer.takePendingDiagnostics().then((pending) => { if (pending) setShowDiagnostics(true); });
     return () => {
       removeLocked();
       removeAccess();

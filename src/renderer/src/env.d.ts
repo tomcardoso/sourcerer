@@ -49,6 +49,7 @@ declare global {
       unlock: (password: string) => Promise<UnlockResult>;
       buildDiagnosticsReport: () => Promise<DiagnosticsReport>;
       saveDiagnosticsReport: () => Promise<SaveDiagnosticsResult>;
+      takePendingDiagnostics: () => Promise<boolean>;
       onOpenDiagnostics: (callback: () => void) => () => void;
       lock: () => Promise<void>;
       expandForSetup: () => Promise<void>;

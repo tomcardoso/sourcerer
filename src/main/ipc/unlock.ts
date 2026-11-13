@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { promises as fs } from 'fs';
 import { is } from '@electron-toolkit/utils';
-import { getPaths, deriveKey } from '../utils';
+import { getPaths, deriveKey, MIN_DATABASE_BYTES, SALT_BYTES } from '../utils';
 import { unlockDatabase, maybeRunDevSeeds, setActivePassword, isWrongKeyError, MigrationError } from '../database';
 import { recordEvent, errorFacts, type UnlockStage } from '../diagnostics/trace';
 import { autoLock } from '../auto-lock';
@@ -28,10 +28,8 @@ async function checkVaultFiles(dbPath: string, saltPath: string): Promise<VaultF
   ]);
   if (!dbStat) return 'database-missing';
   if (!saltStat) return 'key-file-missing';
-  // Cloud sync placeholder files are typically 0 bytes; a valid cipher database is at least one page (4096 bytes)
-  if (dbStat.size < 4096) return 'database-placeholder';
-  // The salt is always exactly 32 bytes
-  if (saltStat.size !== 32) return 'key-file-placeholder';
+  if (dbStat.size < MIN_DATABASE_BYTES) return 'database-placeholder';
+  if (saltStat.size !== SALT_BYTES) return 'key-file-placeholder';
   return null;
 }
 
@@ -104,7 +102,10 @@ export function registerUnlockHandlers(): void {
         keyHex = await deriveKey(password, salt);
         stage = 'open-database';
         db = unlockDatabase(dbPath, keyHex);
-        await fs.rename(saltTmpPath, saltPath);
+        // The vault is open now, so a failed rename must not fail the unlock
+        // (that would leave the database open behind the lock screen). The
+        // leftover salt still works: the next unlock takes this same path.
+        await fs.rename(saltTmpPath, saltPath).catch(() => {});
       }
     } catch (err) {
       if (isWrongKeyError(err)) return wrongPassword();

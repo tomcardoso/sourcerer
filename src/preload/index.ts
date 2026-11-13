@@ -55,6 +55,8 @@ const sourcererApi = {
     ipcRenderer.invoke('diagnostics:build'),
   saveDiagnosticsReport: (): Promise<SaveDiagnosticsResult> =>
     ipcRenderer.invoke('diagnostics:save'),
+  takePendingDiagnostics: (): Promise<boolean> =>
+    ipcRenderer.invoke('diagnostics:take-pending'),
   onOpenDiagnostics: (callback: () => void): (() => void) => {
     const handler = () => callback();
     ipcRenderer.on('diagnostics:open', handler);

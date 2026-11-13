@@ -45,10 +45,15 @@ export default function DiagnosticsModal({ onClose }: Props) {
 
   async function handleSave() {
     setSaving(true);
-    const result = await window.sourcerer.saveDiagnosticsReport();
-    setSaving(false);
-    if (result.error) setError(result.error);
-    else if (result.saved) onClose();
+    try {
+      const result = await window.sourcerer.saveDiagnosticsReport();
+      if (result.error) setError(result.error);
+      else if (result.saved) onClose();
+    } catch {
+      setError('The report could not be saved.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

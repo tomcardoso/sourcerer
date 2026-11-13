@@ -29,6 +29,12 @@ export function foldLine(line: string): string {
   return chunks.join('\r\n ');
 }
 
+/** A valid cipher database is at least one page; anything smaller is a cloud
+ *  sync placeholder (typically 0 bytes) that hasn't finished downloading. */
+export const MIN_DATABASE_BYTES = 4096;
+/** The salt (key file) is always exactly this many bytes. */
+export const SALT_BYTES = 32;
+
 type VaultConfig = { bundlePath: string };
 
 function vaultConfigPath(): string {

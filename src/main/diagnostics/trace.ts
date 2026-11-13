@@ -270,6 +270,11 @@ export function errorFacts(err: unknown): ErrorFacts {
 
 // ── the stored trace ─────────────────────────────────────────────────────────
 
+/** Whether this is an installed build. electron-vite's dev mode is never packaged. */
+export function buildKind(): 'installed' | 'development' {
+  return app.isPackaged ? 'installed' : 'development';
+}
+
 let filePathOverride: string | null = null;
 
 /** Tests point the trace at a temporary file. */
@@ -286,7 +291,8 @@ function traceFilePath(): string | null {
   }
 }
 
-function minuteStamp(d: Date): string {
+/** UTC to the minute, e.g. 2026-11-13T14:05Z. */
+export function minuteStamp(d: Date): string {
   return d.toISOString().slice(0, 16) + 'Z';
 }
 

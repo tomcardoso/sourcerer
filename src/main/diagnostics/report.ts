@@ -15,10 +15,9 @@ import crypto from 'crypto';
 import { app } from 'electron';
 import Database from 'better-sqlite3-multiple-ciphers';
 import argon2 from 'argon2';
-import { is } from '@electron-toolkit/utils';
-import { getPaths, getVaultBundlePath, detectSyncProvider, filenameDateStamp } from '../utils';
+import { getPaths, getVaultBundlePath, detectSyncProvider, filenameDateStamp, MIN_DATABASE_BYTES, SALT_BYTES } from '../utils';
 import { DB_VERSION, getDatabase, isDatabaseOpen } from '../database';
-import { errorFacts, readTrace, type ErrorFacts, type TraceEntry, type UnlockStage, type ErrorCategory } from './trace';
+import { errorFacts, readTrace, minuteStamp, buildKind, type ErrorFacts, type TraceEntry, type UnlockStage, type ErrorCategory } from './trace';
 
 export const REPORT_FORMAT = 1;
 
@@ -66,7 +65,7 @@ function safe(value: unknown, pattern: RegExp, fallback = 'unknown'): string {
 }
 
 const SIZE_BUCKETS: [number, string][] = [
-  [4096, 'under 4 KB (the size of a sync placeholder)'],
+  [MIN_DATABASE_BYTES, 'under 4 KB (the size of a sync placeholder)'],
   [1024 ** 2, '4 KB to 1 MB'],
   [10 * 1024 ** 2, '1 to 10 MB'],
   [100 * 1024 ** 2, '10 to 100 MB'],
@@ -92,7 +91,7 @@ export function vaultFileFacts(dbPath: string, saltPath: string): Pick<ReportDat
   const salt = stat(saltPath);
   return {
     database: db ? sizeBucket(db.size) : 'missing',
-    keyFile: !salt ? 'missing' : salt.size === 32 ? 'expected size' : 'unexpected size',
+    keyFile: !salt ? 'missing' : salt.size === SALT_BYTES ? 'expected size' : 'unexpected size',
     leftoverKeyFile: stat(saltPath + '.tmp') !== null,
     journal: stat(dbPath + '-journal') !== null || stat(dbPath + '-wal') !== null,
   };
@@ -150,10 +149,6 @@ function osVersion(): string {
   return safe(getSystemVersion?.(), VERSION_LOOSE);
 }
 
-function minuteStamp(d: Date): string {
-  return d.toISOString().slice(0, 16) + 'Z';
-}
-
 export async function gatherReport(now: Date = new Date()): Promise<ReportData> {
   const { dbPath, saltPath } = getPaths();
   const bundlePath = getVaultBundlePath();
@@ -163,7 +158,7 @@ export async function gatherReport(now: Date = new Date()): Promise<ReportData> 
     createdAt: minuteStamp(now),
     app: {
       version: safe(app.getVersion(), VERSION),
-      build: is.dev || !app.isPackaged ? 'development' : 'installed',
+      build: buildKind(),
       vault: isDatabaseOpen() ? 'unlocked' : 'locked',
     },
     system: {
