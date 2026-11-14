@@ -51,3 +51,11 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  # The end-to-end tests' Linux leg (e2e.yml); a release runs every platform's.
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      platform: linux
+    permissions:
+      contents: read

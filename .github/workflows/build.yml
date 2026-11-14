@@ -69,8 +69,17 @@ jobs:
             echo "release=true"
           } >> "$GITHUB_OUTPUT"
 
+  # The end-to-end tests on every platform (e2e.yml). A failure on any of them stops the release
+  # before an installer is built.
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      platform: all
+    permissions:
+      contents: read
+
   build:
-    needs: version
+    needs: [version, e2e]
     strategy:
       fail-fast: false
       matrix:
