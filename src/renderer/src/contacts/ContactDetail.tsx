@@ -57,6 +57,9 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
     const id = contactIdRef.current;
     window.sourcerer.getContact(id).then((c) => {
       if (contactIdRef.current === id) setContact(c);
+    }).catch(() => {
+      // Deleting this contact broadcasts a change while the panel is still closing; there is
+      // nothing left to load.
     });
     window.sourcerer.getContactInteractionCount(id).then((n) => {
       if (contactIdRef.current === id) setInteractionCount(n);

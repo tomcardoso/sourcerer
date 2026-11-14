@@ -23,6 +23,23 @@ npm test
 npm run rebuild       # restore Electron-targeted binaries before npm run dev
 ```
 
+**Running the end-to-end tests** (`e2e/`, Playwright driving the built app; native modules must target Electron, the opposite of `npm test`):
+
+```bash
+npm run rebuild       # build native modules for Electron
+npm run build         # the tests launch out/, so rebuild it after every change
+npm run test:e2e      # under `xvfb-run -a` on headless Linux
+```
+
+- Each test launches the app in its own throwaway home folder (`e2e/sourcerer.ts`), with `SOURCERER_USER_DATA` pointing its userData there (needed on Windows, where userData doesn't follow `HOME`; an installed app ignores it). Unlocking fills the vault with the dev seeds, as `npm run screenshots` does
+- Specs are split by area (`vault`, `contacts`, `projects`, `log`, `backup`, `settings`, `smoke`) and walk each feature through create → edit → delete, checking each change after a restart (`restart()`). When you add or change a user-facing feature, add or update its spec
+- Specs drive the UI by visible labels and class names, like `scripts/screenshots.mjs`, so renaming one of those can break them. Native file dialogs are answered in the main process with `answerFileDialog`, and notifications are silenced. The driven window may not have the system's focus, so main-process handlers should find their window with `BrowserWindow.fromWebContents(event.sender)`, not `getFocusedWindow()`
+- `launch(home)` with `newHome()` gives a second reporter their own vault, e.g. to share a project through a file both can reach
+- Not covered, because they need the network or the extension: the browser extension server, the updater, Google Alerts/RSS polling and Wayback archiving
+- Any uncaught error in the window fails a test. A failed test keeps a Playwright trace of each launch and the app's diagnostics trace in `test-results/` (`npx playwright show-trace test-results/<test>/trace-launch-1.zip`)
+- Tests run in parallel, so only the first app to start gets the extension server's port (27371); the others carry on without it. Don't write an e2e test that needs that server without making the port per-test
+- CI: pull requests don't run them. `.github/workflows/e2e.yml` runs macOS arm64, macOS x64, Windows and Linux, and every release runs it before building installers, so a failure there blocks the release. For a pull request that changes the UI or main-process handlers, run `npm run test:e2e` locally or `e2e.yml` by hand on its branch before merging, rather than finding out at release time
+
 **Inspecting the database** (TablePlus, DB Browser, sqlite3, etc.):
 
 ```bash
@@ -77,7 +94,7 @@ Releases are built by `.github/workflows/build.yml`, started either by pushing a
      git push origin v{VERSION}
      ```
      The tag must match `package.json`'s version, or the workflow stops before building.
-6. The `build.yml` workflow builds on macOS, Windows, and Linux, then creates a GitHub Release with all artifacts automatically. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published
+6. The `build.yml` workflow runs the end-to-end tests on every platform (`e2e.yml`), builds on macOS, Windows, and Linux, then creates a GitHub Release with all artifacts automatically. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published
 
 ## UI design system
 

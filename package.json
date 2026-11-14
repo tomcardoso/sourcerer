@@ -11,7 +11,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p e2e/tsconfig.json",
     "lint": "eslint .",
     "rebuild": "electron-rebuild -f -w better-sqlite3-multiple-ciphers,argon2",
     "rebuild:node": "npm rebuild better-sqlite3-multiple-ciphers argon2",
@@ -23,6 +23,7 @@
     "pretest": "npm run rebuild:node",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "preversion": "npm run typecheck && npm run lint && npm test",
     "screenshots": "node scripts/screenshots.mjs"
   },
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@electron/rebuild": "4.2.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "20.19.39",
     "@types/react": "18.3.28",

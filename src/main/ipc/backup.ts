@@ -16,7 +16,7 @@ const AUTH_HEIGHT = 720;
 export function registerBackupHandlers(): void {
   ipcMain.handle(
     'backup:export',
-    async (_, { password }: { password: string }): Promise<{ success: boolean; error?: string }> => {
+    async (event, { password }: { password: string }): Promise<{ success: boolean; error?: string }> => {
       const { saltPath, screenshotsPath } = getPaths();
 
       const dbSalt = await fs.readFile(saltPath);
@@ -25,7 +25,7 @@ export function registerBackupHandlers(): void {
         return { success: false, error: 'Incorrect password.' };
       }
 
-      const win = BrowserWindow.getFocusedWindow();
+      const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow();
       const { canceled, filePath } = await dialog.showSaveDialog(win!, {
         title: 'Export backup',
         defaultPath: `sourcerer-backup-${filenameDateStamp()}.sourcerer-backup`,
@@ -54,11 +54,12 @@ export function registerBackupHandlers(): void {
   ipcMain.handle(
     'backup:restore',
     async (
-      _,
+      event,
       { password }: { password: string },
     ): Promise<{ success: boolean; canceled?: boolean; error?: string }> => {
       const { dbPath, saltPath, screenshotsPath } = getPaths();
-      const win = BrowserWindow.getFocusedWindow();
+      // The window that asked, so the right one is locked once the vault is replaced.
+      const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow();
 
       const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
         title: 'Restore from backup',

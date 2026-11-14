@@ -1,0 +1,7 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Ottoline Prasad
+N:Prasad;Ottoline;;;
+ORG:Calder Regional Transit
+EMAIL;TYPE=WORK:ottoline.prasad@example.org
+END:VCARD

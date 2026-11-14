@@ -1,0 +1,67 @@
+name: End-to-end tests
+
+# The app's end-to-end tests (e2e/, `npm run test:e2e`) on every platform a release ships for:
+# they launch the built app in a throwaway home folder and drive it. Build and Release calls this
+# before it builds any installer, so a failure on one platform stops the release. Pull requests
+# don't run it, to keep them quick. Run it by hand (Actions → End-to-end tests → Run workflow) to
+# check a branch, on one platform or all, without building installers.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to test
+        type: choice
+        options: [all, linux, windows, macos-arm64, macos-x64]
+        default: all
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        default: all
+
+jobs:
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(inputs.platform == 'all' && '["macos-arm64", "macos-x64", "windows", "linux"]' || format('["{0}"]', inputs.platform)) }}
+    name: ${{ matrix.platform }}
+    # macos-x64 runs on an Intel runner, so the x64 app (and its native modules) is the one tested.
+    runs-on: ${{ fromJSON('{"macos-arm64":"macos-latest","macos-x64":"macos-15-intel","windows":"windows-latest","linux":"ubuntu-latest"}')[matrix.platform] }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The native modules must target Electron here, unlike for `npm test`.
+      - name: Build the app
+        run: npm run rebuild && npm run build
+
+      - name: Run the end-to-end tests
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a npm run test:e2e; else npm run test:e2e; fi
+
+      # A failed test leaves a Playwright trace of each launch and the app's diagnostics trace
+      # (e2e/sourcerer.ts).
+      - name: Keep the failures' traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.platform }}
+          path: test-results
+          retention-days: 5
+          if-no-files-found: ignore

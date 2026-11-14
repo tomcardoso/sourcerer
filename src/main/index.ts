@@ -4,6 +4,12 @@ import { app, BrowserWindow, Menu, shell, nativeImage } from 'electron';
 // separate directory — otherwise a dev launch and a production install both
 // point at the same userData folder and their databases collide (issue #426).
 app.name = app.isPackaged ? 'Sourcerer' : 'Sourcerer (Dev)';
+// The end-to-end tests (e2e/) give each launch a folder of its own. A HOME override isn't enough
+// on Windows, where userData comes from the system's AppData folder. Never honoured by an
+// installed app.
+if (!app.isPackaged && process.env['SOURCERER_USER_DATA']) {
+  app.setPath('userData', process.env['SOURCERER_USER_DATA']);
+}
 import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import { registerSetupHandlers } from './ipc/setup';
