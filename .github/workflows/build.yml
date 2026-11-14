@@ -9,8 +9,8 @@ name: Build and Release
 # Run by hand without "release" ticked (on any branch), it is a test build: every platform is
 # built and tested, the installers and screenshots are kept as the run's artifacts, and nothing
 # is published.
-# After a release, the `screenshots` job retakes the committed app screenshots and merges them
-# into main through a pull request of its own.
+# After a release, the `screenshots` job retakes the committed app screenshots, merges them into
+# main through a pull request of its own, then starts the website's rebuild.
 
 on:
   push:
@@ -275,18 +275,21 @@ jobs:
           fi
 
   screenshots:
-    # After a release, the committed app screenshots (docs/images/app-*.png, which the README and
-    # the docs on GitHub show) are taken again and merged into main, so they never fall behind the
-    # app. The website takes its own fresh copies on every deploy (pages.yml), so this is only for
-    # the committed ones. It runs after the release is published, so a failed capture never holds
-    # one up.
+    # After a release, the app screenshots (docs/images/app-*.png, which the README, the docs on
+    # GitHub and the website show) are taken again and merged into main, so they never fall behind
+    # the app. It runs after the release is published, so a failed capture never holds one up.
     #
-    # main takes changes only through a pull request whose `test` check has passed. A pull request
-    # opened with this job's token starts no workflow, so the job starts CI on the branch by
-    # dispatch (which that token can do), waits for it, and then merges the pull request itself.
-    # Needs Settings → Actions → General → "Allow GitHub Actions to create and approve pull
-    # requests" (only the create part is used). If anything is refused, the pull request stays
-    # open to merge by hand and the job fails, so the run shows it.
+    # main takes changes only through a pull request whose `test` check has passed. GitHub holds
+    # the pull_request runs of a pull request opened by github-actions[bot] for approval, and a
+    # held run blocks the merge, so CI and the website skip a pull request that changes only the
+    # app screenshots (ci.yml, pages.yml). The job starts CI on the branch by dispatch instead
+    # (which this token can do), waits for it, and then merges the pull request itself. Needs
+    # Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"
+    # (only the create part is used). If anything is refused, the pull request stays open to merge
+    # by hand and the job fails, so the run shows it.
+    #
+    # Last, it starts the website's rebuild (pages.yml), which shows the committed screenshots: a
+    # release or merge made with this job's token starts no workflow, but a dispatch does.
     #
     # A test build (run by hand without "release") takes the screenshots too and keeps them as the
     # run's artifact instead, so the job can be tried without publishing anything.
@@ -300,7 +303,7 @@ jobs:
     permissions:
       contents: write       # push the screenshots branch, merge
       pull-requests: write  # open the pull request
-      actions: write        # start CI on the branch and read its run
+      actions: write        # start CI on the branch and read its run; start the website
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
@@ -364,7 +367,7 @@ jobs:
           if [ -z "$PR" ]; then
             PR=$(gh pr create --base main --head "$BRANCH" \
               --title "Docs: app screenshots for $VERSION" \
-              --body "The committed app screenshots, taken again after the $TAG release by Build and Release's \`screenshots\` job, which runs CI on this branch and merges this pull request itself. Only images change.")
+              --body "The committed app screenshots, taken again after the $TAG release by Build and Release's \`screenshots\` job, which runs CI on this branch by dispatch and merges this pull request itself. Only images change.")
           fi
           {
             echo "url=$PR"
@@ -405,17 +408,8 @@ jobs:
           echo "::error::Couldn't merge $PR; it's open to merge by hand."
           exit 1
 
-  website:
-    # Rebuild the website so its download buttons name the new release and its screenshots show the
-    # new version. A release published with this workflow's token starts no other workflow, so
-    # pages.yml is started here instead.
-    needs: [version, finalize-release]
-    runs-on: ubuntu-latest
-    if: needs.version.outputs.release == 'true'
-    permissions:
-      actions: write
-    steps:
-      - name: Start the website build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+      - name: Rebuild the website
+        # After a release, once the screenshots are merged (or found unchanged, or failed to
+        # merge), so the site has both the new release's download buttons and the new images.
+        if: always() && needs.version.outputs.release == 'true'
+        run: gh workflow run pages.yml --ref main

@@ -40,14 +40,15 @@ The website (https://tomcardoso.github.io/sourcerer/) is built from `site/` and 
 - `site/src/index.html` is the landing page; its styles and scripts are in `site/src/assets/`. The site uses the app's own tokens, fonts (copied from `src/renderer/src/assets/fonts`) and hard design rules
 - Preview with `cd site && npm ci && npm run dev` (http://localhost:4321)
 - App screenshots live in `docs/images/` as `app-<name>.png` and `app-<name>-dark.png`. `npm run screenshots` (after `npm run rebuild && npm run build`; under `xvfb-run -a` on headless Linux) launches the built app in a throwaway home folder, creates a vault filled with the fictional dev seeds, and captures every screen in both themes. `scripts/screenshots.mjs` drives the UI by its visible labels and class names, so renaming one of those can break the capture
-- `.github/workflows/pages.yml` takes the screenshots again before every deploy, so the site always shows the current app; it runs on pushes to `main` that touch `docs/` or `site/`, after each release (started by `build.yml`), and by hand. The images it takes aren't committed. The committed copies in `docs/images/` (which the README and the docs on GitHub show) are retaken after every release by `build.yml`'s `screenshots` job, which opens a pull request, runs CI on it by dispatch (a pull request opened with a workflow's token starts no workflow) and merges it itself; this needs the repository setting "Allow GitHub Actions to create and approve pull requests". Between releases, run `npm run screenshots` locally to refresh them by hand
+- The screenshots in `docs/images/` (shown by the README, the docs on GitHub and the website) are retaken after every release by `build.yml`'s `screenshots` job. It opens a pull request with them, runs CI on it by dispatch, merges it itself, then starts `.github/workflows/pages.yml` to rebuild the site. GitHub holds the `pull_request` runs of a pull request opened by `github-actions[bot]` for approval, and a held run blocks the merge, so CI and the website skip a pull request that changes only `docs/images/app-*.png`. This needs the repository setting "Allow GitHub Actions to create and approve pull requests". Between releases, run `npm run screenshots` locally to refresh them by hand
+- `.github/workflows/pages.yml` builds the site from the committed screenshots; it runs on pushes to `main` that touch `docs/` or `site/` (not the app screenshots alone), after each release (started by the `screenshots` job), and by hand
 
 ## Git / PR rules
 
 - `main` is protected — all changes must go through a pull request
 - Branch naming: `feature/`, `fix/`, `dev/` prefixes
 - Always push to a feature branch and open a PR via `gh pr create`
-- CI runs a `test` status check — PRs won't merge until it passes
+- CI runs a `test` status check on Linux — PRs won't merge until it passes. After a merge to `main` that touches code or dependencies, `.github/workflows/platforms.yml` runs the tests on Windows and macOS; a failure there shows on `main`'s commit, to fix in a follow-up PR (#461). It can also be run by hand on a branch
 - To auto-close issues on merge, use one `Closes #N` line per issue — **not** `Closes #1, #2, #3` (GitHub only closes the first number in a comma-separated list)
 
 ## Cutting a release

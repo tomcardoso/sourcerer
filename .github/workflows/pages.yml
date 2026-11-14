@@ -3,21 +3,21 @@ name: Website
 # Builds the website (site/, from the landing page and docs/) and publishes it to GitHub Pages:
 # https://tomcardoso.github.io/sourcerer/
 #
-# Before every build it takes the app screenshots again (`npm run screenshots`: the app is built
-# from this commit, run under xvfb with the fictional dev seeds, and captured in light and dark),
-# so the website always shows the app as it is. The fresh images are used for this deploy only and
-# are not committed; docs/images/ keeps the copies GitHub shows, refreshed with the same command.
+# It shows the app screenshots committed in docs/images/, which build.yml's `screenshots` job
+# retakes after every release, so the site shows the app as released.
 #
-# It runs when docs/ or site/ change on main, after each release (build.yml starts it,
-# since a release made with a workflow's token triggers nothing), and by hand. On a pull request
-# it only builds, so a broken page or an unreachable screen fails the check before it merges.
+# It runs when docs/ or site/ change on main, after each release (build.yml's `screenshots` job
+# starts it once the new screenshots are merged, since a release or merge made with a workflow's
+# token triggers nothing), and by hand. On a pull request it only builds, so a broken page fails
+# the check before it merges. A change to the app screenshots alone starts neither: the release
+# that took them already rebuilds the site.
 
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'site/**', 'scripts/screenshots.mjs', '.github/workflows/pages.yml']
+    paths: ['docs/**', '!docs/images/app-*.png', 'site/**', '.github/workflows/pages.yml']
   pull_request:
-    paths: ['docs/**', 'site/**', 'scripts/screenshots.mjs', '.github/workflows/pages.yml']
+    paths: ['docs/**', '!docs/images/app-*.png', 'site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -30,7 +30,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -40,26 +40,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            site/package-lock.json
-
-      - name: Install the app's dependencies
-        run: npm ci
-
-      - name: Build the app
-        run: npm run rebuild && npm run build
-
-      - name: Take the screenshots
-        run: xvfb-run -a npm run screenshots
-
-      - name: Keep the screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/images/app-*.png
-          retention-days: 7
-          if-no-files-found: error
+          cache-dependency-path: site/package-lock.json
 
       - name: Build the website
         working-directory: site
