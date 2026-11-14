@@ -32,7 +32,10 @@ npm run test:e2e      # under `xvfb-run -a` on headless Linux
 ```
 
 - Each test launches the app in its own throwaway home folder (`e2e/sourcerer.ts`), with `SOURCERER_USER_DATA` pointing its userData there (needed on Windows, where userData doesn't follow `HOME`; an installed app ignores it). Unlocking fills the vault with the dev seeds, as `npm run screenshots` does
-- Specs drive the UI by visible labels and class names, like `scripts/screenshots.mjs`, so renaming one of those can break them. Native file dialogs are answered in the main process with `answerFileDialog`, and notifications are silenced
+- Specs are split by area (`vault`, `contacts`, `projects`, `log`, `backup`, `settings`, `smoke`) and walk each feature through create → edit → delete, checking each change after a restart (`restart()`). When you add or change a user-facing feature, add or update its spec
+- Specs drive the UI by visible labels and class names, like `scripts/screenshots.mjs`, so renaming one of those can break them. Native file dialogs are answered in the main process with `answerFileDialog`, notifications are silenced, and the driven window counts as focused (`BrowserWindow.getFocusedWindow`), as it is for a reporter who just clicked in it
+- `launch(home)` with `newHome()` gives a second reporter their own vault, e.g. to share a project through a file both can reach
+- Not covered, because they need the network or the extension: the browser extension server, the updater, Google Alerts/RSS polling and Wayback archiving
 - Any uncaught error in the window fails a test. A failed test keeps a Playwright trace of each launch and the app's diagnostics trace in `test-results/` (`npx playwright show-trace test-results/<test>/trace-launch-1.zip`)
 - Tests run in parallel, so only the first app to start gets the extension server's port (27371); the others carry on without it. Don't write an e2e test that needs that server without making the port per-test
 - CI: pull requests run the Linux leg (`ci.yml`'s `e2e` job). `.github/workflows/e2e.yml` runs macOS arm64, macOS x64, Windows and Linux; run it by hand to check a branch, and every release runs it before building installers
