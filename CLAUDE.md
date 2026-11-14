@@ -48,7 +48,7 @@ The website (https://tomcardoso.github.io/sourcerer/) is built from `site/` and 
 - `main` is protected — all changes must go through a pull request
 - Branch naming: `feature/`, `fix/`, `dev/` prefixes
 - Always push to a feature branch and open a PR via `gh pr create`
-- CI runs a `test` status check — PRs won't merge until it passes
+- CI runs a `test` status check on Linux — PRs won't merge until it passes. After a merge to `main` that touches code or dependencies, `.github/workflows/platforms.yml` runs the tests on Windows and macOS; a failure there shows on `main`'s commit, to fix in a follow-up PR (#461). It can also be run by hand on a branch
 - To auto-close issues on merge, use one `Closes #N` line per issue — **not** `Closes #1, #2, #3` (GitHub only closes the first number in a comma-separated list)
 
 ## Cutting a release
