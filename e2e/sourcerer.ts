@@ -92,8 +92,16 @@ export const test = base.extend<{
       await app.evaluate(({ Notification }) => {
         Notification.prototype.show = function () {};
       });
+      // Every window the app opens, including one reopened after its first is closed.
+      const watched = new Set<Page>();
+      const watch = (p: Page) => {
+        if (watched.has(p)) return;
+        watched.add(p);
+        p.on('pageerror', (e) => errors.push(`launch ${n}: ${e.message}`));
+      };
+      app.on('window', watch);
       const page = await app.firstWindow();
-      page.on('pageerror', (e) => errors.push(`launch ${n}: ${e.message}`));
+      watch(page);
 
       let closed = false;
       app.on('close', () => { closed = true; });

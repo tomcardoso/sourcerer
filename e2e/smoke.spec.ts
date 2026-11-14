@@ -9,6 +9,12 @@ import { createVault, expect, test, unlock } from './sourcerer';
 // warning about the reporter's own setup, which the dev seeds trigger.)
 const ERROR_STATES = [
   '.sv-error-inline',
+  '.sv-field-error',
+  '.pt-log-row-error',
+  '.pt-draft-error',
+  '.join-error',
+  '.join-payload-error',
+  '.spm-error',
   '.sync-error-banner',
   '.setup-error',
   '.unlock-error',

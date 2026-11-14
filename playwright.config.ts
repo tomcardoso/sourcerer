@@ -13,7 +13,9 @@ export default defineConfig({
   // Each test launches its own app against its own throwaway home, so they run side by side.
   fullyParallel: true,
   workers: 3,
-  retries: process.env.CI ? 1 : 0,
+  // No retries: a test that fails once on one platform is a real race until shown otherwise, and
+  // the release waits on this suite.
+  retries: 0,
   reporter: [['list']],
   // Each test saves a trace of every launch (e2e/sourcerer.ts); only a failure's are kept.
   preserveOutput: 'failures-only',

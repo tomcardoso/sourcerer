@@ -83,11 +83,13 @@ test('contacts export as CSV, Excel and vCard files', async ({ launch, home }) =
   await createVault(page);
   await unlock(page);
   await nav(page, 'All contacts');
-  const exportAs = async (item: string, file: string) => {
+  // The CSV and Excel exports rename a finished file into place; the vCard ones write it
+  // directly, so wait for what it should end with.
+  const exportAs = async (item: string, file: string, ending?: string) => {
     await answerFileDialog(app, 'save', file);
     await page.getByRole('button', { name: '↓ Export' }).click();
     await page.locator('.export-menu-item', { hasText: item }).click();
-    await expect.poll(() => existsSync(file), { timeout: 30_000 }).toBe(true);
+    await expect.poll(() => (existsSync(file) ? readFileSync(file, 'utf8').trimEnd().endsWith(ending ?? '') : false), { timeout: 30_000 }).toBe(true);
     return readFileSync(file);
   };
 
@@ -97,14 +99,14 @@ test('contacts export as CSV, Excel and vCard files', async ({ launch, home }) =
   expect(xlsx.subarray(0, 2).toString('latin1')).toBe('PK'); // an .xlsx is a zip
   const gmail = await exportAs('Export as Gmail CSV', join(home, 'gmail.csv'));
   expect(gmail.toString('utf8')).toContain('Catherine');
-  const vcf = await exportAs('Export as vCard', join(home, 'all contacts.vcf'));
+  const vcf = await exportAs('Export as vCard', join(home, 'all contacts.vcf'), 'END:VCARD');
   expect(vcf.toString('utf8')).toContain('BEGIN:VCARD');
 
   const one = join(home, 'one contact.vcf');
   await answerFileDialog(app, 'save', one);
   const panel = await openContact(page, 'Catherine Mwangi');
   await panel.getByRole('button', { name: '↓ vCard' }).click();
-  await expect.poll(() => existsSync(one), { timeout: 30_000 }).toBe(true);
+  await expect.poll(() => (existsSync(one) ? readFileSync(one, 'utf8').trimEnd().endsWith('END:VCARD') : false), { timeout: 30_000 }).toBe(true);
   expect(readFileSync(one, 'utf8')).toContain('Catherine Mwangi');
 });
 

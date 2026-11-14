@@ -95,17 +95,19 @@ test("a project's contacts export as CSV, Excel and vCard files", async ({ launc
   await projectInSidebar(page, 'Millgate Land Deal').click();
   await expect(page.locator('tr').nth(1)).toBeVisible();
 
-  const exportAs = async (item: string, file: string) => {
+  // The CSV and Excel exports rename a finished file into place; the vCard one writes it
+  // directly, so wait for what it should end with.
+  const exportAs = async (item: string, file: string, ending?: string) => {
     await answerFileDialog(app, 'save', file);
     await page.getByRole('button', { name: '↓ Export' }).click();
     await page.locator('.export-menu-item', { hasText: item }).click();
-    await expect.poll(() => existsSync(file), { timeout: 30_000 }).toBe(true);
+    await expect.poll(() => (existsSync(file) ? readFileSync(file, 'utf8').trimEnd().endsWith(ending ?? '') : false), { timeout: 30_000 }).toBe(true);
     return readFileSync(file);
   };
   expect((await exportAs('Full export', join(home, 'millgate.csv'))).toString('utf8').split('\n').length).toBeGreaterThan(2);
   expect((await exportAs('Sanitized export', join(home, 'millgate.xlsx'))).subarray(0, 2).toString('latin1')).toBe('PK');
   expect((await exportAs('Export as Outlook CSV', join(home, 'outlook.csv'))).length).toBeGreaterThan(0);
-  expect((await exportAs('Export as vCard', join(home, 'millgate.vcf'))).toString('utf8')).toContain('BEGIN:VCARD');
+  expect((await exportAs('Export as vCard', join(home, 'millgate.vcf'), 'END:VCARD')).toString('utf8')).toContain('BEGIN:VCARD');
 });
 
 /** Opens a shared project and syncs it with the shared file. */
