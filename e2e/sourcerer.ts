@@ -89,12 +89,8 @@ export const test = base.extend<{
       await app.context().tracing.start({ screenshots: true, snapshots: true });
       // The dev seeds have overdue outreach reminders; their notifications would pop up on the
       // machine running the tests.
-      // The window a reporter just clicked in is the focused one, which some handlers look up
-      // (BrowserWindow.getFocusedWindow) to send it a message. A window the tests drive may not
-      // have the system's focus, so it counts as focused here.
-      await app.evaluate(({ Notification, BrowserWindow }) => {
+      await app.evaluate(({ Notification }) => {
         Notification.prototype.show = function () {};
-        BrowserWindow.getFocusedWindow = () => BrowserWindow.getAllWindows()[0] ?? null;
       });
       const page = await app.firstWindow();
       page.on('pageerror', (e) => errors.push(`launch ${n}: ${e.message}`));
