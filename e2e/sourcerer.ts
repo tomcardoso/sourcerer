@@ -77,10 +77,11 @@ export const test = base.extend<{
         args: [ROOT, '--no-sandbox'],
         env: {
           ...process.env,
-          // HOME and USERPROFILE for the home folder, XDG_CONFIG_HOME for Linux's config folder,
+          // HOME for the home folder on macOS and Linux, XDG_CONFIG_HOME for Linux's config folder,
           // and SOURCERER_USER_DATA for the app's own folder, which on Windows follows neither.
+          // Not USERPROFILE: Windows then can't find its known folders (Documents, Downloads),
+          // which the file dialogs use as their starting place.
           HOME: where,
-          USERPROFILE: where,
           XDG_CONFIG_HOME: join(where, '.config'),
           SOURCERER_USER_DATA: userDataOf(where),
         },

@@ -114,17 +114,22 @@ test('duplicate contacts merge into one', async ({ launch }) => {
   const { page } = await launch();
   await createVault(page);
   await unlock(page);
+  // The dev seeds have duplicates of their own; the app scans for new ones in the background.
+  await nav(page, 'All contacts');
+  const dupButton = page.getByRole('button', { name: /duplicate/i }).first();
+  const seeded = Number((await dupButton.textContent())?.match(/\d+/)?.[0] ?? 0);
   await addContact(page, 'Theodora Blackwood', { email: 'theo.blackwood@example.org' });
   await page.keyboard.press('Escape');
   await addContact(page, 'Theo Blackwood', { email: 'theo.blackwood@example.org' });
   await page.keyboard.press('Escape');
 
   await nav(page, 'All contacts');
+  await expect(dupButton).toContainText(`${seeded + 1} duplicate`, { timeout: 30_000 });
   const count = sidebar(page).locator('.sidebar-contact-count');
   const before = Number(await count.textContent());
-  await page.getByRole('button', { name: /duplicate/i }).first().click();
+  await dupButton.click();
   const modal = page.locator('.dedup-modal');
-  // The dev seeds have duplicates of their own: skip to the pair made here.
+  // Skip to the pair made here.
   for (let i = 0; i < 100; i++) {
     await expect(modal.locator('.dedup-progress')).toBeVisible();
     if (await modal.getByText('Theodora Blackwood').count()) break;
