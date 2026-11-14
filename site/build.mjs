@@ -6,7 +6,7 @@
 //   npm run dev      build, then serve dist/ on http://localhost:4321
 //
 // The app screenshots are docs/images/app-*.png, taken by `npm run screenshots` at the repo root;
-// the Pages workflow takes them again before every deploy, so the site never falls behind the app.
+// Build and Release retakes and commits them after every release, so the site shows the app as released.
 // The download buttons name the latest release's files. In CI the script reads them from the
 // GitHub API (GITHUB_TOKEN raises the rate limit); offline it falls back to package.json's
 // version and the release page.
