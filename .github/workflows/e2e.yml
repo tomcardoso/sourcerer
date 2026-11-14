@@ -3,8 +3,8 @@ name: End-to-end tests
 # The app's end-to-end tests (e2e/, `npm run test:e2e`) on every platform a release ships for:
 # they launch the built app in a throwaway home folder and drive it. Build and Release calls this
 # before it builds any installer, so a failure on one platform stops the release. Pull requests
-# run the Linux leg only (ci.yml). Run it by hand (Actions → End-to-end tests → Run workflow) to
-# check a branch on every platform without building installers.
+# don't run it, to keep them quick. Run it by hand (Actions → End-to-end tests → Run workflow) to
+# check a branch, on one platform or all, without building installers.
 
 on:
   workflow_dispatch:

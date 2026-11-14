@@ -38,7 +38,7 @@ npm run test:e2e      # under `xvfb-run -a` on headless Linux
 - Not covered, because they need the network or the extension: the browser extension server, the updater, Google Alerts/RSS polling and Wayback archiving
 - Any uncaught error in the window fails a test. A failed test keeps a Playwright trace of each launch and the app's diagnostics trace in `test-results/` (`npx playwright show-trace test-results/<test>/trace-launch-1.zip`)
 - Tests run in parallel, so only the first app to start gets the extension server's port (27371); the others carry on without it. Don't write an e2e test that needs that server without making the port per-test
-- CI: pull requests run the Linux leg (`ci.yml`'s `e2e` job). `.github/workflows/e2e.yml` runs macOS arm64, macOS x64, Windows and Linux; run it by hand to check a branch, and every release runs it before building installers
+- CI: pull requests don't run them. `.github/workflows/e2e.yml` runs macOS arm64, macOS x64, Windows and Linux, and every release runs it before building installers, so a failure there blocks the release. For a pull request that changes the UI or main-process handlers, run `npm run test:e2e` locally or `e2e.yml` by hand on its branch before merging, rather than finding out at release time
 
 **Inspecting the database** (TablePlus, DB Browser, sqlite3, etc.):
 
