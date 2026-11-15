@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation } from '../hooks/useMutation';
 import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
-import { fmtDateFull, dateStrToUnix } from '../utils/fmtDate';
+import { fmtDateFull, dateStrToUnix, logDateToUnix } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
@@ -94,8 +94,7 @@ function LogSection({
     if (!body || !logDate) return;
     setSubmitting(true);
     try {
-      const [y, m, d] = logDate.split('-').map(Number);
-      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+      const createdAt = logDateToUnix(logDate);
       const extras = selectedMembershipIds.filter((id) => id !== membership.membership_id);
       const entry = await window.sourcerer.addInteractionLogEntry(membership.membership_id, body, createdAt, extras);
       setEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));

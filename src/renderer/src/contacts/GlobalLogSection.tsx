@@ -5,6 +5,7 @@ import { LogRow, LogAllModal } from './logShared';
 import LogProjectPicker from './LogProjectPicker';
 import { CalendarPicker } from '../views/CalendarPicker';
 import './ContactDetail.css';
+import { logDateToUnix } from '../utils/fmtDate';
 
 const LOG_PREVIEW = 3;
 
@@ -73,8 +74,7 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
     const submittingContactId = contact.id;
     setLogSubmitting(true);
     try {
-      const [y, m, d] = logDate.split('-').map(Number);
-      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+      const createdAt = logDateToUnix(logDate);
       const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt, logSelectedMembershipIds);
       if (currentContactId.current !== submittingContactId) return;
       setLogEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));

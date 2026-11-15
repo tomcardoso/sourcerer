@@ -5,7 +5,7 @@ import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import LogPrintSheet from './LogPrintSheet';
 import { CalendarPicker } from '../views/CalendarPicker';
-import { toDayKey } from '../utils/fmtDate';
+import { toDayKey, logEditDateToUnix } from '../utils/fmtDate';
 import './ContactDetail.css';
 
 export function sortReminders(a: Reminder, b: Reminder): number {
@@ -93,8 +93,7 @@ export function LogRow({
     setSaving(true);
     setSaveError(false);
     try {
-      const [y, m, d] = editDate.split('-').map(Number);
-      const createdAt = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+      const createdAt = logEditDateToUnix(editDate, entry.created_at);
       await onEdit(entry.id, editBody.trim(), createdAt);
       setEditing(false);
     } catch {
