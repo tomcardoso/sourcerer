@@ -72,6 +72,28 @@ export function fmtTime(ts: number): string {
   return `${h % 12 || 12}:${min} ${h >= 12 ? 'pm' : 'am'}`;
 }
 
+/**
+ * The timestamp (seconds) to save for an interaction-log entry dated on a picked day (YYYY-MM-DD,
+ * local). Today gets the current time, so entries made on the same day keep the order they were
+ * made in, and today's stamp is never in the future. Any other day gets noon, a time far from
+ * midnight, so a timezone or daylight-saving shift (the stamp syncs to other reporters) can't
+ * move the entry onto a different calendar day.
+ */
+export function logDateToUnix(dateStr: string, now: Date = new Date()): number {
+  const nowTs = Math.floor(now.getTime() / 1000);
+  if (dateStr === toDayKey(nowTs)) return nowTs;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+}
+
+/**
+ * The timestamp to save when an entry is edited. A day that wasn't changed keeps the entry's own
+ * timestamp, and so its time of day; a changed day is stamped as by `logDateToUnix`.
+ */
+export function logEditDateToUnix(dateStr: string, originalTs: number, now: Date = new Date()): number {
+  return toDayKey(originalTs) === dateStr ? originalTs : logDateToUnix(dateStr, now);
+}
+
 /** Convert a YYYY-MM-DD date string to a Unix timestamp (seconds) at 09:00 local time. */
 export function dateStrToUnix(dateStr: string): number {
   return Math.floor(new Date(`${dateStr}T09:00:00`).getTime() / 1000);

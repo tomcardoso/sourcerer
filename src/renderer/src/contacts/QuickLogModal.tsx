@@ -7,6 +7,7 @@ import { CalendarPicker } from '../views/CalendarPicker';
 import LogProjectPicker from './LogProjectPicker';
 import { useClickOutside } from '../hooks/useClickOutside';
 import './QuickLogModal.css';
+import { logDateToUnix } from '../utils/fmtDate';
 
 function todayISO(): string {
   const d = new Date();
@@ -69,8 +70,7 @@ export default function QuickLogModal({ contacts, onClose, onSaved }: Props) {
   }
 
   const { execute: doSave, isPending: saving } = useMutation(async () => {
-    const [y, m, d] = date.split('-').map(Number);
-    const ts = Math.floor(new Date(y, m - 1, d, 12, 0, 0).getTime() / 1000);
+    const ts = logDateToUnix(date);
     await window.sourcerer.addGlobalLogEntry(
       selectedContactId!,
       body.trim(),
