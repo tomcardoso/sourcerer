@@ -7,8 +7,8 @@ name: App release
 #     once every build and test has passed. A cloud session can't push tags, so this is its way
 #     to release; it also works from a phone.
 # Run by hand without "release" ticked (on any branch), it is a test build: every platform is
-# built and tested, the installers and screenshots are kept as the run's artifacts, and nothing
-# is published.
+# built and tested, the installers are kept as the run's artifacts, and nothing is published (the
+# `release` and `screenshots` jobs are skipped).
 # Order: `version`, `ci` (typecheck, lint, unit tests: ci.yml) and `e2e` (every platform: e2e.yml)
 # start together; `build` waits for all three, so no installer is built, signed or notarized from
 # a commit that fails a check. `release` then tags the commit and publishes, and `screenshots`
@@ -314,13 +314,11 @@ jobs:
     # Last, it starts the website's rebuild (pages.yml), which shows the committed screenshots: a
     # release or merge made with this job's token starts no workflow, but a dispatch does.
     #
-    # A test build (run by hand without "release") takes the screenshots too and keeps them as the
-    # run's artifact instead, so the job can be tried without publishing anything.
+    # It runs only for a real release, and only once `release` has succeeded: `release` runs only
+    # when "release" is ticked or a tag is pushed, and only after the checks and every build have
+    # passed. A test build, or a run with any failed check or build, skips it.
     needs: [version, release]
-    if: >-
-      !cancelled() && (
-        needs.release.result == 'success' ||
-        needs.version.outputs.release != 'true')
+    if: needs.release.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -352,18 +350,8 @@ jobs:
       - name: Take the screenshots
         run: xvfb-run -a npm run screenshots
 
-      - name: Keep the screenshots (a test build)
-        if: needs.version.outputs.release != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: docs/images/app-*.png
-          retention-days: 5
-          if-no-files-found: error
-
       - name: Open a pull request with them
         id: pr
-        if: needs.version.outputs.release == 'true'
         run: |
           if git diff --quiet -- docs/images && [ -z "$(git ls-files --others --exclude-standard docs/images)" ]; then
             echo "The screenshots are unchanged."
@@ -434,5 +422,5 @@ jobs:
       - name: Rebuild the website
         # After a release, once the screenshots are merged (or found unchanged, or failed to
         # merge), so the site has both the new release's download buttons and the new images.
-        if: always() && needs.version.outputs.release == 'true'
+        if: always()
         run: gh workflow run pages.yml --ref main

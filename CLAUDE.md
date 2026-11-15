@@ -94,7 +94,7 @@ Releases are built by `.github/workflows/app-release.yml`, started either by pus
      git push origin v{VERSION}
      ```
      The tag must match `package.json`'s version, or the workflow stops before building.
-6. The `app-release.yml` workflow works out the version (`version`) while it runs the typecheck, lint and unit tests (`ci.yml`) and the end-to-end tests on every platform (`e2e.yml`). Only when all of those pass does it build on macOS, Windows, and Linux, then create a GitHub Release (a draft, published once every file is uploaded), then retake the screenshots. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published
+6. The `app-release.yml` workflow works out the version (`version`) while it runs the typecheck, lint and unit tests (`ci.yml`) and the end-to-end tests on every platform (`e2e.yml`). Only when all of those pass does it build on macOS, Windows, and Linux, then create a GitHub Release (a draft, published once every file is uploaded), then retake the screenshots. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published (no release, no screenshots)
 
 ## UI design system
 
