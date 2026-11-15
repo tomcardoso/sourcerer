@@ -4,7 +4,7 @@ name: Platform tests
 # Pull requests test on Linux only (ci.yml), to keep them quick; this catches a platform-only
 # failure minutes after the merge that caused it, instead of at the next release (issue #461).
 # A failure shows on main's commit, to fix in a follow-up pull request. A release still runs
-# every platform's tests before it tags anything (build.yml). Run it by hand to test a branch.
+# every platform's tests before it tags anything (app-release.yml). Run it by hand to test a branch.
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # As in build.yml, which tests the same way on every platform before a release.
+      # As in app-release.yml, which tests the same way on every platform before a release.
       - name: Rebuild native modules for Node
         run: npm run rebuild:node
 

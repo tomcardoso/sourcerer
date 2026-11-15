@@ -4,17 +4,20 @@ on:
   pull_request:
     branches: [main]
     # A pull request that changes only the app screenshots has no code to test. This is the one
-    # build.yml's `screenshots` job opens after each release: GitHub would create this run but
+    # app-release.yml's `screenshots` job opens after each release: GitHub would create this run but
     # hold it for approval (the pull request's author is github-actions[bot]), and the held run
     # blocks the merge. The job starts CI by dispatch instead (below).
     paths-ignore: ['docs/images/app-*.png']
-  # Started by build.yml's `screenshots` job on its pull request, so the `test` check main's
+  # Started by app-release.yml's `screenshots` job on its pull request, so the `test` check main's
   # ruleset requires is reported on the branch's commit.
   workflow_dispatch:
+  # Called by app-release.yml, so a release runs the same checks before it builds anything.
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only a newer push to a pull request replaces its older run; a release's checks never cancel.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

@@ -3,10 +3,10 @@ name: Website
 # Builds the website (site/, from the landing page and docs/) and publishes it to GitHub Pages:
 # https://tomcardoso.github.io/sourcerer/
 #
-# It shows the app screenshots committed in docs/images/, which build.yml's `screenshots` job
+# It shows the app screenshots committed in docs/images/, which app-release.yml's `screenshots` job
 # retakes after every release, so the site shows the app as released.
 #
-# It runs when docs/ or site/ change on main, after each release (build.yml's `screenshots` job
+# It runs when docs/ or site/ change on main, after each release (app-release.yml's `screenshots` job
 # starts it once the new screenshots are merged, since a release or merge made with a workflow's
 # token triggers nothing), and by hand. On a pull request it only builds, so a broken page fails
 # the check before it merges. A change to the app screenshots alone starts neither: the release
