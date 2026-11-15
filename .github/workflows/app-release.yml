@@ -1,14 +1,18 @@
-name: Build and Release
+name: App release
 
 # Releases the desktop app. Two ways to start one:
 #   - Push a tag v<version> on a commit whose package.json has that version.
-#   - Run this workflow by hand on main (Actions → Build and Release → Run workflow) with
+#   - Run this workflow by hand on main (Actions → App release → Run workflow) with
 #     "release" ticked. It releases package.json's version and creates the tag v<version> only
 #     once every build and test has passed. A cloud session can't push tags, so this is its way
 #     to release; it also works from a phone.
 # Run by hand without "release" ticked (on any branch), it is a test build: every platform is
 # built and tested, the installers and screenshots are kept as the run's artifacts, and nothing
 # is published.
+# Order: `version`, `ci` (typecheck, lint, unit tests: ci.yml) and `e2e` (every platform: e2e.yml)
+# start together; `build` waits for all three, so no installer is built, signed or notarized from
+# a commit that fails a check. `release` then tags the commit and publishes, and `screenshots`
+# runs last. `version` changes nothing: it only works out the tag and checks it is free.
 # After a release, the `screenshots` job retakes the committed app screenshots, merges them into
 # main through a pull request of its own, then starts the website's rebuild.
 
@@ -69,6 +73,12 @@ jobs:
             echo "release=true"
           } >> "$GITHUB_OUTPUT"
 
+  # Typecheck, lint and the unit tests (ci.yml, the same checks a pull request runs).
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   # The end-to-end tests on every platform (e2e.yml). A failure on any of them stops the release
   # before an installer is built.
   e2e:
@@ -79,7 +89,7 @@ jobs:
       contents: read
 
   build:
-    needs: [version, e2e]
+    needs: [version, ci, e2e]
     strategy:
       fail-fast: false
       matrix:
@@ -104,12 +114,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Rebuild native modules for Node
-        run: npm run rebuild:node
-
-      - name: Run tests
-        run: npm test
 
       - name: Rebuild native modules for Electron
         run: npm run rebuild
@@ -201,7 +205,7 @@ jobs:
           retention-days: 5
           if-no-files-found: error
 
-  finalize-release:
+  release:
     needs: [version, build]
     runs-on: ubuntu-latest
     if: needs.version.outputs.release == 'true'
@@ -252,11 +256,21 @@ jobs:
 
           # Prefer the human-written "What's new" section from the version bump PR
           # (branch: chore/v{VERSION}) over the raw generated PR list.
+          # Found by its branch (chore/v{VERSION}), or else by its title ("Release v{VERSION}"),
+          # since a pull request opened from a cloud session can't use the branch name.
           PR_BODY=$(gh pr list \
             --state merged \
             --head "chore/v${VERSION}" \
             --json body \
             --jq '.[0].body // ""' 2>/dev/null || echo "")
+          if [ -z "$PR_BODY" ]; then
+            PR_BODY=$(gh pr list \
+              --state merged \
+              --search "\"Release v${VERSION}\" in:title" \
+              --base main \
+              --json title,body \
+              --jq "map(select(.title == \"Release v${VERSION}\")) | .[0].body // \"\"" 2>/dev/null || echo "")
+          fi
           if [ -n "$PR_BODY" ]; then
             WHATS_NEW=$(echo "$PR_BODY" | python3 .github/scripts/extract-whats-new.py 2>/dev/null || echo "")
             if [ -n "$WHATS_NEW" ]; then
@@ -267,21 +281,21 @@ jobs:
           # Splice changelog into template, replacing placeholder and {version}
           VERSION="$VERSION" python3 .github/scripts/splice-release-notes.py
 
-          # Collect all artifacts and create (or update) the release in one shot.
-          # Using create+edit so the step is idempotent on workflow re-runs.
+          # Collect all artifacts. The release is created as a draft and published only once
+          # every file is on it, so an installed copy checking for updates in between never
+          # finds a latest release without its update feed (latest*.yml). Idempotent, so a
+          # re-run of the workflow updates the notes and re-uploads the files.
           assets=()
           while IFS= read -r asset; do
             assets+=("$asset")
           done < <(find artifacts/ -type f | sort)
           if gh release view "$TAG" &>/dev/null; then
-            # Release already exists (e.g. re-run): update notes and re-upload assets.
             gh release edit "$TAG" --notes-file /tmp/release-notes.md
-            gh release upload --clobber "$TAG" "${assets[@]}"
           else
-            gh release create "$TAG" \
-              --notes-file /tmp/release-notes.md \
-              "${assets[@]}"
+            gh release create "$TAG" --draft --notes-file /tmp/release-notes.md
           fi
+          gh release upload --clobber "$TAG" "${assets[@]}"
+          gh release edit "$TAG" --draft=false --latest
 
   screenshots:
     # After a release, the app screenshots (docs/images/app-*.png, which the README, the docs on
@@ -302,10 +316,10 @@ jobs:
     #
     # A test build (run by hand without "release") takes the screenshots too and keeps them as the
     # run's artifact instead, so the job can be tried without publishing anything.
-    needs: [version, finalize-release]
+    needs: [version, release]
     if: >-
       !cancelled() && (
-        needs.finalize-release.result == 'success' ||
+        needs.release.result == 'success' ||
         needs.version.outputs.release != 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -376,7 +390,7 @@ jobs:
           if [ -z "$PR" ]; then
             PR=$(gh pr create --base main --head "$BRANCH" \
               --title "Docs: app screenshots for $VERSION" \
-              --body "The committed app screenshots, taken again after the $TAG release by Build and Release's \`screenshots\` job, which runs CI on this branch by dispatch and merges this pull request itself. Only images change.")
+              --body "The committed app screenshots, taken again after the $TAG release by App release's \`screenshots\` job, which runs CI on this branch by dispatch and merges this pull request itself. Only images change.")
           fi
           {
             echo "url=$PR"

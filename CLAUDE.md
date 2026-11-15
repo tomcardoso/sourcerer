@@ -57,7 +57,7 @@ The website (https://tomcardoso.github.io/sourcerer/) is built from `site/` and 
 - `site/src/index.html` is the landing page; its styles and scripts are in `site/src/assets/`. The site uses the app's own tokens, fonts (copied from `src/renderer/src/assets/fonts`) and hard design rules
 - Preview with `cd site && npm ci && npm run dev` (http://localhost:4321)
 - App screenshots live in `docs/images/` as `app-<name>.png` and `app-<name>-dark.png`. `npm run screenshots` (after `npm run rebuild && npm run build`; under `xvfb-run -a` on headless Linux) launches the built app in a throwaway home folder, creates a vault filled with the fictional dev seeds, and captures every screen in both themes. `scripts/screenshots.mjs` drives the UI by its visible labels and class names, so renaming one of those can break the capture
-- The screenshots in `docs/images/` (shown by the README, the docs on GitHub and the website) are retaken after every release by `build.yml`'s `screenshots` job. It opens a pull request with them, runs CI on it by dispatch, merges it itself, then starts `.github/workflows/pages.yml` to rebuild the site. GitHub holds the `pull_request` runs of a pull request opened by `github-actions[bot]` for approval, and a held run blocks the merge, so CI and the website skip a pull request that changes only `docs/images/app-*.png`. This needs the repository setting "Allow GitHub Actions to create and approve pull requests". Between releases, run `npm run screenshots` locally to refresh them by hand
+- The screenshots in `docs/images/` (shown by the README, the docs on GitHub and the website) are retaken after every release by `app-release.yml`'s `screenshots` job. It opens a pull request with them, runs CI on it by dispatch, merges it itself, then starts `.github/workflows/pages.yml` to rebuild the site. GitHub holds the `pull_request` runs of a pull request opened by `github-actions[bot]` for approval, and a held run blocks the merge, so CI and the website skip a pull request that changes only `docs/images/app-*.png`. This needs the repository setting "Allow GitHub Actions to create and approve pull requests". Between releases, run `npm run screenshots` locally to refresh them by hand
 - `.github/workflows/pages.yml` builds the site from the committed screenshots; it runs on pushes to `main` that touch `docs/` or `site/` (not the app screenshots alone), after each release (started by the `screenshots` job), and by hand
 
 ## Git / PR rules
@@ -70,7 +70,7 @@ The website (https://tomcardoso.github.io/sourcerer/) is built from `site/` and 
 
 ## Cutting a release
 
-Releases are built by `.github/workflows/build.yml`, started either by pushing a version tag (`v*`) or by running the workflow by hand on `main` with **release** ticked. Because `main` is protected, the version bump goes through a PR first; the release is started after merge.
+Releases are built by `.github/workflows/app-release.yml`, started either by pushing a version tag (`v*`) or by running the workflow by hand on `main` with **release** ticked. Because `main` is protected, the version bump goes through a PR first; the release is started after merge.
 
 1. Create a version bump branch: `git checkout -b chore/v{VERSION}`
 2. Bump the version (updates `package.json` and creates a local git tag):
@@ -85,16 +85,16 @@ Releases are built by `.github/workflows/build.yml`, started either by pushing a
    git push -u origin chore/v{VERSION}
    gh pr create ...
    ```
-4. Add a `## What's new` section to the PR body — plain English, written for a lay audience (not a developer changelog). This becomes the public release notes, so it should cover **all meaningful changes since the previous version tag**: new features, significant fixes, removals, and anything a user would notice. Run `git log v{PREV_VERSION}..HEAD --oneline` to get the full list of commits to draw from. The release workflow will prepend it to the auto-generated PR list (which appears in a collapsible Details block below).
+4. Add a `## What's new` section to the PR body — plain English, written for a lay audience (not a developer changelog). This becomes the public release notes, so it should cover **all meaningful changes since the previous version tag**: new features, significant fixes, removals, and anything a user would notice. Run `git log v{PREV_VERSION}..HEAD --oneline` to get the full list of commits to draw from. The release workflow finds that PR by its branch (`chore/v{VERSION}`) or by its title (`Release v{VERSION}`), and will prepend it to the auto-generated PR list (which appears in a collapsible Details block below).
 5. Once the PR is merged, start the release in one of two ways:
-   - **Run the workflow by hand** (Actions → Build and Release → Run workflow, on `main`, with **release** ticked). It releases `package.json`'s version and creates the tag `v{VERSION}` itself, only after every build and test has passed. A cloud session can't push tags (the push is refused with HTTP 403), so this is its way to release, and it works from a phone.
+   - **Run the workflow by hand** (Actions → App release → Run workflow, on `main`, with **release** ticked). It releases `package.json`'s version and creates the tag `v{VERSION}` itself, only after every build and test has passed. A cloud session can't push tags (the push is refused with HTTP 403), so this is its way to release, and it works from a phone.
    - **Or push the tag** from a local clone:
      ```bash
      git checkout main && git pull
      git push origin v{VERSION}
      ```
      The tag must match `package.json`'s version, or the workflow stops before building.
-6. The `build.yml` workflow runs the end-to-end tests on every platform (`e2e.yml`), builds on macOS, Windows, and Linux, then creates a GitHub Release with all artifacts automatically. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published
+6. The `app-release.yml` workflow works out the version (`version`) while it runs the typecheck, lint and unit tests (`ci.yml`) and the end-to-end tests on every platform (`e2e.yml`). Only when all of those pass does it build on macOS, Windows, and Linux, then create a GitHub Release (a draft, published once every file is uploaded), then retake the screenshots. Run by hand **without** release ticked (on any branch), it is a test build: everything is built and tested, the installers are kept as the run's artifacts, and nothing is published
 
 ## UI design system
 

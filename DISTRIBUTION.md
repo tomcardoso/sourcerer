@@ -56,7 +56,7 @@ Releases are triggered automatically by CI when a version tag is pushed. Because
    git push origin v<version>
    ```
 
-The `build.yml` workflow builds on macOS, Windows, and Linux and creates a GitHub Release with all artifacts automatically.
+The `app-release.yml` workflow builds on macOS, Windows, and Linux and creates a GitHub Release with all artifacts automatically.
 
 ---
 
