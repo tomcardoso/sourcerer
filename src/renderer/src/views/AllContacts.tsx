@@ -5,6 +5,7 @@ import { useSortFilter } from '../hooks/useSortFilter';
 import { localDayBounds } from '../utils/fmtDate';
 import DedupModal from './DedupModal';
 import ContactDetail from '../contacts/ContactDetail';
+import { guardUnsaved, useUnsavedScope } from '../hooks/useUnsavedChanges';
 import Button from '../shell/Button';
 import ContactsTable, {
   type AllContactsFilters as Filters,
@@ -27,6 +28,7 @@ interface Props {
 export default function AllContacts({ projects, user, openContactId, onOpenContactIdConsumed, refreshTrigger }: Props) {
   const [contacts, setContacts] = useState<ContactListItem[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const unsavedScope = useUnsavedScope();
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const lastCheckedIdRef = useRef<string | null>(null);
@@ -442,7 +444,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
             toggleFilter={toggleFilter}
             checkedIds={checkedIds}
             selectedId={detailId}
-            onRowClick={(id) => { if (id === detailId) { closeDetail(); } else { setDetailId(id); } }}
+            onRowClick={(id) => guardUnsaved(unsavedScope, () => { if (id === detailId) { closeDetail(); } else { setDetailId(id); } })}
             onCheck={toggleCheck}
             onCheckAll={toggleAll}
             allChecked={allChecked}
@@ -464,6 +466,7 @@ export default function AllContacts({ projects, user, openContactId, onOpenConta
           onUpdated={refresh}
           user={user}
           closing={drawerClosing}
+          unsavedScope={unsavedScope}
         />
       )}
 

@@ -7,6 +7,7 @@ import { toDayKey, fmtDayLabel, fmtTime } from '../utils/fmtDate';
 import { CalendarPicker } from './CalendarPicker';
 import Button from '../shell/Button';
 import ContactDetail from '../contacts/ContactDetail';
+import { guardUnsaved, useUnsavedScope } from '../hooks/useUnsavedChanges';
 import './View.css';
 import './ColumnHeader.css';
 import './Timeline.css';
@@ -192,9 +193,13 @@ export default function Timeline({ projectId, projectName, user }: Props) {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [drawerClosing, setDrawerClosing] = useState(false);
 
+  const unsavedScope = useUnsavedScope();
+
   function openContact(id: string) {
-    if (selectedContactId === id) { closeContact(); return; }
-    setSelectedContactId(id);
+    guardUnsaved(unsavedScope, () => {
+      if (selectedContactId === id) { closeContact(); return; }
+      setSelectedContactId(id);
+    });
   }
 
   function closeContact() {
@@ -550,6 +555,7 @@ export default function Timeline({ projectId, projectName, user }: Props) {
             onUpdated={refreshEntries}
             user={user ?? null}
             closing={drawerClosing}
+            unsavedScope={unsavedScope}
           />
         )}
       </div>

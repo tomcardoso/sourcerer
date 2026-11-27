@@ -4,7 +4,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  addContact, answerFileDialog, createVault, expect, nav, openContact, restart, search,
+  addContact, answerFileDialog, createProject, createVault, detailSection, expect, nav, openContact, restart, search,
   searchResults, sidebar, test, unlock,
 } from './sourcerer';
 
@@ -43,6 +43,55 @@ test('a contact can be edited, tagged and deleted, and each change outlasts a re
   s = await restart(s, launch);
   await search(s.page, 'Bartholomew');
   await expect(s.page.locator('.search-empty')).toBeVisible();
+});
+
+test('unsaved edits in a contact are kept, saved or discarded on request before they would be lost', async ({ launch }) => {
+  let s = await launch();
+  await createVault(s.page);
+  await unlock(s.page);
+  await createProject(s.page, 'Harbour Inquiry');
+  await addContact(s.page, 'Odessa Quill', { projects: ['Harbour Inquiry'] });
+
+  let panel = s.page.locator('.detail-panel');
+  const prompt = s.page.locator('.modal-card', { hasText: 'Unsaved changes' });
+  const tab = (name: string) => panel.locator('.detail-tab', { hasText: name });
+  const notes = panel.locator('.form-textarea');
+
+  // Switching tabs mid-edit asks first; keeping on editing leaves the text alone.
+  await panel.getByRole('button', { name: 'Edit', exact: true }).click();
+  await notes.fill('Met at the port authority hearing.');
+  await tab('Project').click();
+  await expect(prompt).toContainText('Changes to Odessa Quill’s details');
+  await prompt.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(prompt).toBeHidden();
+  await expect(notes).toHaveValue('Met at the port authority hearing.');
+
+  // Discarding throws the text away and goes on.
+  await tab('Project').click();
+  await prompt.getByRole('button', { name: 'Discard' }).click();
+  await expect(tab('Project')).toHaveClass(/detail-tab--active/);
+  await tab('Global').click();
+  await expect(panel.locator('.detail-notes')).toHaveCount(0);
+
+  // Saving keeps it and goes on.
+  await panel.getByRole('button', { name: 'Edit', exact: true }).click();
+  await notes.fill('Met at the port authority hearing.');
+  await tab('Project').click();
+  await prompt.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(tab('Project')).toHaveClass(/detail-tab--active/);
+
+  // A half-written log entry asks before Escape closes the drawer, and can be saved from there.
+  await detailSection(s.page, 'Interaction Log').getByRole('button', { name: '+ Add' }).click();
+  await panel.getByPlaceholder('Log an interaction…').fill('Left a voicemail.');
+  await s.page.keyboard.press('Escape');
+  await expect(prompt).toContainText('New interaction log entry for Harbour Inquiry');
+  await prompt.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(panel).toBeHidden();
+
+  s = await restart(s, launch);
+  panel = await openContact(s.page, 'Odessa Quill');
+  await expect(panel.locator('.detail-notes')).toHaveText('Met at the port authority hearing.');
+  await expect(panel.locator('.pt-log-row-body')).toHaveText('Left a voicemail.');
 });
 
 test('contacts import from a CSV file', async ({ launch }) => {

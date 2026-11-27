@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '../hooks/useMutation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import type { ContactDetail as ContactDetailType, Reminder } from '@shared/types';
 import Button from '../shell/Button';
 import { CalendarPicker } from '../views/CalendarPicker';
-import { dateStrToUnix } from '../utils/fmtDate';
+import { dateStrToUnix, toDayKey } from '../utils/fmtDate';
 import { fmtReminderDate, sortReminders } from './logShared';
 import './ContactDetail.css';
 
@@ -60,6 +61,7 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
     setDueDate('');
     setNote('');
     setSelectedProjectId(null);
+    return true;
   });
 
   function handleAdd() {
@@ -68,22 +70,36 @@ export default function GlobalRemindersSection({ contact }: { contact: ContactDe
   }
 
   function handleStartEdit(r: Reminder) {
-    const d = new Date(r.due_date * 1000);
-    setEditDueDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    setEditDueDate(toDayKey(r.due_date));
     setEditNote(r.note ?? '');
     setEditingId(r.id);
     setAdding(false);
   }
 
-  async function handleSaveEdit(id: string) {
-    if (!editDueDate || !editNote.trim()) return;
+  async function handleSaveEdit(id: string): Promise<boolean> {
+    if (!editDueDate || !editNote.trim()) return false;
     const ts = dateStrToUnix(editDueDate);
     try {
       const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
       setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
       setEditingId(null);
-    } catch { /* leave edit form open */ }
+      return true;
+    } catch { return false; /* leave edit form open */ }
   }
+
+  useUnsavedChanges(adding && (note.trim() || dueDate) ? {
+    label: 'New reminder',
+    save: async () => {
+      if (!dueDate || !note.trim() || addingSaving) return false;
+      return (await doAdd()) === true;
+    },
+  } : null);
+
+  const editingReminder = editingId ? reminders.find((r) => r.id === editingId) : undefined;
+  useUnsavedChanges(editingReminder && (editNote !== (editingReminder.note ?? '') || editDueDate !== toDayKey(editingReminder.due_date)) ? {
+    label: 'Edit to a reminder',
+    save: () => handleSaveEdit(editingReminder.id),
+  } : null);
 
   async function handleComplete(id: string) {
     setCompleting((prev) => new Set(prev).add(id));

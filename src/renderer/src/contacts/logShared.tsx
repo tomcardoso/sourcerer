@@ -6,6 +6,7 @@ import Button from '../shell/Button';
 import LogPrintSheet from './LogPrintSheet';
 import { CalendarPicker } from '../views/CalendarPicker';
 import { toDayKey, logEditDateToUnix } from '../utils/fmtDate';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import './ContactDetail.css';
 
 export function sortReminders(a: Reminder, b: Reminder): number {
@@ -88,20 +89,27 @@ export function LogRow({
     setEditing(true);
   }
 
-  async function handleSaveEdit() {
-    if (!onEdit || !editBody.trim() || !editDate) return;
+  async function handleSaveEdit(): Promise<boolean> {
+    if (!onEdit || !editBody.trim() || !editDate) return false;
     setSaving(true);
     setSaveError(false);
     try {
       const createdAt = logEditDateToUnix(editDate, entry.created_at);
       await onEdit(entry.id, editBody.trim(), createdAt);
       setEditing(false);
+      return true;
     } catch {
       setSaveError(true);
+      return false;
     } finally {
       setSaving(false);
     }
   }
+
+  useUnsavedChanges(editing && (editBody !== entry.body || editDate !== toDayKey(entry.created_at)) ? {
+    label: 'Edit to an interaction log entry',
+    save: handleSaveEdit,
+  } : null);
 
   if (editing) {
     return (

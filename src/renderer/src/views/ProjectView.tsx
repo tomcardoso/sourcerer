@@ -5,6 +5,7 @@ import { useSortFilter } from '../hooks/useSortFilter';
 import { useProjectContacts } from '../hooks/useProjectContacts';
 import ImportResultModal from './ImportResultModal';
 import ContactDetail from '../contacts/ContactDetail';
+import { guardUnsaved, useUnsavedScope } from '../hooks/useUnsavedChanges';
 import SetupPayloadModal from '../shell/SetupPayloadModal';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
@@ -59,6 +60,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<PriorityOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const unsavedScope = useUnsavedScope();
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const lastCheckedIdRef = useRef<string | null>(null);
@@ -554,7 +556,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             toggleFilter={toggleFilter}
             checkedIds={checkedIds}
             selectedId={selectedId}
-            onRowClick={(id) => { if (id === selectedId) { closeDetail(); } else { setSelectedId(id); } }}
+            onRowClick={(id) => guardUnsaved(unsavedScope, () => { if (id === selectedId) { closeDetail(); } else { setSelectedId(id); } })}
             onCheck={toggleCheck}
             onCheckAll={toggleAll}
             allChecked={allChecked}
@@ -576,6 +578,7 @@ export default function ProjectView({ project, user, onProjectUpdated, refreshTr
             onUpdated={refresh}
             user={user}
             closing={drawerClosing}
+            unsavedScope={unsavedScope}
           />
         )}
       </div>
