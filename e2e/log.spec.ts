@@ -37,7 +37,7 @@ test('an interaction can be logged, edited and deleted, and each change outlasts
   await expect(detailSection(s.page, 'Interaction Log').getByText('No entries yet.')).toBeVisible();
 });
 
-test('logging an interaction offers every status but "Not yet contacted" and the current one', async ({ launch }) => {
+test('logging an interaction suggests the next status, and offers every one but "Not yet contacted" and the current one', async ({ launch }) => {
   const s = await launch();
   await createVault(s.page);
   await unlock(s.page);
@@ -52,14 +52,21 @@ test('logging an interaction offers every status but "Not yet contacted" and the
   await panel.locator('.pt-log-submit').click();
 
   const choice = panel.locator('.pt-status-prompt-select');
-  await expect(choice).toHaveValue('In dialogue');
+  await expect(choice).toHaveValue('Contacted, no reply');
   const options = await choice.locator('option').allTextContents();
   expect(options).toContain('Contacted, no reply');
   expect(options).not.toContain('Not yet contacted');
 
-  await choice.selectOption('Contacted, no reply');
   await panel.locator('.pt-status-prompt-update').click();
   await expect(panel.locator('.pt-select').first()).toHaveValue('Contacted, no reply');
+
+  // From "Contacted, no reply", the next step suggested is "In dialogue".
+  await detailSection(s.page, 'Interaction Log').getByRole('button', { name: '+ Add' }).click();
+  await panel.getByPlaceholder('Log an interaction…').fill('She called back.');
+  await panel.locator('.pt-log-submit').click();
+  await expect(choice).toHaveValue('In dialogue');
+  const later = await choice.locator('option').allTextContents();
+  expect(later).not.toContain('Contacted, no reply');
 });
 
 test('a reminder can be set, edited, completed, reopened and deleted, and each change outlasts a restart', async ({ launch }) => {

@@ -149,7 +149,7 @@ Each project membership has an interaction log. Every entry records the date, wh
 
 The interaction log is also used to calculate the _last contacted_ date, which drives the staleness indicator and reminder schedule.
 
-When you log an interaction with a contact whose status is **Not yet contacted** or **Contacted, no reply**, Sourcerer offers to update their status. It suggests **In dialogue**, but you can pick any other status except **Not yet contacted** — for example **Contacted, no reply** after an email that hasn't been answered — or dismiss the suggestion.
+When you log an interaction with a contact whose status is **Not yet contacted** or **Contacted, no reply**, Sourcerer offers to update their status. It suggests the next status in the list above (**Contacted, no reply** after **Not yet contacted**, then **In dialogue**), but you can pick any other status except **Not yet contacted**, or dismiss the suggestion.
 
 ### Unsaved changes
 

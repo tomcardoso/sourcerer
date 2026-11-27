@@ -106,9 +106,11 @@ function LogSection({
       setAdding(false);
       onEntryAdded?.();
       if (TRIGGER_STATUSES.includes(membershipStatus)) {
-        const suggested =
-          statusOptions.find((s) => s.label === 'In dialogue') ??
-          promptOptions(membershipStatus)[0];
+        // Suggest the next step along: the status that follows the current one in the list
+        // ("Not yet contacted" → "Contacted, no reply" → "In dialogue").
+        const options = promptOptions(membershipStatus);
+        const currentOrder = statusOptions.find((s) => s.label === membershipStatus)?.sort_order ?? -Infinity;
+        const suggested = options.find((s) => s.sort_order > currentOrder) ?? options[0];
         if (suggested) {
           setPromptStatus(suggested.label);
           setShowStatusPrompt(true);
