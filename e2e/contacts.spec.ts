@@ -94,6 +94,67 @@ test('unsaved edits in a contact are kept, saved or discarded on request before 
   await expect(panel.locator('.pt-log-row-body')).toHaveText('Left a voicemail.');
 });
 
+test('changing project, opening another contact or going elsewhere asks only about edits it would lose', async ({ launch }) => {
+  let s = await launch();
+  await createVault(s.page);
+  await unlock(s.page);
+  await createProject(s.page, 'Harbour Inquiry');
+  await createProject(s.page, 'Ferry Contracts');
+  await addContact(s.page, 'Cyrus Holt');
+  await addContact(s.page, 'Rosalind Vane', { projects: ['Harbour Inquiry', 'Ferry Contracts'] });
+  await s.page.keyboard.press('Escape');
+  await expect(s.page.locator('.detail-panel')).toBeHidden();
+
+  const prompt = s.page.locator('.modal-card', { hasText: 'Unsaved changes' });
+  let panel = await openContact(s.page, 'Rosalind Vane');
+  await panel.locator('.detail-tab', { hasText: 'Project' }).click();
+  const projectSelect = panel.locator('.pt-project-select');
+  const startEntry = async (text: string) => {
+    await detailSection(s.page, 'Interaction Log').getByRole('button', { name: '+ Add' }).click();
+    await panel.getByPlaceholder('Log an interaction…').fill(text);
+  };
+
+  // Changing project
+  const first = await projectSelect.inputValue();
+  const second = await projectSelect.locator('option').evaluateAll((os, v) => os.map((o) => (o as HTMLOptionElement).value).find((x) => x !== v)!, first);
+  await startEntry('Asked about the ferry tender.');
+  await projectSelect.selectOption(second);
+  await expect(prompt).toContainText('New interaction log entry');
+  await prompt.getByRole('button', { name: 'Keep editing' }).click();
+  await expect(projectSelect).toHaveValue(first);
+  await expect(panel.getByPlaceholder('Log an interaction…')).toHaveValue('Asked about the ferry tender.');
+  await projectSelect.selectOption(second);
+  await prompt.getByRole('button', { name: 'Discard' }).click();
+  await expect(projectSelect).toHaveValue(second);
+  await expect(panel.getByPlaceholder('Log an interaction…')).toHaveCount(0);
+
+  // Going to another view leaves the drawer opened from search, and its edits, alone.
+  await startEntry('Waiting on the minutes.');
+  await nav(s.page, 'Reminders');
+  await expect(prompt).toBeHidden();
+  await expect(panel.getByPlaceholder('Log an interaction…')).toHaveValue('Waiting on the minutes.');
+
+  // Opening another contact
+  await search(s.page, 'Cyrus Holt');
+  await searchResults(s.page).getByText('Cyrus Holt', { exact: true }).first().click();
+  await expect(prompt).toContainText('New interaction log entry');
+  await prompt.getByRole('button', { name: 'Discard' }).click();
+  await expect(panel.locator('.detail-name')).toHaveText('Cyrus Holt');
+
+  // A typed theme saves, without asking, when Escape closes the drawer.
+  panel = await openContact(s.page, 'Rosalind Vane');
+  await panel.locator('.detail-tab', { hasText: 'Project' }).click();
+  await panel.getByPlaceholder('e.g. accounting issues, police investigation…').fill('Procurement');
+  await s.page.keyboard.press('Escape');
+  await expect(prompt).toBeHidden();
+  await expect(panel).toBeHidden();
+
+  s = await restart(s, launch);
+  panel = await openContact(s.page, 'Rosalind Vane');
+  await panel.locator('.detail-tab', { hasText: 'Project' }).click();
+  await expect(panel.getByPlaceholder('e.g. accounting issues, police investigation…')).toHaveValue('Procurement');
+});
+
 test('contacts import from a CSV file', async ({ launch }) => {
   const { app, page } = await launch();
   await createVault(page);

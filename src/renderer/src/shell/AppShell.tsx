@@ -62,8 +62,9 @@ export default function AppShell() {
   const globalContactScope = useUnsavedScope();
 
   /** Goes to another view once any unsaved edits in an open contact drawer are dealt with. */
+  // The drawer opened from search stays open across views, so its edits aren't at risk here.
   function navigate(target: NavTarget) {
-    guardUnsaved('all', () => setNav(target));
+    guardUnsaved({ except: globalContactScope }, () => setNav(target));
   }
 
   const refreshOverdue = useCallback(async () => {
@@ -377,7 +378,7 @@ export default function AppShell() {
           onCreated={(contact) => {
             setShowAddContact(false);
             setImportRefreshTrigger((n) => n + 1);
-            guardUnsaved('all', () => {
+            guardUnsaved({ except: globalContactScope }, () => {
               setNav({ view: 'all-contacts' });
               setOpenContactId(contact.id);
             });

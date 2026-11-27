@@ -567,7 +567,7 @@ function RemindersSection({
     <div className="pt-section">
       <div className="pt-reminders-header">
         <span className="pt-reminders-label">Reminders</span>
-        <Button variant="ghost" onClick={() => { setAdding((v) => !v); setEditingId(null); }}>
+        <Button variant="ghost" onClick={() => { if (!adding) { setDueDate(''); setNote(''); } setAdding((v) => !v); setEditingId(null); }}>
           {adding ? '× CANCEL' : '+ ADD'}
         </Button>
       </div>
@@ -739,9 +739,11 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   );
 
   // The theme saves when its field loses focus, which usually happens before anything else;
-  // this covers the cases where it doesn't (e.g. Escape closes the drawer while typing).
+  // this covers the cases where it doesn't (e.g. Escape closes the drawer while typing), saving
+  // it the same way rather than asking.
   useUnsavedChanges(membership && localTheme !== savedTheme ? {
     label: `Theme for ${membership.name}`,
+    saveWithoutAsking: true,
     save: async () => {
       try { await handleThemeBlur(localTheme); return true; } catch { return false; }
     },

@@ -45,7 +45,7 @@ export default function UnsavedChangesPrompt() {
     <Modal title="Unsaved changes" onDismiss={() => finish(false)} className="unsaved-modal">
       <p className="modal-description unsaved-description">
         {failed
-          ? 'These couldn’t be saved. Check that they’re complete (a log entry needs a date, a reminder needs a date and a note), or discard them.'
+          ? 'These couldn’t be saved. Keep editing to finish or correct them (a missing date or note, say, or an invalid email address), or discard them.'
           : 'You haven’t saved these yet. Save them before you go on?'}
       </p>
       <ul className="unsaved-list">

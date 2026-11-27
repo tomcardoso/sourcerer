@@ -18,6 +18,11 @@ export interface PendingEdit {
   label: string;
   /** Saves the edit; resolves to false if it couldn't be saved (invalid or failed). */
   save: () => Promise<boolean>;
+  /**
+   * Save without asking, for fields that already save when you leave them (a project's theme).
+   * Only listed in the prompt if that save fails.
+   */
+  saveWithoutAsking?: boolean;
 }
 
 export class UnsavedScope {
@@ -76,41 +81,62 @@ export interface UnsavedRequest {
 }
 
 let presenter: ((req: UnsavedRequest) => void) | null = null;
-let inFlight = false;
+// The request the prompt is showing, so a second one waits its turn and an unmounted prompt
+// (e.g. the vault locked while it was open) can't leave every later guard refusing.
+let current: UnsavedRequest | null = null;
 
 /** Called by UnsavedChangesPrompt to show requests. Returns an unsubscribe function. */
 export function setUnsavedPresenter(fn: ((req: UnsavedRequest) => void) | null): () => void {
   presenter = fn;
-  return () => { if (presenter === fn) presenter = null; };
+  return () => {
+    if (presenter === fn) presenter = null;
+    current?.resolve(false);
+  };
+}
+
+/** Which drawers to check: one, every one, or every one but one. */
+export type UnsavedTarget = UnsavedScope | 'all' | { except: UnsavedScope };
+
+function scopesOf(target: UnsavedTarget): UnsavedScope[] {
+  if (target === 'all') return [...allScopes];
+  if (target instanceof UnsavedScope) return [target];
+  return [...allScopes].filter((s) => s !== target.except);
 }
 
 /**
  * Resolves true when it's fine to go ahead: nothing was unsaved, or the user saved or discarded
- * it. Resolves false when the user chose to keep editing. `scope` 'all' checks every drawer.
+ * it. Resolves false when the user chose to keep editing.
  */
-export function confirmUnsaved(scope: UnsavedScope | 'all'): Promise<boolean> {
-  const scopes = scope === 'all' ? [...allScopes] : [scope];
-  const pending = scopes.flatMap((s) => s.pending());
-  if (pending.length === 0) return Promise.resolve(true);
+export async function confirmUnsaved(target: UnsavedTarget): Promise<boolean> {
   // One prompt at a time; a second attempt (e.g. Escape pressed again) is simply ignored.
-  if (inFlight) return Promise.resolve(false);
-  if (!presenter) {
-    return Promise.resolve(window.confirm('You have unsaved changes. Discard them?'));
+  if (current) return false;
+  const all = scopesOf(target).flatMap((s) => s.pending());
+  const pending: PendingEdit[] = [];
+  for (const p of all) {
+    if (!p.saveWithoutAsking) { pending.push(p); continue; }
+    let ok: boolean;
+    try { ok = await p.save(); } catch { ok = false; }
+    if (!ok) pending.push({ ...p, saveWithoutAsking: false });
   }
-  inFlight = true;
+  if (pending.length === 0) return true;
+  if (current) return false;
+  if (!presenter) return window.confirm('You have unsaved changes. Discard them?');
   const show = presenter;
   return new Promise((resolve) => {
-    show({
+    const req: UnsavedRequest = {
       pending,
       resolve: (proceed) => {
-        inFlight = false;
+        if (current !== req) return;
+        current = null;
         resolve(proceed);
       },
-    });
+    };
+    current = req;
+    show(req);
   });
 }
 
-/** Runs `action` once any unsaved edits in `scope` are saved or discarded. */
-export function guardUnsaved(scope: UnsavedScope | 'all', action: () => void): void {
-  void confirmUnsaved(scope).then((proceed) => { if (proceed) action(); });
+/** Runs `action` once any unsaved edits in `target` are saved or discarded. */
+export function guardUnsaved(target: UnsavedTarget, action: () => void): void {
+  void confirmUnsaved(target).then((proceed) => { if (proceed) action(); });
 }
