@@ -6,6 +6,7 @@ import LogProjectPicker from './LogProjectPicker';
 import { CalendarPicker } from '../views/CalendarPicker';
 import './ContactDetail.css';
 import { logDateToUnix } from '../utils/fmtDate';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 const LOG_PREVIEW = 3;
 
@@ -68,25 +69,33 @@ export default function GlobalLogSection({ contact, onUpdated }: { contact: Cont
     setLogSelectedMembershipIds([]);
   }
 
-  async function handleLogSubmit() {
+  async function handleLogSubmit(): Promise<boolean> {
     const body = logText.trim();
-    if (!body || !logDate) return;
+    if (!body || !logDate) return false;
     const submittingContactId = contact.id;
     setLogSubmitting(true);
     try {
       const createdAt = logDateToUnix(logDate);
       const entry = await window.sourcerer.addGlobalLogEntry(contact.id, body, createdAt, logSelectedMembershipIds);
-      if (currentContactId.current !== submittingContactId) return;
+      if (currentContactId.current !== submittingContactId) return true;
       setLogEntries((prev) => [...prev, entry].sort((a, b) => a.created_at - b.created_at));
       setLogText('');
       setLogDate('');
       setLogSelectedMembershipIds([]);
       setLogAdding(false);
       onUpdated?.();
+      return true;
+    } catch {
+      return false;
     } finally {
       setLogSubmitting(false);
     }
   }
+
+  useUnsavedChanges(logAdding && logText.trim() ? {
+    label: 'New interaction log entry',
+    save: handleLogSubmit,
+  } : null);
 
   return (
     <div className="pt-section">

@@ -149,6 +149,12 @@ Each project membership has an interaction log. Every entry records the date, wh
 
 The interaction log is also used to calculate the _last contacted_ date, which drives the staleness indicator and reminder schedule.
 
+When you log an interaction with a contact whose status is **Not yet contacted** or **Contacted, no reply**, Sourcerer offers to update their status. It suggests the next status in the list above (**Contacted, no reply** after **Not yet contacted**, then **In dialogue**), but you can pick any other status except **Not yet contacted**, or dismiss the suggestion.
+
+### Unsaved changes
+
+If you've typed something in a contact's details and not saved it yet — an edit to the contact, a log entry, a reminder, a draft, a tag or a project's theme — and then do something that would throw it away, such as switching between the Global and Project tabs, choosing another project, closing the details, opening another contact or going to another view, Sourcerer asks first. You can save what you typed, discard it, or keep editing.
+
 ### Manual reminders
 
 In addition to automatic priority-based reminders, you can set a manual reminder on any contact in any project. A manual reminder has a due date and an optional note. Manual reminders appear in the Reminders view alongside automatic ones.

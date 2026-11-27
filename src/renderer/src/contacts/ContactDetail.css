@@ -25,6 +25,13 @@
   animation: detail-slide-in 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
+/* The panel takes focus when it opens so keyboard and screen-reader users start inside it (Tab
+   goes on to its first control, each of which keeps its own focus style). The panel itself isn't
+   a control, so it doesn't need a focus ring of its own. */
+.detail-panel:focus {
+  outline: none;
+}
+
 .detail-panel--closing {
   animation: detail-slide-out 160ms cubic-bezier(0.55, 0, 1, 0.45) both;
 }

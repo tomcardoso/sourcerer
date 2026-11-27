@@ -4,6 +4,7 @@ import { fmtDateFull } from '../utils/fmtDate';
 import GlobalTab from './GlobalTab';
 import ProjectTab from './ProjectTab';
 import ContactPrintSheet from './ContactPrintSheet';
+import { UnsavedScopeProvider, guardUnsaved, useUnsavedScope, type UnsavedScope } from '../hooks/useUnsavedChanges';
 import '../views/View.css';
 import './ContactDetail.css';
 
@@ -14,11 +15,15 @@ interface Props {
   onUpdated: () => void;
   user?: User | null;
   closing?: boolean;
+  /** The parent's scope, so it can guard opening another contact against unsaved edits. */
+  unsavedScope?: UnsavedScope;
 }
 
 type Tab = 'global' | 'project';
 
-export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated, user, closing }: Props) {
+export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated, user, closing, unsavedScope }: Props) {
+  const ownScope = useUnsavedScope();
+  const scope = unsavedScope ?? ownScope;
   const panelRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<ContactDetailType | null>(null);
   const [allProjects, setAllProjects] = useState<Project[]>([]);
@@ -31,6 +36,8 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
 
   // Keep stable refs so the event listener never needs to re-register
   const onCloseRef = useRef(onClose);
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
   const isEditingRef = useRef(isEditing);
   const contactIdRef = useRef(contactId);
   onCloseRef.current = onClose;
@@ -46,7 +53,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
       // e.defaultPrevented lets inner overlays (screenshot viewer, log modal)
       // signal that they already handled this Escape, so we don't close the drawer too.
       if (e.key === 'Escape' && !isEditingRef.current && !e.defaultPrevented) {
-        onCloseRef.current();
+        guardUnsaved(scopeRef.current, () => onCloseRef.current());
       }
     };
     window.addEventListener('keydown', onKey);
@@ -119,8 +126,20 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
     onUpdated();
   }
 
+  function switchTab(tab: Tab) {
+    if (tab === activeTab) return;
+    guardUnsaved(scope, () => setActiveTab(tab));
+  }
+
   return (
-    <div ref={panelRef} tabIndex={-1} className={`detail-panel${closing ? ' detail-panel--closing' : ''}`}>
+    <UnsavedScopeProvider value={scope}>
+    <div
+      ref={panelRef}
+      tabIndex={-1}
+      role="region"
+      aria-label={contact ? contact.name : 'Contact'}
+      className={`detail-panel${closing ? ' detail-panel--closing' : ''}`}
+    >
       <div className="detail-header">
         <div className="detail-header-main">
           {contact ? (
@@ -142,7 +161,7 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
             <div className="detail-loading">Loading…</div>
           )}
         </div>
-        <button className="detail-close" onClick={onClose} aria-label="Close">×</button>
+        <button className="detail-close" onClick={() => guardUnsaved(scope, onClose)} aria-label="Close">×</button>
       </div>
       <div className="view-rule-thick" />
       <div className="view-rule-thin" />
@@ -152,14 +171,14 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
           <div className="detail-tabs">
             <button
               className={`detail-tab${activeTab === 'global' ? ' detail-tab--active' : ''}`}
-              onClick={() => setActiveTab('global')}
+              onClick={() => switchTab('global')}
             >
               Global
             </button>
             {hasProjects && (
               <button
                 className={`detail-tab${activeTab === 'project' ? ' detail-tab--active' : ''}`}
-                onClick={() => setActiveTab('project')}
+                onClick={() => switchTab('project')}
               >
                 Project
               </button>
@@ -193,5 +212,6 @@ export default function ContactDetail({ contactId, onClose, onDeleted, onUpdated
         </>
       )}
     </div>
+    </UnsavedScopeProvider>
   );
 }

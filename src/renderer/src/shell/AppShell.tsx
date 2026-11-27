@@ -15,6 +15,8 @@ import AlertMentions from '../views/AlertMentions';
 import RemindersView from '../views/RemindersView';
 import SettingsView from '../views/SettingsView';
 import Timeline from '../views/Timeline';
+import UnsavedChangesPrompt from './UnsavedChangesPrompt';
+import { guardUnsaved, useUnsavedScope } from '../hooks/useUnsavedChanges';
 import './AppShell.css';
 
 export type NavTarget =
@@ -56,6 +58,14 @@ export default function AppShell() {
   const updateStateRef = useRef<'idle' | 'available' | 'downloading' | 'ready'>('idle');
   updateStateRef.current = updateState;
   const globalContactCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Unsaved edits in the drawer opened from search; the views keep their own drawers' scopes.
+  const globalContactScope = useUnsavedScope();
+
+  /** Goes to another view once any unsaved edits in an open contact drawer are dealt with. */
+  // The drawer opened from search stays open across views, so its edits aren't at risk here.
+  function navigate(target: NavTarget) {
+    guardUnsaved({ except: globalContactScope }, () => setNav(target));
+  }
 
   const refreshOverdue = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -161,10 +171,12 @@ export default function AppShell() {
   }, []);
 
   function openGlobalContact(id: string) {
-    if (globalContactId === id) { closeGlobalContact(); return; }
-    setGlobalContactId(id);
-    // Signal any open sub-modals (e.g. LogAllModal in another ContactDetail) to close.
-    window.dispatchEvent(new Event('sourcerer:global-nav'));
+    guardUnsaved(globalContactScope, () => {
+      if (globalContactId === id) { closeGlobalContact(); return; }
+      setGlobalContactId(id);
+      // Signal any open sub-modals (e.g. LogAllModal in another ContactDetail) to close.
+      window.dispatchEvent(new Event('sourcerer:global-nav'));
+    });
   }
 
   useEffect(() => {
@@ -185,12 +197,12 @@ export default function AppShell() {
 
   function handleProjectCreated(project: Project) {
     setProjects((prev) => [...prev, project]);
-    setNav({ view: 'project', projectId: project.id });
+    navigate({ view: 'project', projectId: project.id });
   }
 
   function handleProjectCreatedShared(project: Project, payload: string) {
     setProjects((prev) => [...prev, project]);
-    setNav({ view: 'project', projectId: project.id });
+    navigate({ view: 'project', projectId: project.id });
     setPendingPayload({ project, payload });
   }
 
@@ -199,7 +211,7 @@ export default function AppShell() {
       if (prev.find((p) => p.id === project.id)) return prev;
       return [...prev, project];
     });
-    setNav({ view: 'project', projectId: project.id });
+    navigate({ view: 'project', projectId: project.id });
   }
 
   function handleProjectRenamed(id: string, name: string) {
@@ -264,7 +276,7 @@ export default function AppShell() {
             </button>
           )}
           Sourcerer&nbsp;·&nbsp;Local vault&nbsp;·&nbsp;Encrypted
-          <button className="app-titlebar-lock" onClick={() => window.sourcerer.lock()} aria-label="Lock Sourcerer">
+          <button className="app-titlebar-lock" onClick={() => guardUnsaved('all', () => window.sourcerer.lock())} aria-label="Lock Sourcerer">
             🔒
           </button>
         </div>
@@ -274,7 +286,7 @@ export default function AppShell() {
         user={user}
         projects={projects}
         nav={nav}
-        onNav={setNav}
+        onNav={navigate}
         unseenMentions={unseenMentions}
         overdueReminders={overdueReminders}
         totalContacts={totalContacts}
@@ -338,14 +350,17 @@ export default function AppShell() {
             onUpdated={() => {}}
             user={user}
             closing={globalDrawerClosing}
+            unsavedScope={globalContactScope}
           />
         )}
       </main>
 
+      <UnsavedChangesPrompt />
+
       {searchOpen && (
         <SearchModal
           onClose={() => setSearchOpen(false)}
-          onNav={setNav}
+          onNav={navigate}
           onOpenContact={openGlobalContact}
         />
       )}
@@ -363,8 +378,10 @@ export default function AppShell() {
           onCreated={(contact) => {
             setShowAddContact(false);
             setImportRefreshTrigger((n) => n + 1);
-            setNav({ view: 'all-contacts' });
-            setOpenContactId(contact.id);
+            guardUnsaved({ except: globalContactScope }, () => {
+              setNav({ view: 'all-contacts' });
+              setOpenContactId(contact.id);
+            });
             window.sourcerer.getContactCount().then(setTotalContacts);
           }}
           onCancel={() => setShowAddContact(false)}

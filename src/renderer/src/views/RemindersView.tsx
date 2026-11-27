@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Reminder, User } from '@shared/types';
 import { fmtDateFull } from '../utils/fmtDate';
 import ContactDetail from '../contacts/ContactDetail';
+import { guardUnsaved, useUnsavedScope } from '../hooks/useUnsavedChanges';
 import Modal from '../shell/Modal';
 import Button from '../shell/Button';
 import './View.css';
@@ -104,12 +105,16 @@ export default function RemindersView({ onCountChange, user }: Props) {
     });
   }
 
+  const unsavedScope = useUnsavedScope();
+
   function openContact(contactId: string) {
-    if (selectedContactId === contactId) {
-      closeContact();
-      return;
-    }
-    setSelectedContactId(contactId);
+    guardUnsaved(unsavedScope, () => {
+      if (selectedContactId === contactId) {
+        closeContact();
+        return;
+      }
+      setSelectedContactId(contactId);
+    });
   }
 
   function closeContact() {
@@ -262,6 +267,7 @@ export default function RemindersView({ onCountChange, user }: Props) {
           onUpdated={refresh}
           user={user}
           closing={drawerClosing}
+          unsavedScope={unsavedScope}
         />
       )}
     </div>

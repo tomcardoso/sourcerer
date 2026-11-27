@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import './TagsSection.css';
 
 interface Props {
@@ -15,6 +16,7 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setInput('');
     window.sourcerer.listAllContactTags().then(setAllTags);
   }, [contactId]);
 
@@ -40,15 +42,22 @@ export default function TagsSection({ contactId, tags, onChanged }: Props) {
     .filter((t) => !tags.includes(t) && (trimmed === '' || t.includes(trimmed)))
     .slice(0, 10);
 
-  async function addTag(tag: string) {
+  async function addTag(tag: string): Promise<boolean> {
     const normalized = tag.trim().toLowerCase();
-    if (!normalized || normalized.length > 50 || tags.includes(normalized)) return;
+    if (!normalized || normalized.length > 50 || tags.includes(normalized)) return false;
     await window.sourcerer.addContactTag(contactId, normalized);
     setInput('');
     setDropdownOpen(false);
     setAllTags((prev) => prev.includes(normalized) ? prev : [...prev, normalized].sort());
     onChanged();
+    return true;
   }
+
+  // A tag typed but not yet added with Enter.
+  useUnsavedChanges(trimmed && !tags.includes(trimmed) ? {
+    label: `Tag “${trimmed}”`,
+    save: () => addTag(trimmed),
+  } : null);
 
   async function removeTag(tag: string) {
     await window.sourcerer.removeContactTag(contactId, tag);

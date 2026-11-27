@@ -73,6 +73,10 @@ export default function GlobalTab({ contact, allProjects, onRefresh, onMembershi
     return () => { cancelled = true; };
   }, [contact.id]);
 
+  // Switching to the Project tab unmounts this one mid-edit; tell the drawer editing has ended
+  // so Escape closes it again.
+  useEffect(() => () => onEditingChange?.(false), []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reset edit mode when contact changes
   useEffect(() => {
     setEditingAndNotify(false);

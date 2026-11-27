@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation } from '../hooks/useMutation';
+import { useUnsavedChanges, guardUnsaved, useCurrentUnsavedScope } from '../hooks/useUnsavedChanges';
 import { useListboxKeyboard } from '../hooks/useListboxKeyboard';
-import { fmtDateFull, dateStrToUnix, logDateToUnix } from '../utils/fmtDate';
+import { fmtDateFull, dateStrToUnix, logDateToUnix, toDayKey } from '../utils/fmtDate';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CalendarPicker } from '../views/CalendarPicker';
 import Button from '../shell/Button';
@@ -33,7 +34,8 @@ const LOG_PREVIEW = 3;
 // Labels from the default status seed. No UI exists yet to rename statuses, so
 // these strings are stable in practice. If custom statuses land, this constant
 // should move to a shared location or status_options should gain a system_key column.
-const TRIGGER_STATUSES = ['Not yet contacted', 'Contacted, no reply'];
+const NOT_CONTACTED = 'Not yet contacted';
+const TRIGGER_STATUSES = [NOT_CONTACTED, 'Contacted, no reply'];
 
 function LogSection({
   contactName,
@@ -89,9 +91,9 @@ function LogSection({
     onEntryAdded?.();
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(): Promise<boolean> {
     const body = text.trim();
-    if (!body || !logDate) return;
+    if (!body || !logDate) return false;
     setSubmitting(true);
     try {
       const createdAt = logDateToUnix(logDate);
@@ -104,17 +106,34 @@ function LogSection({
       setAdding(false);
       onEntryAdded?.();
       if (TRIGGER_STATUSES.includes(membershipStatus)) {
-        const suggested =
-          statusOptions.find((s) => s.label === 'In dialogue') ??
-          statusOptions.find((s) => !TRIGGER_STATUSES.includes(s.label));
+        // Suggest the next step along: the status that follows the current one in the list
+        // ("Not yet contacted" → "Contacted, no reply" → "In dialogue").
+        const options = promptOptions(membershipStatus);
+        const currentOrder = statusOptions.find((s) => s.label === membershipStatus)?.sort_order ?? -Infinity;
+        const suggested = options.find((s) => s.sort_order > currentOrder) ?? options[0];
         if (suggested) {
           setPromptStatus(suggested.label);
           setShowStatusPrompt(true);
         }
       }
+      return true;
+    } catch {
+      return false;
     } finally {
       setSubmitting(false);
     }
+  }
+
+  useUnsavedChanges(adding && text.trim() ? {
+    label: `New interaction log entry for ${membership.name}`,
+    save: handleSubmit,
+  } : null);
+
+  // Once an interaction is logged, the source has been contacted, so "Not yet contacted" is no
+  // longer an answer, and the current status isn't a change. Everything else is offered,
+  // including "Contacted, no reply" (e.g. after logging an unanswered email).
+  function promptOptions(current: string): StatusOption[] {
+    return statusOptions.filter((s) => s.label !== NOT_CONTACTED && s.label !== current);
   }
 
   async function handleStatusUpdate() {
@@ -164,8 +183,7 @@ function LogSection({
             value={promptStatus}
             onChange={(e) => setPromptStatus(e.target.value)}
           >
-            {statusOptions
-              .filter((s) => !TRIGGER_STATUSES.includes(s.label))
+            {promptOptions(membershipStatus)
               .map((s) => (
                 <option key={s.id} value={s.label}>{s.label}</option>
               ))}
@@ -276,7 +294,7 @@ function ScratchpadSection({
     });
   }
 
-  async function handleSave(draft: ScratchpadDraft) {
+  async function handleSave(draft: ScratchpadDraft): Promise<boolean> {
     setSaveError(null);
     const edit = getEdit(draft);
     try {
@@ -294,10 +312,30 @@ function ScratchpadSection({
         return next;
       });
       stopEditing(draft.id);
+      return true;
     } catch {
       setSaveError('Failed to save draft. Please try again.');
+      return false;
     }
   }
+
+  // One entry per draft being edited whose label or text differs from what's saved.
+  const changedDrafts = drafts.filter((d) => {
+    if (!editingIds.has(d.id)) return false;
+    const e = draftEdits[d.id];
+    return !!e && (e.label !== d.label || e.body !== d.body);
+  });
+  useUnsavedChanges(changedDrafts.length > 0 ? {
+    label: changedDrafts.length === 1
+      ? `Draft “${getEdit(changedDrafts[0]).label || 'Draft'}”`
+      : `${changedDrafts.length} drafts`,
+    save: async () => {
+      for (const d of changedDrafts) {
+        if (!(await handleSave(d))) return false;
+      }
+      return true;
+    },
+  } : null);
 
   async function handleNewDraft() {
     const draft = await window.sourcerer.saveScratchpad({
@@ -433,6 +471,13 @@ function RemindersSection({
     return () => { cancelled = true; };
   }, [contactId, projectId, refreshToken]);
 
+  // A half-written reminder belongs to the project it was started in.
+  useEffect(() => {
+    setAdding(false);
+    setDueDate('');
+    setNote('');
+  }, [contactId, projectId]);
+
   const { execute: doAdd, isPending: addingSaving } = useMutation(async () => {
     const ts = dateStrToUnix(dueDate);
     const r = await window.sourcerer.createReminder({
@@ -445,6 +490,7 @@ function RemindersSection({
     setDueDate('');
     setNote('');
     setAdding(false);
+    return true;
   });
 
   function handleAdd() {
@@ -453,27 +499,39 @@ function RemindersSection({
   }
 
   function handleStartEdit(r: Reminder) {
-    const d = new Date(r.due_date * 1000);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    setEditDueDate(`${yyyy}-${mm}-${dd}`);
+    setEditDueDate(toDayKey(r.due_date));
     setEditNote(r.note ?? '');
     setEditingId(r.id);
     setAdding(false);
   }
 
-  async function handleSaveEdit(id: string) {
-    if (!editDueDate || !editNote.trim()) return;
+  async function handleSaveEdit(id: string): Promise<boolean> {
+    if (!editDueDate || !editNote.trim()) return false;
     const ts = dateStrToUnix(editDueDate);
     try {
       const updated = await window.sourcerer.updateReminder({ id, dueDate: ts, note: editNote.trim() });
       setReminders((prev) => prev.map((r) => (r.id === id ? updated : r)).sort(sortReminders));
       setEditingId(null);
+      return true;
     } catch {
       // leave edit form open so the user can retry
+      return false;
     }
   }
+
+  useUnsavedChanges(adding && (note.trim() || dueDate) ? {
+    label: 'New reminder',
+    save: async () => {
+      if (!dueDate || !note.trim() || addingSaving) return false;
+      return (await doAdd()) === true;
+    },
+  } : null);
+
+  const editingReminder = editingId ? reminders.find((r) => r.id === editingId) : undefined;
+  useUnsavedChanges(editingReminder && (editNote !== (editingReminder.note ?? '') || editDueDate !== toDayKey(editingReminder.due_date)) ? {
+    label: 'Edit to a reminder',
+    save: () => handleSaveEdit(editingReminder.id),
+  } : null);
 
   async function handleComplete(id: string) {
     setCompleting((prev) => new Set(prev).add(id));
@@ -509,7 +567,7 @@ function RemindersSection({
     <div className="pt-section">
       <div className="pt-reminders-header">
         <span className="pt-reminders-label">Reminders</span>
-        <Button variant="ghost" onClick={() => { setAdding((v) => !v); setEditingId(null); }}>
+        <Button variant="ghost" onClick={() => { if (!adding) { setDueDate(''); setNote(''); } setAdding((v) => !v); setEditingId(null); }}>
           {adding ? '× CANCEL' : '+ ADD'}
         </Button>
       </div>
@@ -625,6 +683,9 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
   const [localStatus, setLocalStatus] = useState<string>(membership?.status ?? '');
   const [localPriority, setLocalPriority] = useState<string>(membership?.priority ?? '');
   const [localTheme, setLocalTheme] = useState<string>(membership?.theme ?? '');
+  // The theme as last saved, so a typed-but-unsaved theme can be told apart.
+  const [savedTheme, setSavedTheme] = useState<string>(membership?.theme ?? '');
+  const unsavedScope = useCurrentUnsavedScope();
   const [localOutreachEnabled, setLocalOutreachEnabled] = useState<boolean>(
     membership?.outreach_reminders_enabled !== 0,
   );
@@ -641,6 +702,7 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
     setLocalStatus(membership.status ?? '');
     setLocalPriority(membership.priority ?? '');
     setLocalTheme(membership.theme ?? '');
+    setSavedTheme(membership.theme ?? '');
     setLocalOutreachEnabled(membership.outreach_reminders_enabled !== 0);
     setLocalReporters(membership.reporters ?? []);
     setReporterQuery('');
@@ -675,6 +737,17 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
       !localReporters.some((lr) => lr.email === r.email) &&
       r.name.toLowerCase().includes(reporterQuery.toLowerCase()),
   );
+
+  // The theme saves when its field loses focus, which usually happens before anything else;
+  // this covers the cases where it doesn't (e.g. Escape closes the drawer while typing), saving
+  // it the same way rather than asking.
+  useUnsavedChanges(membership && localTheme !== savedTheme ? {
+    label: `Theme for ${membership.name}`,
+    saveWithoutAsking: true,
+    save: async () => {
+      try { await handleThemeBlur(localTheme); return true; } catch { return false; }
+    },
+  } : null);
 
   const listboxPt = useListboxKeyboard({
     isOpen: reporterDropdownOpen,
@@ -728,7 +801,17 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
 
   async function handleThemeBlur(value: string) {
     setLocalTheme(value);
-    await membershipUpdate({ theme: value });
+    if (value === savedTheme) return;
+    // Marked saved before the write finishes, so a click that blurred the field isn't
+    // then held up by a prompt about the theme it is already saving.
+    const previous = savedTheme;
+    setSavedTheme(value);
+    try {
+      await membershipUpdate({ theme: value });
+    } catch (err) {
+      setSavedTheme(previous);
+      throw err;
+    }
     onMembershipUpdated();
   }
 
@@ -781,7 +864,11 @@ export default function ProjectTab({ contact, statusOptions, priorityOptions, on
           <select
             className="pt-project-select"
             value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (unsavedScope) guardUnsaved(unsavedScope, () => setSelectedId(next));
+              else setSelectedId(next);
+            }}
           >
             {contact.projects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>

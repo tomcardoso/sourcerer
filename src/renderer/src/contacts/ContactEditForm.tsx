@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '../hooks/useMutation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import type { ContactDetail as ContactDetailType, ContactAlertRss, User } from '@shared/types';
 import Button from '../shell/Button';
 import DynamicList, { useDragReorder } from './DynamicList';
@@ -183,16 +184,38 @@ export default function ContactEditForm({
       await window.sourcerer.addAlertRss(contact.id, pendingRss);
     }
     onSaved();
+    return true;
   });
+
+  const rssInvalid = !!newRssUrl.trim()
+    && (!isGoogleAlertUrl(newRssUrl.trim()) || alertRssList.some((f) => f.rss_url === newRssUrl.trim()));
+  const hasFormatWarnings = Object.keys(emailFormatWarnings).length > 0
+    || Object.keys(phoneFormatWarnings).length > 0
+    || Object.keys(urlFormatWarnings).length > 0;
+  const hasDuplicates = emailDuplicates.size > 0 || phoneDuplicates.size > 0 || urlDuplicates.size > 0;
 
   function handleSave() {
     if (!editName.trim()) return;
-    if (emailDuplicates.size > 0 || phoneDuplicates.size > 0 || urlDuplicates.size > 0) {
+    if (hasDuplicates) {
       formRef.current?.querySelector<HTMLElement>('.ac-collision-warn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     doSave();
   }
+
+  // Everything the form edits, to compare with what it started from.
+  const snapshot = JSON.stringify([
+    editName, editOrg, editTitle, editDob, editNotes, editHandles, editEmails, editPhones,
+    editSocials, editOtherSocials, editWebsites, newRssUrl.trim(),
+  ]);
+  const [initialSnapshot] = useState(snapshot);
+  useUnsavedChanges(snapshot !== initialSnapshot ? {
+    label: `Changes to ${contact.name}’s details`,
+    save: async () => {
+      if (!editName.trim() || hasDuplicates || hasFormatWarnings || rssInvalid) return false;
+      return (await doSave()) === true;
+    },
+  } : null);
 
   return (
     <div className="detail-body" ref={formRef}>
@@ -589,7 +612,7 @@ export default function ContactEditForm({
       />
 
       <div className="detail-edit-actions-bottom">
-        <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || Object.keys(emailFormatWarnings).length > 0 || Object.keys(phoneFormatWarnings).length > 0 || Object.keys(urlFormatWarnings).length > 0 || (!!newRssUrl.trim() && !isGoogleAlertUrl(newRssUrl.trim())) || (!!newRssUrl.trim() && alertRssList.some((f) => f.rss_url === newRssUrl.trim()))}>
+        <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || !editName.trim() || hasFormatWarnings || rssInvalid}>
           {saving ? 'Saving…' : 'Save'}
         </Button>
         <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>
